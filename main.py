@@ -8,36 +8,45 @@ def eos(rho): # Equation of state
     p = alpha*rho
     return p
 
+def heightFunction(x,y):
+    return h0 + sx * (1. - x/Lx) + sy * (1. - y/Ly)
+
 # Discretization
-Nx = 5
-Ny = 5
+Nx = 20
+Ny = 20
 Lx = 1.
 Ly = 1.
 
-from field.field import scalarField
+h0 = 1.
+sx=-0.3
+sy=-0.5
 
+from field.field import scalarField
 rho_old = scalarField(Nx, Ny, Lx, Ly)
 rho_new = scalarField(Nx, Ny, Lx, Ly)
-p = scalarField(Nx, Ny, Lx, Ly)
-
+press = scalarField(Nx, Ny, Lx, Ly)
 
 from field.field import vectorField
-
 mom_old = vectorField(Nx, Ny, Lx, Ly)
 mom_new = vectorField(Nx, Ny, Lx, Ly)
 
-pGrad = p.computeGrad()
+from field.field import tensorField
+avg_stress = tensorField(Nx, Ny, Lx, Ly)
 
-print(pGrad.field)
+pGrad = press.computeGrad()
+stressDiv = avg_stress.computeDiv()
+
+height = scalarField(Nx, Ny, Lx, Ly)
+height.fromFunction(heightFunction)
 
 # rho_new = np.ones((Nx,Ny))
 # rho_old = rho_new
 # mom_new = np.zeros((Nx,Ny))
 # mom_old = mom_new
-p       = np.zeros((Nx,Ny))
+# p       = np.zeros((Nx,Ny))
 
 # 0) Initial conditions
-rho_0   = 1.
+# rho_0   = 1.
 # rho_new = rho_0 * rho_new
 
 
