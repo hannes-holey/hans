@@ -18,7 +18,7 @@ class Field:
         self.xx = xx.T
         self.yy = yy.T
 
-        self.field_buffer = np.zeros((self.ndim, self.Nx, self.Ny))
+        self.field_buffer = np.ones((self.ndim, self.Nx, self.Ny))
 
         self.field = []
 
@@ -30,6 +30,9 @@ class scalarField(Field):
     def __init__(self, Nx, Ny, Lx, Ly):
         self.ndim = 1
         super().__init__(Nx, Ny, Lx, Ly)
+
+    def normal(self, loc, scale):
+        self.field[0] = np.random.normal(loc, scale, size=(self.Nx, self.Ny))
 
     def computeGrad(self):
 
@@ -47,8 +50,11 @@ class scalarField(Field):
 
         return grad
 
-    def fromFunction(self, func):
+    def fromFunctionXY(self, func): # get scalar field from function (height, eos)
         self.field[0]=func(self.xx, self.yy)
+
+    def fromFunctionField(self, func, arg):
+        self.field[0] = func(arg)
 
 class vectorField(Field):
 
@@ -59,7 +65,7 @@ class vectorField(Field):
 class tensorField(Field):
 
     def __init__(self, Nx, Ny, Lx, Ly):
-        self.ndim = 5
+        self.ndim = 6
         super().__init__(Nx, Ny, Lx, Ly)
 
     def computeDiv(self):
@@ -82,5 +88,11 @@ class tensorField(Field):
 
         return div
 
-    def getStressNewtonian(self):
-        pass
+    def getStressNewtonian(self, p, func, velX, velY,  h):
+
+        for i in range(int(self.ndim/2)):
+            self.field[i] =  p                          # normal
+
+        self.field[3] = func(velY, h)                   # sigma_yz
+        self.field[4] = func(velX, h)                   # sigma_xz
+        self.field[5] = np.zeros((self.Nx, self.Ny))    # sigma_xy
