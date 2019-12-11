@@ -4,3 +4,4 @@
 *.cpython*.so
 __pycache__
 test*
+out*
