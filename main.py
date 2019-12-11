@@ -6,65 +6,110 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 # Discretization
-Nx = 100
-Ny = 100
+Nx = 50
+Ny = 50
+dt = 0.01
 
 # Geometry
 Lx = 1.
 Ly = 1.
 h0 = 1.
-sx = -0.02
-sy = -0.03
+sx = -0.01
+sy = -0.0000
 
 # Shear velocities
-U = 1.
+U = -1.
 V = 0.
+p_atm = 34.68
+rho_atm = 1000.
 
 # Constants
-mu = 1.
+mu = 0.001
 eos_cubic = {84 : [5.7e-07, -0.0015, 1.3173, -352.6244],
             216 : [5.3e-07, -0.0011, 0.8580, -198.6119],
             292 : [5.5e-07, -0.0011, 0.8643, -194.6684]}
 
 # Function definitions
-def eos(rho): # Equation of state
+def eos(rho):
+    "Equation of state"
     p = np.poly1d(eos_cubic[292])
     return p(rho)
 
-def heightLinear(x,y): # Linear height function
+def heightLinear(x,y):
+    "Linear height profile"
     return h0 + sx * (1. - x/Lx) + sy * (1. - y/Ly)
 
-def stressNewtonian(U,h,j,rho,z): # stress for Newtonian fluid
-    return mu*(U/h)+6/h/h*(j/rho-U/2)*(h-2*z)
+def stressDivNewtonian(U, h, j, rho):
+    "compute flux-dependent term in divergence of stress tensor"
+    return 12.*mu/(h**2)*(j/rho-U/2)
 
-def avgShearStress(vel,h):
-    return mu*vel/h
+def plot1D(field, comp, time):
+    "plot field component on 2D grid"
+    ax1.plot(field.xx[:,0], field.field[comp][24,:], '-')
+    # ax1.set_ylim(np.amin(field.field[comp]), np.amax(field.field[comp]))
+    plt.pause(time)
+    ax1.clear()
+
+def plot2D(field, comp, time):
+    "plot field component on 2D grid"
+    im1 = ax1.imshow(field.field[comp], interpolation='nearest', aspect='1')
+    v1 = np.linspace(np.amin(field.field[comp]), np.amax(field.field[comp]), 11, endpoint=True)
+    cbar = plt.colorbar(im1, ticks = v1, ax = ax1)
+
+    plt.pause(time)
+    cbar.remove()
 
 # Initialization
 from field.field import scalarField
-rho = scalarField(Nx, Ny, Lx, Ly)
-rho.normal(100., 50.)
+from field.field import vectorField
+from field.field import tensorField
 
+# Density distribution
+rho = scalarField(Nx, Ny, Lx, Ly)
+rho.normal(rho_atm, 0.)
+
+# Gap height
 height = scalarField(Nx, Ny, Lx, Ly)
 height.fromFunctionXY(heightLinear)
 
+# Pressure
 press = scalarField(Nx, Ny, Lx, Ly)
-press.fromFunctionField(eos, rho.field[0])
 
-from field.field import vectorField
+# Flux field
 flux = vectorField(Nx, Ny, Lx, Ly)
 
-from field.field import tensorField
-avg_stress = tensorField(Nx, Ny, Lx, Ly)
-avg_stress.getStressNewtonian(press.field[0], avgShearStress, U, V, height.field[0])
+# Divergence of stress tensor
+stressDiv = vectorField(Nx, Ny, Lx, Ly)
 
-pGrad = press.computeGrad()
-stressDiv = avg_stress.computeDiv()
+# Initialize figure
+fig, ax1 = plt.subplots(1)
 
-fig = plt.figure(figsize=(4,3))
-ax1 = fig.add_subplot(111, projection='3d')
-ax1.plot_surface(press.xx, press.yy, avg_stress.field[2], cmap = 'viridis')
-plt.show()
+
+for i in range(100):
+
+    #press.setDirichlet(p_atm)
+    rho.setDirichlet(0.)
+    press.fromFunctionField(eos, rho.field[0])
+
+    # Assemble divergence of 'analytic' stress tensor
+    pGrad = press.computeGrad()
+
+    #plot2D(press, 0, 0.1)
+    plot1D(rho, 0, 0.1)
+
+    stressDiv.fromField(pGrad)
+    stressDiv.addFluxContribution(stressDivNewtonian, U, V, height.field[0], \
+                                flux.field[0], flux.field[1], rho.field[0])
+
+    flux.updateFlux(stressDiv, dt)
+    fluxDiv = flux.computeDiv()
+    rho.updateDens(fluxDiv, dt)
+
+# fig = plt.figure(figsize=(4,3))
+# ax1 = fig.add_subplot(111)
+# cs = ax1.contourf(press.xx, press.yy, height.field[0], cmap = 'viridis')
+# plt.colorbar(cs)
+# plt.show()
 
 
 # 1) Time Loop --------------------------
