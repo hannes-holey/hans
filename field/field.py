@@ -77,12 +77,12 @@ class scalarField(Field):
     def setDirichlet(self, value):
         self.field[0][0,:] = value
         self.field[0][-1,:] = value
-        self.field[0][:,0] = value
-        self.field[0][:,-1] = value
+        # self.field[0][:,0] = value
+        # self.field[0][:,-1] = value
 
 
     def updateDens(self, field, dt):
-        self.field[0] = dt * field.field[0] + self.field[0]
+        self.field[0] = - dt * field.field[0] + self.field[0]
 
 class vectorField(Field):
 
