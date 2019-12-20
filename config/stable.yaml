@@ -1,0 +1,44 @@
+options:
+    name: stable
+    save_ani: 0
+    maxIt: 10000
+    plot_dim: 1
+    plotInterval: 1
+    zmin: 1.196314e8
+    zmax: 1.196322e8
+#    zmax: 1.199e8
+#    zmax: 1.196322e8
+# zmin: -1e8
+# zmax: 1e8
+geometry:
+    Lx: 1.e-3
+    Ly: 1.e-3
+    h1: 2.e-6
+    h2: 1.e-6
+numerics:
+    Nx: 100
+    Ny: 100
+    dt: 1.e-8
+material:
+    mu: 1.e-2
+BC:
+    U: -0.1
+    V: 0.
+    rho0: 1000.
+    temp: 292
+EOS:
+    84:
+        - 5.7e-07
+        - -0.0015
+        - 1.3173
+        - -352.6244
+    216:
+        - 5.3e-07
+        - -0.0011
+        - 0.8580
+        - -198.6119
+    292:
+        - 5.5e-07
+        - -0.0011
+        - 0.8643
+        - -194.6684

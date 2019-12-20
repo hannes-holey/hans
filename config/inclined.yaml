@@ -1,0 +1,41 @@
+options:
+    name: inclined
+    save_ani: 0
+    maxIt: 1000
+    plot_dim: 1
+    plotInterval: 100
+    writeOutput:  0
+    writeField: 1
+geometry:
+    Lx: 1.e-3
+    Ly: 1.e-3
+    h1: 2.e-6
+    h2: 1.e-6
+numerics:
+    Nx: 50
+    Ny: 3
+    dt: 1.e-8
+material:
+    mu: 1.e-2
+BC:
+    U: -0.1
+    V: 0.
+    P0: 101325
+    rho0: 877.7007
+    temp: 292
+EOS:
+    84:
+        - 5.7e-07
+        - -0.0015
+        - 1.3173
+        - -352.6244
+    216:
+        - 5.3e-07
+        - -0.0011
+        - 0.8580
+        - -198.6119
+    292:
+        - 5.5e-07
+        - -0.0011
+        - 0.8643
+        - -194.6684
