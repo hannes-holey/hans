@@ -40,46 +40,77 @@ class scalarField(Field):
         self.field[0]=func(self.xx, self.yy)
 
     def fromFunctionField(self, func, arg):
-        "get scalar field from function of a 2D scalar field"
+        "get scalar field from function"
         self.field[0] = func(arg)
 
-    def computeGrad(self):
-        "Compute gradient field of a given scalar field in 2D"
-        grad = vectorField(self.Nx, self.Ny, self.Lx, self.Ly)
+    # def computeGrad(self):
+    #     "Compute gradient field of a given scalar field in 2D"
+    #     grad = vectorField(self.Nx, self.Ny, self.Lx, self.Ly)
+    #
+    #     # uniform grid
+    #     dx = self.Lx/self.Nx
+    #     dy = self.Ly/self.Ny
+    #
+    #     # create E/W/N/S arrays
+    #     pE = np.roll(self.field[0], 1,axis=0)
+    #     pW = np.roll(self.field[0],-1,axis=0)
+    #     pN = np.roll(self.field[0], 1,axis=1)
+    #     pS = np.roll(self.field[0],-1,axis=1)
+    #
+    #     # central differences
+    #     grad.field[0] = (pE - pW)/2./dx
+    #     grad.field[1] = (pN - pS)/2./dy
+    #     grad.field[2] = np.zeros((self.Nx, self.Ny))
+    #
+    #     return grad
+
+    def computeDiv(self, field):
+        "Compute divergence using central differences"
 
         # uniform grid
         dx = self.Lx/self.Nx
         dy = self.Ly/self.Ny
 
         # create E/W/N/S arrays
-        pE = np.roll(self.field[0], 1,axis=0)
-        pW = np.roll(self.field[0],-1,axis=0)
-        pN = np.roll(self.field[0], 1,axis=1)
-        pS = np.roll(self.field[0],-1,axis=1)
+        pE = np.roll(field.field[0], -1,axis=0)
+        pW = np.roll(field.field[0], 1,axis=0)
+        pN = np.roll(field.field[1], -1,axis=1)
+        pS = np.roll(field.field[1], 1,axis=1)
 
-        # central differences
-        grad.field[0] = (pE - pW)/2./dx
-        grad.field[1] = (pN - pS)/2./dy
-        grad.field[2] = np.zeros((self.Nx, self.Ny))
-
-        # pE = self.field[0][1:self.Nx, :]
-        # pW = self.field[0][0:self.Nx-1, :]
-        # pN = self.field[0][:, 0:self.Ny-1]
-        # pS = self.field[0][:, 0:self.Ny-1]
+        # self.field[0] = (pE - pW)/2./dx + (pN - pS)/2./dy
+        self.field[0] = np.gradient(field.field[0],dx,dy, edge_order=2)[0] + np.gradient(field.field[1],dx,dy,edge_order=2)[1]
+        # Boundary
+        # self.field[0][0,:] = (field.field[0][1,:] - field.field[0][0,:])/dx + (pN[0,:] - pS[0,:])/2./dy
+        # self.field[0][-1,:] = (field.field[0][-1,:] - field.field[0][-2,:])/dx + (pN[-1,:] - pS[-1,:])/2./dy
+        # self.field[0][:,0] = (pE[:,0] - pW[:,0])/2./dx + (field.field[0][:,1] - field.field[0][:,0])/dy
+        # self.field[0][:,-1] = (pE[:,-1] - pW[:,-1])/2./dx + (field.field[0][:,-1] - field.field[0][:,-2])/dy
         #
-        # # central differences
-        # grad.field[0][1:self.Nx-1,:] = (pE - pW)/2./dx
-        # grad.field[1][:,1:self.Ny-1] = (pN - pS)/2./dy
-        # grad.field[2] = np.zeros((self.Nx, self.Ny))
+        # self.field[0][0,0] = (field.field[0][1,0] - field.field[0][0,0])/dx + (field.field[0][0,1] - field.field[0][0,0])/dy
+        # self.field[0][-1,0] = (field.field[0][-1,0] - field.field[0][-2,0])/dx + (field.field[0][-1,1] - field.field[0][-1,0])/dy
+        # self.field[0][0,-1] = (field.field[0][1,-1] - field.field[0][0,-1])/dx + (field.field[0][0,-1] - field.field[0][0,-2])/dy
+        # self.field[0][-1,-1] = (field.field[0][-1,-1] - field.field[0][-2,-1])/dx + (field.field[0][-1,-1] - field.field[0][-1,-2])/dy
 
-        return grad
-
-    def setDirichlet(self, value):
+    def setDirichletXw(self, value):
         self.field[0][0,:] = value
+        # self.field[0][1,:] = value
+
+    def setDirichletXe(self, value):
         self.field[0][-1,:] = value
+        # self.field[0][-2,:] = value
+
+    def setDirichletYn(self, value):
+        self.field[0][:,-1] = value
+        # self.field[0][1,:] = value
+
+    def setDirichletYs(self, value):
+        self.field[0][:,0] = value
+        # self.field[0][-2,:] = value
+
+    def setDirichletY(self, value):
+        self.field[0][:,0] = value
+        self.field[0][:,-1] = value
         # self.field[0][:,0] = value
         # self.field[0][:,-1] = value
-
 
     def updateDens(self, field, dt):
         self.field[0] = - dt * field.field[0] + self.field[0]
@@ -94,28 +125,63 @@ class vectorField(Field):
         for i in range(self.ndim):
             self.field[i] = field.field[i]
 
-    def addFluxContribution(self, func, velX, velY, h, fluxX, fluxY, rho):
-        self.field[0] = -self.field[0] - func(velX, h, fluxX, rho)
-        self.field[1] = -self.field[1] - func(velY, h, fluxY, rho)
+    def addFluxContribution(self, func, h, fluxX, fluxY, rho):
+        self.field[0] = -self.field[0] - func(h, fluxX, rho)
+        self.field[1] = -self.field[1] - func(h, fluxY, rho)
 
-    def computeDiv(self):
-        "Compute divergence using central differences"
-
-        div = scalarField(self.Nx, self.Ny, self.Lx, self.Ly)
-
+    def computeGrad(self, field):
         # uniform grid
         dx = self.Lx/self.Nx
         dy = self.Ly/self.Ny
 
         # create E/W/N/S arrays
-        pE = np.roll(self.field[0], 1,axis=0)
-        pW = np.roll(self.field[0],-1,axis=0)
-        pN = np.roll(self.field[1], 1,axis=1)
-        pS = np.roll(self.field[1],-1,axis=1)
+        pE = np.roll(field.field[0], -1,axis=0)
+        pW = np.roll(field.field[0], 1,axis=0)
+        pN = np.roll(field.field[0], -1,axis=1)
+        pS = np.roll(field.field[0], 1,axis=1)
 
-        div.field[0] = (pE - pW)/2./dx + (pN - pS)/2./dy
+        # central differences
+        self.field[0] = (pE - pW)/2./dx
+        self.field[1] = (pN - pS)/2./dy
+        self.field[2] = np.zeros((self.Nx, self.Ny))
 
-        return div
+        self.field[0][0,:] = (field.field[0][1,:] - field.field[0][0,:])/dx
+        self.field[0][-1,:] = (field.field[0][-1,:] - field.field[0][-2,:])/dx
+        self.field[1][:,0] = (field.field[0][:,1] - field.field[0][:,0])/dy
+        self.field[1][-1,:] = (field.field[0][:,-1] - field.field[0][:,-2])/dy
+
+    # def computeDiv(self):
+    #     "Compute divergence using central differences"
+    #
+    #     div = scalarField(self.Nx, self.Ny, self.Lx, self.Ly)
+    #
+    #     # uniform grid
+    #     dx = self.Lx/self.Nx
+    #     dy = self.Ly/self.Ny
+    #
+    #     # create E/W/N/S arrays
+    #     pE = np.roll(self.field[0], 1,axis=0)
+    #     pW = np.roll(self.field[0],-1,axis=0)
+    #     pN = np.roll(self.field[1], 1,axis=1)
+    #     pS = np.roll(self.field[1],-1,axis=1)
+    #
+    #     div.field[0] = (pE - pW)/2./dx + (pN - pS)/2./dy
+    #
+    #     return div
+
+    def setDirichletX(self, value):
+        self.field[0][0,:] = value
+        self.field[0][-1,:] = value
+        self.field[1][0,:] = value
+        self.field[1][-1,:] = value
+
+    def setPeriodicX(self):
+        self.field[0][-1,:] = self.field[0][0,:]
+        self.field[1][-1,:] = self.field[1][0,:]
+
+    def setPeriodicY(self):
+        self.field[0][:,-1] = self.field[0][:,0]
+        self.field[1][:,-1] = self.field[1][:,0]
 
     def updateFlux(self, field, dt):
         self.field[0] = dt * field.field[0] + self.field[0]
@@ -126,7 +192,6 @@ class tensorField(Field):
     def __init__(self, Nx, Ny, Lx, Ly):
         self.ndim = 6
         super().__init__(Nx, Ny, Lx, Ly)
-
 
     def getStressNewtonian(self, p, func, velX, velY,  h):
 
