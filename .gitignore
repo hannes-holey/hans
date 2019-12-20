@@ -3,6 +3,7 @@
 *.pyc
 *.cpython*.so
 __pycache__
+__init.py__
 test*
 output
 TODO.md
