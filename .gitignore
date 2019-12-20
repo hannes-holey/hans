@@ -7,3 +7,5 @@ __init.py__
 test*
 output
 TODO.md
+config
+*/__init__.py
