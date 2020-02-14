@@ -42,10 +42,14 @@ class Problem:
 
     def solve(self):
 
-        from solver.solver import EulerCentral
-        from solver.solver import EulerCentral
-        EulerCentral(self.options, self.geometry, self.numerics, self.material,\
-                    self.BC, self.EOS)
+        solverClass = self.options['solver']
+
+        if solverClass == 'LaxFriedrichs':
+            from solver.solver import LaxFriedrichs
+            LaxFriedrichs(self.options, self.geometry, self.numerics, self.material, self.BC, self.EOS)
+        elif solverClass == 'EulerCentral':
+            from solver.solver import EulerCentral
+            EulerCentral(self.options, self.geometry, self.numerics, self.material, self.BC, self.EOS)
 
 def main():
     try :
