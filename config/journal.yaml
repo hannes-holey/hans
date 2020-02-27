@@ -1,31 +1,31 @@
 options:
     name: journal
-    solver: LW
     save_ani: 0
     maxIt: 10000
     plot_dim: 1
     plotInterval: 1
     writeOutput: 0
     writeField: 0
-geometry:
+disc:
     Lx: 1.e-3
     Ly: 1.e-3
+    Nx: 50
+    Ny: 50
+geometry:
     h1: 1.e-6
     h2: 2.2e-6
     ex: 0.8
+    U: 5.
+    V: 0.
 numerics:
-    Nx: 100
-    Ny: 3
-    dt: 1.e-11
+    dt: 1.e-10
+    numFlux: LW
     freq: 1
     periodicX: 1
     periodicY: 1
 material:
     mu: 0.0794
-    s: 0.0
-BC:
-    U: 0.1
-    V: 0.
     P0: 101325
     rho0: 877.7007
-    temp: 323.15
+    T0: 323.15
+    s: 0.0

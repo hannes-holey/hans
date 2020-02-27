@@ -1,28 +1,30 @@
 options:
     name: poiseuille
-    solver: LaxFriedrichs
     save_ani: 0
     maxIt: 10000
     plot_dim: 1
     plotInterval: 1
     writeOutput: 0
     writeField: 0
-geometry:
+disc:
     Lx: 1.e-3
     Ly: 1.e-3
-    h1: 1.e-6
-    h2: 1.e-6
-numerics:
     Nx: 50
     Ny: 3
+geometry:
+    h1: 1.e-6
+    h2: 1.e-6
+    U: 0.
+    V: 0.
+numerics:
     dt: 1.e-11
+    numFlux: LW
     freq: 1
+    periodicX: 0
+    periodicY: 1
 material:
     mu: 0.0794
     s: 0.0
-BC:
-    U: 0.
-    V: 0.
     P0: 101325.
     rho0: 877.7007
-    temp: 323.15
+    T0: 323.15
