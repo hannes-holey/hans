@@ -3,9 +3,9 @@
 
 class DowsonHigginson:
 
-    def __init__(self, rho0, P0):
-        self.rho0 = rho0
-        self.P0 = rho0
+    def __init__(self, material):
+        self.rho0 = float(material['rho0'])
+        self.P0 = float(material['P0'])
 
     def isoT_pressure(self, rho):
         B1 = 6.6009e-10

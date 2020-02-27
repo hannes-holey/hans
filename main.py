@@ -15,38 +15,40 @@ class yamlInput:
             inp = yaml.full_load(ymlfile)
 
             self.options = inp['options']
+            self.disc = inp['disc']
             self.geometry = inp['geometry']
             self.numerics = inp['numerics']
             self.material = inp['material']
-            self.BC = inp['BC']
 
     def getProblem(self):
 
-        thisProblem = Problem(self.options, self.geometry, self.numerics, self.material, self.BC)
+        thisProblem = Problem(self.options, self.disc, self.geometry, self.numerics, self.material)
 
         return thisProblem
 
 
 class Problem:
 
-    def __init__(self, options, geometry, numerics, material, BC):
+    def __init__(self, options, disc, geometry, numerics, material):
 
         self.options = options
+        self.disc = disc
         self.geometry = geometry
         self.numerics = numerics
         self.material = material
-        self.BC = BC
 
     def solve(self):
 
-        solverClass = self.options['solver']
+        from solver.solver import Solver
+        Solver(self.options, self.disc, self.geometry, self.numerics, self.material)
+        # solverClass = self.options['solver']
 
-        if solverClass == 'LF':
-            from solver.solver import LaxFriedrichs
-            LaxFriedrichs(self.options, self.geometry, self.numerics, self.material, self.BC)
-        elif solverClass == 'LW':
-            from solver.solver import LaxWendroff
-            LaxWendroff(self.options, self.geometry, self.numerics, self.material, self.BC)
+        # if solverClass == 'LF':
+        #     from solver.solver import LaxFriedrichs
+        #     LaxFriedrichs(self.options, self.disc, self.geometry, self.numerics, self.material)
+        # elif solverClass == 'LW':
+        #     from solver.solver import LaxWendroff
+        #     LaxWendroff(self.options, self.disc, self.geometry, self.numerics, self.material)
 
 def main():
     try :

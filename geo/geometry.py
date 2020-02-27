@@ -5,11 +5,12 @@ import numpy as np
 
 class Analytic:
 
-    def __init__(self, geometry):
+    def __init__(self, disc, geometry):
 
         self.geometry = geometry
-        self.Lx = float(geometry['Lx'])
-        self.Ly = float(geometry['Ly'])
+
+        self.Lx = float(disc['Lx'])
+        self.Ly = float(disc['Ly'])
         self.h1 = float(geometry['h1'])
         self.h2 = float(geometry['h2'])
 
