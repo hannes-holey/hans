@@ -5,9 +5,12 @@ import numpy as np
 from field.field import VectorField
 from stress.stress import Newtonian
 
-class LaxFriedrichs:
+
+class Flux:
 
     def __init__(self, disc, numerics, material):
+
+        self.disc = disc
 
         self.Lx = float(disc['Lx'])
         self.Ly = float(disc['Ly'])
@@ -23,81 +26,84 @@ class LaxFriedrichs:
         self.periodicY = bool(numerics['periodicY'])
 
         self.material = material
-        self.disc = disc
 
-        self.flux = VectorField(disc)
 
-    def fluxX(self, q, h, d):
+    def getFlux_LF(self, q, h, d, ax):
 
-        s0 = Newtonian(self.disc).Reynolds(q, self.material, 0)
-        s1 = Newtonian(self.disc).Reynolds(q, self.material, 1)
-        s5 = Newtonian(self.disc).Reynolds(q, self.material, 5)
+        if ax == 0:
+            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 0).field[0]
+            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
+            f3 = q.field[0]
+            dx = self.dx
+        elif ax == 1:
+            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
+            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 1).field[0]
+            f3 = q.field[1]
+            dx = self.dy
 
-        self.flux.field[0] = -0.5 * (s0.field[0] + np.roll(s0.field[0], d, axis = 0)) - self.dx/(2. * self.dt) * d * (q.field[0] - np.roll(q.field[0], d, axis = 0))
-        self.flux.field[1] = -0.5 * (s5.field[0] + np.roll(s5.field[0], d, axis = 0)) - self.dx/(2. * self.dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = 0))
-        self.flux.field[2] =  0.5 * (q.field[0]  + np.roll(q.field[0],  d, axis = 0)) - self.dx/(2. * self.dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = 0))
+        flux = VectorField(self.disc)
 
-        if self.periodicX == 0:
-            if d == -1:
-                self.flux.field[0][-1,:] = -stress.field[0][-1,:]
-                self.flux.field[1][-1,:] = -stress.field[5][-1,:]
-                # self.field[2][-1,:] = q.field[0][-1,:]
-            elif d == 1:
-                self.flux.field[0][0,:] = -stress.field[0][0,:]
-                self.flux.field[1][0,:] = -stress.field[5][0,:]
-                # self.field[2][0,:] = q.field[0][0,:]
+        flux.field[0] = 0.5 * (f1 + np.roll(f1, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[0] - np.roll(q.field[0], d, axis = ax))
+        flux.field[1] = 0.5 * (f2 + np.roll(f2, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = ax))
+        flux.field[2] = 0.5 * (f3 + np.roll(f3, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = ax))
 
-        return self.flux
+        # if self.periodicX == 0:
+        #     if d == -1:
+        #         self.flux.field[0][-1,:] = -stress.field[0][-1,:]
+        #         self.flux.field[1][-1,:] = -stress.field[5][-1,:]
+        #         self.field[2][-1,:] = q.field[0][-1,:]
+        #     elif d == 1:
+        #         self.flux.field[0][0,:] = -stress.field[0][0,:]
+        #         self.flux.field[1][0,:] = -stress.field[5][0,:]
+        #         self.field[2][0,:] = q.field[0][0,:]
 
-    def fluxY(self, q, h, d):
+        # if self.periodicY == 0:
+        #     if d == -1:
+        #         self.field[0][-1,:] = -stress.field[5][-1,:]
+        #         self.field[1][-1,:] = -stress.field[1][-1,:]
+        #         self.field[2][-1,:] = q.field[1][-1,:]
+        #
+        #     elif d == 1:
+        #         self.field[0][0,:] = -stress.field[5][0,:]
+        #         self.field[1][0,:] = -stress.field[1][0,:]
+        #         self.field[2][0,:] = q.field[1][0,:]
 
-        s0 = Newtonian(self.disc).Reynolds(q, self.material, 0)
-        s1 = Newtonian(self.disc).Reynolds(q, self.material, 1)
-        s5 = Newtonian(self.disc).Reynolds(q, self.material, 5)
+        return flux
 
-        self.flux.field[0] = -0.5 * (s5.field[0] + np.roll(s5.field[0], d, axis = 1)) - self.dy/(2. * self.dt) * d * (q.field[0] - np.roll(q.field[0], d, axis = 1))
-        self.flux.field[1] = -0.5 * (s1.field[0] + np.roll(s1.field[0], d, axis = 1)) - self.dy/(2. * self.dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = 1))
-        self.flux.field[2] =  0.5 * (q.field[1]  + np.roll(q.field[1],  d, axis = 1)) - self.dy/(2. * self.dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = 1))
+    def getQ_LW(self, q, h, d, ax):
 
-        if self.periodicY == 0:
-            if d == -1:
-                self.field[0][-1,:] = -stress.field[5][-1,:]
-                self.field[1][-1,:] = -stress.field[1][-1,:]
-                self.field[2][-1,:] = q.field[1][-1,:]
+        if ax == 0:
+            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 0).field[0]
+            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
+            f3 = q.field[0]
+            dx = self.dx
+        elif ax == 1:
+            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
+            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 1).field[0]
+            f3 = q.field[1]
+            dx = self.dy
 
-            elif d == 1:
-                self.field[0][0,:] = -stress.field[5][0,:]
-                self.field[1][0,:] = -stress.field[1][0,:]
-                self.field[2][0,:] = q.field[1][0,:]
+        Q = VectorField(self.disc)
 
-        return self.flux
+        Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis = ax)) - self.dt/(2. * dx) * d * (f1 - np.roll(f1, d, axis = ax))
+        Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = ax)) - self.dt/(2. * dx) * d * (f2 - np.roll(f2, d, axis = ax))
+        Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = ax)) - self.dt/(2. * dx) * d * (f3 - np.roll(f3, d, axis = ax))
 
-    def addStress_wall(self, height, q, mu, U, V):
-        self.field[0] -= 6.*mu*(U*q.field[2] - 2.*q.field[0])/(q.field[2]*height.field[0]**2)
-        self.field[1] -= 6.*mu*(V*q.field[2] - 2.*q.field[1])/(q.field[2]*height.field[0]**2)
+        return Q
 
-    def computeRHS(self, fXE, fXW, fYN, fYS):
-        self.field[0] = 1./self.dx * (fXE.field[0] - fXW.field[0]) + 1./self.dy * (fYN.field[0] - fYS.field[0])
-        self.field[1] = 1./self.dx * (fXE.field[1] - fXW.field[1]) + 1./self.dy * (fYN.field[1] - fYS.field[1])
-        self.field[2] = 1./self.dx * (fXE.field[2] - fXW.field[2]) + 1./self.dy * (fYN.field[2] - fYS.field[2])
+    def getFlux_LW(self, q, h, d, ax):
 
-# class LaxWendroff(NumericalFlux):
-#
-#     def __init__(self, Nx, Ny, Lx, Ly, stressFunc):
-#         super().__init_(Nx, Ny, Lx, Ly, stressFunc)
-#
-#     def QX_LF(self, stress, q, dt, d, periodic):
-#         self.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis = 0)) + dt/(2. * self.dx) * d * (stress.field[0] - np.roll(stress.field[0], d, axis = 0))
-#         self.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = 0)) + dt/(2. * self.dx) * d * (stress.field[5] - np.roll(stress.field[5], d, axis = 0))
-#         self.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = 0)) - dt/(2. * self.dx) * d * (q.field[0] - np.roll(q.field[0], d, axis = 0))
-#
-#
-#     def QY_LF(self, stress, q, dt, d, periodic):
-#         self.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis = 1)) + dt/(2. * self.dy) * d * (stress.field[5] - np.roll(stress.field[5], d, axis = 1))
-#         self.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = 1)) + dt/(2. * self.dy) * d * (stress.field[1] - np.roll(stress.field[1], d, axis = 1))
-#         self.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = 1)) - dt/(2. * self.dy) * d * (q.field[1] - np.roll(q.field[1], d, axis = 1))
-#
-#     def computeRHS_LW(self, fXE, fXW, fYN, fYS, Q_E, Q_W, Q_N, Q_S):
-#         self.field[0] = - 1./self.dx * (fXE.field[0] - fXW.field[0]) - 1./self.dy * (fYN.field[5] - fYS.field[5])
-#         self.field[1] = - 1./self.dx * (fXE.field[5] - fXW.field[5]) - 1./self.dy * (fYN.field[5] - fYS.field[5])
-#         self.field[2] =   1./self.dx * (Q_E.field[0] - Q_W.field[0]) + 1./self.dy * (Q_N.field[1] - Q_S.field[1])
+        flux = VectorField(self.disc)
+
+        Q = self.getQ_LW(q, h, d, ax)
+
+        if ax ==0:
+            flux.field[0] = -Newtonian(self.disc).Reynolds(Q, self.material, 0).field[0]
+            flux.field[1] = -Newtonian(self.disc).Reynolds(Q, self.material, 5).field[0]
+            flux.field[2] = Q.field[0]
+        elif ax == 1:
+            flux.field[0] = -Newtonian(self.disc).Reynolds(Q, self.material, 5).field[0]
+            flux.field[1] = -Newtonian(self.disc).Reynolds(Q, self.material, 1).field[0]
+            flux.field[2] = Q.field[1]
+
+        return flux

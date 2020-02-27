@@ -78,7 +78,16 @@ class VectorField(Field):
         self.field[1] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[0]
         self.field[2] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[1]
 
-    def update_explicit(self, rhs, dt):
+    def computeRHS(self, fXE, fXW, fYN, fYS):
+        self.field[0] = 1./self.dx * (fXE.field[0] - fXW.field[0]) + 1./self.dy * (fYN.field[0] - fYS.field[0])
+        self.field[1] = 1./self.dx * (fXE.field[1] - fXW.field[1]) + 1./self.dy * (fYN.field[1] - fYS.field[1])
+        self.field[2] = 1./self.dx * (fXE.field[2] - fXW.field[2]) + 1./self.dy * (fYN.field[2] - fYS.field[2])
+
+    def addStress_wall(self, q, h, mu, U, V):
+        self.field[0] -= 6.*mu*(U*q.field[2] - 2.*q.field[0])/(q.field[2]*h.field[0]**2)
+        self.field[1] -= 6.*mu*(V*q.field[2] - 2.*q.field[1])/(q.field[2]*h.field[0]**2)
+
+    def updateExplicit(self, rhs, dt):
         self.field[0] = self.field[0] - dt * rhs.field[0]
         self.field[1] = self.field[1] - dt * rhs.field[1]
         self.field[2] = self.field[2] - dt * rhs.field[2]

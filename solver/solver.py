@@ -9,11 +9,11 @@ import h5py
 
 from eos.eos import DowsonHigginson
 from geo.geometry import Analytic
-from field.field import ScalarField
-from field.field import VectorField
-from field.field import TensorField
 
-from flux.flux import LaxFriedrichs
+#from field.field import ScalarField
+from field.field import VectorField
+
+from flux.flux import Flux
 
 class Solver:
 
@@ -44,6 +44,7 @@ class Solver:
         self.U = float(geometry['U'])
         self.V = float(geometry['V'])
 
+        self.numFlux = str(numerics['numFlux'])
         self.dt = float(numerics['dt'])
         self.freq = int(numerics['freq'])
         self.periodicX = bool(numerics['periodicX'])
@@ -87,10 +88,10 @@ class Solver:
         self.rhs = VectorField(disc)
 
         # Stress
-        self.stress = TensorField(disc)
+        #self.stress = TensorField(disc)
 
         self.vel = VectorField(disc)
-        self.alp = ScalarField(disc)
+#        self.alp = ScalarField(disc)
 
         if self.writeOutput == True:
             self.tagO = 0
@@ -107,72 +108,30 @@ class Solver:
 
     def solve(self, i):
 
-        # if i%self.freq == 0:
-        #     if self.name == 'journal':
-        #         self.stress.getStressNewtonian_Rey(self.height, self.q, self.mu, self.lam, self.U, self.V, self.rho0, self.P0)
-        #         # self.stress.getStressNewtonian_avg4(self.height, self.q, self.mu, self.lam, self.U, self.V, self.rho0, self.P0)
-        #     elif self.name == 'inclined':
-        #         self.stress.getStressNewtonian_avg4(self.height, self.q, self.mu, self.lam, self.U, self.V, self.rho0, self.P0)
-        #     elif self.name == 'poiseuille':
-        #         self.stress.getStressNewtonian_Rey(self.height, self.q, self.mu, self.lam, self.U, self.V, self.rho0, self.P0)
 
-            #self.stress.addNoise(self.s)
+        if self.numFlux == 'LF':
+            fXE = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 0)
+            fXW = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 0)
+            fYN = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 1)
+            fYS = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 1)
 
-        # if self.name == 'journal':
-        #     periodic = 1
-        # else:
-        #     periodic = 0
+        elif self.numFlux == 'LW':
+            fXE = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 0)
+            fXW = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 0)
+            fYN = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 1)
+            fYS = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 1)
 
-        fXE = LaxFriedrichs(self.disc, self.numerics, self.material).fluxX(self.q, self.height, -1)
-        fXW = LaxFriedrichs(self.disc, self.numerics, self.material).fluxX(self.q, self.height,  1)
-        fYN = LaxFriedrichs(self.disc, self.numerics, self.material).fluxY(self.q, self.height, -1)
-        fYS = LaxFriedrichs(self.disc, self.numerics, self.material).fluxY(self.q, self.height,  1)
 
-        self.rhs.field[0] = 1./self.dx * (fXE.field[0] - fXW.field[0]) + 1./self.dy * (fYN.field[0] - fYS.field[0])
-        self.rhs.field[1] = 1./self.dx * (fXE.field[1] - fXW.field[1]) + 1./self.dy * (fYN.field[1] - fYS.field[1])
-        self.rhs.field[2] = 1./self.dx * (fXE.field[2] - fXW.field[2]) + 1./self.dy * (fYN.field[2] - fYS.field[2])
+        self.rhs.computeRHS(fXE, fXW, fYN, fYS)
 
-        self.rhs.field[0] -= 6.*self.mu*(self.U*self.q.field[2] - 2.*self.q.field[0])/(self.q.field[2]*self.height.field[0]**2)
-        self.rhs.field[1] -= 6.*self.mu*(self.V*self.q.field[2] - 2.*self.q.field[1])/(self.q.field[2]*self.height.field[0]**2)
+        self.rhs.addStress_wall(self.q, self.height, self.mu, self.U, self.V)
 
         # explicit time step
-        self.q.update_explicit(self.rhs, self.dt)
-
-        # LF fluxes
-        # self.fluxX_E.fluxX_LF(self.stress, self.q, self.dt, -1, periodic)
-        # self.fluxX_W.fluxX_LF(self.stress, self.q, self.dt,  1, periodic)
-        #
-        # self.fluxY_N.fluxY_LF(self.stress, self.q, self.dt, -1, periodic)
-        # self.fluxY_S.fluxY_LF(self.stress, self.q, self.dt,  1, periodic)
+        self.q.updateExplicit(self.rhs, self.dt)
 
 
-        # Dirichlet BCs (rho)
-        # if periodic == 0:
-        #     self.fluxX_W.field[2][0,:]  = self.fluxX_E.field[2][0,:]
-        #     self.fluxX_E.field[2][-1,:] = self.fluxX_W.field[2][-1,:]
-        #     self.fluxY_S.field[2][0,:]  = self.fluxY_N.field[2][0,:]
-        #     self.fluxY_N.field[2][-1,:] = self.fluxY_S.field[2][-1,:]
-
-        # Periodic BCs (flux)
-        # self.fluxX_W.field[0][0,:] = self.fluxX_E.field[0][-1,:]
-        # self.fluxX_W.field[1][0,:] = self.fluxX_E.field[1][-1,:]
-        # self.fluxX_W.field[2][0,:] = self.fluxX_E.field[2][-1,:]
-
-        # self.fluxY_N.field[0][:,-1] = self.fluxY_S.field[0][:,0]
-        # self.fluxY_N.field[1][:,-1] = self.fluxY_S.field[1][:,0]
-        # self.fluxY_N.field[2][:,-1] = self.fluxY_S.field[2][:,0]
-
-        # RHS + wall stress correction
-        # self.rhs.computeRHS(self.fluxX_E, self.fluxX_W, self.fluxY_N, self.fluxY_S)
-        # self.rhs.addStress_wall(self.height, self.q, self.mu, self.U, self.V)
-
-        # print(self.fluxX_E.field[2][int(self.Nx/4),int(self.Ny/2)], self.fluxX_W.field[2][int(self.Nx/4),int(self.Ny/2)], self.q.field[2][int(self.Nx/4),int(self.Ny/2)], self.rhs.field[2][int(self.Nx/4),int(self.Ny/2)])
-
-
-
-
-        self.vel.field[0] = self.q.field[1]/self.q.field[2]
-        self.alp.field[0] =  6.*self.mu/(self.q.field[2] * self.height.field[0]**2) * (self.U*self.q.field[2] - 2.* self.q.field[0])
+        # self.vel.field[0] = self.q.field[1]/self.q.field[2]
+#        self.alp.field[0] =  6.*self.mu/(self.q.field[2] * self.height.field[0]**2) * (self.U*self.q.field[2] - 2.* self.q.field[0])
 
         # self.mass = np.sum(self.q.field[2] * self.height.field[0])*self.Lx*self.Ly
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
