@@ -39,16 +39,9 @@ class Problem:
 
     def solve(self):
 
-        from solver.solver import Solver
-        Solver(self.options, self.disc, self.geometry, self.numerics, self.material)
-        # solverClass = self.options['solver']
+        from run.run import Run
+        Run(self.options, self.disc, self.geometry, self.numerics, self.material)
 
-        # if solverClass == 'LF':
-        #     from solver.solver import LaxFriedrichs
-        #     LaxFriedrichs(self.options, self.disc, self.geometry, self.numerics, self.material)
-        # elif solverClass == 'LW':
-        #     from solver.solver import LaxWendroff
-        #     LaxWendroff(self.options, self.disc, self.geometry, self.numerics, self.material)
 
 def main():
     try :
