@@ -19,37 +19,34 @@ class yamlInput:
             self.numerics = inp['numerics']
             self.material = inp['material']
             self.BC = inp['BC']
-            self.EOS = inp['EOS']
 
     def getProblem(self):
 
-        thisProblem = Problem(self.options, self.geometry, self.numerics,\
-                              self.material, self.BC, self.EOS)
+        thisProblem = Problem(self.options, self.geometry, self.numerics, self.material, self.BC)
 
         return thisProblem
 
 
 class Problem:
 
-    def __init__(self, options, geometry, numerics, material, BC, EOS):
+    def __init__(self, options, geometry, numerics, material, BC):
 
         self.options = options
         self.geometry = geometry
         self.numerics = numerics
         self.material = material
         self.BC = BC
-        self.EOS = EOS
 
     def solve(self):
 
         solverClass = self.options['solver']
 
-        if solverClass == 'LaxFriedrichs':
+        if solverClass == 'LF':
             from solver.solver import LaxFriedrichs
-            LaxFriedrichs(self.options, self.geometry, self.numerics, self.material, self.BC, self.EOS)
-        elif solverClass == 'EulerCentral':
-            from solver.solver import EulerCentral
-            EulerCentral(self.options, self.geometry, self.numerics, self.material, self.BC, self.EOS)
+            LaxFriedrichs(self.options, self.geometry, self.numerics, self.material, self.BC)
+        elif solverClass == 'LW':
+            from solver.solver import LaxWendroff
+            LaxWendroff(self.options, self.geometry, self.numerics, self.material, self.BC)
 
 def main():
     try :
