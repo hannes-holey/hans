@@ -1,8 +1,8 @@
 options:
-    name: inclined
+    name: journal
     solver: LW
     save_ani: 0
-    maxIt: 1
+    maxIt: 10000
     plot_dim: 1
     plotInterval: 1
     writeOutput: 0
@@ -10,14 +10,15 @@ options:
 geometry:
     Lx: 1.e-3
     Ly: 1.e-3
-    h1: 2.2e-6
-    h2: 1.e-6
+    h1: 1.e-6
+    h2: 2.2e-6
+    ex: 0.8
 numerics:
-    Nx: 5
-    Ny: 5
-    dt: 1.e-12
+    Nx: 100
+    Ny: 3
+    dt: 1.e-11
     freq: 1
-    periodicX: 0
+    periodicX: 1
     periodicY: 1
 material:
     mu: 0.0794

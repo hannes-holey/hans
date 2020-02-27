@@ -1,8 +1,7 @@
 options:
-    name: poiseuille
-    solver: LaxFriedrichs
+    name: couette
     save_ani: 0
-    maxIt: 10000
+    maxIt: 3000
     plot_dim: 1
     plotInterval: 1
     writeOutput: 0
@@ -15,14 +14,13 @@ geometry:
 numerics:
     Nx: 50
     Ny: 3
-    dt: 1.e-11
-    freq: 1
+    dt: 1.e-8
 material:
-    mu: 0.0794
-    s: 0.0
+    mu: 1e-2
+#    mu: 0.16268
 BC:
-    U: 0.
+    U: -0.1
     V: 0.
     P0: 101325.
     rho0: 877.7007
-    temp: 323.15
+    temp: 292
