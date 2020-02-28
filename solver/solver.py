@@ -2,15 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import os
-import h5py
 
 from eos.eos import DowsonHigginson
 from geo.geometry import Analytic
-
-#from field.field import ScalarField
 from field.field import VectorField
-
 from flux.flux import Flux
 
 class Solver:
