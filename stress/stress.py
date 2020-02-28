@@ -16,11 +16,26 @@ class Newtonian:
         self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
         self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 1)
 
-        # if i < 3:
-        #     self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
-        #     self.out.field[0] *= -1
+        self.out.field[0] *= -1.
+        self.out.field[1] *= -1.
 
         return self.out
 
-    def average_w4(self, q, h, geo, material, i):
-        pass
+    def average_w4(self, q, h, geo, material):
+
+        U = float(geo['U'])
+        V = float(geo['V'])
+        mu = float(material['mu'])
+        lam = float(material['lambda'])
+
+        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
+        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 1)
+
+        self.out.field[0] *= -1.
+        self.out.field[1] *= -1.
+
+        self.out.field[0] -= (4.*(U*q.field[2]-1.5*q.field[0])*(mu+lam/2.)*h.field[1] + 2.*lam*(V*q.field[2]-1.5*q.field[1])*h.field[2])/(q.field[2]*h.field[0])
+        self.out.field[1] -= (4.*(V*q.field[2]-1.5*q.field[1])*(mu+lam/2.)*h.field[2] + 2.*lam*(U*q.field[2]-1.5*q.field[1])*h.field[1])/(q.field[2]*h.field[0])
+        self.out.field[2] = -2.*mu*(h.field[1] * (V*q.field[2]-1.5*q.field[1]) + h.field[2] * (U*q.field[2]-1.5*q.field[0]))/(q.field[2]*h.field[0])
+
+        return self.out

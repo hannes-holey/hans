@@ -102,13 +102,17 @@ class Flux:
 
     def getFlux_LW(self, q, h, d, ax):
 
+        # here we need the height at cell centers
+        Q = self.getQ_LW(q, h, d, ax)
+
         if self.rey == True:
             stress = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
+            #here we need the height at cell edges
+            h.stagArray(d, ax)
             stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
 
         flux = VectorField(self.disc)
-        Q = self.getQ_LW(q, h, d, ax)
 
         if ax ==0:
             flux.field[0] = -stress.field[0]

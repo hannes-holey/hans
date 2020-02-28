@@ -51,19 +51,16 @@ class Field:
         self.xx = xx.T
         self.yy = yy.T
 
+    def stagArray(self, dir, ax):
+
+        for i in range(self.ndim):
+            self.field[i] = 0.5 * (self.field[i] + np.roll(self.field[i], dir, axis = ax))
+
 class ScalarField(Field):
 
     def __init__(self, disc):
         self.ndim = 1
         super().__init__(disc)
-
-    def normal(self, loc, scale):
-        "instantiate scalar field with normal distributed values"
-        self.field[0] = np.random.normal(loc, scale, size=(self.Nx, self.Ny))
-
-    def fromFunctionXY(self, func):
-        "get scalar field from function of XY position"
-        self.field[0]=func(self.xx, self.yy)
 
 class VectorField(Field):
 
