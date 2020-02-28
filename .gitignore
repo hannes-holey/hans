@@ -4,6 +4,5 @@
 *.cpython*.so
 __pycache__
 __init.py__
-test*
 output
 */__init__.py
