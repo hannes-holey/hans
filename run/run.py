@@ -113,19 +113,6 @@ class Run:
 
             ani = animation.FuncAnimation(self.fig, self.animate2D, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
 
-        # elif self.plot_dim == 3:
-        #     fig, self.ax1 = plt.subplots(1)
-        #     # x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
-        #     z = np.linspace(0., 1.e-5, 50)
-        #     # x = np.linspace(0, self.h1, 10, endpoint=True)
-        #     # self.line, = self.ax1.plot((self.U/self.height.field[0][-1, int(self.Ny/2)] + field.field[comp][-1, int(self.Ny/2)]*z)*(self.height.field[0][-1, int(self.Ny/2)] - z),z)
-        #     self.line, = self.ax1.plot(0*z,z)
-        #     # self.line, = self.ax1.plot(x, field.field[comp])
-        #     #self.ax1.plot(x, -self.P_analytical(x)*self.dimless  + self.P0, '-')
-        #     self.time_text = self.ax1.text(0.05, 0.95,'',horizontalalignment='left',verticalalignment='top', transform=self.ax1.transAxes)
-        #     ani = animation.FuncAnimation(fig, self.animate1D_z, self.maxIt, fargs=(field,), interval=1 ,repeat=False)
-        #     self.ax1.grid()
-
         if self.save_ani == True:
             i = 0
             while str(self.name) + '_' + str(i).zfill(2) + '.mp4' in os.listdir('./output'):
@@ -233,46 +220,3 @@ class Run:
             self.im3.set_array(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2].T))
 
         sol.solve(i)
-
-    def animate1D_z(self, i, field, comp):
-        if i%self.plotInterval == 0:
-            # adaptive bounds
-            # lower = np.amin(field.field[comp][0, int(self.Ny/2)]*self.h1**2/4.)
-            # upper = np.amax(field.field[comp][:, int(self.Ny/2)]*self.h1**2/4.)
-
-            # inclined
-            lower = -0.5
-            upper = 2.
-
-            # poiseuille
-            #lower = -0.000
-            #upper = 2e-3
-
-            if upper == lower:
-                vspace = 0.5*upper
-            else:
-                vspace = 0.1*(upper - lower)
-            self.time_text.set_text('step = %.1f' % (i) )
-            # self.time_text.set_text('time = %.3f µs' % (i*self.dt * 1e6) )
-
-            # right
-            z = np.linspace(0., self.height.field[0][-1, int(self.Ny/2)], 50)
-            self.line.set_ydata(z)
-            self.line.set_xdata(self.U/self.height.field[0][-1, int(self.Ny/2)]*z + field.field[comp][-1, int(self.Ny/2)]*z*(self.height.field[0][-1, int(self.Ny/2)] - z))
-            # left
-            # z = np.linspace(0., self.height.field[0][0, int(self.Ny/2)], 50)
-            # self.line.set_xdata(self.U/self.height.field[0][0, int(self.Ny/2)]*z + field.field[comp][0, int(self.Ny/2)]*z*(self.height.field[0][0, int(self.Ny/2)] - z))
-            # middle
-            # z = np.linspace(0., self.height.field[0][int(self.Nx/2), int(self.Ny/2)], 50)
-            # self.line.set_xdata(self.U/self.height.field[0][int(self.Nx/2), int(self.Ny/2)]*z + field.field[comp][int(self.Nx/2), int(self.Ny/2)]*z*(self.height.field[0][int(self.Nx/2), int(self.Ny/2)] - z))
-
-
-            self.ax1.set_xlim(lower - vspace , upper + vspace)
-            self.ax1.set_ylim(0., self.h2)
-
-            if self.writeField == True:
-                out = np.vstack((field.xx[:,int(self.Ny/2)],field.field[comp][:,int(self.velNy/2)])).T
-                with open('./output/field_' + str(self.name) + '_' + str(self.tagF).zfill(2) + '.dat', "a+") as f:
-                    np.savetxt(f, out, header='step' + str(i))
-                #     f.write(str(i) + '\n' + str(field.field[comp]) + '\n')
-        self.solve(i)
