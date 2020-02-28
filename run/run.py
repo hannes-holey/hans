@@ -4,11 +4,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import os
-import h5py
 
 from eos.eos import DowsonHigginson
-
 from solver.solver import Solver
 
 
@@ -23,12 +20,14 @@ class Run:
         self.numerics = numerics
 
         self.name = str(options['name'])
-        self.save_ani = bool(options['save_ani'])
-        self.maxIt = int(options['maxIt'])
-        self.plot_dim = int(options['plot_dim'])
+
+        self.plot_dim = int(options['plotDim'])
+        self.plotOption = int(options['plotOption'])
         self.plotInterval = int(options['plotInterval'])
         self.writeOutput = int(options['writeOutput'])
-        self.writeField = int(options['writeField'])
+        self.writeInterval = int(options['writeInterval'])
+
+        self.maxIt = int(numerics['maxIt'])
 
         self.Lx = float(disc['Lx'])
         self.Ly = float(disc['Ly'])
@@ -40,18 +39,11 @@ class Run:
 
         self.sol = Solver(options, disc, geometry, numerics, material)
 
-        if self.writeOutput == True:
-            self.tagO = 0
-            while 'out_' + str(self.name) + '_' + str(self.tagO).zfill(2) + '.dat' in os.listdir('./output'):
-                self.tagO += 1
-            with open('./output/out_' + str(self.name) + '_' + str(self.tagO).zfill(2) + '.dat', "a+") as f:
-                f.write("%14s \t %14s \t %14s \t %14s \n" % ('time', 'mass', 'vmax', 'jXmax'))
-        if self.writeField == True:
-            self.tagF = 0
-            while 'field_' + str(self.name) + '_' + str(self.tagF).zfill(2) + '.h5' in os.listdir('./output'):
-                self.tagF += 1
-
-        self.plot()
+        if self.plotOption == 0:
+            for i in range(self.maxIt):
+                self.sol.solve(i)
+        else:
+            self.plot()
 
     def plot(self):
 
@@ -113,13 +105,10 @@ class Run:
 
             ani = animation.FuncAnimation(self.fig, self.animate2D, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
 
-        if self.save_ani == True:
-            i = 0
-            while str(self.name) + '_' + str(i).zfill(2) + '.mp4' in os.listdir('./output'):
-                i += 1
-            ani.save('./output/'+ self.name + '_' + str(i).zfill(2) + '.mp4',fps=30)
-        else:
+        if self.plotOption == 1:
             plt.show()
+        elif self.plotOption == 2:
+            ani.save('./output/animations/'+ self.name + '_' + str(self.sol.ani_tag).zfill(4) + '.mp4',fps=30)
 
     def animate1D(self, i, sol):
 
@@ -145,6 +134,8 @@ class Run:
                 else:
                     self.limits[j,2] = 0.1*(self.limits[j,1] - self.limits[j,0])
 
+            self.fig.suptitle('step = %1d' % (i))
+
             self.ax1[0,0].set_ylim(self.limits[0,0] - self.limits[0,2] , self.limits[0,1] + self.limits[0,2])
             self.ax1[0,1].set_ylim(self.limits[1,0] - self.limits[1,2] , self.limits[1,1] + self.limits[1,2])
             self.ax1[1,0].set_ylim(self.limits[2,0] - self.limits[2,2] , self.limits[2,1] + self.limits[2,2])
@@ -154,33 +145,6 @@ class Run:
             self.line1.set_ydata(sol.q.field[1][:,int(self.Ny/2)])
             self.line2.set_ydata(sol.q.field[2][:,int(self.Ny/2)])
             self.line3.set_ydata(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-
-            self.fig.suptitle('step = %1d' % (i))
-
-            if self.writeField == True:
-
-                # HDF5 output file
-
-                out0 = sol.q.field[0]
-                out1 = sol.q.field[1]
-                out2 = sol.q.field[2]
-                out3 = DowsonHigginson(self.material).isoT_pressure(sol.q.field[2])
-
-                file = h5py.File('./output/field_' + str(self.name) + '_' + str(self.tagF).zfill(2) + '.h5', 'a')
-
-                if '/step'+ str(i).zfill(len(str(self.maxIt))) not in file:
-
-                    g1 =file.create_group('step'+ str(i).zfill(len(str(self.maxIt))))
-
-                    g1.create_dataset('j_x',   data=out0)
-                    g1.create_dataset('j_y',   data=out1)
-                    g1.create_dataset('rho',   data=out2)
-                    g1.create_dataset('press', data=out3)
-
-                    g1.attrs.create('time', sol.dt*i)
-                    g1.attrs.create('mass', sol.mass)
-
-                file.close()
 
         sol.solve(i)
 

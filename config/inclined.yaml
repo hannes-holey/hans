@@ -1,11 +1,10 @@
 options:
     name: inclined
-    save_ani: 0
-    maxIt: 1
-    plot_dim: 1
+    plotDim: 1
+    plotOption: 0
     plotInterval: 1
-    writeOutput: 0
-    writeField: 0
+    writeOutput: 1
+    writeInterval: 10
 disc:
     Lx: 1.e-3
     Ly: 1.e-3
@@ -18,6 +17,7 @@ geometry:
     V: 0.
 numerics:
     dt: 1.e-12
+    maxIt: 100
     numFlux: FW
     freq: 1
     periodicX: 0

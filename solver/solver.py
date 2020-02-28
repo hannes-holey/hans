@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import os
+import h5py
 
 from eos.eos import DowsonHigginson
 from geo.geometry import Analytic
@@ -17,12 +19,15 @@ class Solver:
         self.numerics = numerics
 
         self.name = str(options['name'])
+        self.writeOutput = int(options['writeOutput'])
+        self.writeInterval = int(options['writeInterval'])
 
         self.U = float(geometry['U'])
         self.V = float(geometry['V'])
 
         self.numFlux = str(numerics['numFlux'])
         self.dt = float(numerics['dt'])
+        self.maxIt = int(numerics['maxIt'])
 
         self.mu = float(material['mu'])
         self.P0 = float(material['P0'])
@@ -53,6 +58,15 @@ class Solver:
 
         self.rhs = VectorField(disc)
 
+        self.file_tag = 1
+        self.ani_tag = 1
+
+        while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5' in os.listdir('./output'):
+            self.file_tag += 1
+
+        while str(self.name) + '_' + str(self.ani_tag).zfill(4) + '.mp4' in os.listdir('./output/animations'):
+            self.ani_tag += 1
+
     def solve(self, i):
 
         if self.numFlux == 'LF':
@@ -76,12 +90,26 @@ class Solver:
 
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
 
-        # if self.writeOutput == True:
-        #     mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
-        #     vmax = np.amax(np.abs(self.vel.field[0]))
-        #     maxFlux_X = np.amax(self.q.field[0])
-        #     netFluxX = np.sum(self.q.field[0])
-        #     with open('./output/out_' + str(self.name) + '_' + str(self.tagO).zfill(2) + '.dat', "a+") as f:
-        #         f.write("%.8e \t %.8e \t %.8e \t %.8e \n" % (i*self.dt, mass, vmax, netFluxX))
+        if self.writeOutput == True:
+            self.write(i)
 
-        # return self.q
+    def write(self, i):
+
+        # HDF5 output file
+        if i % self.writeInterval == 0:
+
+            file = h5py.File('./output/' + str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5', 'a')
+
+            if str(i).zfill(len(str(self.maxIt))) not in file:
+
+                g1 =file.create_group(str(i).zfill(len(str(self.maxIt))))
+
+                g1.create_dataset('j_x',   data = self.q.field[0])
+                g1.create_dataset('j_y',   data = self.q.field[1])
+                g1.create_dataset('rho',   data = self.q.field[2])
+                g1.create_dataset('press', data = DowsonHigginson(self.material).isoT_pressure(self.q.field[2]))
+
+                g1.attrs.create('time', self.dt*i)
+                g1.attrs.create('mass', self.mass)
+
+            file.close()
