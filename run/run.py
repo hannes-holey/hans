@@ -83,7 +83,6 @@ class Run:
             self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
             ani = animation.FuncAnimation(self.fig, self.animate1D, self.maxIt, fargs=(self.sol,), interval=1 ,repeat=False)
-            # self.ax1[1,1].plot(x, -1e-4*self.P_analytical(x)*self.dimless  + self.P0, '-')
 
         elif self.plot_dim == 2:
             self.fig, self.ax1 = plt.subplots(2,2, figsize = (12,9), sharex=True, sharey=True, tight_layout=False)
@@ -102,6 +101,15 @@ class Run:
             self.ax1[0,1].set_title(r'$j_y$')
             self.ax1[1,0].set_title(r'$\rho$')
             self.ax1[1,1].set_title(r'$p$')
+
+            self.limits = np.zeros((4,3))
+
+            for j in range(3):
+                self.limits[j,0] = np.amin(self.sol.q.field[j])
+                self.limits[j,1] = np.amax(self.sol.q.field[j])
+
+            self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2]))
+            self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2]))
 
             ani = animation.FuncAnimation(self.fig, self.animate2D, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
 
@@ -130,9 +138,6 @@ class Run:
 
         if i%self.plotInterval == 0:
 
-            # adaptive limits y-axis
-            # limits = np.empty((4,3))
-
             for j in range(3):
                 if np.amin(sol.q.field[j][:,int(self.Ny/2)]) < self.limits[j,0]:
                     self.limits[j,0] = np.amin(sol.q.field[j][:,int(self.Ny/2)])
@@ -143,16 +148,6 @@ class Run:
                 self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
             if np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) > self.limits[3,1]:
                 self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-
-            # manual limits y-axis
-            # limits[0,0] = 0.
-            # limits[0,1] = 20.
-            # limits[1,0] = 0.
-            # limits[1,1] = 0.
-            # limits[2,0] = 0.
-            # limits[2,1] = 0.
-            # limits[3,0] = 0.
-            # limits[3,1] = 0.
 
             # buffer
             for j in range(4):
@@ -206,56 +201,36 @@ class Run:
 
         if i%self.plotInterval == 0:
 
-            # adaptive limits y-axis
-            limits = np.empty((4,3))
-
             for j in range(3):
-                limits[j,0] = np.amin(sol.q.field[j][:,int(self.Ny/2)])
-                limits[j,1] = np.amax(sol.q.field[j][:,int(self.Ny/2)])
+                if np.amin(sol.q.field[j]) < self.limits[j,0]:
+                    self.limits[j,0] = np.amin(sol.q.field[j])
+                if np.amax(sol.q.field[j]) > self.limits[j,1]:
+                    self.limits[j,1] = np.amax(sol.q.field[j])
 
-            limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-            limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-
-            # manual limits y-axis
-            # limits[0,0] = 40.
-            # limits[0,1] = 45.
-            # limits[1,0] = 0.
-            # limits[1,1] = 0.
-            # limits[2,0] = 0.
-            # limits[2,1] = 0.
-            # limits[3,0] = 0.
-            # limits[3,1] = 0.
+            if np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2])) < self.limits[3,0]:
+                self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2]))
+            if np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2])) > self.limits[3,1]:
+                self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2]))
 
             # buffer
             for j in range(4):
-                if limits[j,1] == limits[j,0]:
-                    limits[j,2] = 0.5*limits[j,1]
+                if self.limits[j,1] == self.limits[j,0]:
+                    self.limits[j,2] = 0.5*self.limits[j,1]
                 else:
-                    limits[j,2] = 0.1*(limits[j,1] - limits[j,0])
+                    self.limits[j,2] = 0.1*(self.limits[j,1] - self.limits[j,0])
 
 
             self.fig.suptitle('step = %1d' % (i))
 
-            self.im0.set_clim(vmin = limits[0,0] - limits[0,2],vmax = limits[0,1] + limits[0,2])
-            self.im1.set_clim(vmin = limits[1,0] - limits[1,2],vmax = limits[1,1] + limits[1,2])
-            self.im2.set_clim(vmin = limits[2,0] - limits[2,2],vmax = limits[2,1] + limits[2,2])
-            self.im3.set_clim(vmin = limits[3,0] - limits[3,2],vmax = limits[3,1] + limits[3,2])
+            self.im0.set_clim(vmin = self.limits[0,0] - self.limits[0,2],vmax = self.limits[0,1] + self.limits[0,2])
+            self.im1.set_clim(vmin = self.limits[1,0] - self.limits[1,2],vmax = self.limits[1,1] + self.limits[1,2])
+            self.im2.set_clim(vmin = self.limits[2,0] - self.limits[2,2],vmax = self.limits[2,1] + self.limits[2,2])
+            self.im3.set_clim(vmin = self.limits[3,0] - self.limits[3,2],vmax = self.limits[3,1] + self.limits[3,2])
 
             self.im0.set_array(sol.q.field[0].T)
             self.im1.set_array(sol.q.field[1].T)
             self.im2.set_array(sol.q.field[2].T)
             self.im3.set_array(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2].T))
-
-
-            # lower = np.amin(field.field[comp])
-            # upper = np.amax(field.field[comp][:,int(self.Ny/2)])
-            # lower = -50.
-            # upper = 0.0
-
-            # v1 = np.linspace(lower, upper, 11, endpoint=True)
-            # self.cbar.set_ticks(v1)
-            # self.cbar.draw_all()
-            # self.time_text.set_text('time = %.6f ms' % (i*self.dt *1e3))
 
         sol.solve(i)
 
