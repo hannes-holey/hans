@@ -8,9 +8,11 @@ from stress.stress import Newtonian
 
 class Flux:
 
-    def __init__(self, disc, numerics, material):
+    def __init__(self, disc, geometry, numerics, material):
 
         self.disc = disc
+        self.geometry = geometry
+        self.material = material
 
         self.Lx = float(disc['Lx'])
         self.Ly = float(disc['Ly'])
@@ -21,23 +23,25 @@ class Flux:
         self.dy = self.Ly/self.Ny
 
         self.dt = float(numerics['dt'])
-
         self.periodicX = bool(numerics['periodicX'])
         self.periodicY = bool(numerics['periodicY'])
-
-        self.material = material
-
+        self.rey = bool(numerics['Rey'])
 
     def getFlux_LF(self, q, h, d, ax):
 
+        if self.rey == True:
+            stress = Newtonian(self.disc).reynolds(q, self.material)
+        elif self.rey == False:
+            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+
         if ax == 0:
-            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 0).field[0]
-            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
+            f1 = -stress.field[0]
+            f2 = -stress.field[2]
             f3 = q.field[0]
             dx = self.dx
         elif ax == 1:
-            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
-            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 1).field[0]
+            f1 = -stress.field[2]
+            f2 = -stress.field[1]
             f3 = q.field[1]
             dx = self.dy
 
@@ -72,14 +76,19 @@ class Flux:
 
     def getQ_LW(self, q, h, d, ax):
 
+        if self.rey == True:
+            stress = Newtonian(self.disc).reynolds(q, self.material)
+        elif self.rey == False:
+            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+
         if ax == 0:
-            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 0).field[0]
-            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
+            f1 = -stress.field[0]
+            f2 = -stress.field[2]
             f3 = q.field[0]
             dx = self.dx
         elif ax == 1:
-            f1 = -Newtonian(self.disc).Reynolds(q, self.material, 5).field[0]
-            f2 = -Newtonian(self.disc).Reynolds(q, self.material, 1).field[0]
+            f1 = -stress.field[2]
+            f2 = -stress.field[1]
             f3 = q.field[1]
             dx = self.dy
 
@@ -93,17 +102,21 @@ class Flux:
 
     def getFlux_LW(self, q, h, d, ax):
 
-        flux = VectorField(self.disc)
+        if self.rey == True:
+            stress = Newtonian(self.disc).reynolds(q, self.material)
+        elif self.rey == False:
+            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
 
+        flux = VectorField(self.disc)
         Q = self.getQ_LW(q, h, d, ax)
 
         if ax ==0:
-            flux.field[0] = -Newtonian(self.disc).Reynolds(Q, self.material, 0).field[0]
-            flux.field[1] = -Newtonian(self.disc).Reynolds(Q, self.material, 5).field[0]
+            flux.field[0] = -stress.field[0]
+            flux.field[1] = -stress.field[2]
             flux.field[2] = Q.field[0]
         elif ax == 1:
-            flux.field[0] = -Newtonian(self.disc).Reynolds(Q, self.material, 5).field[0]
-            flux.field[1] = -Newtonian(self.disc).Reynolds(Q, self.material, 1).field[0]
+            flux.field[0] = -stress.field[2]
+            flux.field[1] = -stress.field[1]
             flux.field[2] = Q.field[1]
 
         return flux

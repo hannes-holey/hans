@@ -3,18 +3,24 @@
 
 import numpy as np
 from eos.eos import DowsonHigginson
-from field.field import ScalarField
+from field.field import VectorField
 
 class Newtonian:
 
     def __init__(self, disc):
 
-        self.out = ScalarField(disc)
+        self.out = VectorField(disc)
 
-    def Reynolds(self, q, material, i):
+    def reynolds(self, q, material):
 
-        if i < 3:
-            self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
-            self.out.field[0] *= -1
+        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
+        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 1)
+
+        # if i < 3:
+        #     self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
+        #     self.out.field[0] *= -1
 
         return self.out
+
+    def average_w4(self, q, h, geo, material, i):
+        pass

@@ -33,10 +33,8 @@ class Field:
     def fromFunctionXY(self, func, comp):
         self.field[comp]=func(self.xx, self.yy)
 
-    def fromFunctionField(self, func, arg, dim):
-
-        for i in range(dim):
-            self.field[i] = func(arg)
+    def fromFunctionField(self, func, arg, comp):
+        self.field[comp] = func(arg)
 
     def fromField(self, field):
         for i in range(self.ndim):

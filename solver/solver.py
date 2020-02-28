@@ -71,16 +71,16 @@ class Solver:
     def solve(self, i):
 
         if self.numFlux == 'LF':
-            fXE = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 0)
-            fXW = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 0)
-            fYN = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 1)
-            fYS = Flux(self.disc, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 1)
+            fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 0)
+            fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 0)
+            fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 1)
+            fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 1)
 
         elif self.numFlux == 'LW':
-            fXE = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 0)
-            fXW = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 0)
-            fYN = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 1)
-            fYS = Flux(self.disc, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 1)
+            fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 0)
+            fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 0)
+            fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 1)
+            fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 1)
 
         self.rhs.computeRHS(fXE, fXW, fYN, fYS)
 
