@@ -21,7 +21,7 @@ class Run:
 
         self.name = str(options['name'])
 
-        self.plot_dim = int(options['plotDim'])
+        self.plotDim = int(options['plotDim'])
         self.plotOption = int(options['plotOption'])
         self.plotInterval = int(options['plotInterval'])
         self.writeOutput = int(options['writeOutput'])
@@ -47,7 +47,7 @@ class Run:
 
     def plot(self):
 
-        if self.plot_dim == 1:
+        if self.plotDim == 1:
             self.fig, self.ax1 = plt.subplots(2,2, figsize = (14,9), sharex=True)
 
             x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
@@ -76,7 +76,7 @@ class Run:
 
             ani = animation.FuncAnimation(self.fig, self.animate1D, self.maxIt, fargs=(self.sol,), interval=1 ,repeat=False)
 
-        elif self.plot_dim == 2:
+        elif self.plotDim == 2:
             self.fig, self.ax1 = plt.subplots(2,2, figsize = (12,9), sharex=True, sharey=True, tight_layout=False)
 
             self.im0 = self.ax1[0,0].imshow(self.sol.q.field[0], interpolation='nearest')
@@ -104,6 +104,14 @@ class Run:
             self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2]))
 
             ani = animation.FuncAnimation(self.fig, self.animate2D, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
+
+        elif self.plotDim == 3:
+            self.fig, self.ax1 = plt.subplots(1,1, figsize = (12,9), sharex=True, sharey=True, tight_layout=False)
+
+            self.im0 = self.ax1.streamplot(self.sol.q.xx[:,0], self.sol.q.yy[0,:], self.sol.q.field[0], self.sol.q.field[1])
+            self.ax1.set_title(r'$j$')
+
+            ani = animation.FuncAnimation(self.fig, self.animate2D_stream, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
 
         if self.plotOption == 1:
             plt.show()
@@ -184,3 +192,22 @@ class Run:
             self.im3.set_array(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2].T))
 
         sol.solve(i)
+
+    def animate2D_stream(self, i, sol):
+
+        if i%self.plotInterval == 0:
+
+            self.ax1.collections = [] # clear lines streamplot
+            self.ax1.patches = [] # clear arrowheads streamplot
+
+            self.fig.suptitle('step = %1d' % (i))
+
+            stream = self.ax1.streamplot(self.sol.q.xx[:,0], self.sol.q.yy[0,:], self.sol.q.field[0], self.sol.q.field[1], color = 'blue')
+            # self.fig.colorbar(stream.lines)
+
+            self.ax1.set_xlim(0, self.Lx)
+            self.ax1.set_ylim(0, self.Ly)
+
+        sol.solve(i)
+
+        return stream
