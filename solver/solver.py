@@ -14,9 +14,10 @@ class Solver:
 
     def __init__(self, options, disc, geometry, numerics, material):
 
-        self.material = material
         self.disc = disc
+        self.geometry = geometry
         self.numerics = numerics
+        self.material = material
 
         self.name = str(options['name'])
         self.writeOutput = int(options['writeOutput'])
@@ -99,6 +100,19 @@ class Solver:
         if i % self.writeInterval == 0:
 
             file = h5py.File('./output/' + str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5', 'a')
+
+            if 'config' not in file:
+
+                g0 = file.create_group('config')
+
+                g0.attrs.create('name', self.name)
+                g0.attrs.create('writeInterval', self.writeInterval)
+
+                categories = [self.disc, self.geometry, self.numerics, self.material]
+
+                for category in categories:
+                    for key, value in category.items():
+                        g0.attrs.create(str(key), value)
 
             if str(i).zfill(len(str(self.maxIt))) not in file:
 
