@@ -51,26 +51,27 @@ class Flux:
         flux.field[1] = 0.5 * (f2 + np.roll(f2, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = ax))
         flux.field[2] = 0.5 * (f3 + np.roll(f3, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = ax))
 
-        # if self.periodicX == 0:
-        #     if d == -1:
-        #         self.flux.field[0][-1,:] = -stress.field[0][-1,:]
-        #         self.flux.field[1][-1,:] = -stress.field[5][-1,:]
-        #         self.field[2][-1,:] = q.field[0][-1,:]
-        #     elif d == 1:
-        #         self.flux.field[0][0,:] = -stress.field[0][0,:]
-        #         self.flux.field[1][0,:] = -stress.field[5][0,:]
-        #         self.field[2][0,:] = q.field[0][0,:]
+        if self.periodicX == False:
+            if d == -1:
+                flux.field[0][-1,:] = f1[-1,:] # Neumann
+                flux.field[1][-1,:] = f2[-1,:] # Neumann
+                flux.field[2][-1,:] = flux.field[2][-2,:] # Dirichlet
 
-        # if self.periodicY == 0:
-        #     if d == -1:
-        #         self.field[0][-1,:] = -stress.field[5][-1,:]
-        #         self.field[1][-1,:] = -stress.field[1][-1,:]
-        #         self.field[2][-1,:] = q.field[1][-1,:]
-        #
-        #     elif d == 1:
-        #         self.field[0][0,:] = -stress.field[5][0,:]
-        #         self.field[1][0,:] = -stress.field[1][0,:]
-        #         self.field[2][0,:] = q.field[1][0,:]
+            elif d == 1:
+                flux.field[0][0,:] = f1[0,:]
+                flux.field[1][0,:] = f2[0,:]
+                flux.field[2][0,:] = flux.field[2][1,:]
+
+        if self.periodicY == False:
+            if d == -1:
+                flux.field[0][:,-1] = f1[:,-1]
+                flux.field[1][:,-1] = f2[:,-1]
+                flux.field[2][:,-1] = flux.field[2][:,-2]
+
+            elif d == 1:
+                flux.field[0][:,0] = f1[:,0]
+                flux.field[1][:,0] = f2[:,0]
+                flux.field[2][:,0] = flux.field[2][:,1]
 
         return flux
 
@@ -98,29 +99,83 @@ class Flux:
         Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = ax)) - self.dt/(2. * dx) * d * (f2 - np.roll(f2, d, axis = ax))
         Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = ax)) - self.dt/(2. * dx) * d * (f3 - np.roll(f3, d, axis = ax))
 
+        if self.periodicX == False:
+            if d == -1:
+                Q.field[0][-1,:] = q.field[0][-1,:]
+                Q.field[1][-1,:] = q.field[1][-1,:]
+                Q.field[2][-1,:] = q.field[2][-1,:]
+
+            elif d == 1:
+                Q.field[0][0,:] = q.field[0][0,:]
+                Q.field[1][0,:] = q.field[1][0,:]
+                Q.field[2][0,:] = q.field[2][0,:]
+
+        if self.periodicY == False:
+            if d == -1:
+                pass
+        #         Q.field[0][:,-1] = q.field[0][:,-1]
+        #         Q.field[1][:,-1] = q.field[1][:,-1]
+        #         Q.field[2][:,-1] = Q.field[2][:,-2]
+
+            elif d == 1:
+                pass
+        #         Q.field[0][:,0] = q.field[0][:,0]
+        #         Q.field[1][:,0] = q.field[1][:,0]
+        #         Q.field[2][:,0] = Q.field[2][:,1]
+
         return Q
 
     def getFlux_LW(self, q, h, d, ax):
 
-        # here we need the height at cell centers
         Q = self.getQ_LW(q, h, d, ax)
 
         if self.rey == True:
-            stress = Newtonian(self.disc).reynolds(q, self.material)
+            stress = Newtonian(self.disc).reynolds(Q, self.material)
+            stress_center = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
-            #here we need the height at cell edges
+            stress_center = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
             h.stagArray(d, ax)
-            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            stress = Newtonian(self.disc).average_w4(Q, h, self.geometry, self.material)
 
         flux = VectorField(self.disc)
 
-        if ax ==0:
-            flux.field[0] = -stress.field[0]
-            flux.field[1] = -stress.field[2]
-            flux.field[2] = Q.field[0]
+        if ax == 0:
+            f1 = -stress.field[0]
+            f2 = -stress.field[2]
+            f3 = Q.field[0]
         elif ax == 1:
-            flux.field[0] = -stress.field[2]
-            flux.field[1] = -stress.field[1]
-            flux.field[2] = Q.field[1]
+            f1 = -stress.field[2]
+            f2 = -stress.field[1]
+            f3 = Q.field[1]
+
+        flux.field[0] = f1
+        flux.field[1] = f2
+        flux.field[2] = f3
+
+        if self.periodicX == False:
+            if d == -1:
+                pass
+                # flux.field[0][-1,:] = -stress_center.field[0][-1,:] # Neumann
+                # flux.field[1][-1,:] = -stress_center.field[2][-1,:] # Neumann
+                # flux.field[2][-1,:] = f3[-2,:] # Dirichlet
+
+            elif d == 1:
+                pass
+                # flux.field[0][0,:] = -stress_center.field[0][-1,:] # Neumann
+                # flux.field[1][0,:] = -stress_center.field[2][-1,:] # Neumann
+                # flux.field[2][0,:] = f3[1,:]
+
+        if self.periodicY == False:
+            if d == -1:
+                pass
+                # flux.field[0][:,-1] = f1[:,-1]
+                # flux.field[1][:,-1] = f2[:,-1]
+                # flux.field[2][:,-1] = flux.field[2][:,-2]
+
+            elif d == 1:
+                pass
+                # flux.field[0][:,0] = f1[:,0]
+                # flux.field[1][:,0] = f2[:,0]
+                # flux.field[2][:,0] = flux.field[2][:,1]
 
         return flux
