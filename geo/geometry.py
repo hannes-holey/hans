@@ -26,9 +26,8 @@ class Analytic:
 
         ex = float(self.geometry['ex'])
 
-        R1 = self.Lx/(2*np.pi)
-        c = 1.e-2 * R1
-        R0 = R1 + c
+        Rb = self.Lx/(2*np.pi)
+        c = 1.e-2 * Rb
         e = ex * c
 
-        return c + e * np.cos(2. * np.pi * x / self.Lx)
+        return e + (c - e) * np.cos(2. * np.pi * x / self.Lx)
