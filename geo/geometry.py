@@ -24,11 +24,11 @@ class Analytic:
 
     def journalBearing(self, x, y):
 
-        ex = float(self.geometry['ex'])
+        CR = float(self.geometry['CR'])
+        eps = float(self.geometry['eps'])
 
-        R1 = self.Lx/(2*np.pi)
-        c = 1.e-2 * R1
-        R0 = R1 + c
-        e = ex * c
+        Rb = self.Lx/(2*np.pi)
+        c = CR * Rb
+        e = eps * c
 
         return c + e * np.cos(2. * np.pi * x / self.Lx)
