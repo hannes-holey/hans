@@ -82,6 +82,12 @@ class Solver:
             fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 1)
             fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 1)
 
+        elif self.numFlux == 'MC':
+            fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height, -1, 0)
+            fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height,  1, 0)
+            fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height, -1, 1)
+            fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height,  1, 1)
+
         self.rhs.computeRHS(fXE, fXW, fYN, fYS)
 
         self.rhs.addStress_wall(self.q, self.height, self.mu, self.U, self.V)

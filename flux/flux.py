@@ -179,3 +179,70 @@ class Flux:
                 # flux.field[2][:,0] = flux.field[2][:,1]
 
         return flux
+
+    def getQ_MC(self, q, h, d, ax):
+
+        if self.rey == True:
+            stress = Newtonian(self.disc).reynolds(q, self.material)
+        elif self.rey == False:
+            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+
+        if ax == 0:
+            f1 = -stress.field[0]
+            f2 = -stress.field[2]
+            f3 = q.field[0]
+            dx = self.dx
+        elif ax == 1:
+            f1 = -stress.field[2]
+            f2 = -stress.field[1]
+            f3 = q.field[1]
+            dx = self.dy
+
+        Q = VectorField(self.disc)
+
+        Q.field[0] = q.field[0] + self.dt/dx * (f1 - np.roll(f1, -1, axis = ax))
+        Q.field[1] = q.field[1] + self.dt/dx * (f2 - np.roll(f2, -1, axis = ax))
+        Q.field[2] = q.field[2] + self.dt/dx * (f3 - np.roll(f3, -1, axis = ax))
+
+        return Q
+
+    def getFlux_MC(self, q, h, d, ax):
+
+        Q = self.getQ_MC(q, h, d, ax)
+
+        if self.rey == True:
+            stress = Newtonian(self.disc).reynolds(Q, self.material)
+            stress_center = Newtonian(self.disc).reynolds(q, self.material)
+        elif self.rey == False:
+            stress_center = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            # h.stagArray(d, ax)
+            stress = Newtonian(self.disc).average_w4(Q, h, self.geometry, self.material)
+
+        flux = VectorField(self.disc)
+
+        if ax == 0:
+            f1_p = -stress.field[0]
+            f2_p = -stress.field[2]
+            f3_p = Q.field[0]
+            f1 = -stress_center.field[0]
+            f2 = -stress_center.field[2]
+            f3 = q.field[0]
+        elif ax == 1:
+            f1_p = -stress.field[2]
+            f2_p = -stress.field[1]
+            f3_p = Q.field[1]
+            f1 = -stress_center.field[2]
+            f2 = -stress_center.field[1]
+            f3 = q.field[1]
+
+        if d == -1:
+            flux.field[0] = 0.5 * (np.roll(f1, d, axis=ax) + f1_p)
+            flux.field[1] = 0.5 * (np.roll(f2, d, axis=ax) + f2_p)
+            flux.field[2] = 0.5 * (np.roll(f3, d, axis=ax) + f3_p)
+
+        if d == 1:
+            flux.field[0] = 0.5 * (np.roll(f1_p, d, axis=ax) + f1)
+            flux.field[1] = 0.5 * (np.roll(f2_p, d, axis=ax) + f2)
+            flux.field[2] = 0.5 * (np.roll(f3_p, d, axis=ax) + f3)
+
+        return flux
