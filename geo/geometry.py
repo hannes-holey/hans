@@ -28,7 +28,12 @@ class Analytic:
         eps = float(self.geometry['eps'])
 
         Rb = self.Lx/(2*np.pi)
+<<<<<<< HEAD
         c = CR * Rb
         e = eps * c
+=======
+        c = 1.e-2 * Rb
+        e = ex * c
+>>>>>>> 5e8ea53f54da68fc03f4851ce7bcc83c7699c72e
 
-        return c + e * np.cos(2. * np.pi * x / self.Lx)
+        return e + (c - e) * np.cos(2. * np.pi * x / self.Lx)
