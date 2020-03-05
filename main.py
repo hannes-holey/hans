@@ -64,8 +64,8 @@ def main():
 
     MM = tDiff//60
     HH = MM//60
-    MM = HH - HH*60
-    SS = tDiff - HH *60*60 - MM*60
+    MM = MM - HH*60
+    SS = tDiff - HH * 60 * 60 - MM * 60
 
     print("Total wall clock time: %02d:%02d:%02d" % (HH, MM, SS))
 
