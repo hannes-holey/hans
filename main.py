@@ -4,6 +4,7 @@
 import yaml
 import sys
 import time
+import os
 
 class yamlInput:
 
@@ -48,10 +49,10 @@ def main():
     try :
       name = sys.argv[1]
     except:
-      print("Usage : ./main.py <config-name>")
+      print("Usage : ./main.py <config filename (*.yaml)>")
       quit()
 
-    inputFile = './config/' + str(name) + '.yaml'
+    inputFile = os.path.join(os.getcwd(),'config', str(name))
 
     tStart = time.time()
 
