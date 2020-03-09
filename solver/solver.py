@@ -34,6 +34,8 @@ class Solver:
         self.P0 = float(material['P0'])
         self.rho0 = float(material['rho0'])
 
+        self.time = 0
+
         # Stokes assumption
         self.material['lambda'] = -2./3. * self.mu
 
@@ -70,6 +72,18 @@ class Solver:
 
     def solve(self, i):
 
+        vXmax = np.amax(self.q.field[0]/self.q.field[2])
+        vYmax = np.amax(self.q.field[1]/self.q.field[2])
+
+        self.vSound = np.amax(DowsonHigginson(self.material).soundSpeed(self.q.field[2]))
+
+
+        if bool(self.numerics['adaptive']) == True:
+            if i == 0:
+                self.dt = self.dt
+            else:
+                self.dt = 0.02 * min(self.q.dx, self.q.dy)/self.vSound
+
         if self.numFlux == 'LF':
             fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 0)
             fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 0)
@@ -96,6 +110,14 @@ class Solver:
         self.q.updateExplicit(self.rhs, self.dt)
 
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
+        self.vmax = np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2))
+
+        self.cfl = self.vSound * self.dt/min(self.q.dx, self.q.dy)
+        # self.C = vXmax*self.dt/self.q.dx + vYmax*self.dt/self.q.dy
+
+        # self.C = 0.5 * self.q.dx*self.q.dy/(vXmax*self.q.dy + vYmax*self.q.dx)
+
+        self.time += self.dt
 
         if self.writeOutput == True:
             self.write(i)
@@ -129,7 +151,11 @@ class Solver:
                 g1.create_dataset('rho',   data = self.q.field[2])
                 g1.create_dataset('press', data = DowsonHigginson(self.material).isoT_pressure(self.q.field[2]))
 
-                g1.attrs.create('time', self.dt*i)
+                g1.attrs.create('time', self.time)
                 g1.attrs.create('mass', self.mass)
+                g1.attrs.create('vmax', self.vmax)
+                g1.attrs.create('CFL', self.cfl)
+                g1.attrs.create('vSound', self.vSound)
+                g1.attrs.create('dt', self.dt)
 
             file.close()
