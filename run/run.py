@@ -40,10 +40,21 @@ class Run:
         self.sol = Solver(options, disc, geometry, numerics, material)
 
         if self.plotOption == 0:
-            self.printProgressBar(0, self.maxIt)
-            for i in range(self.maxIt):
-                self.sol.solve(i)
-                self.printProgressBar(i + 1, self.maxIt)
+            # self.printProgressBar(0, self.maxIt)
+            # for i in range(self.maxIt):
+            i = 0
+            while self.sol.time * 1e9 < self.numerics['maxT']:
+
+                tDiff = self.numerics['maxT'] * 1e-9 - self.sol.time
+                if tDiff > self.sol.dt:
+                    self.sol.solve(i)
+                    print("Simulation time : %.2f ns / %5d ns" % (self.sol.time * 1e9, self.numerics['maxT']), end = "\r")
+                    i += 1
+                else:
+                    #self.sol.dt = tDiff
+                    self.sol.solve(i)
+                    print("Simulation time : %.2f ns / %5d ns" % (self.sol.time * 1e9, self.numerics['maxT']), end = "\n")
+                # self.printProgressBar(i + 1, self.maxIt)
         else:
             self.plot()
 
