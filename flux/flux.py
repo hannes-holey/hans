@@ -112,16 +112,14 @@ class Flux:
 
         if self.periodicY == False:
             if d == -1:
-                pass
-        #         Q.field[0][:,-1] = q.field[0][:,-1]
-        #         Q.field[1][:,-1] = q.field[1][:,-1]
-        #         Q.field[2][:,-1] = Q.field[2][:,-2]
+                Q.field[0][:,-1] = q.field[0][:,-1]
+                Q.field[1][:,-1] = q.field[1][:,-1]
+                Q.field[2][:,-1] = Q.field[2][:,-2]
 
             elif d == 1:
-                pass
-        #         Q.field[0][:,0] = q.field[0][:,0]
-        #         Q.field[1][:,0] = q.field[1][:,0]
-        #         Q.field[2][:,0] = Q.field[2][:,1]
+                Q.field[0][:,0] = q.field[0][:,0]
+                Q.field[1][:,0] = q.field[1][:,0]
+                Q.field[2][:,0] = Q.field[2][:,1]
 
         return Q
 
