@@ -27,7 +27,7 @@ class Run:
         self.writeOutput = int(options['writeOutput'])
         self.writeInterval = int(options['writeInterval'])
 
-        self.maxIt = int(numerics['maxIt'])
+        self.maxIt= int(self.numerics['maxT'] * 1e9 /self.numerics['dt'])
 
         self.Lx = float(disc['Lx'])
         self.Ly = float(disc['Ly'])
