@@ -14,6 +14,7 @@ class Solver:
 
     def __init__(self, options, disc, geometry, numerics, material):
 
+        self.options = options
         self.disc = disc
         self.geometry = geometry
         self.numerics = numerics
@@ -143,17 +144,19 @@ class Solver:
             file = h5py.File('./output/' + str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5', 'a')
 
             if 'config' not in file:
-
                 g0 = file.create_group('config')
 
-                g0.attrs.create('name', self.name)
-                g0.attrs.create('writeInterval', self.writeInterval)
+                categories = {'options': self.options,
+                              'disc': self.disc,
+                              'geometry': self.geometry,
+                              'numerics': self.numerics,
+                              'material': self.material}
 
-                categories = [self.disc, self.geometry, self.numerics, self.material]
+                for cat_key, cat_val in categories.items():
+                    g1 = file.create_group('config/' + cat_key)
 
-                for category in categories:
-                    for key, value in category.items():
-                        g0.attrs.create(str(key), value)
+                    for key, value in cat_val.items():
+                        g1.attrs.create(str(key), value)
 
             if str(i).zfill(len(str(self.maxIt))) not in file:
 
