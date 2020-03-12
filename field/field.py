@@ -30,6 +30,23 @@ class Field:
     def fill(self, value, comp):
         self.field[comp] = np.ones(shape=(self.Nx, self.Ny)) * value
 
+    def fill_circle(self, radius, value, comp):
+        for i in range(self.Nx):
+            for j in range(self.Ny):
+                if ((self.xx[i,j]-self.Lx/2)**2 + (self.yy[i,j]-self.Ly/2)**2) < radius**2:
+                    self.field[comp][i,j] = value
+
+    def fill_line(self, loc, width, value, ax, comp):
+        for i in range(self.Nx):
+            for j in range(self.Ny):
+                if ax == 0:
+                    if abs(self.xx[i,j] - loc * self.Lx) < width/2.:
+                        self.field[comp][i,j] = value
+                elif ax == 1:
+                    if abs(self.yy[i,j]- loc * self.Ly) < width/2.:
+                        self.field[comp][i,j] = value
+
+
     def fromFunctionXY(self, func, comp):
         self.field[comp]=func(self.xx, self.yy)
 
