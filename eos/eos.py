@@ -27,3 +27,15 @@ class DowsonHigginson:
 
         return np.sqrt(B1*self.rho0/((B1 + B2)*self.rho0 - B2*rho)**2)
         #return -1./rho * np.sqrt(-B1*self.rho0/((self.rho0/rho * (B1 + B2) - B2)**2))
+
+class PowerLaw:
+    def __init__(self, material):
+        self.rho0 = float(material['rho0'])
+        self.P0 = float(material['P0'])
+        self.alpha = float(material['alpha'])
+
+    def isoT_pressure(self, rho):
+        return self.P0 *(rho/self.rho0)**(1./(1. - 0.5 * self.alpha))
+
+    def isoT_density(self, P):
+        return self.rho0 * (P/self.P0)**(1. - 0.5 * self.alpha)

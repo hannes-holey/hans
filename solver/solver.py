@@ -5,7 +5,7 @@ import numpy as np
 import os
 import h5py
 
-from eos.eos import DowsonHigginson
+from eos.eos import DowsonHigginson, PowerLaw
 from geo.geometry import Analytic
 from field.field import VectorField
 from flux.flux import Flux
@@ -28,11 +28,17 @@ class Solver:
 
         self.numFlux = str(numerics['numFlux'])
         self.dt = float(numerics['dt'])
-        self.maxIt = int(numerics['maxIt'])
+
+        self.maxIt= int(self.numerics['maxT'] * 1e9 /self.numerics['dt'])
 
         self.mu = float(material['mu'])
         self.P0 = float(material['P0'])
         self.rho0 = float(material['rho0'])
+
+        if self.material['EOS'] == 'DH':
+            self.eqOfState = DowsonHigginson(self.material)
+        elif self.material['EOS'] == 'PL':
+            self.eqOfState = PowerLaw(self.material)
 
         self.time = 0
 
@@ -44,20 +50,27 @@ class Solver:
 
         if self.name == 'journal':
             self.height.fromFunctionXY(Analytic(disc, geometry).journalBearing, 0)
-        elif self.name == 'inclined' or self.name == 'poiseuille':
+        else:
             self.height.fromFunctionXY(Analytic(disc, geometry).linearSlider, 0)
 
         self.height.getGradients()
+
+
 
         self.q = VectorField(disc)
         self.q.fill(self.rho0, 2)
 
         if self.name == 'inclined':
-            self.q.field[2][0,:] = DowsonHigginson(material).isoT_density(self.P0)
-            self.q.field[2][-1,:] = DowsonHigginson(material).isoT_density(self.P0)
+            self.q.field[2][0,:] = self.eqOfState.isoT_density(self.P0)
+            self.q.field[2][-1,:] = self.eqOfState.isoT_density(self.P0)
         elif self.name == 'poiseuille':
-            self.q.field[2][-1,:] = DowsonHigginson(material).isoT_density(self.P0)
-            self.q.field[2][0,:] = DowsonHigginson(material).isoT_density(2. * self.P0)
+            self.q.field[2][-1,:] = self.eqOfState.isoT_density(self.P0)
+            self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * self.P0)
+        elif self.name == 'droplet':
+            self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(1.5*self.P0), 2)
+        elif self.name == 'wavefront':
+            self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2.*self.P0), 0, 2)
+            # self.q.field[2][int(self.q.Nx/2)-2 : int(self.q.Nx/2)+2,int(self.q.Ny/2)-2 : int(self.q.Ny/2)+2] = self.eqOfState.isoT_density(2* self.P0)
 
         self.rhs = VectorField(disc)
 

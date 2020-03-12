@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from eos.eos import DowsonHigginson
+from eos.eos import DowsonHigginson, PowerLaw 
 from field.field import VectorField
 
 class Newtonian:
@@ -13,8 +13,13 @@ class Newtonian:
 
     def reynolds(self, q, material):
 
-        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
-        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 1)
+        if material['EOS'] == 'DH':
+            eqOfState = DowsonHigginson(material)
+        elif material['EOS'] == 'PL':
+            eqOfState = PowerLaw(material)
+
+        self.out.fromFunctionField(eqOfState.isoT_pressure, q.field[2], 0)
+        self.out.fromFunctionField(eqOfState.isoT_pressure, q.field[2], 1)
 
         self.out.field[0] *= -1.
         self.out.field[1] *= -1.
@@ -28,8 +33,13 @@ class Newtonian:
         mu = float(material['mu'])
         lam = float(material['lambda'])
 
-        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 0)
-        self.out.fromFunctionField(DowsonHigginson(material).isoT_pressure, q.field[2], 1)
+        if material['EOS'] == 'DH':
+            eqOfState = DowsonHigginson(material)
+        elif material['EOS'] == 'PL':
+            eqOfState = PowerLaw(material)
+
+        self.out.fromFunctionField(eqOfState.isoT_pressure, q.field[2], 0)
+        self.out.fromFunctionField(eqOfState.isoT_pressure, q.field[2], 1)
 
         self.out.field[0] *= -1.
         self.out.field[1] *= -1.

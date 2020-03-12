@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from eos.eos import DowsonHigginson
+from eos.eos import DowsonHigginson, PowerLaw
 from solver.solver import Solver
 
 
@@ -36,6 +36,11 @@ class Run:
 
         self.dx = self.Lx/self.Nx
         self.dy = self.Ly/self.Ny
+
+        if self.material['EOS'] == 'DH':
+            self.eqOfState = DowsonHigginson(self.material)
+        elif self.material['EOS'] == 'PL':
+            self.eqOfState = PowerLaw(self.material)
 
         self.sol = Solver(options, disc, geometry, numerics, material)
 
@@ -68,7 +73,7 @@ class Run:
             self.line0, = self.ax1[0,0].plot(x, self.sol.q.field[0][:,int(self.Ny/2)])
             self.line1, = self.ax1[0,1].plot(x, self.sol.q.field[1][:,int(self.Ny/2)])
             self.line2, = self.ax1[1,0].plot(x, self.sol.q.field[2][:,int(self.Ny/2)])
-            self.line3, = self.ax1[1,1].plot(x, DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+            self.line3, = self.ax1[1,1].plot(x, self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
             self.ax1[0,0].set_title(r'$j_x$')
             self.ax1[0,1].set_title(r'$j_y$')
@@ -84,8 +89,8 @@ class Run:
                 self.limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny/2)])
                 self.limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny/2)])
 
-            self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
-            self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+            self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+            self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
             ani = animation.FuncAnimation(self.fig, self.animate1D, self.maxIt, fargs=(self.sol,), interval=1 ,repeat=False)
 
@@ -95,7 +100,7 @@ class Run:
             self.im0 = self.ax1[0,0].imshow(self.sol.q.field[0], interpolation='nearest', cmap='viridis')
             self.im1 = self.ax1[0,1].imshow(self.sol.q.field[1], interpolation='nearest', cmap='viridis')
             self.im2 = self.ax1[1,0].imshow(self.sol.q.field[2], interpolation='nearest', cmap='viridis')
-            self.im3 = self.ax1[1,1].imshow(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2]), interpolation='nearest', cmap='viridis')
+            self.im3 = self.ax1[1,1].imshow(self.eqOfState.isoT_pressure(self.sol.q.field[2]), interpolation='nearest', cmap='viridis')
 
             self.cbar0 = plt.colorbar(self.im0, ax = self.ax1[0,0])
             self.cbar1 = plt.colorbar(self.im1, ax = self.ax1[0,1])
@@ -113,8 +118,8 @@ class Run:
                 self.limits[j,0] = np.amin(self.sol.q.field[j])
                 self.limits[j,1] = np.amax(self.sol.q.field[j])
 
-            self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2]))
-            self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(self.sol.q.field[2]))
+            self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2]))
+            self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2]))
 
             ani = animation.FuncAnimation(self.fig, self.animate2D, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
 
@@ -141,10 +146,10 @@ class Run:
                 if np.amax(sol.q.field[j][:,int(self.Ny/2)]) > self.limits[j,1]:
                     self.limits[j,1] = np.amax(sol.q.field[j][:,int(self.Ny/2)])
 
-            if np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) < self.limits[3,0]:
-                self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-            if np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) > self.limits[3,1]:
-                self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
+            if np.amin(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) < self.limits[3,0]:
+                self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
+            if np.amax(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) > self.limits[3,1]:
+                self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
 
             # buffer
             for j in range(4):
@@ -165,7 +170,7 @@ class Run:
             self.line0.set_ydata(sol.q.field[0][:,int(self.Ny/2)])
             self.line1.set_ydata(sol.q.field[1][:,int(self.Ny/2)])
             self.line2.set_ydata(sol.q.field[2][:,int(self.Ny/2)])
-            self.line3.set_ydata(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
+            self.line3.set_ydata(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
 
         sol.solve(i)
 
@@ -179,10 +184,10 @@ class Run:
                 if np.amax(sol.q.field[j]) > self.limits[j,1]:
                     self.limits[j,1] = np.amax(sol.q.field[j])
 
-            if np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2])) < self.limits[3,0]:
-                self.limits[3,0] = np.amin(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2]))
-            if np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2])) > self.limits[3,1]:
-                self.limits[3,1] = np.amax(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2]))
+            if np.amin(self.eqOfState.isoT_pressure(sol.q.field[2])) < self.limits[3,0]:
+                self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(sol.q.field[2]))
+            if np.amax(self.eqOfState.isoT_pressure(sol.q.field[2])) > self.limits[3,1]:
+                self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(sol.q.field[2]))
 
             # buffer
             for j in range(4):
@@ -202,7 +207,7 @@ class Run:
             self.im0.set_array(sol.q.field[0].T)
             self.im1.set_array(sol.q.field[1].T)
             self.im2.set_array(sol.q.field[2].T)
-            self.im3.set_array(DowsonHigginson(self.material).isoT_pressure(sol.q.field[2].T))
+            self.im3.set_array(self.eqOfState.isoT_pressure(sol.q.field[2].T))
 
         sol.solve(i)
 
