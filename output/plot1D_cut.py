@@ -39,10 +39,12 @@ for key, val in availFiles.items():
 
 files = {}
 check = 'y'
+i = 0
 while check not in ['n', 'N', 'Nope']:
     userInput = input("Enter file key: ")
-    files.update({availFiles[int(userInput)]: h5py.File(availFiles[int(userInput)], 'r')})
+    files.update({i: [availFiles[int(userInput)], h5py.File(availFiles[int(userInput)], 'r')]})
     check = input("Add another file? (y/n) " )
+    i += 1
 
 # f1 = h5py.File('wavefront_0002.h5', 'r')
 # f2 = h5py.File('wavefront_0005.h5', 'r')
@@ -53,37 +55,37 @@ while check not in ['n', 'N', 'Nope']:
 toPlot = {0:'j_x', 1:'j_y', 2:'rho', 3:'press'}
 choice = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
 
-for key, file in files.items():
+for file in files.values():
 
 
     # for time in times:
 
-    conf = file.get('/config')
-    conf_opt =  file.get('/config/options')
-    conf_num =  file.get('config/numerics')
-    conf_disc = file.get('config/disc')
+    conf = file[1].get('/config')
+    conf_opt =  file[1].get('/config/options')
+    conf_num =  file[1].get('config/numerics')
+    conf_disc = file[1].get('config/disc')
 
     Nx = conf_disc.attrs['Nx']
     Lx = conf_disc.attrs['Lx']
     maxT = conf_num.attrs['maxT']
 
-    time = float(input("Approximate time in ns for \'{:s}\' (max = {:.1f} ns): ".format(key, maxT)))
+    time = float(input("Approximate time in ns for \'{:s}\' (max = {:.1f} ns): ".format(file[0], maxT)))
 
     A = {}
-    for i in file.keys():
+    for i in file[1].keys():
         if str(i) != 'config':
-            A[i] = abs(file.get(i).attrs['time']*1e9 // 1. - time)
+            A[i] = abs(file[1].get(i).attrs['time']*1e9 // 1. - time)
 
     flag = min(A, key=A.get)
 
-    g = file.get(flag)
+    g = file[1].get(flag)
     d = np.array(g.get(toPlot[choice]))
     x = np.linspace(0, Lx, Nx)
     t = g.attrs['time']*1e9
-    print("Actual time for \'{:s}\': {:.2f} ns".format(key, t))
+    print("Actual time for \'{:s}\': {:.2f} ns".format(file[0], t))
     ax.plot(x * 1.e3, (d[:,int(d.shape[1]/2)]), '-', label = r'$N_x = ${:<}'.format(Nx))
 
-    file.close()
+    file[1].close()
 
 if choice == 0:
     ylab =  'mass flux x'
@@ -103,5 +105,5 @@ ax.set_ylabel(ylab)
 
 ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
 ax.legend(loc = 'best')
-ax.set_title(r'$t \approx {}$ µs'.format(time*1e-3))
+#ax.set_title(r'$t \approx {}$ µs'.format(time*1e-3))
 plt.show()
