@@ -110,52 +110,6 @@ class TensorField(Field):
         self.ndim = 6
         super().__init__(disc)
 
-    # def getStressNewtonian(self, h, q, mu, lam, U, V, rho0, P0):
-    #
-    #     self.fromFunctionField(DowsonHigginson(rho0, P0).isoT_pressure, q.field[2],3)
-    #
-    #     self.field[0] = -self.field[0] - (2.*(U*q.field[2]-2.*q.field[0])*(mu+lam/2.)*h.field[1] + (V*q.field[2]-2.*q.field[1])*lam*h.field[2])/(q.field[2]*h.field[0])
-    #     self.field[1] = -self.field[1] - (2.*(V*q.field[2]-2.*q.field[1])*(mu+lam/2.)*h.field[2] + (U*q.field[2]-2.*q.field[0])*lam*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[2] = -self.field[2] - ((V*q.field[2]-2.*q.field[1])*lam*h.field[2] + (U*q.field[2]-2.*q.field[0])*lam*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[3] = np.zeros_like(self.field[0])
-    #     self.field[4] = np.zeros_like(self.field[0])
-    #     self.field[5] = -mu*(h.field[1] * (V*q.field[2]-2.*q.field[1]) + h.field[2] * (U*q.field[2]-2.*q.field[0]))/(q.field[2]*h.field[0])
-    #
-    # def getStressNewtonian_avg(self, h, q, mu, lam, U, V, rho0, P0):
-    #
-    #     self.fromFunctionField(DowsonHigginson(rho0, P0).isoT_pressure, q.field[2],3)
-    #
-    #     self.field[0] = -self.field[0] - (4.*(U*q.field[2]-1.5*q.field[0])*(mu+lam/2.)*h.field[1] + 2.*lam*(V*q.field[2]-1.5*q.field[1])*h.field[2])/(q.field[2]*h.field[0])
-    #     self.field[1] = -self.field[1] - (4.*(V*q.field[2]-1.5*q.field[1])*(mu+lam/2.)*h.field[2] + 2.*lam*(U*q.field[2]-1.5*q.field[0])*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[2] = -self.field[2] - (2.*(U*q.field[2]-1.5*q.field[0])*lam*h.field[1] + 2.*(V*q.field[2]-1.5*q.field[1])*lam*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[3] = mu*V/h.field[0]
-    #     self.field[4] = mu*U/h.field[0]
-    #     self.field[5] = -2.*mu*(h.field[1] * (V*q.field[2]-1.5*q.field[1]) + h.field[2] * (U*q.field[2]-1.5*q.field[0]))/(q.field[2]*h.field[0])
-    #
-    # def getStressNewtonian_avg2(self, h, q, mu, lam, U, V, rho0, P0):
-    #
-    #     self.fromFunctionField(DowsonHigginson(rho0, P0).isoT_pressure, q.field[2],3)
-    #
-    #     self.field[0] = -self.field[0] - (4.*(U*q.field[2]-1.5*q.field[0])*(mu+lam/2.)*h.field[1] + 2.*lam*(V*q.field[2]-1.5*q.field[1])*h.field[2])/(q.field[2]*h.field[0])
-    #     self.field[1] = -self.field[1] - (4.*(V*q.field[2]-1.5*q.field[1])*(mu+lam/2.)*h.field[2] + 2.*lam*(U*q.field[2]-1.5*q.field[0])*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[2] = -self.field[2] - (2.*(U*q.field[2]-1.5*q.field[0])*lam*h.field[1] + 2.*(V*q.field[2]-1.5*q.field[1])*lam*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[3] = -4*(((0.5*U*h.field[1]**2 + 0.25*U*h.field[2]**2 + 0.25*V*h.field[1]*h.field[2] - 2.*U)*mu + lam*(U*h.field[1]**2 + V*h.field[1]*h.field[2] - U))*q.field[2] - \
-    #                     1.5*lam*h.field[1]*(q.field[0]*h.field[1] + q.field[1]*h.field[2]))*mu/(q.field[2]*(-mu*h.field[1]**2 - mu*h.field[2]**2 + 4*lam + 8*mu)*h.field[0])
-    #     self.field[4] = -4*(((0.5*V*h.field[2]**2 + 0.25*V*h.field[1]**2 + 0.25*U*h.field[1]*h.field[2] - 2.*V)*mu + lam*(V*h.field[2]**2 + U*h.field[1]*h.field[2] - V))*q.field[2] - \
-    #                     1.5*lam*h.field[2]*(q.field[0]*h.field[1] + q.field[1]*h.field[2]))*mu/(q.field[2]*(-mu*h.field[1]**2 - mu*h.field[2]**2 + 4*lam + 8*mu)*h.field[0])
-    #     self.field[5] = -2.*mu*(h.field[1] * (V*q.field[2]-1.5*q.field[1]) + h.field[2] * (U*q.field[2]-1.5*q.field[0]))/(q.field[2]*h.field[0])
-    #
-    # def getStressNewtonian_avg4(self, h, q, mu, lam, U, V, rho0, P0):
-    #
-    #     self.fromFunctionField(DowsonHigginson(rho0, P0).isoT_pressure, q.field[2], 3)
-    #
-    #     self.field[0] = -self.field[0] - (4.*(U*q.field[2]-1.5*q.field[0])*(mu+lam/2.)*h.field[1] + 2.*lam*(V*q.field[2]-1.5*q.field[1])*h.field[2])/(q.field[2]*h.field[0])
-    #     self.field[1] = -self.field[1] - (4.*(V*q.field[2]-1.5*q.field[1])*(mu+lam/2.)*h.field[2] + 2.*lam*(U*q.field[2]-1.5*q.field[1])*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[2] = -self.field[2] - (2.*(U*q.field[2]-1.5*q.field[0])*lam*h.field[1] + 2.*(V*q.field[2]-1.5*q.field[1])*lam*h.field[1])/(q.field[2]*h.field[0])
-    #     self.field[3] = ((4*U*(lam + mu)*q.field[2] - 6*lam*q.field[0])*h.field[1]**2 + 4*((lam + mu/4)*V*q.field[2] - (3*lam*q.field[1])/2)*h.field[1]*h.field[2] + 3*U*mu*q.field[2]*h.field[2]**2)/(3*q.field[2]*(h.field[1]**2 + h.field[2]**2)*h.field[0])
-    #     self.field[4] = ((4*V*(lam + mu)*q.field[2] - 6*lam*q.field[1])*h.field[2]**2 + 4*((lam + mu/4)*U*q.field[2] - (3*lam*q.field[0])/2)*h.field[1]*h.field[2] + 3*V*mu*q.field[2]*h.field[1]**2)/(3*q.field[2]*(h.field[1]**2 + h.field[2]**2)*h.field[0])
-    #     self.field[5] = -2.*mu*(h.field[1] * (V*q.field[2]-1.5*q.field[1]) + h.field[2] * (U*q.field[2]-1.5*q.field[0]))/(q.field[2]*h.field[0])
-    #
     # def addNoise(self, frac):
     #     for i in range(self.ndim):
     #         mean = self.field[i]
