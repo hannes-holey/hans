@@ -4,6 +4,7 @@
 *.cpython*.so
 __pycache__
 __init.py__
-output
+output/*.h5
+output/animations/
 */__init__.py
 config/
