@@ -92,18 +92,18 @@ class Solver:
 
     def solve(self, i):
 
-
         vXmax = np.amax(self.q.field[0]/self.q.field[2])
         vYmax = np.amax(self.q.field[1]/self.q.field[2])
 
         self.vSound = np.amax(self.eqOfState.soundSpeed(self.q.field[2]))
 
+        C = self.numerics['C']
         if bool(self.numerics['adaptive']) == True:
             if i == 0:
                 self.dt = self.dt
             else:
                 # self.dt = min(self.q.dx, self.q.dy)/self.vSound
-                self.dt = 0.1*min(self.q.dx, self.q.dy)/self.vSound
+                self.dt = C * min(self.q.dx, self.q.dy)/self.vSound
 
         if self.numFlux == 'LF':
             fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 0)
