@@ -146,6 +146,13 @@ class Solver:
             if 'config' not in file:
                 g0 = file.create_group('config')
 
+                from datetime import datetime
+
+                now = datetime.now()
+                timeString = now.strftime("%d/%m/%Y %H:%M:%S")
+
+                g0.attrs.create("Start time:",  timeString)
+
                 categories = {'options': self.options,
                               'disc': self.disc,
                               'geometry': self.geometry,
