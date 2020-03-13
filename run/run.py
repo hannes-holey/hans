@@ -97,10 +97,10 @@ class Run:
         elif self.plotDim == 2:
             self.fig, self.ax1 = plt.subplots(2,2, figsize = (12,9), sharex=True, sharey=True, tight_layout=False)
 
-            self.im0 = self.ax1[0,0].imshow(self.sol.q.field[0], interpolation='nearest', cmap='viridis')
-            self.im1 = self.ax1[0,1].imshow(self.sol.q.field[1], interpolation='nearest', cmap='viridis')
-            self.im2 = self.ax1[1,0].imshow(self.sol.q.field[2], interpolation='nearest', cmap='viridis')
-            self.im3 = self.ax1[1,1].imshow(self.eqOfState.isoT_pressure(self.sol.q.field[2]), interpolation='nearest', cmap='viridis')
+            self.im0 = self.ax1[0,0].imshow(self.sol.q.field[0].T, interpolation='nearest', cmap='viridis')
+            self.im1 = self.ax1[0,1].imshow(self.sol.q.field[1].T, interpolation='nearest', cmap='viridis')
+            self.im2 = self.ax1[1,0].imshow(self.sol.q.field[2].T, interpolation='nearest', cmap='viridis')
+            self.im3 = self.ax1[1,1].imshow(self.eqOfState.isoT_pressure(self.sol.q.field[2].T), interpolation='nearest', cmap='viridis')
 
             self.cbar0 = plt.colorbar(self.im0, ax = self.ax1[0,0])
             self.cbar1 = plt.colorbar(self.im1, ax = self.ax1[0,1])
