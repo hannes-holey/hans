@@ -27,8 +27,8 @@ plt.style.use('presentation')
 fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
 
 availFiles = {}
+i = 0
 for file in os.listdir():
-    i = 0
     if file.endswith('h5'):
         availFiles.update({i: file})
         i +=1

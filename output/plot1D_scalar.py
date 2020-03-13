@@ -27,8 +27,8 @@ plt.style.use('presentation')
 plt.figure(figsize=(12,7))
 
 availFiles = {}
-for file in os.listdir():
     i = 0
+for file in os.listdir():
     if file.endswith('h5'):
         availFiles.update({i: file})
         i +=1
