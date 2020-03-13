@@ -78,10 +78,16 @@ class Solver:
         self.file_tag = 1
         self.ani_tag = 1
 
-        while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5' in os.listdir('./output'):
+        if 'output' not in os.listdir():
+            os.mkdir('output')
+
+        while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5' in os.listdir('output'):
             self.file_tag += 1
 
-        while str(self.name) + '_' + str(self.ani_tag).zfill(4) + '.mp4' in os.listdir('./output/animations'):
+        if 'animations' not in os.listdir('output'):
+            os.mkdir(os.path.join('output', 'animations'))
+
+        while str(self.name) + '_' + str(self.ani_tag).zfill(4) + '.mp4' in os.listdir(os.path.join('output', 'animations')):
             self.ani_tag += 1
 
     def solve(self, i):
