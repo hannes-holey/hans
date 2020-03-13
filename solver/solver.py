@@ -172,7 +172,7 @@ class Solver:
                 g1.create_dataset('j_x',   data = self.q.field[0])
                 g1.create_dataset('j_y',   data = self.q.field[1])
                 g1.create_dataset('rho',   data = self.q.field[2])
-                g1.create_dataset('press', data = DowsonHigginson(self.material).isoT_pressure(self.q.field[2]))
+                g1.create_dataset('press', data = self.eqOfState.isoT_pressure(self.q.field[2]))
 
                 g1.attrs.create('time', self.time)
                 g1.attrs.create('mass', self.mass)
