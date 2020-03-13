@@ -49,10 +49,10 @@ def main():
     try :
       name = sys.argv[1]
     except:
-      print("Usage : ./main.py <config filename (*.yaml)>")
+      print("Usage : ./main.py <path to config yaml-file>")
       quit()
 
-    inputFile = os.path.join(os.getcwd(),'config', str(name))
+    inputFile = os.path.join(os.getcwd(), str(name))
 
     tStart = time.time()
 
