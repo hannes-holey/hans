@@ -26,7 +26,6 @@ class DowsonHigginson:
         B2 = 2.8225e-9
 
         return np.sqrt(B1*self.rho0/((B1 + B2)*self.rho0 - B2*rho)**2)
-        #return -1./rho * np.sqrt(-B1*self.rho0/((self.rho0/rho * (B1 + B2) - B2)**2))
 
 class PowerLaw:
     def __init__(self, material):
@@ -39,3 +38,7 @@ class PowerLaw:
 
     def isoT_density(self, P):
         return self.rho0 * (P/self.P0)**(1. - 0.5 * self.alpha)
+
+    def soundSpeed(self, rho):
+        if self.alpha < 2:
+            return np.sqrt(2./(2. - self.alpha)*(rho/self.rho0)**(self.alpha/(2. - self.alpha)))
