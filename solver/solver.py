@@ -56,8 +56,6 @@ class Solver:
 
         self.height.getGradients()
 
-
-
         self.q = VectorField(disc)
         self.q.fill(self.rho0, 2)
 
@@ -102,7 +100,6 @@ class Solver:
             if i == 0:
                 self.dt = self.dt
             else:
-                # self.dt = min(self.q.dx, self.q.dy)/self.vSound
                 self.dt = C * min(self.q.dx, self.q.dy)/self.vSound
 
         if self.numFlux == 'LF':
@@ -126,16 +123,13 @@ class Solver:
         self.rhs.computeRHS(fXE, fXW, fYN, fYS)
         self.rhs.addStress_wall(self.q, self.height, self.mu, self.U, self.V)
 
-
         # explicit time step
         self.q.updateExplicit(self.rhs, self.dt)
 
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.vmax = np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2))
 
-        # self.C = vXmax*self.dt/self.q.dx + vYmax*self.dt/self.q.dy
         self.cfl = self.vSound * self.dt/min(self.q.dx, self.q.dy)
-        # self.C = 0.5 * self.q.dx*self.q.dy/(vXmax*self.q.dy + vYmax*self.q.dx)
 
         self.time += self.dt
 
