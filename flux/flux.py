@@ -213,7 +213,7 @@ class Flux:
             stress_center = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
             stress_center = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
-            # h.stagArray(d, ax)
+            h.stagArray(d, ax)
             stress = Newtonian(self.disc).average_w4(Q, h, self.geometry, self.material)
 
         flux = VectorField(self.disc)
