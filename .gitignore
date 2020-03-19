@@ -5,6 +5,7 @@
 __pycache__
 __init.py__
 output/*.h5
+output/*.mp4
 output/animations/
 */__init__.py
 config/
