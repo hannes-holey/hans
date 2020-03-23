@@ -24,16 +24,11 @@ class Solver:
         self.writeOutput = int(options['writeOutput'])
         self.writeInterval = int(options['writeInterval'])
 
-        self.U = float(geometry['U'])
-        self.V = float(geometry['V'])
 
         self.numFlux = str(numerics['numFlux'])
         self.dt = float(numerics['dt'])
-        self.rey = bool(numerics['Rey'])
+        self.maxIt= int(self.numerics['maxT'] * 1e9 /self.dt)
 
-        self.maxIt= int(self.numerics['maxT'] * 1e9 /self.numerics['dt'])
-
-        self.mu = float(material['mu'])
         self.P0 = float(material['P0'])
         self.rho0 = float(material['rho0'])
 
@@ -45,7 +40,8 @@ class Solver:
         self.time = 0
 
         # Stokes assumption
-        self.material['lambda'] = -2./3. * self.mu
+        if self.material['Stokes'] == True:
+            self.material['lambda'] = -2./3. * self.material['mu']
 
         # Gap height
         self.height = VectorField(disc)
@@ -67,10 +63,9 @@ class Solver:
             self.q.field[2][-1,:] = self.eqOfState.isoT_density(self.P0)
             self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * self.P0)
         elif self.name == 'droplet':
-            self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(1.5*self.P0), 2)
+            self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(2.*self.P0), 2)
         elif self.name == 'wavefront':
             self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2.*self.P0), 0, 2)
-            # self.q.field[2][int(self.q.Nx/2)-2 : int(self.q.Nx/2)+2,int(self.q.Ny/2)-2 : int(self.q.Ny/2)+2] = self.eqOfState.isoT_density(2* self.P0)
 
         self.file_tag = 1
         self.ani_tag = 1
@@ -88,9 +83,6 @@ class Solver:
             self.ani_tag += 1
 
     def solve(self, i):
-
-        vXmax = np.amax(self.q.field[0]/self.q.field[2])
-        vYmax = np.amax(self.q.field[1]/self.q.field[2])
 
         self.vSound = np.amax(self.eqOfState.soundSpeed(self.q.field[2]))
 
@@ -130,11 +122,9 @@ class Solver:
         # explicit time step
         self.q.updateExplicit(rhs, self.dt)
 
+        # some scalar output
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.vmax = np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2))
-
-        self.cfl = self.vSound * self.dt/min(self.q.dx, self.q.dy)
-
         self.time += self.dt
 
         if self.writeOutput == True:
@@ -181,7 +171,6 @@ class Solver:
                 g1.attrs.create('time', self.time)
                 g1.attrs.create('mass', self.mass)
                 g1.attrs.create('vmax', self.vmax)
-                g1.attrs.create('CFL', self.cfl)
                 g1.attrs.create('vSound', self.vSound)
                 g1.attrs.create('dt', self.dt)
 
