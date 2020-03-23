@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from eos.eos import DowsonHigginson, PowerLaw 
+from eos.eos import DowsonHigginson, PowerLaw
 from field.field import VectorField
 
 class Newtonian:
@@ -26,7 +26,7 @@ class Newtonian:
 
         return self.out
 
-    def average_w4(self, q, h, geo, material):
+    def full(self, q, h, geo, material):
 
         U = float(geo['U'])
         V = float(geo['V'])
