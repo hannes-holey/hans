@@ -6,6 +6,8 @@ __pycache__
 __init.py__
 output/*.h5
 output/*.mp4
+output/*.pdf
+output/*.dat
 output/animations/
 */__init__.py
 config/
