@@ -6,23 +6,6 @@ import math as m
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
-def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
-    """
-    Returns a string representation of the scientific
-    notation of the given number formatted for use with
-    LaTeX or Mathtext, with specified number of significant
-    decimal digits and precision (number of decimal digits
-    to show). The exponent to be used can also be specified
-    explicitly.
-    """
-    if exponent is None:
-        exponent = int(m.floor(m.log10(abs(num))))
-    coeff = round(num / float(10**exponent), decimal_digits)
-    if precision is None:
-        precision = decimal_digits
-
-    return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
-
 plt.style.use('presentation')
 fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
 
@@ -38,13 +21,17 @@ for key, val in availFiles.items():
     print("{:3d}: {:20s}".format(key, val))
 
 files = {}
-check = 'y'
-i = 0
-while check not in ['n', 'N', 'Nope']:
-    userInput = input("Enter file key: ")
-    files.update({i: [availFiles[int(userInput)], h5py.File(availFiles[int(userInput)], 'r')]})
-    check = input("Add another file? (y/n) " )
-    i += 1
+ask = True
+j = 0
+while ask == True:
+    userInput = input("Enter file key (any other key to exit): ")
+
+    if userInput in np.arange(0, i).astype(str):
+        files.update({j: [availFiles[int(userInput)], h5py.File(availFiles[int(userInput)], 'r')]})
+        j += 1
+    else:
+        ask = False
+
 
 # f1 = h5py.File('wavefront_0002.h5', 'r')
 # f2 = h5py.File('wavefront_0005.h5', 'r')
@@ -99,9 +86,9 @@ else:
 ax.set_xlabel('distance (mm)')
 ax.set_ylabel(ylab)
 
-ref = np.loadtxt('p_500.dat')
-x_ref = np.linspace(0, 1., ref.shape[0])
-ax.plot(x_ref, ref*1e-6, '--', label = r'steady-state')
+# ref = np.loadtxt('p_500.dat')
+# x_ref = np.linspace(0, 1., ref.shape[0])
+# ax.plot(x_ref, ref*1e-6, '--', label = r'steady-state')
 
 ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 ax.legend(loc = 'best')
