@@ -83,7 +83,7 @@ for file in files.values():
     x = np.linspace(0, Lx, Nx)
     t = g.attrs['time']*1e9
     print("Actual time for \'{:s}\': {:.2f} ns".format(file[0], t))
-    ax.plot(x * 1.e3, (d[:,int(d.shape[1]/2)]), '-', label = r'$N_x = ${:<}'.format(Nx))
+    ax.plot(x * 1.e3, (d[:,int(d.shape[1]/2)]) * 1e-6, '-', label = r'$t = ${:.0f} µs'.format(t/1e3))
 
     file[1].close()
 
@@ -94,16 +94,16 @@ elif  choice ==1:
 elif  choice ==2:
     ylab =  'density'
 else:
-    ylab = 'pressure (Pa)'
+    ylab = r'pressure (MPa)'
 
 ax.set_xlabel('distance (mm)')
 ax.set_ylabel(ylab)
 
-# ref = np.loadtxt('p_500.dat')
-# x_ref = np.linspace(0, 1., ref.shape[0])
-# ax.plot(x_ref, 101325 + (ref-101325)*1.3e-7, '--', label = r'steady-state ($\times$' + sci_notation(1.3e-7) + ')')
+ref = np.loadtxt('p_500.dat')
+x_ref = np.linspace(0, 1., ref.shape[0])
+ax.plot(x_ref, ref*1e-6, '--', label = r'steady-state')
 
-ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 ax.legend(loc = 'best')
 #ax.set_title(r'$t \approx {}$ µs'.format(time*1e-3))
 plt.show()

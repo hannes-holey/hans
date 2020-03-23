@@ -56,5 +56,9 @@ else:
 plt.xlabel('distance (mm)')
 plt.ylabel(ylab)
 
+ref = np.loadtxt('p_500.dat')
+x_ref = np.linspace(0, 1., ref.shape[0])
+plt.plot(x_ref, ref, '--', color = 'black', label = r'steady-state')
+
 plt.colorbar(sm, label = 'time (ns)', extend='max')
 plt.show()
