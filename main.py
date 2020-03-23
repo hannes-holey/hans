@@ -28,7 +28,6 @@ class yamlInput:
 
         return thisProblem
 
-
 class Problem:
 
     def __init__(self, options, disc, geometry, numerics, material):
@@ -40,7 +39,6 @@ class Problem:
         self.material = material
 
     def solve(self):
-
         from run.run import Run
         Run(self.options, self.disc, self.geometry, self.numerics, self.material)
 
@@ -69,5 +67,5 @@ def main():
 
     print("Total wall clock time: %02d:%02d:%02d" % (HH, MM, SS))
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
