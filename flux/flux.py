@@ -245,7 +245,7 @@ class Flux:
 
         return flux
 
-    def addFluxAnalytic(self, rhs, q, h):
+    def addAnalytic(self, rhs, q, h):
 
         mu = self.material['mu']
         lam = self.material['lambda']
