@@ -15,20 +15,20 @@ def assembleArrays(filename, database):
     Parameters
     ----------
     filename :  str
-                name of the hdf5 input file
+        name of the hdf5 input file
     database :  str
-                name of the database to read from
+        name of the database to read from
 
     Returns
     -------
     A :  list
-         list of result arrays
+        list of result arrays
     t :  list
-         list of snapshot times
+        list of snapshot times
     Nx : int
-         number of grid cells in x
+        number of grid cells in x
     Ny : int
-         number of grid cells in y
+        number of grid cells in y
     """
     file = h5py.File(filename, 'r')
     conf_disc = file.get('/config/disc')
