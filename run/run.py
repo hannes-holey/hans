@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -8,26 +10,21 @@ import matplotlib.animation as animation
 from eos.eos import DowsonHigginson, PowerLaw
 from solver.solver import Solver
 
-
 class Run:
 
     def __init__(self, options, disc, geometry, numerics, material):
 
-        self.material = material
         self.options = options
         self.disc = disc
         self.geometry = geometry
         self.numerics = numerics
+        self.material = material
 
-        self.name = str(options['name'])
-
-        self.plotDim = int(options['plotDim'])
-        self.plotOption = int(options['plotOption'])
-        self.plotInterval = int(options['plotInterval'])
-        self.writeOutput = int(options['writeOutput'])
+        plotOption = bool(options['plot'])
         self.writeInterval = int(options['writeInterval'])
+        self.name = str(geometry['name'])
 
-        self.maxIt= int(self.numerics['maxT'] * 1e9 /self.numerics['dt'])
+        self.maxIt= int(numerics['maxT'] * 1e9 /numerics['dt'])
 
         self.Lx = float(disc['Lx'])
         self.Ly = float(disc['Ly'])
@@ -37,216 +34,164 @@ class Run:
         self.dx = self.Lx/self.Nx
         self.dy = self.Ly/self.Ny
 
-        if self.material['EOS'] == 'DH':
-            self.eqOfState = DowsonHigginson(self.material)
-        elif self.material['EOS'] == 'PL':
-            self.eqOfState = PowerLaw(self.material)
+        if material['EOS'] == 'DH':
+            self.eqOfState = DowsonHigginson(material)
+        elif material['EOS'] == 'PL':
+            self.eqOfState = PowerLaw(material)
 
-        self.sol = Solver(options, disc, geometry, numerics, material)
+        self.sol = Solver(disc, geometry, numerics, material)
 
-        if self.plotOption == 0:
-            # self.printProgressBar(0, self.maxIt)
-            # for i in range(self.maxIt):
+        if plotOption == False:
+            self.file_tag = 1
+
+            if 'output' not in os.listdir():
+                os.mkdir('output')
+
+            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5' in os.listdir('output'):
+                self.file_tag += 1
+
+            outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5'
+
             i = 0
-            while self.sol.time * 1e9 < self.numerics['maxT']:
+            while self.sol.time * 1e9 < numerics['maxT']:
 
-                tDiff = self.numerics['maxT'] * 1e-9 - self.sol.time
-                if tDiff > self.sol.dt:
+                self.sol.solve(i)
+                self.write(i, 0)
+                print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\r")
+                i += 1
+
+                tDiff = numerics['maxT'] * 1e-9 - self.sol.time
+
+                if self.sol.eps < 5e-8:
+                    self.write(i, 1)
+                    print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
+                    print("Solution has converged after {:d} steps, Output written to : {:s}".format(i, outfile))
+                    break
+                elif tDiff < self.sol.dt:
                     self.sol.solve(i)
-                    print("Simulation time : %.2f ns / %5d ns" % (self.sol.time * 1e9, self.numerics['maxT']), end = "\r")
-                    i += 1
-                else:
-                    #self.sol.dt = tDiff
-                    self.sol.solve(i)
-                    print("Simulation time : %.2f ns / %5d ns" % (self.sol.time * 1e9, self.numerics['maxT']), end = "\n")
-                # self.printProgressBar(i + 1, self.maxIt)
+                    self.write(i, 1)
+                    print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
+                    print("No convergence within {:d} ns. Output written to : {:s}".format(numerics['maxT'], outfile))
+
         else:
             self.plot()
 
+    def write(self, i, last):
+
+        # HDF5 output file
+        if i % self.writeInterval == 0 or last == 1:
+
+            file = h5py.File('./output/' + str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5', 'a')
+
+            if 'config' not in file:
+                g0 = file.create_group('config')
+
+                from datetime import datetime
+
+                now = datetime.now()
+                timeString = now.strftime("%d/%m/%Y %H:%M:%S")
+
+                g0.attrs.create("Start time:",  timeString)
+
+                categories = {'options': self.options,
+                              'disc': self.disc,
+                              'geometry': self.geometry,
+                              'numerics': self.numerics,
+                              'material': self.material}
+
+                for cat_key, cat_val in categories.items():
+                    g1 = file.create_group('config/' + cat_key)
+
+                    for key, value in cat_val.items():
+                        g1.attrs.create(str(key), value)
+
+            if str(i).zfill(10) not in file:
+
+                g1 =file.create_group(str(i).zfill(10))
+
+                g1.create_dataset('j_x',   data = self.sol.q.field[0])
+                g1.create_dataset('j_y',   data = self.sol.q.field[1])
+                g1.create_dataset('rho',   data = self.sol.q.field[2])
+                g1.create_dataset('press', data = self.eqOfState.isoT_pressure(self.sol.q.field[2]))
+
+                g1.attrs.create('time', self.sol.time)
+                g1.attrs.create('mass', self.sol.mass)
+                g1.attrs.create('vmax', self.sol.vmax)
+                g1.attrs.create('vSound', self.sol.vSound)
+                g1.attrs.create('dt', self.sol.dt)
+                g1.attrs.create('eps', self.sol.eps)
+
+            file.close()
+
     def plot(self):
 
-        if self.plotDim == 1:
-            self.fig, self.ax1 = plt.subplots(2,2, figsize = (14,9), sharex=True)
+        fig, ax = plt.subplots(2,2, figsize = (14,9), sharex=True)
+        x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
 
-            x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
+        line0, = ax[0,0].plot(x, self.sol.q.field[0][:,int(self.Ny/2)])
+        line1, = ax[0,1].plot(x, self.sol.q.field[1][:,int(self.Ny/2)])
+        line2, = ax[1,0].plot(x, self.sol.q.field[2][:,int(self.Ny/2)])
+        line3, = ax[1,1].plot(x, self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
-            self.line0, = self.ax1[0,0].plot(x, self.sol.q.field[0][:,int(self.Ny/2)])
-            self.line1, = self.ax1[0,1].plot(x, self.sol.q.field[1][:,int(self.Ny/2)])
-            self.line2, = self.ax1[1,0].plot(x, self.sol.q.field[2][:,int(self.Ny/2)])
-            self.line3, = self.ax1[1,1].plot(x, self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        ax[0,0].set_title(r'$j_x$')
+        ax[0,1].set_title(r'$j_y$')
+        ax[1,0].set_title(r'$\rho$')
+        ax[1,1].set_title(r'$p$')
 
-            self.ax1[0,0].set_title(r'$j_x$')
-            self.ax1[0,1].set_title(r'$j_y$')
-            self.ax1[1,0].set_title(r'$\rho$')
-            self.ax1[1,1].set_title(r'$p$')
+        ax[1,0].set_xlabel('distance x (m)')
+        ax[1,1].set_xlabel('distance x (m)')
 
-            self.ax1[1,0].set_xlabel('distance x (m)')
-            self.ax1[1,1].set_xlabel('distance x (m)')
+        limits = np.zeros((4,3))
 
-            self.limits = np.zeros((4,3))
+        for j in range(3):
+            limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny/2)])
+            limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny/2)])
 
-            for j in range(3):
-                self.limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny/2)])
-                self.limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny/2)])
+        limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
-            self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
-            self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        ani = animation.FuncAnimation(fig, self.animate1D, 100000,
+                                    fargs=(fig, ax, line0, line1, line2, line3, limits,), interval=1 ,repeat=False)
 
-            ani = animation.FuncAnimation(self.fig, self.animate1D, self.maxIt, fargs=(self.sol,), interval=1 ,repeat=False)
+        plt.show()
 
-        elif self.plotDim == 2:
-            self.fig, self.ax1 = plt.subplots(2,2, figsize = (12,9), sharex=True, sharey=True, tight_layout=False)
+    def animate1D(self, i, fig, ax, line0, line1, line2, line3, limits):
 
-            self.im0 = self.ax1[0,0].imshow(self.sol.q.field[0].T, interpolation='nearest', cmap='viridis')
-            self.im1 = self.ax1[0,1].imshow(self.sol.q.field[1].T, interpolation='nearest', cmap='viridis')
-            self.im2 = self.ax1[1,0].imshow(self.sol.q.field[2].T, interpolation='nearest', cmap='viridis')
-            self.im3 = self.ax1[1,1].imshow(self.eqOfState.isoT_pressure(self.sol.q.field[2].T), interpolation='nearest', cmap='viridis')
+        limits = self.adaptiveLimits(limits)
 
-            self.cbar0 = plt.colorbar(self.im0, ax = self.ax1[0,0])
-            self.cbar1 = plt.colorbar(self.im1, ax = self.ax1[0,1])
-            self.cbar2 = plt.colorbar(self.im2, ax = self.ax1[1,0])
-            self.cbar3 = plt.colorbar(self.im3, ax = self.ax1[1,1])
+        fig.suptitle('time = {:.2f} ns'.format(self.sol.time * 1e9))
 
-            self.ax1[0,0].set_title(r'$j_x$')
-            self.ax1[0,1].set_title(r'$j_y$')
-            self.ax1[1,0].set_title(r'$\rho$')
-            self.ax1[1,1].set_title(r'$p$')
+        ax[0,0].set_ylim(limits[0,0] - limits[0,2] , limits[0,1] + limits[0,2])
+        ax[0,1].set_ylim(limits[1,0] - limits[1,2] , limits[1,1] + limits[1,2])
+        ax[1,0].set_ylim(limits[2,0] - limits[2,2] , limits[2,1] + limits[2,2])
+        ax[1,1].set_ylim(limits[3,0] - limits[3,2] , limits[3,1] + limits[3,2])
 
-            self.limits = np.zeros((4,3))
+        line0.set_ydata(self.sol.q.field[0][:,int(self.Ny/2)])
+        line1.set_ydata(self.sol.q.field[1][:,int(self.Ny/2)])
+        line2.set_ydata(self.sol.q.field[2][:,int(self.Ny/2)])
+        line3.set_ydata(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
-            for j in range(3):
-                self.limits[j,0] = np.amin(self.sol.q.field[j])
-                self.limits[j,1] = np.amax(self.sol.q.field[j])
+        self.sol.solve(i)
 
-            self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2]))
-            self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2]))
+    def adaptiveLimits(self, limits):
 
-            ani = animation.FuncAnimation(self.fig, self.animate2D, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
+        for j in range(3):
+            if np.amin(self.sol.q.field[j][:,int(self.Ny/2)]) < limits[j,0]:
+                limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny/2)])
+            if np.amax(self.sol.q.field[j][:,int(self.Ny/2)]) > limits[j,1]:
+                limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny/2)])
 
-        elif self.plotDim == 3:
-            self.fig, self.ax1 = plt.subplots(1,1, figsize = (12,9), sharex=True, sharey=True, tight_layout=False)
+        if np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)])) < limits[3,0]:
+            limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        if np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)])) > limits[3,1]:
+            limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
 
-            self.im0 = self.ax1.streamplot(self.sol.q.xx[:,0], self.sol.q.yy[0,:], self.sol.q.field[0], self.sol.q.field[1])
-            self.ax1.set_title(r'$j$')
+        for j in range(4):
+            if limits[j,1] == limits[j,0] and limits[j,0] != 0.:
+                limits[j,2] = 0.5*limits[j,1]
+            elif limits[j,1] == limits[j,0] and limits[j,0] == 0.:
+                limits[j,2] = 1.
+            else:
+                limits[j,2] = 0.1*(limits[j,1] - limits[j,0])
 
-            ani = animation.FuncAnimation(self.fig, self.animate2D_stream, self.maxIt, fargs=(self.sol,), interval=1, repeat=False)
-
-        if self.plotOption == 1:
-            plt.show()
-        elif self.plotOption == 2:
-            ani.save('./output/animations/'+ self.name + '_' + str(self.sol.ani_tag).zfill(4) + '.mp4',fps=30)
-
-    def animate1D(self, i, sol):
-
-        if i%self.plotInterval == 0:
-
-            for j in range(3):
-                if np.amin(sol.q.field[j][:,int(self.Ny/2)]) < self.limits[j,0]:
-                    self.limits[j,0] = np.amin(sol.q.field[j][:,int(self.Ny/2)])
-                if np.amax(sol.q.field[j][:,int(self.Ny/2)]) > self.limits[j,1]:
-                    self.limits[j,1] = np.amax(sol.q.field[j][:,int(self.Ny/2)])
-
-            if np.amin(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) < self.limits[3,0]:
-                self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-            if np.amax(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)])) > self.limits[3,1]:
-                self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-
-            # buffer
-            for j in range(4):
-                if self.limits[j,1] == self.limits[j,0] and self.limits[j,0] != 0.:
-                    self.limits[j,2] = 0.5*self.limits[j,1]
-                elif self.limits[j,1] == self.limits[j,0] and self.limits[j,0] == 0.:
-                    self.limits[j,2] = 1.
-                else:
-                    self.limits[j,2] = 0.1*(self.limits[j,1] - self.limits[j,0])
-
-            self.fig.suptitle('step = %1d' % (i))
-
-            self.ax1[0,0].set_ylim(self.limits[0,0] - self.limits[0,2] , self.limits[0,1] + self.limits[0,2])
-            self.ax1[0,1].set_ylim(self.limits[1,0] - self.limits[1,2] , self.limits[1,1] + self.limits[1,2])
-            self.ax1[1,0].set_ylim(self.limits[2,0] - self.limits[2,2] , self.limits[2,1] + self.limits[2,2])
-            self.ax1[1,1].set_ylim(self.limits[3,0] - self.limits[3,2] , self.limits[3,1] + self.limits[3,2])
-
-            self.line0.set_ydata(sol.q.field[0][:,int(self.Ny/2)])
-            self.line1.set_ydata(sol.q.field[1][:,int(self.Ny/2)])
-            self.line2.set_ydata(sol.q.field[2][:,int(self.Ny/2)])
-            self.line3.set_ydata(self.eqOfState.isoT_pressure(sol.q.field[2][:,int(self.Ny/2)]))
-
-        sol.solve(i)
-
-    def animate2D(self, i, sol):
-
-        if i%self.plotInterval == 0:
-
-            for j in range(3):
-                if np.amin(sol.q.field[j]) < self.limits[j,0]:
-                    self.limits[j,0] = np.amin(sol.q.field[j])
-                if np.amax(sol.q.field[j]) > self.limits[j,1]:
-                    self.limits[j,1] = np.amax(sol.q.field[j])
-
-            if np.amin(self.eqOfState.isoT_pressure(sol.q.field[2])) < self.limits[3,0]:
-                self.limits[3,0] = np.amin(self.eqOfState.isoT_pressure(sol.q.field[2]))
-            if np.amax(self.eqOfState.isoT_pressure(sol.q.field[2])) > self.limits[3,1]:
-                self.limits[3,1] = np.amax(self.eqOfState.isoT_pressure(sol.q.field[2]))
-
-            # buffer
-            for j in range(4):
-                if self.limits[j,1] == self.limits[j,0]:
-                    self.limits[j,2] = 0.5*self.limits[j,1]
-                else:
-                    self.limits[j,2] = 0.1*(self.limits[j,1] - self.limits[j,0])
-
-
-            self.fig.suptitle('step = %1d' % (i))
-
-            self.im0.set_clim(vmin = self.limits[0,0] - self.limits[0,2],vmax = self.limits[0,1] + self.limits[0,2])
-            self.im1.set_clim(vmin = self.limits[1,0] - self.limits[1,2],vmax = self.limits[1,1] + self.limits[1,2])
-            self.im2.set_clim(vmin = self.limits[2,0] - self.limits[2,2],vmax = self.limits[2,1] + self.limits[2,2])
-            self.im3.set_clim(vmin = self.limits[3,0] - self.limits[3,2],vmax = self.limits[3,1] + self.limits[3,2])
-
-            self.im0.set_array(sol.q.field[0].T)
-            self.im1.set_array(sol.q.field[1].T)
-            self.im2.set_array(sol.q.field[2].T)
-            self.im3.set_array(self.eqOfState.isoT_pressure(sol.q.field[2].T))
-
-        sol.solve(i)
-
-    def animate2D_stream(self, i, sol):
-
-        if i%self.plotInterval == 0:
-
-            self.ax1.collections = [] # clear lines streamplot
-            self.ax1.patches = [] # clear arrowheads streamplot
-
-            self.fig.suptitle('step = %1d' % (i))
-
-            stream = self.ax1.streamplot(self.sol.q.xx[:,0], self.sol.q.yy[0,:], self.sol.q.field[0], self.sol.q.field[1], color = 'blue')
-            # self.fig.colorbar(stream.lines)
-
-            self.ax1.set_xlim(0, self.Lx)
-            self.ax1.set_ylim(0, self.Ly)
-
-        sol.solve(i)
-
-        return stream
-
-    def printProgressBar(self, iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
-        """
-        Call in a loop to create terminal progress bar
-        @params:
-            iteration   - Required  : current iteration (Int)
-            total       - Required  : total iterations (Int)
-            prefix      - Optional  : prefix string (Str)
-            suffix      - Optional  : suffix string (Str)
-            decimals    - Optional  : positive number of decimals in percent complete (Int)
-            length      - Optional  : character length of bar (Int)
-            fill        - Optional  : bar fill character (Str)
-            printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-        """
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-        filledLength = int(length * iteration // total)
-        bar = fill * filledLength + '-' * (length - filledLength)
-        print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = printEnd)
-        # Print New Line on Complete
-        if iteration == total:
-            print()
+        return limits

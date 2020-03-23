@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import os
-import h5py
 
 from eos.eos import DowsonHigginson, PowerLaw
 from geo.geometry import Analytic
@@ -12,36 +10,26 @@ from flux.flux import Flux
 
 class Solver:
 
-    def __init__(self, options, disc, geometry, numerics, material):
+    def __init__(self, disc, geometry, numerics, material):
 
-        self.options = options
-        self.disc = disc
-        self.geometry = geometry
-        self.numerics = numerics
-        self.material = material
-
-        self.name = str(options['name'])
-        self.writeOutput = int(options['writeOutput'])
-        self.writeInterval = int(options['writeInterval'])
-
+        self.name = str(geometry['name'])
 
         self.numFlux = str(numerics['numFlux'])
+        self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
-        self.maxIt= int(self.numerics['maxT'] * 1e9 /self.dt)
+        self.maxIt = int(numerics['maxT'] * 1e9 /self.dt)
+        self.C = numerics['C']
 
-        self.P0 = float(material['P0'])
-        self.rho0 = float(material['rho0'])
-
-        if self.material['EOS'] == 'DH':
-            self.eqOfState = DowsonHigginson(self.material)
-        elif self.material['EOS'] == 'PL':
-            self.eqOfState = PowerLaw(self.material)
+        if material['EOS'] == 'DH':
+            self.eqOfState = DowsonHigginson(material)
+        elif material['EOS'] == 'PL':
+            self.eqOfState = PowerLaw(material)
 
         self.time = 0
 
         # Stokes assumption
-        if self.material['Stokes'] == True:
-            self.material['lambda'] = -2./3. * self.material['mu']
+        if material['Stokes'] == True:
+            material['lambda'] = -2./3. * material['mu']
 
         # Gap height
         self.height = VectorField(disc)
@@ -53,125 +41,67 @@ class Solver:
 
         self.height.getGradients()
 
+        P0 = float(material['P0'])
+        rho0 = float(material['rho0'])
+
         self.q = VectorField(disc)
-        self.q.fill(self.rho0, 2)
+        self.q.fill(rho0, 2)
 
         if self.name == 'inclined':
-            self.q.field[2][0,:] = self.eqOfState.isoT_density(self.P0)
-            self.q.field[2][-1,:] = self.eqOfState.isoT_density(self.P0)
+            self.q.field[2][0,:] = self.eqOfState.isoT_density(P0)
+            self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
         elif self.name == 'poiseuille':
-            self.q.field[2][-1,:] = self.eqOfState.isoT_density(self.P0)
-            self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * self.P0)
+            self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
+            self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * P0)
         elif self.name == 'droplet':
-            self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(2.*self.P0), 2)
+            self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(2. * P0), 2)
         elif self.name == 'wavefront':
-            self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2.*self.P0), 0, 2)
+            self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2. * P0), 0, 2)
 
-        self.file_tag = 1
-        self.ani_tag = 1
+        self.Flux = Flux(disc, geometry, numerics, material)
 
-        if 'output' not in os.listdir():
-            os.mkdir('output')
-
-        while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5' in os.listdir('output'):
-            self.file_tag += 1
-
-        if 'animations' not in os.listdir('output'):
-            os.mkdir(os.path.join('output', 'animations'))
-
-        while str(self.name) + '_' + str(self.ani_tag).zfill(4) + '.mp4' in os.listdir(os.path.join('output', 'animations')):
-            self.ani_tag += 1
+        self.rhs = VectorField(disc)
 
     def solve(self, i):
 
         self.vSound = np.amax(self.eqOfState.soundSpeed(self.q.field[2]))
+        self.vmax = max(np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)), 1e-3)
 
-        C = self.numerics['C']
-        if bool(self.numerics['adaptive']) == True:
+        if self.adaptive == True:
             if i == 0:
                 self.dt = self.dt
             else:
-                self.dt = C * min(self.q.dx, self.q.dy)/self.vSound
+                self.dt = self.C * min(self.q.dx, self.q.dy)/self.vSound
 
         if self.numFlux == 'LF':
-            fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 0)
-            fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 0)
-            fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height, -1, 1)
-            fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LF(self.q, self.height,  1, 1)
+            fXE = self.Flux.getFlux_LF(self.q, self.height, -1, 0)
+            fXW = self.Flux.getFlux_LF(self.q, self.height,  1, 0)
+            fYN = self.Flux.getFlux_LF(self.q, self.height, -1, 1)
+            fYS = self.Flux.getFlux_LF(self.q, self.height,  1, 1)
 
         elif self.numFlux == 'LW':
-            fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 0)
-            fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 0)
-            fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height, -1, 1)
-            fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_LW(self.q, self.height,  1, 1)
+            fXE = self.Flux.getFlux_LW(self.q, self.height, -1, 0)
+            fXW = self.Flux.getFlux_LW(self.q, self.height,  1, 0)
+            fYN = self.Flux.getFlux_LW(self.q, self.height, -1, 1)
+            fYS = self.Flux.getFlux_LW(self.q, self.height,  1, 1)
 
         elif self.numFlux == 'MC':
-            fXE = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height, -1, 0)
-            fXW = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height,  1, 0)
-            fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height, -1, 1)
-            fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height,  1, 1)
+            fXE = self.Flux.getFlux_MC(self.q, self.height, -1, 0)
+            fXW = self.Flux.getFlux_MC(self.q, self.height,  1, 0)
+            fYN = self.Flux.getFlux_MC(self.q, self.height, -1, 1)
+            fYS = self.Flux.getFlux_MC(self.q, self.height,  1, 1)
 
-        rhs = VectorField(self.disc)
+        self.rhs.field[0] = 1./self.rhs.dx * (fXE.field[0] - fXW.field[0]) + 1./self.rhs.dy * (fYN.field[0] - fYS.field[0])
+        self.rhs.field[1] = 1./self.rhs.dx * (fXE.field[1] - fXW.field[1]) + 1./self.rhs.dy * (fYN.field[1] - fYS.field[1])
+        self.rhs.field[2] = 1./self.rhs.dx * (fXE.field[2] - fXW.field[2]) + 1./self.rhs.dy * (fYN.field[2] - fYS.field[2])
 
-        rhs.field[0] = 1./rhs.dx * (fXE.field[0] - fXW.field[0]) + 1./rhs.dy * (fYN.field[0] - fYS.field[0])
-        rhs.field[1] = 1./rhs.dx * (fXE.field[1] - fXW.field[1]) + 1./rhs.dy * (fYN.field[1] - fYS.field[1])
-        rhs.field[2] = 1./rhs.dx * (fXE.field[2] - fXW.field[2]) + 1./rhs.dy * (fYN.field[2] - fYS.field[2])
-
-        rhs = Flux(self.disc, self.geometry, self.numerics, self.material).addAnalytic(rhs, self.q, self.height)
+        self.rhs = self.Flux.addAnalytic(self.rhs, self.q, self.height)
 
         # explicit time step
-        self.q.updateExplicit(rhs, self.dt)
+        self.q.updateExplicit(self.rhs, self.dt)
 
         # some scalar output
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
-        self.vmax = np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2))
         self.time += self.dt
 
-        if self.writeOutput == True:
-            self.write(i)
-
-    def write(self, i):
-
-        # HDF5 output file
-        if i % self.writeInterval == 0:
-
-            file = h5py.File('./output/' + str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5', 'a')
-
-            if 'config' not in file:
-                g0 = file.create_group('config')
-
-                from datetime import datetime
-
-                now = datetime.now()
-                timeString = now.strftime("%d/%m/%Y %H:%M:%S")
-
-                g0.attrs.create("Start time:",  timeString)
-
-                categories = {'options': self.options,
-                              'disc': self.disc,
-                              'geometry': self.geometry,
-                              'numerics': self.numerics,
-                              'material': self.material}
-
-                for cat_key, cat_val in categories.items():
-                    g1 = file.create_group('config/' + cat_key)
-
-                    for key, value in cat_val.items():
-                        g1.attrs.create(str(key), value)
-
-            if str(i).zfill(len(str(self.maxIt))) not in file:
-
-                g1 =file.create_group(str(i).zfill(len(str(self.maxIt))))
-
-                g1.create_dataset('j_x',   data = self.q.field[0])
-                g1.create_dataset('j_y',   data = self.q.field[1])
-                g1.create_dataset('rho',   data = self.q.field[2])
-                g1.create_dataset('press', data = self.eqOfState.isoT_pressure(self.q.field[2]))
-
-                g1.attrs.create('time', self.time)
-                g1.attrs.create('mass', self.mass)
-                g1.attrs.create('vmax', self.vmax)
-                g1.attrs.create('vSound', self.vSound)
-                g1.attrs.create('dt', self.dt)
-
-            file.close()
+        self.eps = abs(np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)) - self.vmax)/self.vmax
