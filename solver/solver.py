@@ -29,6 +29,7 @@ class Solver:
 
         self.numFlux = str(numerics['numFlux'])
         self.dt = float(numerics['dt'])
+        self.rey = bool(numerics['Rey'])
 
         self.maxIt= int(self.numerics['maxT'] * 1e9 /self.numerics['dt'])
 
@@ -121,7 +122,8 @@ class Solver:
             fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height,  1, 1)
 
         self.rhs.computeRHS(fXE, fXW, fYN, fYS)
-        self.rhs.addStress_wall(self.q, self.height, self.mu, self.U, self.V)
+        # self.rhs.addStress_wall(self.q, self.height, self.mu, self.U, self.V)
+        self.rhs.addStress_wall(self.q, self.height, self.U, self.V, self.material, self.rey)
 
         # explicit time step
         self.q.updateExplicit(self.rhs, self.dt)
