@@ -12,21 +12,12 @@ class DowsonHigginson:
         self.B2 = float(material['B2'])
 
     def isoT_pressure(self, rho):
-        # B1 = 6.6009e-10
-        # B2 = 2.8225e-9
-
         return (rho - self.rho0)/(self.B1*self.rho0 - self.B2*(rho - self.rho0)) + self.P0
 
     def isoT_density(self, P):
-        # B1 = 6.6009e-10
-        # B2 = 2.8225e-9
-
         return self.rho0 * (1. + self.B1*(P - self.P0) /(1. + self.B2*(P - self.P0)))
 
     def soundSpeed(self, rho):
-        # B1 = 6.6009e-10
-        # B2 = 2.8225e-9
-
         return np.sqrt(self.B1*self.rho0/((self.B1 + self.B2)*self.rho0 - self.B2 * rho)**2)
 
 class PowerLaw:
