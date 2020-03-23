@@ -90,52 +90,6 @@ class VectorField(Field):
         self.field[1] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[0]
         self.field[2] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[1]
 
-    def computeRHS(self, fXE, fXW, fYN, fYS):
-        self.field[0] = 1./self.dx * (fXE.field[0] - fXW.field[0]) + 1./self.dy * (fYN.field[0] - fYS.field[0])
-        self.field[1] = 1./self.dx * (fXE.field[1] - fXW.field[1]) + 1./self.dy * (fYN.field[1] - fYS.field[1])
-        self.field[2] = 1./self.dx * (fXE.field[2] - fXW.field[2]) + 1./self.dy * (fYN.field[2] - fYS.field[2])
-
-    # def addStress_wall(self, q, h, mu, U, V):
-    #     self.field[0] -= 6.*mu*(U*q.field[2] - 2.*q.field[0])/(q.field[2]*h.field[0]**2)
-    #     self.field[1] -= 6.*mu*(V*q.field[2] - 2.*q.field[1])/(q.field[2]*h.field[0]**2)
-
-    def addStress_wall(self, q, h, U, V, mat, rey):
-
-        mu = mat['mu']
-        lam = mat['lambda']
-
-        if mat['EOS'] == 'DH':
-            eqOfState = DowsonHigginson(mat)
-        elif mat['EOS'] == 'PL':
-            eqOfState = PowerLaw(mat)
-
-        P = eqOfState.isoT_pressure(q.field[2])
-        j_x = q.field[0]
-        j_y = q.field[1]
-        rho = q.field[2]
-        h0 = h.field[0]
-        hx = h.field[1]
-        hy = h.field[2]
-
-        if rey == True:
-            self.field[0] -= P * hx/h0 + 6.* mu*(U*rho - 2.*j_x)/(rho * h0**2)
-            self.field[1] -= P * hy/h0 + 6.* mu*(V*rho - 2.*j_y)/(rho * h0**2)
-            self.field[2] -= -j_x * hx / h0 - j_y * hy / h0
-        elif rey == False:
-            self.field[0] -= (8*(lam/2 + mu)*(U*rho - 1.5*j_x)*hx**2 + (4*(V*rho - 1.5*j_y)*(mu + lam)*hy + P*h0*rho)*hx + 4*mu*((U*rho - 1.5*j_x)*hy**2 + 1.5*U*rho - 3*j_x))/(h0**2*rho)
-
-            self.field[1] -= (8*(V*rho - 1.5*j_y)*(lam/2 + mu)*hy**2 + (4*hx*(U*rho - 1.5*j_x)*(mu + lam) + P*h0*rho)*hy + 4*mu*((V*rho - 1.5*j_y)*hx**2 + 1.5*V*rho - 3*j_y))/(h0**2*rho)
-
-            self.field[2] -= -j_x * hx / h0 - j_y * hy / h0
-
-## v1
-
-        # self.field[0] -= P * h.field[1]/h.field[0] + (6. * mu * (U * q.field[2] - 2.*q.field[0]) + 8.*(lam/2.+ mu)*(U*q.field[2] - 1.5 * q.field[0]))/(h.field[0]**2 * q.field[2])
-        #
-        # self.field[1] -=  1./(h.field[0]**2 * q.field[2]) * (2 * mu * (2. * h.field[1]**2 * V * q.field[0] - 3.*h.field[1]**2 * q.field[1] + 3. * V * q.field[2] - 6.*q.field[1]))
-        #
-        # self.field[2] -= -q.field[0] * h.field[1] / h.field[0] - q.field[1] * h.field[2] / h.field[0]
-
     def updateExplicit(self, rhs, dt):
         self.field[0] = self.field[0] - dt * rhs.field[0]
         self.field[1] = self.field[1] - dt * rhs.field[1]

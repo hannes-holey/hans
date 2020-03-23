@@ -4,7 +4,7 @@
 import numpy as np
 from field.field import VectorField
 from stress.stress import Newtonian
-
+from eos.eos import DowsonHigginson, PowerLaw
 
 class Flux:
 
@@ -244,3 +244,37 @@ class Flux:
             flux.field[2] = 0.5 * (np.roll(f3_p, d, axis=ax) + f3)
 
         return flux
+
+    def addFluxAnalytic(self, rhs, q, h):
+
+        mu = self.material['mu']
+        lam = self.material['lambda']
+
+        U = self.geometry['U']
+        V = self.geometry['V']
+
+        if self.material['EOS'] == 'DH':
+            eqOfState = DowsonHigginson(self.material)
+        elif self.material['EOS'] == 'PL':
+            eqOfState = PowerLaw(self.material)
+
+        P = eqOfState.isoT_pressure(q.field[2])
+        j_x = q.field[0]
+        j_y = q.field[1]
+        rho = q.field[2]
+        h0 = h.field[0]
+        hx = h.field[1]
+        hy = h.field[2]
+
+        if self.rey == True:
+            rhs.field[0] -= P * hx/h0 + 6.* mu*(U*rho - 2.*j_x)/(rho * h0**2)
+            rhs.field[1] -= P * hy/h0 + 6.* mu*(V*rho - 2.*j_y)/(rho * h0**2)
+            rhs.field[2] -= -j_x * hx / h0 - j_y * hy / h0
+        elif self.rey == False:
+            rhs.field[0] -= (8*(lam/2 + mu)*(U*rho - 1.5*j_x)*hx**2 + (4*(V*rho - 1.5*j_y)*(mu + lam)*hy + P*h0*rho)*hx \
+                            + 4*mu*((U*rho - 1.5*j_x)*hy**2 + 1.5*U*rho - 3*j_x))/(h0**2*rho)
+            rhs.field[1] -= (8*(V*rho - 1.5*j_y)*(lam/2 + mu)*hy**2 + (4*hx*(U*rho - 1.5*j_x)*(mu + lam) + P*h0*rho)*hy \
+                            + 4*mu*((V*rho - 1.5*j_y)*hx**2 + 1.5*V*rho - 3*j_y))/(h0**2*rho)
+            rhs.field[2] -= -j_x * hx / h0 - j_y * hy / h0
+
+        return rhs

@@ -72,8 +72,6 @@ class Solver:
             self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2.*self.P0), 0, 2)
             # self.q.field[2][int(self.q.Nx/2)-2 : int(self.q.Nx/2)+2,int(self.q.Ny/2)-2 : int(self.q.Ny/2)+2] = self.eqOfState.isoT_density(2* self.P0)
 
-        self.rhs = VectorField(disc)
-
         self.file_tag = 1
         self.ani_tag = 1
 
@@ -121,12 +119,16 @@ class Solver:
             fYN = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height, -1, 1)
             fYS = Flux(self.disc, self.geometry, self.numerics, self.material).getFlux_MC(self.q, self.height,  1, 1)
 
-        self.rhs.computeRHS(fXE, fXW, fYN, fYS)
-        # self.rhs.addStress_wall(self.q, self.height, self.mu, self.U, self.V)
-        self.rhs.addStress_wall(self.q, self.height, self.U, self.V, self.material, self.rey)
+        rhs = VectorField(self.disc)
+
+        rhs.field[0] = 1./rhs.dx * (fXE.field[0] - fXW.field[0]) + 1./rhs.dy * (fYN.field[0] - fYS.field[0])
+        rhs.field[1] = 1./rhs.dx * (fXE.field[1] - fXW.field[1]) + 1./rhs.dy * (fYN.field[1] - fYS.field[1])
+        rhs.field[2] = 1./rhs.dx * (fXE.field[2] - fXW.field[2]) + 1./rhs.dy * (fYN.field[2] - fYS.field[2])
+
+        rhs = Flux(self.disc, self.geometry, self.numerics, self.material).addAnalytic(rhs, self.q, self.height)
 
         # explicit time step
-        self.q.updateExplicit(self.rhs, self.dt)
+        self.q.updateExplicit(rhs, self.dt)
 
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.vmax = np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2))
