@@ -32,7 +32,7 @@ class Flux:
         if self.rey == True:
             stress = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
-            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            stress = Newtonian(self.disc).full(q, h, self.geometry, self.material)
 
         if ax == 0:
             f1 = -stress.field[0]
@@ -80,7 +80,7 @@ class Flux:
         if self.rey == True:
             stress = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
-            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            stress = Newtonian(self.disc).full(q, h, self.geometry, self.material)
 
         if ax == 0:
             f1 = -stress.field[0]
@@ -131,9 +131,9 @@ class Flux:
             stress = Newtonian(self.disc).reynolds(Q, self.material)
             stress_center = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
-            stress_center = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            stress_center = Newtonian(self.disc).full(q, h, self.geometry, self.material)
             h.stagArray(d, ax)
-            stress = Newtonian(self.disc).average_w4(Q, h, self.geometry, self.material)
+            stress = Newtonian(self.disc).full(Q, h, self.geometry, self.material)
 
         flux = VectorField(self.disc)
 
@@ -183,7 +183,7 @@ class Flux:
         if self.rey == True:
             stress = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
-            stress = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            stress = Newtonian(self.disc).full(q, h, self.geometry, self.material)
 
         if ax == 0:
             f1 = -stress.field[0]
@@ -212,9 +212,9 @@ class Flux:
             stress = Newtonian(self.disc).reynolds(Q, self.material)
             stress_center = Newtonian(self.disc).reynolds(q, self.material)
         elif self.rey == False:
-            stress_center = Newtonian(self.disc).average_w4(q, h, self.geometry, self.material)
+            stress_center = Newtonian(self.disc).full(q, h, self.geometry, self.material)
             h.stagArray(d, ax)
-            stress = Newtonian(self.disc).average_w4(Q, h, self.geometry, self.material)
+            stress = Newtonian(self.disc).full(Q, h, self.geometry, self.material)
 
         flux = VectorField(self.disc)
 
