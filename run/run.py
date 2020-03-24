@@ -22,6 +22,7 @@ class Run:
 
         plotOption = bool(options['plot'])
         self.writeInterval = int(options['writeInterval'])
+        tol = float(numerics['tol'])
         self.name = str(geometry['name'])
 
         self.maxIt= int(numerics['maxT'] * 1e9 /numerics['dt'])
@@ -66,7 +67,7 @@ class Run:
 
                 tDiff = numerics['maxT'] * 1e-9 - self.sol.time
 
-                if self.sol.eps < 1e-18:
+                if self.sol.eps < tol and self.sol.time > 1e-6:
                     self.write(i, 1)
                     #print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
