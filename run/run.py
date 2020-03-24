@@ -53,25 +53,31 @@ class Run:
             outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5'
 
             i = 0
+
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Delta_v"))
             while self.sol.time * 1e9 < numerics['maxT']:
 
                 self.sol.solve(i)
                 self.write(i, 0)
-                print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\r")
+                if i % self.writeInterval == 0:
+                    print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
+                #print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\r")
                 i += 1
 
                 tDiff = numerics['maxT'] * 1e-9 - self.sol.time
 
                 if self.sol.eps < 5e-8:
                     self.write(i, 1)
-                    print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
-                    print("Solution has converged after {:d} steps, Output written to : {:s}".format(i, outfile))
+                    #print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
+                    print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
+                    print("\nSolution has converged after {:d} steps, Output written to : {:s}".format(i, outfile))
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
                     self.write(i, 1)
-                    print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
-                    print("No convergence within {:d} ns. Output written to : {:s}".format(numerics['maxT'], outfile))
+                    # print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
+                    print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
+                    print("\nNo convergence within {:d} ns. Output written to : {:s}".format(numerics['maxT'], outfile))
 
         else:
             self.plot()
