@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import numpy as np
 from eos.eos import DowsonHigginson, PowerLaw
 from field.field import VectorField
 
