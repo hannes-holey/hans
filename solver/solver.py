@@ -104,4 +104,4 @@ class Solver:
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.time += self.dt
 
-        self.eps = abs(np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)) - self.vmax)/self.vmax
+        self.eps = abs(np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)) - self.vmax)/(self.vmax/self.dt)
