@@ -11,3 +11,4 @@ output/*.dat
 output/animations/
 */__init__.py
 config/
+submit.sh
