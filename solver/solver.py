@@ -95,7 +95,11 @@ class Solver:
         self.rhs.field[1] = 1./self.rhs.dx * (fXE.field[1] - fXW.field[1]) + 1./self.rhs.dy * (fYN.field[1] - fYS.field[1])
         self.rhs.field[2] = 1./self.rhs.dx * (fXE.field[2] - fXW.field[2]) + 1./self.rhs.dy * (fYN.field[2] - fYS.field[2])
 
-        self.rhs = self.Flux.addAnalytic(self.rhs, self.q, self.height)
+        corr = self.Flux.fluxAnalytic(self.q, self.height)
+
+        self.rhs.field[0] -= corr.field[0]
+        self.rhs.field[1] -= corr.field[1]
+        self.rhs.field[2] -= corr.field[2]
 
         # explicit time step
         self.q.updateExplicit(self.rhs, self.dt)
