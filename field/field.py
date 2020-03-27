@@ -5,7 +5,11 @@ import numpy as np
 
 class Field:
 
-    def __init__(self, disc):
+    def __init__(self, disc, ndim):
+
+        self.ndim = ndim
+        self.disc = disc
+
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
         self.Lx = float(disc['Lx'])
@@ -69,20 +73,50 @@ class Field:
 
     def stagArray(self, dir, ax):
 
+        out = Field(self.disc, self.ndim)
+
         for i in range(self.ndim):
-            self.field[i] = 0.5 * (self.field[i] + np.roll(self.field[i], dir, axis = ax))
+            out.field[i] = 0.5 * (self.field[i] + np.roll(self.field[i], dir, axis = ax))
+
+        return out
+
+    def cellAverage(self):
+
+        out = Field(self.disc, self.ndim)
+
+        E = self.stagArray(-1, 0)
+        W = self.stagArray( 1, 0)
+
+        NE = E.stagArray(-1, 1)
+        SE = E.stagArray( 1, 1)
+        NW = W.stagArray(-1, 1)
+        SW = W.stagArray( 1, 1)
+
+        for i in range(self.ndim):
+            out.field[i] = 0.25 * (NE.field[i] + SE.field[i] + NW.field[i] + SW.field[i])
+
+        return out
+
+    def copy(self):
+
+        out = Field(self.disc , self.ndim)
+
+        for i in range (self.ndim):
+            out.field[i] = self.field[i]
+
+        return out 
 
 class ScalarField(Field):
 
     def __init__(self, disc):
         self.ndim = 1
-        super().__init__(disc)
+        super().__init__(disc, self.ndim)
 
 class VectorField(Field):
 
     def __init__(self, disc):
         self.ndim = 3
-        super().__init__(disc)
+        super().__init__(disc, self.ndim)
 
     def getGradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
@@ -98,7 +132,7 @@ class TensorField(Field):
 
     def __init__(self, disc):
         self.ndim = 6
-        super().__init__(disc)
+        super().__init__(disc, self.ndim)
 
     # def addNoise(self, frac):
     #     for i in range(self.ndim):
