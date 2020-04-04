@@ -23,7 +23,7 @@ class Run:
         plotOption = bool(options['plot'])
         self.writeInterval = int(options['writeInterval'])
         tol = float(numerics['tol'])
-        self.name = str(geometry['name'])
+        self.name = str(options['name'])
 
         self.maxIt= int(numerics['maxT'] * 1e9 /numerics['dt'])
 
