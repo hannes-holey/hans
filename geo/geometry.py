@@ -32,4 +32,4 @@ class Analytic:
         c = CR * Rb
         e = eps * c
 
-        return c + e * np.cos(2. * np.pi * x / self.Lx)
+        return c + e * np.cos(x / Rb)
