@@ -47,4 +47,4 @@ class PowerLaw:
 
     def soundSpeed(self, rho):
         if self.alpha < 2:
-            return np.sqrt(2./(2. - self.alpha)*(rho/self.rho0)**(self.alpha/(2. - self.alpha)))
+            return np.sqrt(-2.*self.P0*(rho/self.rho0)**(-2./(self.alpha - 2.))/((self.alpha - 2) * rho))
