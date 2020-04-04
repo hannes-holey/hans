@@ -12,13 +12,14 @@ class Solver:
 
     def __init__(self, disc, geometry, numerics, material):
 
-        self.name = str(geometry['name'])
+        self.type = str(geometry['type'])
 
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
         self.maxIt = int(numerics['maxT'] * 1e9 /self.dt)
         self.C = numerics['C']
+        self.s_order = int(numerics['s_order'])
 
         if material['EOS'] == 'DH':
             self.eqOfState = DowsonHigginson(material)
@@ -34,7 +35,7 @@ class Solver:
         # Gap height
         self.height = VectorField(disc)
 
-        if self.name == 'journal':
+        if self.type == 'journal':
             self.height.fromFunctionXY(Analytic(disc, geometry).journalBearing, 0)
         else:
             self.height.fromFunctionXY(Analytic(disc, geometry).linearSlider, 0)
@@ -47,15 +48,15 @@ class Solver:
         self.q = VectorField(disc)
         self.q.fill(rho0, 2)
 
-        if self.name == 'inclined':
+        if self.type == 'inclined':
             self.q.field[2][0,:] = self.eqOfState.isoT_density(P0)
             self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
-        elif self.name == 'poiseuille':
+        elif self.type == 'poiseuille':
             self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
             self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * P0)
-        elif self.name == 'droplet':
+        elif self.type == 'droplet':
             self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(2. * P0), 2)
-        elif self.name == 'wavefront':
+        elif self.type == 'wavefront':
             self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2. * P0), 0, 2)
 
         self.Flux = Flux(disc, geometry, numerics, material)
