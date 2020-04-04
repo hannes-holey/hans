@@ -78,7 +78,8 @@ class Run:
                     self.write(i, 1)
                     # print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    print("\nNo convergence within {:d} ns. Output written to : {:s}".format(numerics['maxT'], outfile))
+                    print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:d} ns reached.".format(i, numerics['maxT']))
+                    print("Output written to : {:s}".format(outfile))
 
         else:
             self.plot()
