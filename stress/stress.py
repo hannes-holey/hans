@@ -47,8 +47,18 @@ class Newtonian:
         self.out.field[0] *= -1.
         self.out.field[1] *= -1.
 
-        self.out.field[0] -= (4.*(U*q.field[2]-1.5*q.field[0])*(mu+lam/2.)*h.field[1] + 2.*lam*(V*q.field[2]-1.5*q.field[1])*h.field[2])/(q.field[2]*h.field[0])
-        self.out.field[1] -= (4.*(V*q.field[2]-1.5*q.field[1])*(mu+lam/2.)*h.field[2] + 2.*lam*(U*q.field[2]-1.5*q.field[1])*h.field[1])/(q.field[2]*h.field[0])
-        self.out.field[2] = -2.*mu*(h.field[1] * (V*q.field[2]-1.5*q.field[1]) + h.field[2] * (U*q.field[2]-1.5*q.field[0]))/(q.field[2]*h.field[0])
+        j_x = q.field[0]
+        j_y = q.field[1]
+        rho = q.field[2]
+
+        h0 = h.field[0]
+        hx = h.field[1]
+        hy = h.field[2]
+
+        self.out.field[0] +=  (-3*(lam + 2*mu)*(U*rho - 2*j_x)*hx - 3*lam*(V*rho - 2*j_y)*hy)/(2*h0*rho)
+        self.out.field[1] +=  (-3*(lam + 2*mu)*(V*rho - 2*j_y)*hy - 3*lam*(U*rho - 2*j_x)*hx)/(2*h0*rho)
+        self.out.field[2] += -3*((V*rho - 2*j_y)*hx + hy*(U*rho - 2*j_x))*mu/(2*h0*rho)
+
+        self.out.addNoise(frac)
 
         return self.out
