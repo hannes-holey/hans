@@ -114,7 +114,17 @@ class Field:
         for i in range (self.ndim):
             out.field[i] = self.field[i]
 
-        return out 
+        return out
+
+    def updateExplicit(self, rhs, dt):
+        for i in range(self.ndim):
+            self.field[i] = self.field[i] + dt * rhs.field[i]
+
+    def addNoise(self, frac):
+        for i in range(self.ndim):
+            mean = np.zeros_like(self.field[i])
+            mu = frac * np.amax(abs(self.field[i]))
+            self.field[i] += np.random.normal(mean, mu)
 
 class ScalarField(Field):
 
@@ -133,19 +143,10 @@ class VectorField(Field):
         self.field[1] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[0]
         self.field[2] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[1]
 
-    def updateExplicit(self, rhs, dt):
-        self.field[0] = self.field[0] - dt * rhs.field[0]
-        self.field[1] = self.field[1] - dt * rhs.field[1]
-        self.field[2] = self.field[2] - dt * rhs.field[2]
+
 
 class TensorField(Field):
 
     def __init__(self, disc):
         self.ndim = 6
         super().__init__(disc, self.ndim)
-
-    # def addNoise(self, frac):
-    #     for i in range(self.ndim):
-    #         mean = self.field[i]
-    #         mu = frac * np.amax(abs(self.field[i]))
-    #         self.field[i] += np.random.normal(mean, mu)
