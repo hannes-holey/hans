@@ -19,7 +19,6 @@ class Solver:
         self.dt = float(numerics['dt'])
         self.maxIt = int(numerics['maxT'] * 1e9 /self.dt)
         self.C = numerics['C']
-        self.s_order = int(numerics['s_order'])
 
         if material['EOS'] == 'DH':
             self.eqOfState = DowsonHigginson(material)
