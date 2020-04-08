@@ -47,7 +47,7 @@ class Solver:
         rho0 = float(material['rho0'])
 
         self.q = VectorField(disc)
-        self.q.fill(rho0, 2)
+        self.q.field[2] = rho0
 
         if self.type == 'inclined':
             self.q.field[2][0,:] = self.eqOfState.isoT_density(P0)
@@ -56,9 +56,9 @@ class Solver:
             self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
             self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * P0)
         elif self.type == 'droplet':
-            self.q.fill_circle(1.e-4, self.eqOfState.isoT_density(2. * P0), 2)
+            self.q.fill_circle(self.eqOfState.isoT_density(2. * P0), 2)
         elif self.type == 'wavefront':
-            self.q.fill_line(0.25, 5e-5, self.eqOfState.isoT_density(2. * P0), 0, 2)
+            self.q.fill_line(self.eqOfState.isoT_density(2. * P0), 0, 2)
 
         self.Flux = Flux(disc, geometry, numerics, material)
 
@@ -93,14 +93,12 @@ class Solver:
             fYN = self.Flux.getFlux_MC(self.q, self.height, -1, 1)
             fYS = self.Flux.getFlux_MC(self.q, self.height,  1, 1)
 
-        self.rhs.field[0] = -1./self.rhs.dx * (fXE.field[0] - fXW.field[0]) - 1./self.rhs.dy * (fYN.field[0] - fYS.field[0])
-        self.rhs.field[1] = -1./self.rhs.dx * (fXE.field[1] - fXW.field[1]) - 1./self.rhs.dy * (fYN.field[1] - fYS.field[1])
-        self.rhs.field[2] = -1./self.rhs.dx * (fXE.field[2] - fXW.field[2]) - 1./self.rhs.dy * (fYN.field[2] - fYS.field[2])
+        self.rhs.field = -1./self.rhs.dx * (fXE.field - fXW.field) - 1./self.rhs.dy * (fYN.field - fYS.field)
 
         source = self.Flux.getSource(self.q, self.height)
         source.addNoise(self.frac)
-        self.rhs += source                                                  # see __add__ method of Field
-        self.q.updateExplicit(self.rhs, self.dt)
+        self.rhs.field += source.field
+        self.q.field += self.dt * self.rhs.field
 
         # some scalar output
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)

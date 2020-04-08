@@ -25,50 +25,33 @@ class Field:
         self.xx = xx.T
         self.yy = yy.T
 
-        self.field = []
+        self.field = np.zeros(shape = (self.ndim, self.Nx, self.Ny), dtype=np.float64)
 
-        for k in range(self.ndim):
-            self.field.append(np.zeros(shape = (self.Nx, self.Ny), dtype=np.float64))
+    def fill_circle(self, value, comp, center = None, radius = None):
 
-    def __add__(self, other):
-        for i in range(self.ndim):
-            self.field[i] = self.field[i] + other.field[i]
-        return self
+        if center is None:
+            center = (self.Lx/2, self.Ly/2)
+        if radius is None:
+            radius = 0.25*min(self.Lx/2, self.Ly/2)
 
-    def __mul__(self, other):
-        for i in range(self.ndim):
-            self.field[i] = self.field[i] * other
-        return self
+        mask = (self.xx - center[0])**2 + (self.yy - center[1])**2 < radius**2
+        self.field[comp][mask] = value
 
-    def fill(self, value, comp):
-        self.field[comp] = np.ones(shape=(self.Nx, self.Ny)) * value
+    def fill_line(self, value, ax, comp, loc = None, width=None):
 
-    def fill_circle(self, radius, value, comp):
-        for i in range(self.Nx):
-            for j in range(self.Ny):
-                if ((self.xx[i,j]-self.Lx/2)**2 + (self.yy[i,j]-self.Ly/2)**2) < radius**2:
-                    self.field[comp][i,j] = value
+        if loc is None:
+            loc = (self.Lx/2, self.Ly/2)
+        if width is None:
+            width = 0.2 * (self.Lx, self.Ly)[ax]
 
-    def fill_line(self, loc, width, value, ax, comp):
-        for i in range(self.Nx):
-            for j in range(self.Ny):
-                if ax == 0:
-                    if abs(self.xx[i,j] - loc * self.Lx) < width/2.:
-                        self.field[comp][i,j] = value
-                elif ax == 1:
-                    if abs(self.yy[i,j]- loc * self.Ly) < width/2.:
-                        self.field[comp][i,j] = value
-
+        mask = abs(self.xx - loc[ax]) < width/2.
+        self.field[comp][mask] = value
 
     def fromFunctionXY(self, func, comp):
         self.field[comp]=func(self.xx, self.yy)
 
     def fromFunctionField(self, func, arg, comp):
         self.field[comp] = func(arg)
-
-    def fromField(self, field):
-        for i in range(self.ndim):
-            self.field[i] = field.field[i]
 
     def edgesField(self):
         self.dx = self.Lx/(self.Nx - 1)
@@ -84,9 +67,7 @@ class Field:
     def stagArray(self, dir, ax):
 
         out = Field(self.disc, self.ndim)
-
-        for i in range(self.ndim):
-            out.field[i] = 0.5 * (self.field[i] + np.roll(self.field[i], dir, axis = ax))
+        out.field = 0.5 * (self.field + np.roll(self.field, dir, axis = ax))
 
         return out
 
@@ -94,37 +75,22 @@ class Field:
 
         out = Field(self.disc, self.ndim)
 
-        E = self.stagArray(-1, 0)
-        W = self.stagArray( 1, 0)
+        E = self.stagArray(-1, 1)
+        W = self.stagArray( 1, 1)
 
-        NE = E.stagArray(-1, 1)
-        SE = E.stagArray( 1, 1)
-        NW = W.stagArray(-1, 1)
-        SW = W.stagArray( 1, 1)
+        NE = E.stagArray(-1, 2)
+        SE = E.stagArray( 1, 2)
+        NW = W.stagArray(-1, 2)
+        SW = W.stagArray( 1, 2)
 
-        for i in range(self.ndim):
-            out.field[i] = 0.25 * (NE.field[i] + SE.field[i] + NW.field[i] + SW.field[i])
-
-        return out
-
-    def copy(self):
-
-        out = Field(self.disc , self.ndim)
-
-        for i in range (self.ndim):
-            out.field[i] = self.field[i]
+        out.field = 0.25 * (NE.field + SE.field + NW.field + SW.field)
 
         return out
-
-    def updateExplicit(self, rhs, dt):
-        for i in range(self.ndim):
-            self.field[i] = self.field[i] + dt * rhs.field[i]
 
     def addNoise(self, frac):
-        for i in range(self.ndim):
-            mean = np.zeros_like(self.field[i])
-            mu = frac * np.amax(abs(self.field[i]))
-            self.field[i] += np.random.normal(mean, mu)
+        mean = np.zeros_like(self.field)
+        mu = frac * np.amax(np.amax(abs(self.field), axis = 1), axis = 1)
+        self.field += np.random.normal(mean, mu[:,np.newaxis, np.newaxis])
 
 class ScalarField(Field):
 
@@ -142,8 +108,6 @@ class VectorField(Field):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
         self.field[1] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[0]
         self.field[2] = np.gradient(self.field[0], self.dx, self.dy, edge_order = 2)[1]
-
-
 
 class TensorField(Field):
 
