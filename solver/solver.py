@@ -105,4 +105,4 @@ class Solver:
         self.time += self.dt
 
         vmax_new = np.amax(np.sqrt(self.q.field[0]*self.q.field[0] + self.q.field[1]*self.q.field[1])/self.q.field[2])
-        self.eps = abs(vmax_new - self.vmax)/self.vmax      #*self.q.dx/self.dt
+        self.eps = abs(vmax_new - self.vmax)/self.vmax/self.C
