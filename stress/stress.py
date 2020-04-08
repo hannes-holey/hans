@@ -16,12 +16,15 @@ class Newtonian:
             eqOfState = DowsonHigginson(material)
         elif material['EOS'] == 'PL':
             eqOfState = PowerLaw(material)
+        frac = float(material['frac'])
 
         self.out.fromFunctionField(eqOfState.isoT_pressure, q.field[2], 0)
         self.out.fromFunctionField(eqOfState.isoT_pressure, q.field[2], 1)
 
         self.out.field[0] *= -1.
         self.out.field[1] *= -1.
+
+        self.out.addNoise(frac)
 
         return self.out
 
@@ -31,6 +34,7 @@ class Newtonian:
         V = float(geo['V'])
         mu = float(material['mu'])
         lam = float(material['lambda'])
+        frac = float(material['frac'])
 
         if material['EOS'] == 'DH':
             eqOfState = DowsonHigginson(material)
