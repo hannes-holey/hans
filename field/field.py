@@ -30,6 +30,16 @@ class Field:
         for k in range(self.ndim):
             self.field.append(np.zeros(shape = (self.Nx, self.Ny), dtype=np.float64))
 
+    def __add__(self, other):
+        for i in range(self.ndim):
+            self.field[i] = self.field[i] + other.field[i]
+        return self
+
+    def __mul__(self, other):
+        for i in range(self.ndim):
+            self.field[i] = self.field[i] * other
+        return self
+
     def fill(self, value, comp):
         self.field[comp] = np.ones(shape=(self.Nx, self.Ny)) * value
 
