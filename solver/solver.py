@@ -31,6 +31,8 @@ class Solver:
         if material['Stokes'] == True:
             material['lambda'] = -2./3. * material['mu']
 
+        self.frac = float(material['frac'])
+
         # Gap height
         self.height = VectorField(disc)
 
@@ -91,21 +93,18 @@ class Solver:
             fYN = self.Flux.getFlux_MC(self.q, self.height, -1, 1)
             fYS = self.Flux.getFlux_MC(self.q, self.height,  1, 1)
 
-        self.rhs.field[0] = 1./self.rhs.dx * (fXE.field[0] - fXW.field[0]) + 1./self.rhs.dy * (fYN.field[0] - fYS.field[0])
-        self.rhs.field[1] = 1./self.rhs.dx * (fXE.field[1] - fXW.field[1]) + 1./self.rhs.dy * (fYN.field[1] - fYS.field[1])
-        self.rhs.field[2] = 1./self.rhs.dx * (fXE.field[2] - fXW.field[2]) + 1./self.rhs.dy * (fYN.field[2] - fYS.field[2])
+        self.rhs.field[0] = -1./self.rhs.dx * (fXE.field[0] - fXW.field[0]) - 1./self.rhs.dy * (fYN.field[0] - fYS.field[0])
+        self.rhs.field[1] = -1./self.rhs.dx * (fXE.field[1] - fXW.field[1]) - 1./self.rhs.dy * (fYN.field[1] - fYS.field[1])
+        self.rhs.field[2] = -1./self.rhs.dx * (fXE.field[2] - fXW.field[2]) - 1./self.rhs.dy * (fYN.field[2] - fYS.field[2])
 
-        corr = self.Flux.fluxAnalytic(self.q, self.height)
-
-        self.rhs.field[0] -= corr.field[0]
-        self.rhs.field[1] -= corr.field[1]
-        self.rhs.field[2] -= corr.field[2]
-
-        # explicit time step
+        source = self.Flux.getSource(self.q, self.height)
+        source.addNoise(self.frac)
+        self.rhs += source                                                  # see __add__ method of Field
         self.q.updateExplicit(self.rhs, self.dt)
 
         # some scalar output
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.time += self.dt
 
-        self.eps = abs(np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)) - self.vmax)/(self.vmax/self.dt)
+        vmax_new = np.amax(np.sqrt(self.q.field[0]*self.q.field[0] + self.q.field[1]*self.q.field[1])/self.q.field[2])
+        self.eps = abs(vmax_new - self.vmax)/self.vmax      #*self.q.dx/self.dt
