@@ -3,20 +3,20 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+from helper import getFile
 
 plt.style.use('presentation')
 plt.figure(figsize=(10,6), tight_layout=True)
 
-file = h5py.File(sys.argv[1], 'r')
+file = getFile()
 
 conf_disc = file.get('config/disc')
 Lx = conf_disc.attrs['Lx']
 
-toPlot = {  0: ['j_x', r'mass flux $j_x$ $(kg\, m^{-2}s^{-1})$', 1.],
-            1: ['j_y', r'mass flux $j_x$ $(kg\, m^{-2}s^{-1})$', 1.],
-            2: ['rho', r'density $\rho$ $(kg\,m^{-3})$', 1.],
-            3: ['press', r'pressure $P$ $(MPa)$', 1e-6]}
+toPlot = {  0: ['j_x', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
+            1: ['j_y', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
+            2: ['rho', r'density [kg/m$^3$]', 1.],
+            3: ['press', r'pressure (MPa)', 1e-6]}
 
 choice      = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
 every       = int(input("Plot every n-th written time step: "))
@@ -40,12 +40,8 @@ for i in keys[::every]:
 sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin = 0, vmax = maxT))
 file.close()
 
-plt.xlabel('distance (mm)')
+plt.xlabel('distance [mm]')
 plt.ylabel(toPlot[choice][1])
 
-# ref = np.loadtxt('p_500.dat')
-# x_ref = np.linspace(0, 1., ref.shape[0])
-# plt.plot(x_ref, ref, '--', color = 'black', label = r'steady-state')
-
-plt.colorbar(sm, label = 'time (µs)', extend='max')
+plt.colorbar(sm, label = 'time [µs]', extend='max')
 plt.show()

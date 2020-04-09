@@ -9,7 +9,7 @@ def getFiles():
     availFiles = {}
     i = 0
     for file in sorted(os.listdir()):
-        if file.endswith('h5'):
+        if file.endswith("h5"):
             availFiles.update({i: file})
             i +=1
 
@@ -36,7 +36,7 @@ def getFile():
     availFiles = {}
     i = 0
     for file in sorted(os.listdir()):
-        if file.endswith('h5'):
+        if file.endswith("h5"):
             availFiles.update({i: file})
             i +=1
 
@@ -56,6 +56,32 @@ def getFile():
             print("File not in list. Try again!")
             flag = False
     return file
+
+
+def getReference():
+    availFiles = {}
+    i = 0
+    for file in sorted(os.listdir()):
+        if file.endswith("dat"):
+            availFiles.update({i: file})
+            i +=1
+
+    if len(availFiles) == 0:
+        print("No *.dat files found.")
+        return None
+    else:
+        print("Available data files for comparison:")
+
+    for key, val in availFiles.items():
+        print("{:3d}: {:20s}".format(key, val))
+
+    userInput = input("Enter file key: ")
+    if userInput in np.arange(0, len(availFiles)).astype(str):
+        ref = np.loadtxt(availFiles[int(userInput)])
+        assert ref.ndim == 2, "Input data file has wrong dimension"
+    else:
+        print("No comparison!")
+        return None
 
 def copyTemp(filename):
 
