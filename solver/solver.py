@@ -17,7 +17,6 @@ class Solver:
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
-        self.maxIt = int(numerics['maxT'] * 1e9 /self.dt)
         self.C = numerics['C']
 
         if material['EOS'] == 'DH':
@@ -26,10 +25,6 @@ class Solver:
             self.eqOfState = PowerLaw(material)
 
         self.time = 0
-
-        # Stokes assumption
-        # if material['Stokes'] == True:
-        #     material['lambda'] = -2./3. * material['mu']
 
         self.frac = float(material['frac'])
 
