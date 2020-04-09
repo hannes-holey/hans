@@ -254,7 +254,10 @@ class Flux:
         out = VectorField(self.disc)
 
         mu = self.material['mu']
-        lam = self.material['lambda']
+        if bool(self.material['Stokes']) == True:
+            lam = -2/3 *mu
+        else:
+            lam = self.material['lambda']
 
         U = self.geometry['U']
         V = self.geometry['V']

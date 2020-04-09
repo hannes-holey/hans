@@ -33,7 +33,12 @@ class Newtonian:
         U = float(geo['U'])
         V = float(geo['V'])
         mu = float(material['mu'])
-        lam = float(material['lambda'])
+
+        if bool(material['Stokes']) == True:
+            lam = -2/3 * mu
+        else:
+            lam = material['lambda']
+            
         frac = float(material['frac'])
 
         if material['EOS'] == 'DH':
