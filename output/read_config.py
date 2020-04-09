@@ -9,8 +9,13 @@ for file in sys.argv[1:]:
 
         f1 = h5py.File(file, 'r')
         group = f1.get('/config')
-        start = group.attrs['Start time:']
-        print(50 * "-" + "\n" + "{:31s}".format(file)+ start + "\n" + 50 * "-")
+
+        start = group.attrs['tStart']
+        branch = group.attrs['branch']
+        commit = group.attrs['commit']
+        print(50 * "-" )
+        print("{:30s} {:s}\n{:s} ({:s})".format(file, start, commit, branch))
+        print(50 * "-" )
 
         for sub_key, sub_val in group.items():
             print(sub_key + ":")
