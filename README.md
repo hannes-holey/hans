@@ -12,4 +12,4 @@ Run the program from the command line using
 ```
 ./main.py <path to your configuration file>
 ```
-The configuration file uses the *YAML* file format. An example for the input parameters is given in *EXAMPLE_DIR*.
+Example input files are given in the *examples/* directory.

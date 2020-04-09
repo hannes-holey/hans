@@ -1,0 +1,36 @@
+options:
+    name: journal-bearing
+    plot: False
+    writeInterval: 1000
+disc:
+    Lx: 1.e-3
+    Ly: 1.e-3
+    Nx: 50
+    Ny: 50
+geometry:
+    type: journal
+    CR: 1e-2
+    eps: 0.7
+    U: 0.1
+    V: 0.
+numerics:
+    adaptive: True
+    C: 0.02
+    tol: 1e-5
+    dt: 1.e-10
+    maxT: 3.e-5
+    numFlux: LW
+    Rey: True
+    periodicX: True
+    periodicY: True
+material:
+    EOS: DH
+    Stokes: True
+    mu: 0.0794
+    P0: 101325
+    rho0: 877.7007
+    T0: 323.15
+    C1: 3.5e8
+    C2: 1.23
+    alpha: 1.9
+    frac: 0.0
