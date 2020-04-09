@@ -73,7 +73,7 @@ class Solver:
             if i == 0:
                 self.dt = self.dt
             else:
-                self.dt = self.C * min(self.q.dx, self.q.dy)/self.vSound
+                self.dt = self.C * min(self.q.dx, self.q.dy)/(self.vSound + self.vmax)
 
         if self.numFlux == 'LF':
             fXE = self.Flux.getFlux_LF(self.q, self.height, -1, 0)
