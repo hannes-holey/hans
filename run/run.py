@@ -96,12 +96,9 @@ class Run:
 
                 now = datetime.now()
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
-                repo = Repo(search_parent_directories=True)
-                git_branch = str(repo.active_branch)
-                git_commit = str(repo.active_branch.commit)
+                git_commit = str(Repo(search_parent_directories=True).head.object.hexsha)
 
                 g0.attrs.create('tStart',  timeString)
-                g0.attrs.create('branch', git_branch)
                 g0.attrs.create('commit', git_commit)
 
                 categories = {'options': self.options,
