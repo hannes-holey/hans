@@ -62,21 +62,18 @@ class Run:
                 self.write(i, 0)
                 if i % self.writeInterval == 0:
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                #print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\r")
                 i += 1
 
                 tDiff = numerics['maxT'] * 1e-9 - self.sol.time
 
-                if self.sol.eps < tol and self.sol.time > 1e-6:
+                if self.sol.eps < tol:
                     self.write(i, 1)
-                    #print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nSolution has converged after {:d} steps, Output written to : {:s}".format(i, outfile))
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
                     self.write(i, 1)
-                    # print("Simulation time : {:.2f} ns / {:<d} ns".format(self.sol.time * 1e9, numerics['maxT']), end = "\n")
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:} ns reached.".format(i, numerics['maxT']))
                     print("Output written to : {:s}".format(outfile))
