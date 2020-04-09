@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 
-import h5py
-import sys
-import os
+from helper import getFiles
 
-for file in sys.argv[1:]:
-    if file in os.listdir() and file.endswith(".h5"):
+files = getFiles()
 
-        f1 = h5py.File(file, 'r')
-        group = f1.get('/config')
+for file in files.values():
+
+        group = file[1].get('/config')
 
         start = group.attrs['tStart']
         branch = group.attrs['branch']
         commit = group.attrs['commit']
         print(50 * "-" )
-        print("{:30s} {:s}\n{:s} ({:s})".format(file, start, commit, branch))
+        print("{:30s} {:s}\n{:s} ({:s})".format(file[0], start, commit, branch))
         print(50 * "-" )
 
         for sub_key, sub_val in group.items():
@@ -22,6 +20,3 @@ for file in sys.argv[1:]:
 
             for item in sub_val.attrs.keys():
                 print("\t{:20s}: {:>}".format(item, sub_val.attrs[item]))
-
-    else:
-        print(file + ": no hdf5 file")
