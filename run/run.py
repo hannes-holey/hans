@@ -22,18 +22,15 @@ class Run:
 
         plotOption = bool(options['plot'])
         self.writeInterval = int(options['writeInterval'])
-        tol = float(numerics['tol'])
         self.name = str(options['name'])
 
-        self.maxIt= int(numerics['maxT'] * 1e9 /numerics['dt'])
+        tol = float(numerics['tol'])
+        maxT = float(numerics['maxT'])
 
         self.Lx = float(disc['Lx'])
         self.Ly = float(disc['Ly'])
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
-
-        self.dx = self.Lx/self.Nx
-        self.dy = self.Ly/self.Ny
 
         if material['EOS'] == 'DH':
             self.eqOfState = DowsonHigginson(material)
@@ -56,7 +53,7 @@ class Run:
             i = 0
 
             print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Delta_v"))
-            while self.sol.time * 1e9 < numerics['maxT']:
+            while self.sol.time  < maxT:
 
                 self.sol.solve(i)
                 self.write(i, 0)
@@ -64,7 +61,7 @@ class Run:
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                 i += 1
 
-                tDiff = numerics['maxT'] * 1e-9 - self.sol.time
+                tDiff = maxT - self.sol.time
 
                 if self.sol.eps < tol:
                     self.write(i, 1)
@@ -75,7 +72,7 @@ class Run:
                     self.sol.solve(i)
                     self.write(i, 1)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:} ns reached.".format(i, numerics['maxT']))
+                    print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:.1e} s reached.".format(i, maxT))
                     print("Output written to : {:s}".format(outfile))
 
         else:
