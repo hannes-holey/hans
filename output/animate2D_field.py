@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from helper import getFile
 
-def assembleArrays(filename, database):
+def assembleArrays(file, database):
     """
     Assemble list of arrays from hdf5-file to loop over in animation
 
     Parameters
     ----------
-    filename :  str
-        name of the hdf5 input file
+    file : h5py File object
+        hdf5 input file
     database :  str
         name of the database to read from
 
@@ -28,11 +26,16 @@ def assembleArrays(filename, database):
         number of grid cells in x
     Ny : int
         number of grid cells in y
+    filename: str
+        name of the output file
     """
-    file = h5py.File(filename, 'r')
+
     conf_disc = file.get('/config/disc')
+    conf_opt = file.get('config/options')
+
     Nx = conf_disc.attrs['Nx']
     Ny = conf_disc.attrs['Ny']
+    filename = conf_opt.attrs['name']
 
     A = []
     t = []
@@ -41,9 +44,8 @@ def assembleArrays(filename, database):
             g = file.get(i)
             A.append(np.array(g.get(database)))
             t.append(g.attrs['time']*1e9)
-    file.close()
 
-    return A, t, Nx, Ny
+    return A, t, Nx, Ny, filename
 
 def plot_update(i, A, t):
     """
@@ -75,15 +77,14 @@ if __name__ == "__main__":
     plt.style.use('presentation')
     fig, ax= plt.subplots(figsize=(8,6))
 
-    filename = sys.argv[1]
-    name = os.path.splitext(filename)[0]
+    file = getFile()
 
     # User input
     toPlot = {0:'j_x', 1:'j_y', 2:'rho', 3:'press'}
     choice = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
     save = int(input("Show (0) or save (1) animation? "))
 
-    A, t, Nx, Ny = assembleArrays(filename, toPlot[choice])
+    A, t, Nx, Ny, name = assembleArrays(file, toPlot[choice])
 
     # Global colorbar limits
     glob_min = np.amin(A[0])

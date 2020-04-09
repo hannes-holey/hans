@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import h5py
+from helper import getFile
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 
-def assembleArrays(filename, database):
+def assembleArrays(file, database):
     """
     Assemble list of arrays from hdf5-file to loop over in animation
 
     Parameters
     ----------
-    filename :  str
-        name of the hdf5 input file
+    file :
+        h5py File object
     database :  str
         name of the database to read from
 
@@ -29,14 +27,20 @@ def assembleArrays(filename, database):
         number of grid cells in x
     Ny : int
         number of grid cells in y
+    Lx : float
+        length x
+    Ly : float
+        length y
+    filename: str
+        outpur filename
     """
-    file = h5py.File(filename, 'r')
     conf_disc = file.get('/config/disc')
+    conf_opt = file.get('config/options')
     Nx = conf_disc.attrs['Nx']
     Ny = conf_disc.attrs['Ny']
     Lx = conf_disc.attrs['Lx']
     Ly = conf_disc.attrs['Ly']
-
+    filename = conf_opt.attrs['name']
     A = []
     t = []
     for i in file.keys():
@@ -46,7 +50,7 @@ def assembleArrays(filename, database):
             t.append(g.attrs['time']*1e9)
     file.close()
 
-    return A, t, Nx, Ny, Lx, Ly
+    return A, t, Nx, Ny, Lx, Ly, filename
 
 def plot_update(i, A, t):
     """
@@ -84,15 +88,14 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(8,6))
     ax = Axes3D(fig)
 
-    filename = sys.argv[1]
-    name = os.path.splitext(filename)[0]
+    file = getFile()
 
     # User input
     toPlot = {0:'j_x', 1:'j_y', 2:'rho', 3:'press'}
     choice = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
     save = int(input("Show (0) or save (1) animation? "))
 
-    A, t, Nx, Ny, Lx, Ly = assembleArrays(filename, toPlot[choice])
+    A, t, Nx, Ny, Lx, Ly, name = assembleArrays(file, toPlot[choice])
 
     # Global colorbar limits
     glob_min = np.amin(A[0])
