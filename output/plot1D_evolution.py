@@ -11,7 +11,7 @@ plt.figure(figsize=(10,6), tight_layout=True)
 file = getFile()
 
 conf_disc = file.get('config/disc')
-Lx = conf_disc.attrs['Lx']
+Lx = float(conf_disc.attrs['Lx'])
 
 toPlot = {  0: ['j_x', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
             1: ['j_y', r'mass flux $y$ [kg/(m$^2$s)]', 1.],

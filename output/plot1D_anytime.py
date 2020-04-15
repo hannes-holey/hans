@@ -24,9 +24,9 @@ for file in files.values():
     conf_num =  file[1].get('config/numerics')
     conf_disc = file[1].get('config/disc')
 
-    Nx = conf_disc.attrs['Nx']
-    Lx = conf_disc.attrs['Lx']
-    maxT = conf_num.attrs['maxT']
+    Nx = int(conf_disc.attrs['Nx'])
+    Lx = float(conf_disc.attrs['Lx'])
+    maxT = float(conf_num.attrs['maxT'])
 
     time = float(input("Approximate time in ns for \'{:s}\' (max = {:.1f} ns): ".format(file[0], maxT)))
 

@@ -36,8 +36,8 @@ for file in files.values():
 
     last = list(file[1].keys())[-2]
 
-    Nx = conf_disc.attrs['Nx']
-    Lx = conf_disc.attrs['Lx']
+    Nx = int(conf_disc.attrs['Nx'])
+    Lx = float(conf_disc.attrs['Lx'])
 
     g = file[1].get(last)
     d = np.array(g.get(toPlot[choice][0]))
