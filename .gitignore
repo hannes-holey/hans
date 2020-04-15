@@ -10,4 +10,4 @@ output/*.dat
 output/animations/
 config/
 submit.sh
-profile.dat
+profile*
