@@ -84,10 +84,11 @@ class Field:
 
         return out
 
-    def addNoise(self, frac):
-        mean = np.zeros_like(self.field)
-        mu = frac * np.amax(np.amax(abs(self.field), axis = 1), axis = 1)
-        self.field += np.random.normal(mean, mu[:,np.newaxis, np.newaxis])
+    def addNoise_FH(self, cov):
+        mean = np.zeros(self.ndim)
+        noise = np.random.multivariate_normal(mean, cov, size=(self.Ny, self.Nx)).T
+
+        self.field += noise
 
 class ScalarField(Field):
 
