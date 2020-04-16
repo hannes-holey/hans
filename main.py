@@ -3,7 +3,6 @@
 
 import yaml
 import sys
-import time
 import os
 
 class yamlInput:
@@ -52,20 +51,9 @@ def main():
 
     inputFile = os.path.join(os.getcwd(), str(name))
 
-    tStart = time.time()
-
     myInput = yamlInput(inputFile)
     myProblem = myInput.getProblem()
     myProblem.solve()
-
-    tDiff = time.time() - tStart
-
-    MM = tDiff//60
-    HH = MM//60
-    MM = MM - HH*60
-    SS = tDiff - HH * 60 * 60 - MM * 60
-
-    print("Total wall clock time: %02d:%02d:%02d" % (HH, MM, SS))
 
 if __name__ == "__main__":
     main()

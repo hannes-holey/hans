@@ -3,6 +3,7 @@
 
 import os
 import h5py
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -37,6 +38,8 @@ class Run:
         elif material['EOS'] == 'PL':
             self.eqOfState = PowerLaw(material)
 
+        tStart = time.time()
+
         self.sol = Solver(disc, geometry, numerics, material)
 
         if plotOption == False:
@@ -52,7 +55,7 @@ class Run:
 
             i = 0
 
-            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Delta_v"))
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
             while self.sol.time  < maxT:
 
                 self.sol.solve(i)
@@ -66,17 +69,26 @@ class Run:
                 if self.sol.eps < tol:
                     self.write(i, 1)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    print("\nSolution has converged after {:d} steps, Output written to : {:s}".format(i, outfile))
+                    print("\nSolution has converged after {:d} steps, Output written to: {:s}".format(i, outfile))
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
                     self.write(i, 1)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:.1e} s reached.".format(i, maxT))
-                    print("Output written to : {:s}".format(outfile))
+                    print("Output written to: {:s}".format(outfile))
 
         else:
             self.plot()
+
+        tDiff = time.time() - tStart
+
+        MM = tDiff//60
+        HH = int(MM//60)
+        MM = int(MM - HH*60)
+        SS = int(tDiff - HH * 60 * 60 - MM * 60)
+
+        print("Total wall clock time: {:02d}:{:02d}:{:02d} (Performance: {:.2f} ns/s)".format(HH, MM, SS, self.sol.time*1e9/tDiff))
 
     def write(self, i, last):
 
