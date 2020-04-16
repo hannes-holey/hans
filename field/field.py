@@ -50,9 +50,6 @@ class Field:
     def fromFunctionXY(self, func, comp):
         self.field[comp]=func(self.xx, self.yy)
 
-    def fromFunctionField(self, func, arg, comp):
-        self.field[comp] = func(arg)
-
     def edgesField(self):
         self.dx = self.Lx/(self.Nx - 1)
         self.dy = self.Ly/(self.Ny - 1)
