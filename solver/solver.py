@@ -7,17 +7,18 @@ from eos.eos import DowsonHigginson, PowerLaw
 from geo.geometry import Analytic
 from field.field import VectorField
 from flux.flux import Flux
+from stress.stress import Newtonian
 
 class Solver:
 
     def __init__(self, disc, geometry, numerics, material):
 
         self.type = str(geometry['type'])
-
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
         self.C = numerics['C']
+        self.fluct = bool(material['Fluctuating'])
 
         if material['EOS'] == 'DH':
             self.eqOfState = DowsonHigginson(material)
@@ -25,8 +26,6 @@ class Solver:
             self.eqOfState = PowerLaw(material)
 
         self.time = 0
-
-        self.frac = float(material['frac'])
 
         # Gap height
         self.height = VectorField(disc)
@@ -56,8 +55,7 @@ class Solver:
             self.q.fill_line(self.eqOfState.isoT_density(2. * P0), 0, 2)
 
         self.Flux = Flux(disc, geometry, numerics, material)
-
-        self.rhs = VectorField(disc)
+        self.Newtonian = Newtonian(disc, geometry, material)
 
     def solve(self, i):
 
@@ -70,30 +68,33 @@ class Solver:
             else:
                 self.dt = self.C * min(self.q.dx, self.q.dy)/(self.vSound + self.vmax)
 
+        stress, cov3 = self.Newtonian.stress_avg(self.q, self.height, self.dt)
+
+        if self.fluct == True:
+            stress.addNoise_FH(cov3)
+
         if self.numFlux == 'LF':
-            fXE = self.Flux.getFlux_LF(self.q, self.height, -1, 0)
-            fXW = self.Flux.getFlux_LF(self.q, self.height,  1, 0)
-            fYN = self.Flux.getFlux_LF(self.q, self.height, -1, 1)
-            fYS = self.Flux.getFlux_LF(self.q, self.height,  1, 1)
+            fXE = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 0)
+            fXW = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt,  1, 0)
+            fYN = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 1)
+            fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt,  1, 1)
 
         elif self.numFlux == 'LW':
-            fXE = self.Flux.getFlux_LW(self.q, self.height, -1, 0)
-            fXW = self.Flux.getFlux_LW(self.q, self.height,  1, 0)
-            fYN = self.Flux.getFlux_LW(self.q, self.height, -1, 1)
-            fYS = self.Flux.getFlux_LW(self.q, self.height,  1, 1)
+            fXE = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, -1, 0)
+            fXW = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt,  1, 0)
+            fYN = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, -1, 1)
+            fYS = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt,  1, 1)
 
         elif self.numFlux == 'MC':
-            fXE = self.Flux.getFlux_MC(self.q, self.height, -1, 0)
-            fXW = self.Flux.getFlux_MC(self.q, self.height,  1, 0)
-            fYN = self.Flux.getFlux_MC(self.q, self.height, -1, 1)
-            fYS = self.Flux.getFlux_MC(self.q, self.height,  1, 1)
+            fXE = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, -1, 0)
+            fXW = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt,  1, 0)
+            fYN = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, -1, 1)
+            fYS = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt,  1, 1)
 
-        self.rhs.field = -1./self.rhs.dx * (fXE.field - fXW.field) - 1./self.rhs.dy * (fYN.field - fYS.field)
-
-        source = self.Flux.getSource(self.q, self.height)
-        source.addNoise(self.frac)
-        self.rhs.field += source.field
-        self.q.field += self.dt * self.rhs.field
+        rhs = -1./self.q.dx * (fXE.field - fXW.field) - 1./self.q.dy * (fYN.field - fYS.field)
+        source = self.Flux.getSource(self.q, self.height, self.dt)
+        rhs += source.field
+        self.q.field += self.dt * rhs
 
         # some scalar output
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
