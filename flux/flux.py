@@ -14,42 +14,28 @@ class Flux:
         self.geometry = geometry
         self.material = material
 
-        self.Lx = float(disc['Lx'])
-        self.Ly = float(disc['Ly'])
-        self.Nx = int(disc['Nx'])
-        self.Ny = int(disc['Ny'])
-
-        self.dx = self.Lx/self.Nx
-        self.dy = self.Ly/self.Ny
-
-        self.dt = float(numerics['dt'])
         self.periodicX = bool(numerics['periodicX'])
         self.periodicY = bool(numerics['periodicY'])
-        self.rey = bool(numerics['Rey'])
+        self.fluct = bool(material['Fluctuating'])
 
-    def getFlux_LF(self, q, h, d, ax):
-
-        if self.rey == True:
-            stress = Newtonian(self.disc).reynolds(q, self.material)
-        elif self.rey == False:
-            stress = Newtonian(self.disc).full(q, h, self.geometry, self.material)
+    def getFlux_LF(self, q, h, stress, dt, d, ax):
 
         if ax == 0:
             f1 = -stress.field[0]
             f2 = -stress.field[2]
             f3 = q.field[0]
-            dx = self.dx
+            dx = q.dx
         elif ax == 1:
             f1 = -stress.field[2]
             f2 = -stress.field[1]
             f3 = q.field[1]
-            dx = self.dy
+            dx = q.dy
 
         flux = VectorField(self.disc)
 
-        flux.field[0] = 0.5 * (f1 + np.roll(f1, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[0] - np.roll(q.field[0], d, axis = ax))
-        flux.field[1] = 0.5 * (f2 + np.roll(f2, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = ax))
-        flux.field[2] = 0.5 * (f3 + np.roll(f3, d, axis = ax)) - dx/(2. * self.dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = ax))
+        flux.field[0] = 0.5 * (f1 + np.roll(f1, d, axis = ax)) - dx/(2. * dt) * d * (q.field[0] - np.roll(q.field[0], d, axis = ax))
+        flux.field[1] = 0.5 * (f2 + np.roll(f2, d, axis = ax)) - dx/(2. * dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = ax))
+        flux.field[2] = 0.5 * (f3 + np.roll(f3, d, axis = ax)) - dx/(2. * dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = ax))
 
         if self.periodicX == False:
             if d == -1:
@@ -75,29 +61,24 @@ class Flux:
 
         return flux
 
-    def getQ_LW(self, q, h, d, ax):
-
-        if self.rey == True:
-            stress = Newtonian(self.disc).reynolds(q, self.material)
-        elif self.rey == False:
-            stress = Newtonian(self.disc).full(q, h, self.geometry, self.material)
+    def getQ_LW(self, q, h, stress, dt, d, ax):
 
         if ax == 0:
             f1 = -stress.field[0]
             f2 = -stress.field[2]
             f3 = q.field[0]
-            dx = self.dx
+            dx = q.dx
         elif ax == 1:
             f1 = -stress.field[2]
             f2 = -stress.field[1]
             f3 = q.field[1]
-            dx = self.dy
+            dx = q.dy
 
         Q = VectorField(self.disc)
 
-        Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis = ax)) - self.dt/(2. * dx) * d * (f1 - np.roll(f1, d, axis = ax))
-        Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = ax)) - self.dt/(2. * dx) * d * (f2 - np.roll(f2, d, axis = ax))
-        Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = ax)) - self.dt/(2. * dx) * d * (f3 - np.roll(f3, d, axis = ax))
+        Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis = ax)) - dt/(2. * dx) * d * (f1 - np.roll(f1, d, axis = ax))
+        Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = ax)) - dt/(2. * dx) * d * (f2 - np.roll(f2, d, axis = ax))
+        Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = ax)) - dt/(2. * dx) * d * (f3 - np.roll(f3, d, axis = ax))
 
         if self.periodicX == False:
             if d == -1:
@@ -127,27 +108,20 @@ class Flux:
 
         return Q
 
-    def getFlux_LW(self, q, h, d, ax):
+    def getFlux_LW(self, q, h, stress, dt, d, ax):
 
-        Q = self.getQ_LW(q, h, d, ax)
-
-        if self.rey == True:
-            stress = Newtonian(self.disc).reynolds(Q, self.material)
-            stress_center = Newtonian(self.disc).reynolds(q, self.material)
-        elif self.rey == False:
-            stress_center = Newtonian(self.disc).full(q, h, self.geometry, self.material)
-            H = h.stagArray(d, ax)
-            stress = Newtonian(self.disc).full(Q, H, self.geometry, self.material)
+        Q = self.getQ_LW(q, h, stress, dt, d, ax)
+        stress_bound = stress.stagArray(d, ax+1)
 
         flux = VectorField(self.disc)
 
         if ax == 0:
-            f1 = -stress.field[0]
-            f2 = -stress.field[2]
+            f1 = -stress_bound.field[0]
+            f2 = -stress_bound.field[2]
             f3 = Q.field[0]
         elif ax == 1:
-            f1 = -stress.field[2]
-            f2 = -stress.field[1]
+            f1 = -stress_bound.field[2]
+            f2 = -stress_bound.field[1]
             f3 = Q.field[1]
 
         flux.field[0] = f1
@@ -182,59 +156,50 @@ class Flux:
 
         return flux
 
-    def getQ_MC(self, q, h, d, ax):
-
-        if self.rey == True:
-            stress = Newtonian(self.disc).reynolds(q, self.material)
-        elif self.rey == False:
-            stress = Newtonian(self.disc).full(q, h, self.geometry, self.material)
+    def getQ_MC(self, q, h, stress, dt, d, ax):
 
         if ax == 0:
             f1 = -stress.field[0]
             f2 = -stress.field[2]
             f3 = q.field[0]
-            dx = self.dx
+            dx = q.dx
         elif ax == 1:
             f1 = -stress.field[2]
             f2 = -stress.field[1]
             f3 = q.field[1]
-            dx = self.dy
+            dx = q.dy
 
         Q = VectorField(self.disc)
 
-        Q.field[0] = q.field[0] + self.dt/dx * (f1 - np.roll(f1, -1, axis = ax))
-        Q.field[1] = q.field[1] + self.dt/dx * (f2 - np.roll(f2, -1, axis = ax))
-        Q.field[2] = q.field[2] + self.dt/dx * (f3 - np.roll(f3, -1, axis = ax))
+        Q.field[0] = q.field[0] + dt/dx * (f1 - np.roll(f1, -1, axis = ax))
+        Q.field[1] = q.field[1] + dt/dx * (f2 - np.roll(f2, -1, axis = ax))
+        Q.field[2] = q.field[2] + dt/dx * (f3 - np.roll(f3, -1, axis = ax))
 
         return Q
 
-    def getFlux_MC(self, q, h, d, ax):
+    def getFlux_MC(self, q, h, stress, dt, d, ax):
 
-        Q = self.getQ_MC(q, h, d, ax)
+        Q = self.getQ_MC(q, h, stress, dt, d, ax)
 
-        if self.rey == True:
-            stress = Newtonian(self.disc).reynolds(Q, self.material)
-            stress_center = Newtonian(self.disc).reynolds(q, self.material)
-        elif self.rey == False:
-            stress_center = Newtonian(self.disc).full(q, h, self.geometry, self.material)
-            H = h.stagArray(d, ax)
-            stress = Newtonian(self.disc).full(Q, H, self.geometry, self.material)
+        stress_tmp, cov = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+        if self.fluct == True:
+            stress_tmp.addNoise_FH(cov)
 
         flux = VectorField(self.disc)
 
         if ax == 0:
-            f1_p = -stress.field[0]
-            f2_p = -stress.field[2]
+            f1_p = -stress_tmp.field[0]
+            f2_p = -stress_tmp.field[2]
             f3_p = Q.field[0]
-            f1 = -stress_center.field[0]
-            f2 = -stress_center.field[2]
+            f1 = -stress.field[0]
+            f2 = -stress.field[2]
             f3 = q.field[0]
         elif ax == 1:
-            f1_p = -stress.field[2]
-            f2_p = -stress.field[1]
+            f1_p = -stress_tmp.field[2]
+            f2_p = -stress_tmp.field[1]
             f3_p = Q.field[1]
-            f1 = -stress_center.field[2]
-            f2 = -stress_center.field[1]
+            f1 = -stress.field[2]
+            f2 = -stress.field[1]
             f3 = q.field[1]
 
         if d == -1:
@@ -249,42 +214,22 @@ class Flux:
 
         return flux
 
-    def getSource(self, q, h):
+    def getSource(self, q, h, dt):
 
         out = VectorField(self.disc)
 
-        mu = self.material['mu']
-        if bool(self.material['Stokes']) == True:
-            lam = -2/3 *mu
-        else:
-            lam = self.material['lambda']
+        stress_wall_top = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(q, h, dt, 1)
+        stress_wall_bot = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(q, h, dt, 0)
 
-        U = self.geometry['U']
-        V = self.geometry['V']
-
-        if self.material['EOS'] == 'DH':
-            eqOfState = DowsonHigginson(self.material)
-        elif self.material['EOS'] == 'PL':
-            eqOfState = PowerLaw(self.material)
-
-        # Q = q.cellAverage()
-        # H = h.cellAverage()
-
-        j_x = q.field[0]
-        j_y = q.field[1]
-        rho = q.field[2]
         h0 = h.field[0]
         hx = h.field[1]
         hy = h.field[2]
 
-        if self.rey == True:
-            out.field[0] =  6.* mu*(U*rho - 2.*j_x)/(rho * h0 * h0)
-            out.field[1] =  6.* mu*(V*rho - 2.*j_y)/(rho * h0 * h0)
-            out.field[2] = -j_x * hx / h0 - j_y * hy / h0
+        j_x = q.field[0]
+        j_y = q.field[1]
 
-        elif self.rey == False:
-            out.field[0] = (3*(lam + 2*mu)*(U*rho - 2*j_x)*hx*hx + 3*(V*rho - 2*j_y)*(lam + mu)*hy*hx + 3*mu*(hy**2 + 4)*(U*rho - 2*j_x))/(2*h0*h0*rho)
-            out.field[1] = (3*(lam + 2*mu)*(V*rho - 2*j_y)*hy*hy + 3*(U*rho - 2*j_x)*(lam + mu)*hx*hy + 3*mu*(hx**2 + 4)*(V*rho - 2*j_y))/(2*h0*h0*rho)
-            out.field[2] = -j_x * hx / h0 - j_y * hy / h0
+        out.field[0] = (-stress_wall_top.field[0] * hx - stress_wall_top.field[5] * hy + stress_wall_top.field[4] - stress_wall_bot.field[4])/h0
+        out.field[1] = (-stress_wall_top.field[5] * hx - stress_wall_top.field[1] * hy + stress_wall_top.field[3] - stress_wall_bot.field[3])/h0
+        out.field[2] = -j_x * hx / h0 - j_y * hy / h0
 
         return out
