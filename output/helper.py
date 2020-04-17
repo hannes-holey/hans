@@ -2,6 +2,7 @@
 
 import os
 import h5py
+import time
 import subprocess
 import numpy as np
 
@@ -10,12 +11,13 @@ def getFiles():
     i = 0
     for file in sorted(os.listdir()):
         if file.endswith("h5"):
-            availFiles.update({i: file})
+            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
+            availFiles.update({i: [file, date]})
             i +=1
 
     print("Available files:")
     for key, val in availFiles.items():
-        print("{:3d}: {:20s}".format(key, val))
+        print("{:3d}: {:} {:}".format(key, val[1], val[0]))
 
     files = {}
     ask = True
@@ -23,8 +25,8 @@ def getFiles():
     while ask == True:
         userInput = input("Enter file key (any other key to exit): ")
         if userInput in np.arange(0, len(availFiles)).astype(str):
-            tmp_file = copyTemp(availFiles[int(userInput)])
-            files.update({j: [availFiles[int(userInput)], h5py.File(tmp_file, 'r')]})
+            tmp_file = copyTemp(availFiles[int(userInput)][0])
+            files.update({j: [availFiles[int(userInput)][0], h5py.File(tmp_file, 'r')]})
             subprocess.call("rm " + tmp_file, shell = True)
             j += 1
         else:
@@ -37,18 +39,19 @@ def getFile():
     i = 0
     for file in sorted(os.listdir()):
         if file.endswith("h5"):
-            availFiles.update({i: file})
+            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
+            availFiles.update({i: [file, date]})
             i +=1
 
     print("Available files:")
     for key, val in availFiles.items():
-        print("{:3d}: {:20s}".format(key, val))
+        print("{:3d}: {:} {:20s}".format(key, val[1], val[0]))
 
     flag = False
     while flag == False:
         userInput = input("Enter file key: ")
         if userInput in np.arange(0, len(availFiles)).astype(str):
-            tmp_file = copyTemp(availFiles[int(userInput)])
+            tmp_file = copyTemp(availFiles[int(userInput)][0])
             file = h5py.File(tmp_file, 'r')
             subprocess.call("rm " + tmp_file, shell = True)
             flag = True
