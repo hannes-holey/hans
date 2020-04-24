@@ -4,7 +4,8 @@
 import numpy as np
 from field.field import VectorField
 from stress.stress import Newtonian
-from eos.eos import DowsonHigginson, PowerLaw
+# from eos.eos import DowsonHigginson, PowerLaw
+
 
 class Flux:
 
@@ -33,22 +34,22 @@ class Flux:
 
         flux = VectorField(self.disc)
 
-        flux.field[0] = 0.5 * (f1 + np.roll(f1, d, axis = ax)) - dx/(2. * dt) * d * (q.field[0] - np.roll(q.field[0], d, axis = ax))
-        flux.field[1] = 0.5 * (f2 + np.roll(f2, d, axis = ax)) - dx/(2. * dt) * d * (q.field[1] - np.roll(q.field[1], d, axis = ax))
-        flux.field[2] = 0.5 * (f3 + np.roll(f3, d, axis = ax)) - dx/(2. * dt) * d * (q.field[2] - np.roll(q.field[2], d, axis = ax))
+        flux.field[0] = 0.5 * (f1 + np.roll(f1, d, axis=ax)) - dx / (2. * dt) * d * (q.field[0] - np.roll(q.field[0], d, axis=ax))
+        flux.field[1] = 0.5 * (f2 + np.roll(f2, d, axis=ax)) - dx / (2. * dt) * d * (q.field[1] - np.roll(q.field[1], d, axis=ax))
+        flux.field[2] = 0.5 * (f3 + np.roll(f3, d, axis=ax)) - dx / (2. * dt) * d * (q.field[2] - np.roll(q.field[2], d, axis=ax))
 
-        if self.periodicX == False:
+        if self.periodicX is False:
             if d == -1:
-                flux.field[0][-1,:] = f1[-1,:] # Neumann
-                flux.field[1][-1,:] = f2[-1,:] # Neumann
-                flux.field[2][-1,:] = flux.field[2][-2,:] # Dirichlet
+                flux.field[0][-1,:] = f1[-1,:]  # Neumann
+                flux.field[1][-1,:] = f2[-1,:]  # Neumann
+                flux.field[2][-1,:] = flux.field[2][-2,:]  # Dirichlet
 
             elif d == 1:
                 flux.field[0][0,:] = f1[0,:]
                 flux.field[1][0,:] = f2[0,:]
                 flux.field[2][0,:] = flux.field[2][1,:]
 
-        if self.periodicY == False:
+        if self.periodicY is False:
             if d == -1:
                 flux.field[0][:,-1] = f1[:,-1]
                 flux.field[1][:,-1] = f2[:,-1]
@@ -76,11 +77,11 @@ class Flux:
 
         Q = VectorField(self.disc)
 
-        Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis = ax)) - dt/(2. * dx) * d * (f1 - np.roll(f1, d, axis = ax))
-        Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis = ax)) - dt/(2. * dx) * d * (f2 - np.roll(f2, d, axis = ax))
-        Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis = ax)) - dt/(2. * dx) * d * (f3 - np.roll(f3, d, axis = ax))
+        Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis=ax)) - dt / (2. * dx) * d * (f1 - np.roll(f1, d, axis=ax))
+        Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis=ax)) - dt / (2. * dx) * d * (f2 - np.roll(f2, d, axis=ax))
+        Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis=ax)) - dt / (2. * dx) * d * (f3 - np.roll(f3, d, axis=ax))
 
-        if self.periodicX == False:
+        if self.periodicX is False:
             if d == -1:
                 pass
                 # Q.field[0][-1,:] = q.field[0][-1,:]
@@ -93,7 +94,7 @@ class Flux:
                 # Q.field[1][0,:] = q.field[1][0,:]
                 # Q.field[2][0,:] = q.field[2][0,:]
 
-        if self.periodicY == False:
+        if self.periodicY is False:
             if d == -1:
                 pass
                 # Q.field[0][:,-1] = q.field[0][:,-1]
@@ -111,7 +112,7 @@ class Flux:
     def getFlux_LW(self, q, h, stress, dt, d, ax):
 
         Q = self.getQ_LW(q, h, stress, dt, d, ax)
-        stress_bound = stress.stagArray(d, ax+1)
+        stress_bound = stress.stagArray(d, ax + 1)
 
         flux = VectorField(self.disc)
 
@@ -128,7 +129,7 @@ class Flux:
         flux.field[1] = f2
         flux.field[2] = f3
 
-        if self.periodicX == False:
+        if self.periodicX is False:
             if d == -1:
                 pass
                 # flux.field[0][-1,:] = -stress_center.field[0][-1,:] # Neumann
@@ -141,7 +142,7 @@ class Flux:
                 # flux.field[1][0,:] = -stress_center.field[2][-1,:] # Neumann
                 # flux.field[2][0,:] = f3[1,:]
 
-        if self.periodicY == False:
+        if self.periodicY is False:
             if d == -1:
                 pass
                 # flux.field[0][:,-1] = f1[:,-1]
@@ -171,9 +172,9 @@ class Flux:
 
         Q = VectorField(self.disc)
 
-        Q.field[0] = q.field[0] + dt/dx * (f1 - np.roll(f1, -1, axis = ax))
-        Q.field[1] = q.field[1] + dt/dx * (f2 - np.roll(f2, -1, axis = ax))
-        Q.field[2] = q.field[2] + dt/dx * (f3 - np.roll(f3, -1, axis = ax))
+        Q.field[0] = q.field[0] + dt / dx * (f1 - np.roll(f1, -1, axis=ax))
+        Q.field[1] = q.field[1] + dt / dx * (f2 - np.roll(f2, -1, axis=ax))
+        Q.field[2] = q.field[2] + dt / dx * (f3 - np.roll(f3, -1, axis=ax))
 
         return Q
 
@@ -182,7 +183,7 @@ class Flux:
         Q = self.getQ_MC(q, h, stress, dt, d, ax)
 
         stress_tmp, cov = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
-        if self.fluct == True:
+        if self.fluct is True:
             stress_tmp.addNoise_FH(cov)
 
         flux = VectorField(self.disc)
@@ -228,8 +229,8 @@ class Flux:
         j_x = q.field[0]
         j_y = q.field[1]
 
-        out.field[0] = (-stress_wall_top.field[0] * hx - stress_wall_top.field[5] * hy + stress_wall_top.field[4] - stress_wall_bot.field[4])/h0
-        out.field[1] = (-stress_wall_top.field[5] * hx - stress_wall_top.field[1] * hy + stress_wall_top.field[3] - stress_wall_bot.field[3])/h0
+        out.field[0] = (-stress_wall_top.field[0] * hx - stress_wall_top.field[5] * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        out.field[1] = (-stress_wall_top.field[5] * hx - stress_wall_top.field[1] * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
         out.field[2] = -j_x * hx / h0 - j_y * hy / h0
 
         return out

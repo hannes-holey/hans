@@ -9,6 +9,7 @@ from field.field import VectorField
 from flux.flux import Flux
 from stress.stress import Newtonian
 
+
 class Solver:
 
     def __init__(self, disc, geometry, numerics, material):
@@ -60,38 +61,38 @@ class Solver:
     def solve(self, i):
 
         self.vSound = np.amax(self.eqOfState.soundSpeed(self.q.field[2]))
-        self.vmax = max(np.amax(1./self.q.field[2]*np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)), 1e-3)
+        self.vmax = max(np.amax(1. / self.q.field[2] * np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)), 1e-3)
 
-        if self.adaptive == True:
+        if self.adaptive is True:
             if i == 0:
                 self.dt = self.dt
             else:
-                self.dt = self.C * min(self.q.dx, self.q.dy)/(self.vSound + self.vmax)
+                self.dt = self.C * min(self.q.dx, self.q.dy) / (self.vSound + self.vmax)
 
         stress, cov3 = self.Newtonian.stress_avg(self.q, self.height, self.dt)
 
-        if self.fluct == True:
+        if self.fluct is True:
             stress.addNoise_FH(cov3)
 
         if self.numFlux == 'LF':
             fXE = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 0)
-            fXW = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt,  1, 0)
+            fXW = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 0)
             fYN = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 1)
-            fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt,  1, 1)
+            fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 1)
 
         elif self.numFlux == 'LW':
             fXE = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, -1, 0)
-            fXW = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt,  1, 0)
+            fXW = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, 1, 0)
             fYN = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, -1, 1)
-            fYS = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt,  1, 1)
+            fYS = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, 1, 1)
 
         elif self.numFlux == 'MC':
             fXE = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, -1, 0)
-            fXW = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt,  1, 0)
+            fXW = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, 1, 0)
             fYN = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, -1, 1)
-            fYS = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt,  1, 1)
+            fYS = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, 1, 1)
 
-        rhs = -1./self.q.dx * (fXE.field - fXW.field) - 1./self.q.dy * (fYN.field - fYS.field)
+        rhs = -1. / self.q.dx * (fXE.field - fXW.field) - 1. / self.q.dy * (fYN.field - fYS.field)
         source = self.Flux.getSource(self.q, self.height, self.dt)
         rhs += source.field
         self.q.field += self.dt * rhs
@@ -100,5 +101,5 @@ class Solver:
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.time += self.dt
 
-        vmax_new = np.amax(np.sqrt(self.q.field[0]*self.q.field[0] + self.q.field[1]*self.q.field[1])/self.q.field[2])
-        self.eps = abs(vmax_new - self.vmax)/self.vmax/self.C
+        vmax_new = np.amax(np.sqrt(self.q.field[0] * self.q.field[0] + self.q.field[1] * self.q.field[1]) / self.q.field[2])
+        self.eps = abs(vmax_new - self.vmax) / self.vmax / self.C

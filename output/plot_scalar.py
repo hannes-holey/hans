@@ -2,25 +2,25 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from helper import getFiles, copyTemp
+from helper import getFiles
 
 plt.style.use('presentation')
 plt.figure(figsize=(12,7))
 
 files = getFiles()
 
-toPlot = {  0: ['mass', r'$\Delta m/m_0$ [-]', 1.],
-            1: ['vmax',r'$v_\mathsf{max}$ [m/s]', 1.],
-            2: ['vSound', 'c [m/s]', 1.],
-            3: ['dt', r'$\Delta t$ [ns]', 1e9],
-            4: ['eps',r'$\epsilon$ [-]', 1.]}
+toPlot = {0: ['mass', r'$\Delta m/m_0$ [-]', 1.],
+          1: ['vmax',r'$v_\mathsf{max}$ [m/s]', 1.],
+          2: ['vSound', 'c [m/s]', 1.],
+          3: ['dt', r'$\Delta t$ [ns]', 1e9],
+          4: ['eps',r'$\epsilon$ [-]', 1.]}
 
 choice = int(input("What to plot? (0: mass x | 1: vmax | 2: speed of sound | 3: time step | 4: epsilon) "))
 
 for file in files.values():
 
     conf_geo = file[1].get('config/geometry')
-    conf_num =  file[1].get('config/numerics')
+    conf_num = file[1].get('config/numerics')
     conf_disc = file[1].get('config/disc')
     conf_mat = file[1].get('config/material')
 
@@ -44,13 +44,13 @@ for file in files.values():
         time = g.attrs['time']
         ydata = g.attrs[toPlot[choice][0]]
 
-        A = np.append(A ,[time ,ydata])
-        A = np.reshape(A, (int(A.shape[0]/2),2))
+        A = np.append(A, [time, ydata])
+        A = np.reshape(A, (int(A.shape[0] / 2),2))
 
     if choice == 0:
-        plt.plot(A[:,0] * 1e9, (A[:,1] - A[0,1])/A[0,1], '-', label = label)
+        plt.plot(A[:,0] * 1e9, (A[:,1] - A[0,1]) / A[0,1], '-', label=label)
     else:
-        plt.plot(A[:,0] * 1e9, A[:,1] * toPlot[choice][2], '-', label = label)
+        plt.plot(A[:,0] * 1e9, A[:,1] * toPlot[choice][2], '-', label=label)
 
     file[1].close()
 

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from helper import getFile
 
+
 def assembleArrays(file, database):
     """
     Assemble list of arrays from hdf5-file to loop over in animation
@@ -43,9 +44,10 @@ def assembleArrays(file, database):
         if str(i) != 'config':
             g = file.get(i)
             A.append(np.array(g.get(database)))
-            t.append(g.attrs['time']*1e9)
+            t.append(g.attrs['time'] * 1e9)
 
     return A, t, Nx, Ny, filename
+
 
 def plot_update(i, A, t):
     """
@@ -72,10 +74,11 @@ def plot_update(i, A, t):
     im.set_clim(vmin=glob_min, vmax=glob_max)
     fig.suptitle("Time: {:.1f}".format(t[i]))
 
+
 if __name__ == "__main__":
 
     plt.style.use('presentation')
-    fig, ax= plt.subplots(figsize=(8,6))
+    fig, ax = plt.subplots(figsize=(8,6))
 
     file = getFile()
 
@@ -93,7 +96,7 @@ if __name__ == "__main__":
     # Initial plotting
     clab = {0: 'mass flux x', 1: 'mass flux y', 2: 'density', 3: 'pressure (Pa)'}
     im = ax.imshow(np.empty((Nx,Ny)), interpolation='nearest', cmap='viridis')
-    cbar = plt.colorbar(im, ax = ax, label = clab[choice])
+    cbar = plt.colorbar(im, ax=ax, label=clab[choice])
     ax.set_xlabel('x')
     ax.set_ylabel('y')
 
@@ -101,6 +104,6 @@ if __name__ == "__main__":
     anim = animation.FuncAnimation(fig, plot_update, frames=len(A), fargs=(A, t,), interval=100, repeat=True)
 
     if save == 1:
-        anim.save(name + '_' + toPlot[choice] + '_2D.mp4' , fps=30)
+        anim.save(name + '_' + toPlot[choice] + '_2D.mp4', fps=30)
     elif save == 0:
         plt.show()

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 
+
 def assembleArrays(file, database):
     """
     Assemble list of arrays from hdf5-file to loop over in animation
@@ -47,10 +48,11 @@ def assembleArrays(file, database):
         if str(i) != 'config':
             g = file.get(i)
             A.append(np.array(g.get(database)))
-            t.append(g.attrs['time']*1e9)
+            t.append(g.attrs['time'] * 1e9)
     file.close()
 
     return A, t, Nx, Ny, Lx, Ly, filename
+
 
 def plot_update(i, A, t):
     """
@@ -81,6 +83,7 @@ def plot_update(i, A, t):
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     fig.suptitle("Time: {:.1f}".format(t[i]))
+
 
 if __name__ == "__main__":
 
@@ -115,6 +118,6 @@ if __name__ == "__main__":
     anim = animation.FuncAnimation(fig, plot_update, frames=len(A), fargs=(A, t,), interval=500, repeat=True)
 
     if save == 1:
-        anim.save(name + '_' + toPlot[choice] + '_3D.mp4' , fps=30)
+        anim.save(name + '_' + toPlot[choice] + '_3D.mp4', fps=30)
     elif save == 0:
         plt.show()

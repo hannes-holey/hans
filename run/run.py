@@ -11,6 +11,7 @@ import matplotlib.animation as animation
 from eos.eos import DowsonHigginson, PowerLaw
 from solver.solver import Solver
 
+
 class Run:
 
     def __init__(self, options, disc, geometry, numerics, material):
@@ -42,7 +43,7 @@ class Run:
 
         self.sol = Solver(disc, geometry, numerics, material)
 
-        if plotOption == False:
+        if plotOption is False:
             self.file_tag = 1
 
             if 'output' not in os.listdir():
@@ -56,7 +57,7 @@ class Run:
             i = 0
 
             print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
-            while self.sol.time  < maxT:
+            while self.sol.time < maxT:
 
                 self.sol.solve(i)
                 self.write(i, 0)
@@ -83,12 +84,12 @@ class Run:
 
         tDiff = time.time() - tStart
 
-        MM = tDiff//60
-        HH = int(MM//60)
-        MM = int(MM - HH*60)
+        MM = tDiff // 60
+        HH = int(MM // 60)
+        MM = int(MM - HH * 60)
         SS = int(tDiff - HH * 60 * 60 - MM * 60)
 
-        print("Total wall clock time: {:02d}:{:02d}:{:02d} (Performance: {:.2f} ns/s)".format(HH, MM, SS, self.sol.time*1e9/tDiff))
+        print("Total wall clock time: {:02d}:{:02d}:{:02d} (Performance: {:.2f} ns/s)".format(HH, MM, SS, self.sol.time * 1e9 / tDiff))
 
     def write(self, i, last):
 
@@ -107,7 +108,7 @@ class Run:
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
                 git_commit = str(Repo(search_parent_directories=True).head.object.hexsha)
 
-                g0.attrs.create('tStart',  timeString)
+                g0.attrs.create('tStart', timeString)
                 g0.attrs.create('commit', git_commit)
 
                 categories = {'options': self.options,
@@ -124,12 +125,12 @@ class Run:
 
             if str(i).zfill(10) not in file:
 
-                g1 =file.create_group(str(i).zfill(10))
+                g1 = file.create_group(str(i).zfill(10))
 
-                g1.create_dataset('j_x',   data = self.sol.q.field[0])
-                g1.create_dataset('j_y',   data = self.sol.q.field[1])
-                g1.create_dataset('rho',   data = self.sol.q.field[2])
-                g1.create_dataset('press', data = self.eqOfState.isoT_pressure(self.sol.q.field[2]))
+                g1.create_dataset('j_x', data=self.sol.q.field[0])
+                g1.create_dataset('j_y', data=self.sol.q.field[1])
+                g1.create_dataset('rho', data=self.sol.q.field[2])
+                g1.create_dataset('press', data=self.eqOfState.isoT_pressure(self.sol.q.field[2]))
 
                 g1.attrs.create('time', self.sol.time)
                 g1.attrs.create('mass', self.sol.mass)
@@ -142,13 +143,13 @@ class Run:
 
     def plot(self):
 
-        fig, ax = plt.subplots(2,2, figsize = (14,9), sharex=True)
+        fig, ax = plt.subplots(2,2, figsize=(14,9), sharex=True)
         x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
 
-        line0, = ax[0,0].plot(x, self.sol.q.field[0][:,int(self.Ny/2)])
-        line1, = ax[0,1].plot(x, self.sol.q.field[1][:,int(self.Ny/2)])
-        line2, = ax[1,0].plot(x, self.sol.q.field[2][:,int(self.Ny/2)])
-        line3, = ax[1,1].plot(x, self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        line0, = ax[0,0].plot(x, self.sol.q.field[0][:,int(self.Ny / 2)])
+        line1, = ax[0,1].plot(x, self.sol.q.field[1][:,int(self.Ny / 2)])
+        line2, = ax[1,0].plot(x, self.sol.q.field[2][:,int(self.Ny / 2)])
+        line3, = ax[1,1].plot(x, self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         ax[0,0].set_title(r'$j_x$')
         ax[0,1].set_title(r'$j_y$')
@@ -161,14 +162,14 @@ class Run:
         limits = np.zeros((4,3))
 
         for j in range(3):
-            limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny/2)])
-            limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny/2)])
+            limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny / 2)])
+            limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny / 2)])
 
-        limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
-        limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
-        ani = animation.FuncAnimation(fig, self.animate1D, 100000,
-                                    fargs=(fig, ax, line0, line1, line2, line3, limits,), interval=1 ,repeat=False)
+        _ = animation.FuncAnimation(fig, self.animate1D, 100000,fargs=(fig, ax,
+                                    line0, line1, line2, line3, limits,), interval=1, repeat=False)
 
         plt.show()
 
@@ -178,37 +179,37 @@ class Run:
 
         fig.suptitle('time = {:.2f} ns'.format(self.sol.time * 1e9))
 
-        ax[0,0].set_ylim(limits[0,0] - limits[0,2] , limits[0,1] + limits[0,2])
-        ax[0,1].set_ylim(limits[1,0] - limits[1,2] , limits[1,1] + limits[1,2])
-        ax[1,0].set_ylim(limits[2,0] - limits[2,2] , limits[2,1] + limits[2,2])
-        ax[1,1].set_ylim(limits[3,0] - limits[3,2] , limits[3,1] + limits[3,2])
+        ax[0,0].set_ylim(limits[0,0] - limits[0,2], limits[0,1] + limits[0,2])
+        ax[0,1].set_ylim(limits[1,0] - limits[1,2], limits[1,1] + limits[1,2])
+        ax[1,0].set_ylim(limits[2,0] - limits[2,2], limits[2,1] + limits[2,2])
+        ax[1,1].set_ylim(limits[3,0] - limits[3,2], limits[3,1] + limits[3,2])
 
-        line0.set_ydata(self.sol.q.field[0][:,int(self.Ny/2)])
-        line1.set_ydata(self.sol.q.field[1][:,int(self.Ny/2)])
-        line2.set_ydata(self.sol.q.field[2][:,int(self.Ny/2)])
-        line3.set_ydata(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        line0.set_ydata(self.sol.q.field[0][:,int(self.Ny / 2)])
+        line1.set_ydata(self.sol.q.field[1][:,int(self.Ny / 2)])
+        line2.set_ydata(self.sol.q.field[2][:,int(self.Ny / 2)])
+        line3.set_ydata(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         self.sol.solve(i)
 
     def adaptiveLimits(self, limits):
 
         for j in range(3):
-            if np.amin(self.sol.q.field[j][:,int(self.Ny/2)]) < limits[j,0]:
-                limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny/2)])
-            if np.amax(self.sol.q.field[j][:,int(self.Ny/2)]) > limits[j,1]:
-                limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny/2)])
+            if np.amin(self.sol.q.field[j][:,int(self.Ny / 2)]) < limits[j,0]:
+                limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny / 2)])
+            if np.amax(self.sol.q.field[j][:,int(self.Ny / 2)]) > limits[j,1]:
+                limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny / 2)])
 
-        if np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)])) < limits[3,0]:
-            limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
-        if np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)])) > limits[3,1]:
-            limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny/2)]))
+        if np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)])) < limits[3,0]:
+            limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        if np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)])) > limits[3,1]:
+            limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         for j in range(4):
             if limits[j,1] == limits[j,0] and limits[j,0] != 0.:
-                limits[j,2] = 0.5*limits[j,1]
+                limits[j,2] = 0.5 * limits[j,1]
             elif limits[j,1] == limits[j,0] and limits[j,0] == 0.:
                 limits[j,2] = 1.
             else:
-                limits[j,2] = 0.1*(limits[j,1] - limits[j,0])
+                limits[j,2] = 0.1 * (limits[j,1] - limits[j,0])
 
         return limits

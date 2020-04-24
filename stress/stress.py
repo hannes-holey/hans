@@ -3,7 +3,8 @@
 
 import numpy as np
 from eos.eos import DowsonHigginson, PowerLaw
-from field.field import ScalarField, VectorField, TensorField
+from field.field import VectorField, TensorField
+
 
 class Newtonian:
 
@@ -22,8 +23,8 @@ class Newtonian:
         mu = float(self.mat['mu'])
         T = float(self.mat['T0'])
 
-        if bool(self.mat['Stokes']) == True:
-            lam = -2/3 * mu
+        if bool(self.mat['Stokes']) is True:
+            lam = -2 / 3 * mu
         else:
             lam = self.mat['lambda']
 
@@ -37,16 +38,16 @@ class Newtonian:
 
         dz = np.amin(h0)
 
-        if bool(self.mat['Rey']) == False:
+        if bool(self.mat['Rey']) is False:
             # origin center
             # out.field[0] =  (-3*(lam + 2*mu)*(U*rho - 2*j_x)*hx - 3*lam*(V*rho - 2*j_y)*hy)/(2*h0*rho)
             # out.field[1] =  (-3*(lam + 2*mu)*(V*rho - 2*j_y)*hy - 3*lam*(U*rho - 2*j_x)*hx)/(2*h0*rho)
             # out.field[2] = -3*((V*rho - 2*j_y)*hx + hy*(U*rho - 2*j_x))*mu/(2*h0*rho)
 
             # origin bottom
-            out.field[0] = (-4*(U*rho - (3*j_x)/2)*(mu + lam/2)*hx - 2*lam*(V*rho - (3*j_y)/2)*hy)/(h0*rho)
-            out.field[1] = (-4*(V*rho - (3*j_y)/2)*(mu + lam/2)*hy - 2*lam*(U*rho - (3*j_x)/2)*hx)/(h0*rho)
-            out.field[2] = -2*mu*((V*rho - (3*j_y)/2)*hx + hy*(U*rho - (3*j_x)/2))/(h0*rho)
+            out.field[0] = (-4 * (U * rho - (3 * j_x) / 2) * (mu + lam / 2) * hx - 2 * lam * (V * rho - (3 * j_y) / 2) * hy) / (h0 * rho)
+            out.field[1] = (-4 * (V * rho - (3 * j_y) / 2) * (mu + lam / 2) * hy - 2 * lam * (U * rho - (3 * j_x) / 2) * hx) / (h0 * rho)
+            out.field[2] = -2 * mu * ((V * rho - (3 * j_y) / 2) * hx + hy * (U * rho - (3 * j_x) / 2)) / (h0 * rho)
 
         cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
 
@@ -75,8 +76,8 @@ class Newtonian:
         mu = float(self.mat['mu'])
         T = float(self.mat['T0'])
 
-        if bool(self.mat['Stokes']) == True:
-            lam = -2/3 * mu
+        if bool(self.mat['Stokes']) is True:
+            lam = -2 / 3 * mu
         else:
             lam = self.mat['lambda']
 
@@ -91,21 +92,21 @@ class Newtonian:
         dz = np.amin(h0)
 
         if bound == 1:
-            if bool(self.mat['Rey']) == False:
-                out.field[0] = (-8*(mu + lam/2)*(U*rho - (3*j_x)/2)*hx - 4*hy*lam*(V*rho - (3*j_y)/2))/(h0*rho)
-                out.field[1] = (-8*(mu + lam/2)*(V*rho - (3*j_y)/2)*hy - 4*hx*lam*(U*rho - (3*j_x)/2))/(h0*rho)
-                out.field[2] = -4*lam*((U*rho - (3*j_x)/2)*hx + hy*(V*rho - (3*j_y)/2))/(h0*rho)
-                out.field[3] = 2*mu*(2*V*rho - 3*j_y)/(h0*rho)
-                out.field[4] = 2*mu*(2*U*rho - 3*j_x)/(h0*rho)
-                out.field[5] = -4*((V*rho - (3*j_y)/2)*hx + hy*(U*rho - (3*j_x)/2))*mu/(h0*rho)
+            if bool(self.mat['Rey']) is False:
+                out.field[0] = (-8 * (mu + lam / 2) * (U * rho - (3 * j_x) / 2) * hx - 4 * hy * lam * (V * rho - (3 * j_y) / 2)) / (h0 * rho)
+                out.field[1] = (-8 * (mu + lam / 2) * (V * rho - (3 * j_y) / 2) * hy - 4 * hx * lam * (U * rho - (3 * j_x) / 2)) / (h0 * rho)
+                out.field[2] = -4 * lam * ((U * rho - (3 * j_x) / 2) * hx + hy * (V * rho - (3 * j_y) / 2)) / (h0 * rho)
+                out.field[3] = 2 * mu * (2 * V * rho - 3 * j_y) / (h0 * rho)
+                out.field[4] = 2 * mu * (2 * U * rho - 3 * j_x) / (h0 * rho)
+                out.field[5] = -4 * ((V * rho - (3 * j_y) / 2) * hx + hy * (U * rho - (3 * j_x) / 2)) * mu / (h0 * rho)
             else:
-                out.field[3] = 2*mu*(2*V*rho - 3*j_y)/(h0*rho)
-                out.field[4] = 2*mu*(2*U*rho - 3*j_x)/(h0*rho)
+                out.field[3] = 2 * mu * (2 * V * rho - 3 * j_y) / (h0 * rho)
+                out.field[4] = 2 * mu * (2 * U * rho - 3 * j_x) / (h0 * rho)
         elif bound == 0:
-            out.field[3] = -2*mu*(V*rho - 3*j_y)/(h0*rho)
-            out.field[4] = -2*mu*(U*rho - 3*j_x)/(h0*rho)
+            out.field[3] = -2 * mu * (V * rho - 3 * j_y) / (h0 * rho)
+            out.field[4] = -2 * mu * (U * rho - 3 * j_x) / (h0 * rho)
 
-        if bool(self.mat['Fluctuating']) == True:
+        if bool(self.mat['Fluctuating']) is True:
             cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
             out.addNoise_FH(cov)
 
