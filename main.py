@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import yaml
-import sys
 import os
+import yaml
+import argparse
+
 
 class yamlInput:
 
@@ -27,6 +28,7 @@ class yamlInput:
 
         return thisProblem
 
+
 class Problem:
 
     def __init__(self, options, disc, geometry, numerics, material):
@@ -43,17 +45,17 @@ class Problem:
 
 
 def main():
-    try :
-      name = sys.argv[1]
-    except:
-      print("Usage : ./main.py <path to config yaml-file>")
-      quit()
 
-    inputFile = os.path.join(os.getcwd(), str(name))
+    parser = argparse.ArgumentParser()
+    required = parser.add_argument_group('required arguments')
+    required.add_argument("-i", dest="filename", help="path to input file", required=True)
+    args = parser.parse_args()
 
+    inputFile = os.path.join(os.getcwd(), args.filename)
     myInput = yamlInput(inputFile)
     myProblem = myInput.getProblem()
     myProblem.solve()
+
 
 if __name__ == "__main__":
     main()

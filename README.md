@@ -10,6 +10,6 @@ pip install -r requirements.txt
 ## Running
 Run the program from the command line using
 ```
-./main.py <path to your configuration file>
+./main.py -i <path to your configuration file>
 ```
 Example input files are given in the *examples/* directory.
