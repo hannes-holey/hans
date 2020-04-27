@@ -11,3 +11,4 @@ output/animations/
 config/
 submit.sh
 profile*
+.docblock.json
