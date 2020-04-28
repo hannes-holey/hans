@@ -39,23 +39,26 @@ class Problem:
         self.numerics = numerics
         self.material = material
 
-    def solve(self):
+    def run(self, plot=False):
+        """Starts the simulation.
+
+        Parameters
+        ----------
+        plot : bool
+            Flag for live plotting (the default is False).
+        """
         from run.run import Run
-        Run(self.options, self.disc, self.geometry, self.numerics, self.material)
+        Run(self.options, self.disc, self.geometry, self.numerics, self.material, plot)
 
 
-def main():
+if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--plot', dest='plot', default=False, help="on-the-fly plot option", action='store_true')
     required = parser.add_argument_group('required arguments')
     required.add_argument("-i", dest="filename", help="path to input file", required=True)
     args = parser.parse_args()
 
     inputFile = os.path.join(os.getcwd(), args.filename)
-    myInput = yamlInput(inputFile)
-    myProblem = myInput.getProblem()
-    myProblem.solve()
-
-
-if __name__ == "__main__":
-    main()
+    myProblem = yamlInput(inputFile).getProblem()
+    myProblem.run(args.plot)

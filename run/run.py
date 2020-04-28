@@ -14,7 +14,7 @@ from solver.solver import Solver
 
 class Run:
 
-    def __init__(self, options, disc, geometry, numerics, material):
+    def __init__(self, options, disc, geometry, numerics, material, plot):
 
         self.options = options
         self.disc = disc
@@ -22,7 +22,6 @@ class Run:
         self.numerics = numerics
         self.material = material
 
-        plotOption = bool(options['plot'])
         self.writeInterval = int(options['writeInterval'])
         self.name = str(options['name'])
 
@@ -43,7 +42,7 @@ class Run:
 
         self.sol = Solver(disc, geometry, numerics, material)
 
-        if plotOption is False:
+        if plot is False:
             self.file_tag = 1
 
             if 'output' not in os.listdir():
