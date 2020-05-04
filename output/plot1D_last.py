@@ -48,7 +48,10 @@ for file in files.values():
 
     file[1].close()
 
-    ref = getReference()
+    if choice > 1:
+        ref = getReference()
+    else:
+        ref = None
 
     if ref is not None:
         ref_label = input("Enter Legend for reference: ")
@@ -56,7 +59,7 @@ for file in files.values():
         scalef = {2: 1., 3:1e-6}
         ax.plot(x_ref, ref[:,choice - 2] * scalef[choice], '--', label=ref_label)
 
-ax.set_xlabel('distance [mm]')
+ax.set_xlabel('distance (mm)')
 plt.ylabel(toPlot[choice][1])
 
 ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))

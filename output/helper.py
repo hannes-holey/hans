@@ -98,8 +98,9 @@ def getReference():
 
     userInput = input("Enter file key: ")
     if userInput in np.arange(0, len(availFiles)).astype(str):
-        ref = np.loadtxt(availFiles[int(userInput)])
+        ref = np.loadtxt(availFiles[int(userInput)], skiprows=1)
         assert ref.ndim == 2, "Input data file has wrong dimension"
+        return ref
     else:
         print("No comparison!")
         return None
