@@ -215,7 +215,7 @@ class Flux:
 
         return flux
 
-    def getSource(self, q, h, dt):
+    def getSource(self, stress, q, h, dt):
 
         out = VectorField(self.disc)
 
@@ -229,8 +229,8 @@ class Flux:
         j_x = q.field[0]
         j_y = q.field[1]
 
-        out.field[0] = (-stress_wall_top.field[0] * hx - stress_wall_top.field[5] * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
-        out.field[1] = (-stress_wall_top.field[5] * hx - stress_wall_top.field[1] * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
+        out.field[0] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        out.field[1] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
         out.field[2] = -j_x * hx / h0 - j_y * hy / h0
 
         return out

@@ -60,12 +60,13 @@ class Newtonian:
         elif self.mat['EOS'] == 'PL':
             eqOfState = PowerLaw(self.mat)
 
-        out, cov = self.viscousStress_avg(q, h, dt)
+        viscStress, cov = self.viscousStress_avg(q, h, dt)
+        stress = VectorField(self.disc)
 
-        out.field[0] -= eqOfState.isoT_pressure(q.field[2])
-        out.field[1] -= eqOfState.isoT_pressure(q.field[2])
+        stress.field[0] -= eqOfState.isoT_pressure(q.field[2])
+        stress.field[1] -= eqOfState.isoT_pressure(q.field[2])
 
-        return out, cov
+        return viscStress, stress, cov
 
     def viscousStress_wall(self, q, h, dt, bound):
 
