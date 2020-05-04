@@ -10,6 +10,14 @@ import numpy as np
 def getFiles():
     availFiles = {}
     i = 0
+
+    pathList = os.getcwd().split(sep=os.path.sep)
+    assert "MD-FVM" in pathList, "Not in a subdirectory of MD-FVM"
+
+    if pathList[-2:] != ["MD-FVM", "output"]:
+        depth = len(pathList) - pathList.index("MD-FVM") - 1
+        os.chdir(depth * (".." + os.path.sep) + "output")
+
     for file in sorted(os.listdir()):
         if file.endswith("h5"):
             date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
@@ -39,6 +47,14 @@ def getFiles():
 def getFile():
     availFiles = {}
     i = 0
+
+    pathList = os.getcwd().split(sep=os.path.sep)
+    assert "MD-FVM" in pathList, "Not in a subdirectory of MD-FVM"
+
+    if pathList[-2:] != ["MD-FVM", "output"]:
+        depth = len(pathList) - pathList.index("MD-FVM") - 1
+        os.chdir(depth * (".." + os.path.sep) + "output")
+
     for file in sorted(os.listdir()):
         if file.endswith("h5"):
             date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
