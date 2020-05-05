@@ -33,6 +33,8 @@ keys = list(file.keys())[:-1]
 
 # intitalize and fill array with all sampled time steps
 full_array = np.empty([len(keys), Nx, Ny])
+countFaults = 0
+
 for i in keys:
 
     g = file.get(i)
@@ -41,12 +43,15 @@ for i in keys:
     # d = np.array(g.get(toPlot[choice][0])) / toPlot[choice][2]
 
     # SI units
-    d = np.array(g.get(toPlot[choice][0]))
+    if g is not None:
+        d = np.array(g.get(toPlot[choice][0]))
+        full_array[int(i)] = d
+    else:
+        countFaults += 1
 
-    full_array[int(i)] = d
-
+print("Read {:d} from {:d} samples".format(len(keys) - countFaults, len(keys)))
 # array of cell variances
-cellVariance = np.var(full_array, axis=0)
+cellVariance = np.var(full_array[:-countFaults], axis=0)
 
 # mean cell-variance
 variance = np.mean(cellVariance)
