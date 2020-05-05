@@ -69,9 +69,10 @@ def getFile():
     while flag is False:
         userInput = input("Enter file key: ")
         if userInput in np.arange(0, len(availFiles)).astype(str):
-            tmp_file = copyTemp(availFiles[int(userInput)][0])
-            file = h5py.File(tmp_file, 'r')
-            subprocess.call("rm " + tmp_file, shell=True)
+            # tmp_file = copyTemp(availFiles[int(userInput)][0])
+            file = h5py.File(availFiles[int(userInput)][0], 'r')
+            # file = h5py.File(tmp_file, 'r')
+            # subprocess.call("rm " + tmp_file, shell=True)
             flag = True
         else:
             print("File not in list. Try again!")
