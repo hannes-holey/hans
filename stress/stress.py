@@ -115,13 +115,13 @@ class Newtonian:
 
     def getCovariance(self, ndim, mu, lam, T, dx, dy, dz, dt):
         if ndim == 3:
-            cov = np.array([[mu * (2 + lam), lam, 0.],
-                            [lam, mu * (2 + lam), 0.],
+            cov = np.array([[2 * mu + lam, lam, 0.],
+                            [lam, 2 * mu + lam, 0.],
                             [0., 0., mu]])
         elif ndim == 6:
-            cov = np.array([[mu * (2 + lam), lam, lam, 0., 0., 0.],
-                            [lam, mu * (2 + lam), lam, 0., 0., 0.],
-                            [lam, lam, mu * (2 + lam), 0., 0., 0.],
+            cov = np.array([[2 * mu + lam, lam, lam, 0., 0., 0.],
+                            [lam, 2 * mu + lam, lam, 0., 0., 0.],
+                            [lam, lam, 2 * mu + lam, 0., 0., 0.],
                             [0., 0., 0., mu, 0., 0.],
                             [0., 0., 0., 0., mu, 0.],
                             [0., 0., 0., 0., 0., mu]])
