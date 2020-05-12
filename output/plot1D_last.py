@@ -15,7 +15,21 @@ toPlot = {0: ['j_x', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
           2: ['rho', r'density [kg/m$^3$]', 1.],
           3: ['press', r'pressure (MPa)', 1e-6]}
 
-choice = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
+reduced = False
+
+for file in files.values():
+
+    last = list(file[1].keys())[-2]
+    g = file[1].get(last)
+
+    if len(g) < 2:
+        reduced = True
+        break
+
+if reduced is True:
+    choice = int(input("What to plot? (0: mass flux x | 1: mass flux y | 2: density) "))
+else:
+    choice = int(input("What to plot? (0: mass flux x | 1: mass flux y | 2: density | 3: pressure) "))
 
 for file in files.values():
 
@@ -34,13 +48,14 @@ for file in files.values():
 
     label = input("Enter Legend for " + file[0] + ": ")
 
-    last = list(file[1].keys())[-2]
-
     Nx = int(conf_disc.attrs['Nx'])
     Lx = float(conf_disc.attrs['Lx'])
 
-    g = file[1].get(last)
-    d = np.array(g.get(toPlot[choice][0]))
+    if choice == 3:
+        d = np.array(g.get('p'))
+    else:
+        d = np.array(g.get('q')[choice])
+
     x = np.linspace(0, Lx, Nx)
     t = g.attrs['time'] * 1e9
     print("Actual time for \'{:s}\': {:.2f} ns".format(file[0], t))
