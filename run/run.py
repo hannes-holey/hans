@@ -14,7 +14,7 @@ from solver.solver import Solver
 
 class Run:
 
-    def __init__(self, options, disc, geometry, numerics, material, plot):
+    def __init__(self, options, disc, geometry, numerics, material, plot, reducedOut):
 
         self.options = options
         self.disc = disc
@@ -59,7 +59,7 @@ class Run:
             while self.sol.time < maxT:
 
                 self.sol.solve(i)
-                self.write(i, 0)
+                self.write(i, 0, reducedOut)
                 if i % self.writeInterval == 0:
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                 i += 1
@@ -67,13 +67,13 @@ class Run:
                 tDiff = maxT - self.sol.time
 
                 if self.sol.eps < tol:
-                    self.write(i, 1)
+                    self.write(i, 1, reducedOut)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nSolution has converged after {:d} steps, Output written to: {:s}".format(i, outfile))
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
-                    self.write(i, 1)
+                    self.write(i, 1, reducedOut)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:.1e} s reached.".format(i, maxT))
                     print("Output written to: {:s}".format(outfile))
@@ -90,7 +90,7 @@ class Run:
 
         print("Total wall clock time: {:02d}:{:02d}:{:02d} (Performance: {:.2f} ns/s)".format(HH, MM, SS, self.sol.time * 1e9 / tDiff))
 
-    def write(self, i, last):
+    def write(self, i, last, reduced):
 
         # HDF5 output file
         if i % self.writeInterval == 0 or last == 1:
@@ -125,11 +125,10 @@ class Run:
             if str(i).zfill(10) not in file:
 
                 g1 = file.create_group(str(i).zfill(10))
+                g1.create_dataset('q', data=self.sol.q.field)
 
-                g1.create_dataset('j_x', data=self.sol.q.field[0])
-                g1.create_dataset('j_y', data=self.sol.q.field[1])
-                g1.create_dataset('rho', data=self.sol.q.field[2])
-                g1.create_dataset('press', data=self.eqOfState.isoT_pressure(self.sol.q.field[2]))
+                if reduced is False:
+                    g1.create_dataset('p', data=self.eqOfState.isoT_pressure(self.sol.q.field[2]))
 
                 g1.attrs.create('time', self.sol.time)
                 g1.attrs.create('mass', self.sol.mass)
