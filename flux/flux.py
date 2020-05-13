@@ -182,7 +182,7 @@ class Flux:
 
         Q = self.getQ_MC(q, h, stress, dt, d, ax)
 
-        stress_tmp, cov = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+        _, stress_tmp, cov = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
         if self.fluct is True:
             stress_tmp.addNoise_FH(cov)
 
