@@ -7,6 +7,7 @@ output/*.h5
 output/*.mp4
 output/*.pdf
 output/*.dat
+output/*.log
 output/animations/
 config/
 submit.sh
