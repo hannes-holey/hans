@@ -6,49 +6,6 @@ import matplotlib.animation as animation
 from helper import getFile
 
 
-def assembleArrays(file, database):
-    """
-    Assemble list of arrays from hdf5-file to loop over in animation
-
-    Parameters
-    ----------
-    file : h5py File object
-        hdf5 input file
-    database :  str
-        name of the database to read from
-
-    Returns
-    -------
-    A :  list
-        list of result arrays
-    t :  list
-        list of snapshot times
-    Nx : int
-        number of grid cells in x
-    Ny : int
-        number of grid cells in y
-    filename: str
-        name of the output file
-    """
-
-    conf_disc = file.get('/config/disc')
-    conf_opt = file.get('config/options')
-
-    Nx = conf_disc.attrs['Nx']
-    Ny = conf_disc.attrs['Ny']
-    filename = conf_opt.attrs['name']
-
-    A = []
-    t = []
-    for i in file.keys():
-        if str(i) != 'config':
-            g = file.get(i)
-            A.append(np.array(g.get(database)))
-            t.append(g.attrs['time'] * 1e9)
-
-    return A, t, Nx, Ny, filename
-
-
 def plot_update(i, A, t):
     """
     Updates the plot in animation
@@ -57,10 +14,10 @@ def plot_update(i, A, t):
     ----------
     i : int
         iterator
-    A : list
-        list of result arrays
-    t : list
-        list of snapshot times
+    A : np.ndarray
+        array containing field variables at each time step
+    t : np.ndarray
+        array containing physical time at each time step
     """
     global glob_min
     global glob_max
@@ -72,7 +29,7 @@ def plot_update(i, A, t):
 
     im.set_array(A[i].T)
     im.set_clim(vmin=glob_min, vmax=glob_max)
-    fig.suptitle("Time: {:.1f}".format(t[i]))
+    fig.suptitle("Time: {:.1f} µs".format(t[i]))
 
 
 if __name__ == "__main__":
@@ -83,20 +40,34 @@ if __name__ == "__main__":
     file = getFile()
 
     # User input
-    toPlot = {0:'j_x', 1:'j_y', 2:'rho', 3:'press'}
-    choice = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
+    toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
+              1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
+              2: ['rho', r'density [kg/m$^3$]', 1.],
+              3: ['p', r'pressure (MPa)', 1e-6]}
+
+    reduced = not('p' in file.variables)
+
+    if reduced is True:
+        choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n"))
+    else:
+        choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n3:\tpressure\n"))
+
     save = int(input("Show (0) or save (1) animation? "))
 
-    A, t, Nx, Ny, name = assembleArrays(file, toPlot[choice])
+    # A, t, Nx, Ny, name = assembleArrays(file, toPlot[choice])
+    A = np.array(file.variables[toPlot[choice][0]]) * toPlot[choice][2]
+    t = np.array(file.variables['time']) * 1e6
+    Nx = file.Nx
+    Ny = file.Ny
+    name = file.name
 
     # Global colorbar limits
     glob_min = np.amin(A[0])
     glob_max = np.amax(A[0])
 
     # Initial plotting
-    clab = {0: 'mass flux x', 1: 'mass flux y', 2: 'density', 3: 'pressure (Pa)'}
     im = ax.imshow(np.empty((Nx,Ny)), interpolation='nearest', cmap='viridis')
-    cbar = plt.colorbar(im, ax=ax, label=clab[choice])
+    cbar = plt.colorbar(im, ax=ax, label=toPlot[choice][1])
     ax.set_xlabel('x')
     ax.set_ylabel('y')
 
@@ -104,6 +75,6 @@ if __name__ == "__main__":
     anim = animation.FuncAnimation(fig, plot_update, frames=len(A), fargs=(A, t,), interval=100, repeat=True)
 
     if save == 1:
-        anim.save(name + '_' + toPlot[choice] + '_2D.mp4', fps=30)
+        anim.save(name + '_' + toPlot[choice][0] + '_2D.mp4', fps=30)
     elif save == 0:
         plt.show()
