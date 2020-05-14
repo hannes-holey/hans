@@ -9,35 +9,38 @@ plt.figure(figsize=(10,6), tight_layout=True)
 
 file = getFile()
 
-conf_disc = file.get('config/disc')
-Lx = float(conf_disc.attrs['Lx'])
+Lx = file.Lx
 
-toPlot = {0: ['j_x', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
-          1: ['j_y', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
+toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
+          1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
           2: ['rho', r'density [kg/m$^3$]', 1.],
-          3: ['press', r'pressure (MPa)', 1e-6]}
+          3: ['p', r'pressure (MPa)', 1e-6]}
 
-choice = int(input("What to plot? (0: maxx flux x | 1: mass flux y | 2: density | 3: pressure) "))
+reduced = not('p' in file.variables)
+
+if reduced is True:
+    choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n"))
+else:
+    choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n3:\tpressure\n"))
+
 every = int(input("Plot every n-th written time step: "))
 
-keys = list(file.keys())[:-1]
-maxT = file.get(keys[-1]).attrs['time'] * 1e6
+time = np.array(file.variables['time']) * 1e6
+maxT = time[-1]
 
 cmap = plt.cm.coolwarm
 
-for i in keys[::every]:
+for i in range(0, len(time), every):
 
-    g = file.get(i)
-    d = np.array(g.get(toPlot[choice][0]))
+    d = np.array(file.variables[toPlot[choice][0]])[i]
     x = np.linspace(0, Lx, d.shape[0])
 
-    t = g.attrs['time'] * 1e6
+    t = time[i]
     c = t / maxT
 
     plt.plot(x * 1.e3, d[:,int(d.shape[1] / 2)] * toPlot[choice][2], '-', color=cmap(c))
 
 sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
-file.close()
 
 plt.xlabel('distance [mm]')
 plt.ylabel(toPlot[choice][1])

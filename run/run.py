@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import h5py
+import netCDF4
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,16 +44,38 @@ class Run:
 
         if plot is False:
             self.file_tag = 1
+            self.j = 0
 
             if 'output' not in os.listdir():
                 os.mkdir('output')
 
-            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5' in os.listdir('output'):
+            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir('output'):
                 self.file_tag += 1
 
-            outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5'
+            outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc'
 
             i = 0
+
+            # initialize NetCDF file
+            self.nc = netCDF4.Dataset(os.path.join('output', outfile), 'w', format='NETCDF3_64BIT_OFFSET')
+            self.nc.createDimension('x', self.Nx)
+            self.nc.createDimension('y', self.Ny)
+            self.nc.createDimension('step', None)
+
+            # create conserved variables timeseries of fields
+            self.rho = self.nc.createVariable('rho', 'f8', ('step','x','y'))
+            self.jx = self.nc.createVariable('jx', 'f8', ('step','x','y'))
+            self.jy = self.nc.createVariable('jy', 'f8', ('step','x','y'))
+            if reducedOut is False:
+                self.p = self.nc.createVariable('p', 'f8', ('step', 'x', 'y'))
+
+            # create scalar variables
+            self.time = self.nc.createVariable('time', 'f8', ('step'))
+            self.mass = self.nc.createVariable('mass', 'f8', ('step'))
+            self.vmax = self.nc.createVariable('vmax', 'f8', ('step'))
+            self.vSound = self.nc.createVariable('vSound', 'f8', ('step'))
+            self.dt = self.nc.createVariable('dt', 'f8', ('step'))
+            self.eps = self.nc.createVariable('eps', 'f8', ('step'))
 
             print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
             while self.sol.time < maxT:
@@ -95,10 +117,13 @@ class Run:
         # HDF5 output file
         if i % self.writeInterval == 0 or last == 1:
 
-            file = h5py.File('./output/' + str(self.name) + '_' + str(self.file_tag).zfill(4) + '.h5', 'a')
+            if self.j == 0:
 
-            if 'config' not in file:
-                g0 = file.create_group('config')
+                categories = [self.options,
+                              self.disc,
+                              self.geometry,
+                              self.numerics,
+                              self.material]
 
                 from datetime import datetime
                 from git import Repo
@@ -107,37 +132,27 @@ class Run:
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
                 git_commit = str(Repo(search_parent_directories=True).head.object.hexsha)
 
-                g0.attrs.create('tStart', timeString)
-                g0.attrs.create('commit', git_commit)
+                self.nc.tStart = timeString
+                self.nc.commit = git_commit
 
-                categories = {'options': self.options,
-                              'disc': self.disc,
-                              'geometry': self.geometry,
-                              'numerics': self.numerics,
-                              'material': self.material}
+                for cat in categories:
+                    for key, value in cat.items():
+                        self.nc.setncattr(key, value)
 
-                for cat_key, cat_val in categories.items():
-                    g1 = file.create_group('config/' + cat_key)
+            self.jx[self.j] = self.sol.q.field[0]
+            self.jy[self.j] = self.sol.q.field[1]
+            self.rho[self.j] = self.sol.q.field[2]
+            if reduced is False:
+                self.p[self.j] = self.eqOfState.isoT_pressure(self.sol.q.field[2])
 
-                    for key, value in cat_val.items():
-                        g1.attrs.create(str(key), value)
+            self.time[self.j] = self.sol.time
+            self.mass[self.j] = self.sol.mass
+            self.vmax[self.j] = self.sol.vmax
+            self.vSound[self.j] = self.sol.vSound
+            self.dt[self.j] = self.sol.dt
+            self.eps[self.j] = self.sol.eps
 
-            if str(i).zfill(10) not in file:
-
-                g1 = file.create_group(str(i).zfill(10))
-                g1.create_dataset('q', data=self.sol.q.field)
-
-                if reduced is False:
-                    g1.create_dataset('p', data=self.eqOfState.isoT_pressure(self.sol.q.field[2]))
-
-                g1.attrs.create('time', self.sol.time)
-                g1.attrs.create('mass', self.sol.mass)
-                g1.attrs.create('vmax', self.sol.vmax)
-                g1.attrs.create('vSound', self.sol.vSound)
-                g1.attrs.create('dt', self.sol.dt)
-                g1.attrs.create('eps', self.sol.eps)
-
-            file.close()
+            self.j += 1
 
     def plot(self):
 

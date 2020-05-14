@@ -15,44 +15,25 @@ toPlot = {0: ['mass', r'$\Delta m/m_0$ [-]', 1.],
           3: ['dt', r'$\Delta t$ [ns]', 1e9],
           4: ['eps',r'$\epsilon$ [-]', 1.]}
 
-choice = int(input("What to plot? (0: mass x | 1: vmax | 2: speed of sound | 3: time step | 4: epsilon) "))
+choice = int(input("Choose scalar quantity to plot as time series:\n0:\tmass\n1:\tvmax\n2:\tvSound\n3:\ttime step\n4:\tepsilon\n"))
 
 for file in files.values():
 
-    conf_geo = file[1].get('config/geometry')
-    conf_num = file[1].get('config/numerics')
-    conf_disc = file[1].get('config/disc')
-    conf_mat = file[1].get('config/material')
-
-    config = [conf_disc, conf_geo, conf_num, conf_mat]
-
     print(file[0] + ": \n" + 40 * "-")
-    for k in config:
-        for l in list(k.attrs):
-            print("{:s}: {:>}".format(l, k.attrs[l]))
-        print(40 * "-")
+    for name in file[1].ncattrs():
+        print("{:20s}: {:>}".format(name, getattr(file[1], name)))
+    print(40 * "-")
 
     label = input("Enter Legend for " + file[0] + ": ")
 
-    file_keys = list(file[1].keys())[:-1]
-
-    A = np.empty(0)
-    for i in file_keys:
-        # if str(i) != 'config':
-
-        g = file[1].get(i)
-        time = g.attrs['time']
-        ydata = g.attrs[toPlot[choice][0]]
-
-        A = np.append(A, [time, ydata])
-        A = np.reshape(A, (int(A.shape[0] / 2),2))
+    time = np.array(file[1].variables['time']) * 1e9
+    scalar = np.array(file[1].variables[toPlot[choice][0]])
+    scalefactor = toPlot[choice][2]
 
     if choice == 0:
-        plt.plot(A[:,0] * 1e9, (A[:,1] - A[0,1]) / A[0,1], '-', label=label)
+        plt.plot(time[:], (scalar[:] / scalar[0] - 1) * scalefactor, '-', label=label)
     else:
-        plt.plot(A[:,0] * 1e9, A[:,1] * toPlot[choice][2], '-', label=label)
-
-    file[1].close()
+        plt.plot(time[:], scalar[:] * scalefactor, '-', label=label)
 
 plt.xlabel('time (ns)')
 plt.ylabel(toPlot[choice][1])

@@ -8,24 +8,24 @@ disc:
     Ny: 50
 geometry:
     type: journal
-    CR: 1e-2
+    CR: 1.e-2
     eps: 0.7
     U: 0.1
     V: 0.
 numerics:
-    adaptive: True
+    adaptive: 1
     C: 0.02
-    tol: 1e-5
+    tol: 1.e-5
     dt: 1.e-10
     maxT: 3.e-5
     numFlux: LW
-    periodicX: True
-    periodicY: True
+    periodicX: 1
+    periodicY: 1
 material:
     EOS: DH
-    Fluctuating: False
-    Stokes: True
-    Rey: True
+    Fluctuating: 0
+    Stokes: 1
+    Rey: 1
     mu: 0.0794
     P0: 101325
     rho0: 877.7007

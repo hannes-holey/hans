@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import os
-import h5py
+import netCDF4
 import time
-import subprocess
 import numpy as np
 
 
@@ -19,7 +18,7 @@ def getFiles():
         os.chdir(depth * (".." + os.path.sep) + "output")
 
     for file in sorted(os.listdir()):
-        if file.endswith("h5"):
+        if file.endswith(".nc"):
             date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
             availFiles.update({i: [file, date]})
             i += 1
@@ -33,12 +32,9 @@ def getFiles():
     j = 0
     while ask is True:
         userInput = input("Enter file key (any other key to exit): ")
-        fileKeys = np.arange(0,len(availFiles)).astype(str)
-        if userInput in fileKeys:
-            # tmp_file = copyTemp(availFiles[int(userInput)][0])
-            # files.update({j: [availFiles[int(userInput)][0], h5py.File(tmp_file, 'r')]})
-            # subprocess.call("rm " + tmp_file, shell=True)
-            files.update({j: [availFiles[int(userInput)][0], h5py.File(availFiles[int(userInput)][0], 'r')]})
+        if userInput in np.arange(0, len(availFiles)).astype(str):
+            filename = availFiles[int(userInput)][0]
+            files.update({j: [filename, netCDF4.Dataset(filename)]})
             j += 1
         else:
             ask = False
@@ -58,7 +54,7 @@ def getFile():
         os.chdir(depth * (".." + os.path.sep) + "output")
 
     for file in sorted(os.listdir()):
-        if file.endswith("h5"):
+        if file.endswith(".nc"):
             date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
             availFiles.update({i: [file, date]})
             i += 1
@@ -71,10 +67,8 @@ def getFile():
     while flag is False:
         userInput = input("Enter file key: ")
         if userInput in np.arange(0, len(availFiles)).astype(str):
-            # tmp_file = copyTemp(availFiles[int(userInput)][0])
-            file = h5py.File(availFiles[int(userInput)][0], 'r')
-            # file = h5py.File(tmp_file, 'r')
-            # subprocess.call("rm " + tmp_file, shell=True)
+            filename = availFiles[int(userInput)][0]
+            file = netCDF4.Dataset(filename)
             flag = True
         else:
             print("File not in list. Try again!")
@@ -107,12 +101,3 @@ def getReference():
     else:
         print("No comparison!")
         return None
-
-
-def copyTemp(filename):
-
-    tmp_filename = os.path.splitext(filename)[0] + "_tmp.h5"
-
-    subprocess.call("cp " + filename + " " + tmp_filename, shell=True)
-
-    return tmp_filename
