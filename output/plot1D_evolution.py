@@ -7,9 +7,10 @@ from helper import getFile
 plt.style.use('presentation')
 plt.figure(figsize=(10,6), tight_layout=True)
 
-file = getFile()
+filename, file = getFile()
 
 Lx = file.Lx
+Nx = file.Nx
 
 toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
           1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],

@@ -13,7 +13,7 @@ def gaussian(x, a, mean, sigma):
     return a * np.exp(-((x - mean)**2 / (2 * sigma**2)))
 
 
-file = getFile()
+filename, file = getFile()
 
 Nx = file.Nx
 Ny = file.Ny

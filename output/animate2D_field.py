@@ -37,7 +37,7 @@ if __name__ == "__main__":
     plt.style.use('presentation')
     fig, ax = plt.subplots(figsize=(8,6))
 
-    file = getFile()
+    filename, file = getFile()
 
     # User input
     toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],

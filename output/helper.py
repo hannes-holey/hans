@@ -73,7 +73,7 @@ def getFile():
         else:
             print("File not in list. Try again!")
             flag = False
-    return file
+    return filename, file
 
 
 def getReference():
