@@ -44,7 +44,7 @@ for file in files.values():
     Lx = file[1].Lx
     Nx = file[1].Nx
 
-    x = np.linspace(0, Lx, Nx)
+    x = (np.arange(Nx) + 0.5) * Lx / Nx
     t = time[step]
 
     print("Closest available snapshot for \'{:s}\' at t = {:.2f} ns".format(file[0], t))

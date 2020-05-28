@@ -30,11 +30,11 @@ time = np.array(file.variables['time']) * 1e6
 maxT = time[-1]
 
 cmap = plt.cm.coolwarm
+x = (np.arange(Nx) + 0.5) * Lx / Nx
 
 for i in range(0, len(time), every):
 
     d = np.array(file.variables[toPlot[choice][0]])[i]
-    x = np.linspace(0, Lx, d.shape[0])
 
     t = time[i]
     c = t / maxT

@@ -39,7 +39,7 @@ for file in files.values():
     Nx = file[1].Nx
 
     d = np.array(file[1].variables[toPlot[choice][0]])[-1]
-    x = np.linspace(0, Lx, Nx)
+    x = (np.arange(Nx) + 0.5) * Lx / Nx
     t = np.array(file[1].variables['time'])[-1] * 1e9
     print("Actual time for \'{:s}\': {:.2f} ns".format(file[0], t))
     ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
