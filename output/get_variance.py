@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import psutil
 import numpy as np
 import matplotlib.pyplot as plt
 from helper import getFile
@@ -30,12 +31,16 @@ if reduced is True:
 else:
     choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n3:\tpressure\n"))
 
-# in cgs units
-full_array = np.array(file.variables[toPlot[choice][0]]) / toPlot[choice][2]
+# check if enough memory available, load data
+if file.variables[toPlot[choice][0]].size * 8 < psutil.virtual_memory().available:
+    full_array = np.array(file.variables[toPlot[choice][0]], copy=False).astype(np.float32) / toPlot[choice][2]
+else:
+    full_array = np.array(file.variables[toPlot[choice][0]]) / toPlot[choice][2]
+
 cellVariance = np.var(full_array, axis=0)
 variance = np.mean(cellVariance)
 mean = np.mean(full_array)
-print(mean, variance)
+print("mean : {:}, variance : {:}".format(mean, variance))
 
 # --- Loop over n different sampling numbers --- #
 n = 10
