@@ -19,7 +19,7 @@ filename, file = getFile()
 Nx = file.Nx
 Ny = file.Ny
 
-toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1e1],
+toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1e1],       # last item in list: conversion to cgs units
           1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1e1],
           2: ['rho', r'density [kg/m$^3$]', 1e3],
           3: ['p', r'pressure (MPa)', 1e-6]}
@@ -56,14 +56,22 @@ for i in range(n):
     var[i,0] = samples
     var[i,1] = variance
 
-# np.savetxt('var_' + toPlot[choice][0] + '-vs-N.dat', var, header="samples variance(SI units)", comments="")
+# np.savetxt('var_' + toPlot[choice][0] + '-vs-N.dat', var, header="samples variance(cgs units)", comments="")
 ax[0].plot(var[:,0], var[:,1], '-o')
 
 # plot histogram of fluctuating quantity in the center cell
-yhist, xhist, _ = plt.hist(full_array[:,Nx // 2, Ny // 2], bins=50)
+yhist, xhist, _ = plt.hist(full_array[:,Nx // 2, Ny // 2], bins=25)
+
+bin_width = xhist[-1] - xhist[-2]
 
 # fit un-normalized Gaussian to the data and plot
-popt, pcov = curve_fit(gaussian, xhist[:-1], yhist, [1, mean, np.sqrt(variance)])
+popt, pcov = curve_fit(gaussian, xhist[:-1] + bin_width / 2, yhist, [np.amax(xhist), mean, np.sqrt(variance)])
 x = np.linspace(xhist[0],xhist[-1], 100)
 ax[1].plot(x, gaussian(x, *popt), '--', color='red')
-plt.show()
+
+plotVar = int(input("Show (0) or save (1) figure? "))
+
+if plotVar == 1:
+    plt.savefig(filename.split(".")[0] + "_var_" + toPlot[choice][0] + '.pdf')
+elif plotVar == 0:
+    plt.show()
