@@ -32,10 +32,6 @@ else:
     choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n3:\tpressure\n"))
 
 # check if enough memory available, load data
-if file.variables[toPlot[choice][0]].size * 8 > psutil.virtual_memory().free:
-    full_array = np.array(file.variables[toPlot[choice][0]], copy=False).astype(np.float32) / toPlot[choice][2]
-    print("Not enough memory: use single precision format!")
-#else:
 try:
     full_array = np.array(file.variables[toPlot[choice][0]], copy=False) / toPlot[choice][2]
 except MemoryError:
