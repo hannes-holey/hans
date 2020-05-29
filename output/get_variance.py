@@ -35,8 +35,12 @@ else:
 if file.variables[toPlot[choice][0]].size * 8 > psutil.virtual_memory().free:
     full_array = np.array(file.variables[toPlot[choice][0]], copy=False).astype(np.float32) / toPlot[choice][2]
     print("Not enough memory: use single precision format!")
-else:
-    full_array = np.array(file.variables[toPlot[choice][0]]) / toPlot[choice][2]
+#else:
+try:
+    full_array = np.array(file.variables[toPlot[choice][0]], copy=False) / toPlot[choice][2]
+except MemoryError:
+    print("Not enough memory, using single precision!")
+    full_array = np.array(file.variables[toPlot[choice][0]], copy=False).astype(np.float32) / toPlot[choice][2]
 
 cellVariance = np.var(full_array, axis=0)
 variance = np.mean(cellVariance)
