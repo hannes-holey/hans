@@ -63,10 +63,12 @@ class Newtonian:
         viscStress, cov = self.viscousStress_avg(q, h, dt)
         stress = VectorField(self.disc)
 
-        stress.field[0] -= eqOfState.isoT_pressure(q.field[2])
-        stress.field[1] -= eqOfState.isoT_pressure(q.field[2])
+        pressure = eqOfState.isoT_pressure(q.field[2])
 
-        return viscStress, stress, cov
+        stress.field[0] -= pressure
+        stress.field[1] -= pressure
+
+        return viscStress, stress, cov, pressure
 
     def viscousStress_wall(self, q, h, dt, bound):
 

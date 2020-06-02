@@ -4,7 +4,7 @@
 import numpy as np
 from field.field import VectorField
 from stress.stress import Newtonian
-# from eos.eos import DowsonHigginson, PowerLaw
+from eos.eos import DowsonHigginson, PowerLaw
 
 
 class Flux:
@@ -182,7 +182,7 @@ class Flux:
 
         Q = self.getQ_MC(q, h, stress, dt, d, ax)
 
-        _, stress_tmp, cov = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+        _, stress_tmp, cov, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
         if self.fluct is True:
             stress_tmp.addNoise_FH(cov)
 
@@ -233,4 +233,102 @@ class Flux:
         out.field[1] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
         out.field[2] = -j_x * hx / h0 - j_y * hy / h0
 
+        out.field *= dt
+
         return out
+
+    def hyperbolicFW_BW(self, q, p, dt, d, ax):
+
+        if ax == 0:
+            F1 = p
+            F2 = np.zeros_like(F1)
+            F3 = q.field[0]
+
+            dx = q.dx
+
+        elif ax == 1:
+            F1 = np.zeros_like(p)
+            F2 = p
+            F3 = q.field[1]
+
+            dx = q.dy
+
+        flux = VectorField(self.disc)
+
+        flux.field[0] = dt / dx * (-d) * (np.roll(F1, d, axis=ax) - F1)
+        flux.field[1] = dt / dx * (-d) * (np.roll(F2, d, axis=ax) - F2)
+        flux.field[2] = dt / dx * (-d) * (np.roll(F3, d, axis=ax) - F3)
+
+        return flux
+
+    def diffusiveCD(self, q, visc_stress, dt, ax):
+
+        if ax == 0:
+            D1 = visc_stress.field[0]
+            D2 = visc_stress.field[2]
+            D3 = np.zeros_like(D1)
+            dx = q.dx
+        elif ax == 1:
+            D1 = visc_stress.field[2]
+            D2 = visc_stress.field[1]
+            D3 = np.zeros_like(D1)
+            dx = q.dy
+
+        flux = VectorField(self.disc)
+
+        flux.field[0] = dt / (2 * dx) * (np.roll(D1, -1, axis=ax) - np.roll(D1, 1, axis=ax))
+        flux.field[1] = dt / (2 * dx) * (np.roll(D2, -1, axis=ax) - np.roll(D2, 1, axis=ax))
+        flux.field[2] = dt / (2 * dx) * (np.roll(D3, -1, axis=ax) - np.roll(D3, 1, axis=ax))
+
+        return flux
+
+    def stochasticFlux(self, cov, dt, ax):
+
+        flux_left = VectorField(self.disc)
+        flux_right = VectorField(self.disc)
+        out = VectorField(self.disc)
+
+        flux_left.addNoise_FH(cov)
+        flux_right.addNoise_FH(cov)
+
+        if ax == 0:
+            f1 = flux_left.field[0] - flux_right.field[0]
+            f2 = flux_left.field[2] - flux_right.field[2]
+            dx = flux_left.dx
+        if ax == 1:
+            f1 = flux_left.field[2] - flux_right.field[2]
+            f2 = flux_left.field[1] - flux_right.field[1]
+            dx = flux_left.dy
+
+        out.field[0] = dt / dx * np.sqrt(2) * f1
+        out.field[1] = dt / dx * np.sqrt(2) * f2
+
+        return out
+
+    def MacCormack(self, q, h, dt, corrector=True):
+
+        if corrector:
+            Q = self.MacCormack(q, h, dt, corrector=False)
+            dir = -1                # forwards difference
+        else:
+            Q = q
+            dir = 1                 # backwards difference
+
+        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+
+        fX = self.hyperbolicFW_BW(Q, p, dt, dir, 0)
+        fY = self.hyperbolicFW_BW(Q, p, dt, dir, 1)
+
+        dX = self.diffusiveCD(Q, viscousStress, dt, 0)
+        dY = self.diffusiveCD(Q, viscousStress, dt, 1)
+
+        sX = self.stochasticFlux(cov3, dt, 0)
+        sY = self.stochasticFlux(cov3, dt, 1)
+
+        src = self.getSource(viscousStress, Q, h, dt)
+
+        Q.field = q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
+        # Q.field = Q.field - fX.field - fY.field + dX.field + dY.field + src.field
+        # Q.field = Q.field - fX.field - fY.field + src.field
+
+        return Q
