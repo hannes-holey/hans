@@ -4,7 +4,6 @@
 import numpy as np
 from field.field import VectorField
 from stress.stress import Newtonian
-from eos.eos import DowsonHigginson, PowerLaw
 
 
 class Flux:
