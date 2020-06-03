@@ -11,13 +11,16 @@ class Field:
         self.ndim = ndim
         self.disc = disc
 
+        self.dx = float(disc['dx'])
+        self.dy = float(disc['dy'])
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
-        self.Lx = float(disc['Lx'])
-        self.Ly = float(disc['Ly'])
 
-        self.dx = self.Lx / self.Nx
-        self.dy = self.Ly / self.Ny
+        self.Lx = self.dx * self.Nx
+        self.Ly = self.dy * self.Ny
+
+        # self.dx = self.Lx / self.Nx
+        # self.dy = self.Ly / self.Ny
 
         x = np.linspace(self.dx / 2, self.Lx - self.dx / 2, self.Nx)
         y = np.linspace(self.dy / 2, self.Ly - self.dy / 2, self.Ny)

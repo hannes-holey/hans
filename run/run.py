@@ -28,10 +28,18 @@ class Run:
         tol = float(numerics['tol'])
         maxT = float(numerics['maxT'])
 
-        self.Lx = float(disc['Lx'])
-        self.Ly = float(disc['Ly'])
+        dx = float(disc['dx'])
+        dy = float(disc['dy'])
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
+
+        self.Lx = dx * self.Nx
+        self.Ly = dy * self.Ny
+
+        # self.Lx = float(disc['Lx'])
+        # self.Ly = float(disc['Ly'])
+        # self.Nx = int(disc['Nx'])
+        # self.Ny = int(disc['Ny'])
 
         if material['EOS'] == 'DH':
             self.eqOfState = DowsonHigginson(material)

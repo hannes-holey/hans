@@ -10,8 +10,13 @@ class Analytic:
 
         self.geometry = geometry
 
-        self.Lx = float(disc['Lx'])
-        self.Ly = float(disc['Ly'])
+        dx = float(disc['dx'])
+        dy = float(disc['dy'])
+        Nx = int(disc['Nx'])
+        Ny = int(disc['Ny'])
+
+        self.Lx = dx * Nx
+        self.Ly = dy * Ny
 
     def linearSlider(self, x, y):
         "Linear height profile"
