@@ -319,11 +319,19 @@ class Flux:
         fX = self.hyperbolicFW_BW(Q, p, dt, dir, 0)
         fY = self.hyperbolicFW_BW(Q, p, dt, dir, 1)
 
-        dX = self.diffusiveCD(Q, viscousStress, dt, 0)
-        dY = self.diffusiveCD(Q, viscousStress, dt, 1)
+        if bool(self.material['Fluctuating']) is True:
+            sX = self.stochasticFlux(cov3, dt, 0)
+            sY = self.stochasticFlux(cov3, dt, 1)
+        else:
+            sX = VectorField(self.disc)
+            sY = VectorField(self.disc)
 
-        sX = self.stochasticFlux(cov3, dt, 0)
-        sY = self.stochasticFlux(cov3, dt, 1)
+        if bool(self.material['Rey']) is True:
+            dX = VectorField(self.disc)
+            dY = VectorField(self.disc)
+        else:
+            dX = self.diffusiveCD(Q, viscousStress, dt, 0)
+            dY = self.diffusiveCD(Q, viscousStress, dt, 1)
 
         src = self.getSource(viscousStress, Q, h, dt)
 
