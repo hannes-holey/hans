@@ -40,7 +40,7 @@ except MemoryError:
 cellVariance = np.var(full_array, axis=0)
 variance = np.mean(cellVariance)
 mean = np.mean(full_array)
-print("mean : {:}, variance : {:}".format(mean, variance))
+print("mean : {:.10e}, variance : {:.10e}".format(mean, variance))
 
 # --- Loop over n different sampling numbers --- #
 n = 10
