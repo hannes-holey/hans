@@ -327,8 +327,6 @@ class Flux:
 
         src = self.getSource(viscousStress, Q, h, dt)
 
-        Q.field = q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
-        # Q.field = Q.field - fX.field - fY.field + dX.field + dY.field + src.field
-        # Q.field = Q.field - fX.field - fY.field + src.field
+        Q.field = Q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
 
         return Q
