@@ -299,8 +299,8 @@ class Flux:
             f2 = flux_left.field[1] - flux_right.field[1]
             dx = flux_left.dy
 
-        out.field[0] = dt / dx * f1
-        out.field[1] = dt / dx * f2
+        out.field[0] = dt / dx * f1 * np.sqrt(2)
+        out.field[1] = dt / dx * f2 * np.sqrt(2)
 
         return out
 
