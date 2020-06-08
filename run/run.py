@@ -36,6 +36,9 @@ class Run:
         self.Lx = dx * self.Nx
         self.Ly = dy * self.Ny
 
+        disc['Lx'] = self.Lx
+        disc['Ly'] = self.Ly
+        
         # self.Lx = float(disc['Lx'])
         # self.Ly = float(disc['Ly'])
         # self.Nx = int(disc['Nx'])
