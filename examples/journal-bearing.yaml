@@ -2,8 +2,8 @@ options:
     name: journal-bearing
     writeInterval: 1000
 disc:
-    Lx: 1.e-3
-    Ly: 1.e-3
+    dx: 2.e-5
+    dy: 2.e-5
     Nx: 50
     Ny: 50
 geometry:
