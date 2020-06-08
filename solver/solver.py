@@ -82,25 +82,20 @@ class Solver:
             fYN = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 1)
             fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 1)
 
-        elif self.numFlux == 'LW':
-            fXE = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, -1, 0)
-            fXW = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, 1, 0)
-            fYN = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, -1, 1)
-            fYS = self.Flux.getFlux_LW(self.q, self.height, stress, self.dt, 1, 1)
-
-        elif self.numFlux == 'MC':
-            fXE = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, -1, 0)
-            fXW = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, 1, 0)
-            fYN = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, -1, 1)
-            fYS = self.Flux.getFlux_MC(self.q, self.height, stress, self.dt, 1, 1)
-
             rhs = -1. / self.q.dx * (fXE.field - fXW.field) - 1. / self.q.dy * (fYN.field - fYS.field)
             source = self.Flux.getSource(viscousStress, self.q, self.height, self.dt)
             rhs += source.field
             self.q.field += self.dt * rhs
 
-        elif self.numFlux == 'MC_split':
+        elif self.numFlux == 'LW':
+            self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
+
+        elif self.numFlux == 'MC':
             Q = self.Flux.MacCormack(self.q, self.height, self.dt)
+            self.q.field = 1 / 2 * (self.q.field + Q.field)
+
+        elif self.numFlux == 'MC_split':
+            Q = self.Flux.MacCormack_split(self.q, self.height, self.dt)
             self.q.field = 1 / 2 * (self.q.field + Q.field)
 
         # some scalar output
