@@ -275,7 +275,7 @@ class Flux:
             S[0] = flux_left.field[0] - flux_right.field[0]
             S[1] = flux_left.field[2] - flux_right.field[2]
             dx = flux_left.dx
-        if ax == 1:
+        if ax == 2:
             S[0] = flux_left.field[2] - flux_right.field[2]
             S[1] = flux_left.field[1] - flux_right.field[1]
             dx = flux_left.dy
@@ -336,18 +336,18 @@ class Flux:
         fY = self.hyperbolicTVD(Q, p, dt, 2)
 
         if bool(self.material['Fluctuating']) is True:
-            sX = self.stochasticFlux(cov3, dt, 0)
-            sY = self.stochasticFlux(cov3, dt, 1)
+            sX = self.stochasticFlux(cov3, dt, 1)
+            sY = self.stochasticFlux(cov3, dt, 2)
         else:
             sX = VectorField(self.disc)
             sY = VectorField(self.disc)
 
-        if bool(self.material['Rey']) is True:
+        if bool(self.material['Rey']) is False:
+            dX = self.diffusiveCD(Q, viscousStress, dt, 1)
+            dY = self.diffusiveCD(Q, viscousStress, dt, 2)
+        else:
             dX = VectorField(self.disc)
             dY = VectorField(self.disc)
-        else:
-            dX = self.diffusiveCD(Q, viscousStress, dt, 0)
-            dY = self.diffusiveCD(Q, viscousStress, dt, 1)
 
         src = self.getSource(viscousStress, Q, h, dt)
 
