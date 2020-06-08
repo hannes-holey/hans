@@ -91,12 +91,13 @@ class Solver:
             self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
 
         elif self.numFlux == 'MC':
-            Q = self.Flux.MacCormack(self.q, self.height, self.dt)
-            self.q.field = 1 / 2 * (self.q.field + Q.field)
+            self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
 
         elif self.numFlux == 'MC_split':
-            Q = self.Flux.MacCormack_split(self.q, self.height, self.dt)
-            self.q.field = 1 / 2 * (self.q.field + Q.field)
+            self.q = self.Flux.MacCormack_split(self.q, self.height, self.dt)
+
+        elif self.numFlux == 'RK3':
+            self.q = self.Flux.RungeKutta3(self.q, self.height, self.dt)
 
         # some scalar output
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)

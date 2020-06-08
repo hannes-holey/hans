@@ -61,49 +61,6 @@ class Flux:
 
         return flux
 
-    # def getQ_LW(self, q, h, stress, dt, d, ax):
-    #
-    #     if ax == 0:
-    #         f1 = -stress.field[0]
-    #         f2 = -stress.field[2]
-    #         f3 = q.field[0]
-    #         dx = q.dx
-    #     elif ax == 1:
-    #         f1 = -stress.field[2]
-    #         f2 = -stress.field[1]
-    #         f3 = q.field[1]
-    #         dx = q.dy
-    #
-    #     Q = VectorField(self.disc)
-    #
-    #     Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], d, axis=ax)) - dt / (2. * dx) * d * (f1 - np.roll(f1, d, axis=ax))
-    #     Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], d, axis=ax)) - dt / (2. * dx) * d * (f2 - np.roll(f2, d, axis=ax))
-    #     Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], d, axis=ax)) - dt / (2. * dx) * d * (f3 - np.roll(f3, d, axis=ax))
-    #
-    #     return Q
-    #
-    # def getFlux_LW(self, q, h, stress, dt, d, ax):
-    #
-    #     Q = self.getQ_LW(q, h, stress, dt, d, ax)
-    #     stress_bound = stress.stagArray(d, ax + 1)
-    #
-    #     flux = VectorField(self.disc)
-    #
-    #     if ax == 0:
-    #         f1 = -stress_bound.field[0]
-    #         f2 = -stress_bound.field[2]
-    #         f3 = Q.field[0]
-    #     elif ax == 1:
-    #         f1 = -stress_bound.field[2]
-    #         f2 = -stress_bound.field[1]
-    #         f3 = Q.field[1]
-    #
-    #     flux.field[0] = f1
-    #     flux.field[1] = f2
-    #     flux.field[2] = f3
-    #
-    #     return flux
-
     def LaxStep(self, q, h, stress, dt, dir, ax):
 
         if ax == 0:
@@ -160,64 +117,6 @@ class Flux:
 
         return Q
 
-    # def getQ_MC(self, q, h, stress, dt, d, ax):
-    #
-    #     if ax == 0:
-    #         f1 = -stress.field[0]
-    #         f2 = -stress.field[2]
-    #         f3 = q.field[0]
-    #         dx = q.dx
-    #     elif ax == 1:
-    #         f1 = -stress.field[2]
-    #         f2 = -stress.field[1]
-    #         f3 = q.field[1]
-    #         dx = q.dy
-    #
-    #     Q = VectorField(self.disc)
-    #
-    #     Q.field[0] = q.field[0] + dt / dx * (f1 - np.roll(f1, -1, axis=ax))
-    #     Q.field[1] = q.field[1] + dt / dx * (f2 - np.roll(f2, -1, axis=ax))
-    #     Q.field[2] = q.field[2] + dt / dx * (f3 - np.roll(f3, -1, axis=ax))
-    #
-    #     return Q
-    #
-    # def getFlux_MC(self, q, h, stress, dt, d, ax):
-    #
-    #     Q = self.getQ_MC(q, h, stress, dt, d, ax)
-    #
-    #     _, stress_tmp, cov, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
-    #     if self.fluct is True:
-    #         stress_tmp.addNoise_FH(cov)
-    #
-    #     flux = VectorField(self.disc)
-    #
-    #     if ax == 0:
-    #         f1_p = -stress_tmp.field[0]
-    #         f2_p = -stress_tmp.field[2]
-    #         f3_p = Q.field[0]
-    #         f1 = -stress.field[0]
-    #         f2 = -stress.field[2]
-    #         f3 = q.field[0]
-    #     elif ax == 1:
-    #         f1_p = -stress_tmp.field[2]
-    #         f2_p = -stress_tmp.field[1]
-    #         f3_p = Q.field[1]
-    #         f1 = -stress.field[2]
-    #         f2 = -stress.field[1]
-    #         f3 = q.field[1]
-    #
-    #     if d == -1:
-    #         flux.field[0] = 0.5 * (np.roll(f1, d, axis=ax) + f1_p)
-    #         flux.field[1] = 0.5 * (np.roll(f2, d, axis=ax) + f2_p)
-    #         flux.field[2] = 0.5 * (np.roll(f3, d, axis=ax) + f3_p)
-    #
-    #     if d == 1:
-    #         flux.field[0] = 0.5 * (np.roll(f1_p, d, axis=ax) + f1)
-    #         flux.field[1] = 0.5 * (np.roll(f2_p, d, axis=ax) + f2)
-    #         flux.field[2] = 0.5 * (np.roll(f3_p, d, axis=ax) + f3)
-    #
-    #     return flux
-
     def totalFluxFW_BW(self, q, stress, dt, dir, ax):
 
         if ax == 0:
@@ -260,6 +159,9 @@ class Flux:
 
         Q.field = Q.field - fX.field - fY.field + src.field
 
+        if corrector:
+            Q.field = 0.5 * (Q.field + q.field)
+
         return Q
 
     def getSource(self, stress, q, h, dt):
@@ -286,46 +188,75 @@ class Flux:
 
     def hyperbolicFW_BW(self, q, p, dt, d, ax):
 
-        if ax == 0:
-            F1 = p
-            F2 = np.zeros_like(F1)
-            F3 = q.field[0]
+        F = np.empty([3, q.Nx, q.Ny])
+
+        if ax == 1:
+            F[0] = p
+            F[1] = np.zeros_like(p)
+            F[2] = q.field[0]
 
             dx = q.dx
 
-        elif ax == 1:
-            F1 = np.zeros_like(p)
-            F2 = p
-            F3 = q.field[1]
+        elif ax == 2:
+            F[0] = np.zeros_like(p)
+            F[1] = p
+            F[2] = q.field[1]
 
             dx = q.dy
 
         flux = VectorField(self.disc)
 
-        flux.field[0] = dt / dx * (-d) * (np.roll(F1, d, axis=ax) - F1)
-        flux.field[1] = dt / dx * (-d) * (np.roll(F2, d, axis=ax) - F2)
-        flux.field[2] = dt / dx * (-d) * (np.roll(F3, d, axis=ax) - F3)
+        flux.field = dt / dx * (-d) * (np.roll(F, d, axis=ax) - F)
+
+        return flux
+
+    def hyperbolicTVD(self, q, p, dt, ax):
+
+        F = np.empty([3, q.Nx, q.Ny])
+
+        if ax == 1:
+            F[0] = p
+            F[1] = np.zeros_like(p)
+            F[2] = q.field[0]
+            dx = q.dx
+
+        elif ax == 2:
+            F[0] = np.zeros_like(p)
+            F[1] = p
+            F[2] = q.field[1]
+            dx = q.dy
+
+        flux = VectorField(self.disc)
+
+        a1 = (np.sqrt(7) + 1) / 4
+        a2 = (np.sqrt(7) - 1) / 4
+
+        f_fw = a1 * (F + np.roll(F, -1, axis=ax)) - a2 * (np.roll(F, 1, axis=ax) + np.roll(F, -2, axis=ax))
+        f_bw = a1 * (F + np.roll(F, 1, axis=ax)) - a2 * (np.roll(F, -1, axis=ax) + np.roll(F, 2, axis=ax))
+
+        flux.field = dt / dx * (f_fw - f_bw)
 
         return flux
 
     def diffusiveCD(self, q, visc_stress, dt, ax):
 
-        if ax == 0:
-            D1 = visc_stress.field[0]
-            D2 = visc_stress.field[2]
-            D3 = np.zeros_like(D1)
+        D = np.empty([3, q.Nx, q.Ny])
+
+        if ax == 1:
+            D[0] = visc_stress.field[0]
+            D[1] = visc_stress.field[2]
+            D[2] = np.zeros_like(D[0])
             dx = q.dx
-        elif ax == 1:
-            D1 = visc_stress.field[2]
-            D2 = visc_stress.field[1]
-            D3 = np.zeros_like(D1)
+
+        elif ax == 2:
+            D[0] = visc_stress.field[2]
+            D[1] = visc_stress.field[1]
+            D[2] = np.zeros_like(D[0])
             dx = q.dy
 
         flux = VectorField(self.disc)
 
-        flux.field[0] = dt / (2 * dx) * (np.roll(D1, -1, axis=ax) - np.roll(D1, 1, axis=ax))
-        flux.field[1] = dt / (2 * dx) * (np.roll(D2, -1, axis=ax) - np.roll(D2, 1, axis=ax))
-        flux.field[2] = dt / (2 * dx) * (np.roll(D3, -1, axis=ax) - np.roll(D3, 1, axis=ax))
+        flux.field = dt / (2 * dx) * (np.roll(D, -1, axis=ax) - np.roll(D, 1, axis=ax))
 
         return flux
 
@@ -338,17 +269,18 @@ class Flux:
         flux_left.addNoise_FH(cov)
         flux_right.addNoise_FH(cov)
 
-        if ax == 0:
-            f1 = flux_left.field[0] - flux_right.field[0]
-            f2 = flux_left.field[2] - flux_right.field[2]
+        S = np.zeros([3, out.Nx, out.Ny])
+
+        if ax == 1:
+            S[0] = flux_left.field[0] - flux_right.field[0]
+            S[1] = flux_left.field[2] - flux_right.field[2]
             dx = flux_left.dx
         if ax == 1:
-            f1 = flux_left.field[2] - flux_right.field[2]
-            f2 = flux_left.field[1] - flux_right.field[1]
+            S[0] = flux_left.field[2] - flux_right.field[2]
+            S[1] = flux_left.field[1] - flux_right.field[1]
             dx = flux_left.dy
 
-        out.field[0] = dt / dx * f1 * np.sqrt(2)
-        out.field[1] = dt / dx * f2 * np.sqrt(2)
+        out.field = dt / dx * S * np.sqrt(2)
 
         return out
 
@@ -363,8 +295,45 @@ class Flux:
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
 
-        fX = self.hyperbolicFW_BW(Q, p, dt, dir, 0)
-        fY = self.hyperbolicFW_BW(Q, p, dt, dir, 1)
+        fX = self.hyperbolicFW_BW(Q, p, dt, dir, 1)
+        fY = self.hyperbolicFW_BW(Q, p, dt, dir, 2)
+
+        if bool(self.material['Fluctuating']) is True:
+            sX = self.stochasticFlux(cov3, dt, 1)
+            sY = self.stochasticFlux(cov3, dt, 2)
+        else:
+            sX = VectorField(self.disc)
+            sY = VectorField(self.disc)
+
+        if bool(self.material['Rey']) is False:
+            dX = self.diffusiveCD(Q, viscousStress, dt, 1)
+            dY = self.diffusiveCD(Q, viscousStress, dt, 2)
+        else:
+            dX = VectorField(self.disc)
+            dY = VectorField(self.disc)
+
+        src = self.getSource(viscousStress, Q, h, dt)
+
+        Q.field = Q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
+
+        if corrector:
+            Q.field = 0.5 * (Q.field + q.field)
+
+        return Q
+
+    def RungeKutta3(self, q, h, dt, step=3):
+
+        if step == 3:
+            Q = self.RungeKutta3(q, h, dt, step=2)
+        if step == 2:
+            Q = self.RungeKutta3(q, h, dt, step=1)
+        if step == 1:
+            Q = q
+
+        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+
+        fX = self.hyperbolicTVD(Q, p, dt, 1)
+        fY = self.hyperbolicTVD(Q, p, dt, 2)
 
         if bool(self.material['Fluctuating']) is True:
             sX = self.stochasticFlux(cov3, dt, 0)
@@ -382,6 +351,15 @@ class Flux:
 
         src = self.getSource(viscousStress, Q, h, dt)
 
-        Q.field = Q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
+        tmp = Q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
+
+        if step == 3:
+            Q.field = 1 / 3 * q.field + 2 / 3 * tmp
+
+        if step == 2:
+            Q.field = 3 / 4 * q.field + 1 / 4 * tmp
+
+        if step == 1:
+            Q.field = tmp
 
         return Q
