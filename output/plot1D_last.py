@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-from helper import getFiles, getReference
+from helper import getFiles, getBenchmark
 
 plt.style.use('presentation')
 fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
@@ -45,7 +45,7 @@ for file in files.values():
     ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
 
     if choice > 1:
-        ref = getReference()
+        ref = getBenchmark()
     else:
         ref = None
 

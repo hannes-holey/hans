@@ -76,13 +76,12 @@ def getFile():
     return filename, file
 
 
-def getReference():
+def getBenchmark():
     availFiles = {}
     i = 0
-    for file in sorted(os.listdir()):
-        if file.endswith("dat"):
-            availFiles.update({i: file})
-            i += 1
+    for file in sorted(os.listdir("benchmark")):
+        availFiles.update({i: os.path.join("benchmark", file)})
+        i += 1
 
     if len(availFiles) == 0:
         print("No *.dat files found.")
