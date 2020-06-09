@@ -238,6 +238,28 @@ class Flux:
 
         return flux
 
+    def hyperbolicCD(self, q, p, dt, ax):
+
+        F = np.empty([3, q.Nx, q.Ny])
+
+        if ax == 1:
+            F[0] = p
+            F[1] = np.zeros_like(p)
+            F[2] = q.field[0]
+            dx = q.dx
+
+        elif ax == 2:
+            F[0] = np.zeros_like(p)
+            F[1] = p
+            F[2] = q.field[1]
+            dx = q.dy
+
+        flux = VectorField(self.disc)
+
+        flux.field = dt / (2 * dx) * (np.roll(F, -1, axis=ax) - np.roll(F, 1, axis=ax))
+
+        return flux
+
     def diffusiveCD(self, q, visc_stress, dt, ax):
 
         D = np.empty([3, q.Nx, q.Ny])
@@ -332,8 +354,11 @@ class Flux:
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
 
-        fX = self.hyperbolicTVD(Q, p, dt, 1)
-        fY = self.hyperbolicTVD(Q, p, dt, 2)
+        # fX = self.hyperbolicTVD(Q, p, dt, 1)
+        # fY = self.hyperbolicTVD(Q, p, dt, 2)
+
+        fX = self.hyperbolicCD(Q, p, dt, 1)
+        fY = self.hyperbolicCD(Q, p, dt, 2)
 
         if bool(self.material['Fluctuating']) is True:
             sX = self.stochasticFlux(cov3, dt, 1)
