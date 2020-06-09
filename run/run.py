@@ -38,11 +38,6 @@ class Run:
 
         disc['Lx'] = self.Lx
         disc['Ly'] = self.Ly
-        
-        # self.Lx = float(disc['Lx'])
-        # self.Ly = float(disc['Ly'])
-        # self.Nx = int(disc['Nx'])
-        # self.Ny = int(disc['Ny'])
 
         if material['EOS'] == 'DH':
             self.eqOfState = DowsonHigginson(material)
