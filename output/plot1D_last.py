@@ -42,7 +42,7 @@ for file in files.values():
     x = (np.arange(Nx) + 0.5) * Lx / Nx
     t = np.array(file[1].variables['time'])[-1] * 1e9
     print("Actual time for \'{:s}\': {:.2f} ns".format(file[0], t))
-    ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
+    line = ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
 
     if choice > 1:
         ref = getBenchmark()
@@ -53,7 +53,7 @@ for file in files.values():
         ref_label = input("Enter Legend for reference: ")
         x_ref = np.linspace(0, 1., ref.shape[0])
         scalef = {2: 1., 3:1e-6}
-        ax.plot(x_ref, ref[:,choice - 2] * scalef[choice], '--', label=ref_label)
+        ax.plot(x_ref, ref[:,choice - 2] * scalef[choice], '--', label=ref_label, color=line[0].get_color())
 
 ax.set_xlabel('distance (mm)')
 plt.ylabel(toPlot[choice][1])
