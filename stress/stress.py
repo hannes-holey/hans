@@ -104,9 +104,9 @@ class Newtonian:
             out.field[3] = -2 * mu * (V * rho - 3 * j_y) / (h0 * rho)
             out.field[4] = -2 * mu * (U * rho - 3 * j_x) / (h0 * rho)
 
-        # if bool(self.mat['Fluctuating']) is True:
-        #     cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
-        #     out.addNoise_FH(cov)
+        if bool(self.mat['Fluctuating']) is True:
+            cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
+            out.addNoise_FH(cov)
 
         return out
 
