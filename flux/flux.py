@@ -141,7 +141,7 @@ class Flux:
     def MacCormack(self, q, h, dt, corrector=True):
 
         if corrector:
-            Q = self.MacCormack_split(q, h, dt, corrector=False)
+            Q = self.MacCormack(q, h, dt, corrector=False)
             dir = -1                # forwards difference
         else:
             Q = q
