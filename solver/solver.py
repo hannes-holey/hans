@@ -71,23 +71,23 @@ class Solver:
             else:
                 self.dt = self.C * min(self.q.dx, self.q.dy) / (self.vSound + self.vmax)
 
-        viscousStress, stress, cov3, p = self.Newtonian.stress_avg(self.q, self.height, self.dt)
+        # viscousStress, stress, cov3, p = self.Newtonian.stress_avg(self.q, self.height, self.dt)
 
-        if self.fluct is True:
-            stress.addNoise_FH(cov3)
+        # if self.fluct is True:
+        #     stress.addNoise_FH(cov3)
 
-        if self.numFlux == 'LF':
-            fXE = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 0)
-            fXW = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 0)
-            fYN = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 1)
-            fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 1)
+        # if self.numFlux == 'LF':
+        #     fXE = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 0)
+        #     fXW = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 0)
+        #     fYN = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 1)
+        #     fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 1)
+        #
+        #     rhs = -1. / self.q.dx * (fXE.field - fXW.field) - 1. / self.q.dy * (fYN.field - fYS.field)
+        #     source = self.Flux.getSource(viscousStress, self.q, self.height, self.dt)
+        #     rhs += source.field
+        #     self.q.field += self.dt * rhs
 
-            rhs = -1. / self.q.dx * (fXE.field - fXW.field) - 1. / self.q.dy * (fYN.field - fYS.field)
-            source = self.Flux.getSource(viscousStress, self.q, self.height, self.dt)
-            rhs += source.field
-            self.q.field += self.dt * rhs
-
-        elif self.numFlux == 'LW':
+        if self.numFlux == 'LW':
             self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
 
         elif self.numFlux == 'MC':
