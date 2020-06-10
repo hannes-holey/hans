@@ -212,31 +212,44 @@ class Flux:
 
         return flux
 
-    def hyperbolicTVD(self, q, p, dt, ax):
+    def hyperbolicFlux(self, q, h, dt, ax):
 
-        F = np.empty([3, q.Nx, q.Ny])
+        F = np.zeros([3, q.Nx, q.Ny])
+        p = Newtonian(self.disc, self.geometry, self.material).stress_avg(q, h, dt)[3]
 
         if ax == 1:
             F[0] = p
             F[1] = np.zeros_like(p)
             F[2] = q.field[0]
-            dx = q.dx
 
         elif ax == 2:
             F[0] = np.zeros_like(p)
             F[1] = p
             F[2] = q.field[1]
-            dx = q.dy
 
+        return F
+
+    def hyperbolicTVD(self, q, h, dt, ax):
+
+        QE = VectorField(self.disc)
+        QW = VectorField(self.disc)
         flux = VectorField(self.disc)
 
         a1 = (np.sqrt(7) + 1) / 4
         a2 = (np.sqrt(7) - 1) / 4
 
-        f_fw = a1 * (F + np.roll(F, -1, axis=ax)) - a2 * (np.roll(F, 1, axis=ax) + np.roll(F, -2, axis=ax))
-        f_bw = a1 * (F + np.roll(F, 1, axis=ax)) - a2 * (np.roll(F, -1, axis=ax) + np.roll(F, 2, axis=ax))
+        QE.field = a1 * (q.field + np.roll(q.field, -1, axis=ax)) - a2 * (np.roll(q.field, 1, axis=ax) + np.roll(q.field, -2, axis=ax))
+        QW.field = a1 * (q.field + np.roll(q.field, 1, axis=ax)) - a2 * (np.roll(q.field, -1, axis=ax) + np.roll(q.field, 2, axis=ax))
 
-        flux.field = dt / dx * (f_fw - f_bw)
+        if ax == 1:
+            flux.field = self.hyperbolicFlux(QE, h, dt, ax) - self.hyperbolicFlux(QW, h, dt, ax)
+            dx = q.dx
+
+        elif ax == 2:
+            flux.field = self.hyperbolicFlux(QE, h, dt, ax) - self.hyperbolicFlux(QW, h, dt, ax)
+            dx = q.dy
+
+        flux.field *= dt / dx
 
         return flux
 
@@ -356,11 +369,11 @@ class Flux:
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
 
-        # fX = self.hyperbolicTVD(Q, p, dt, 1)
-        # fY = self.hyperbolicTVD(Q, p, dt, 2)
+        fX = self.hyperbolicTVD(Q, h, dt, 1)
+        fY = self.hyperbolicTVD(Q, h, dt, 2)
 
-        fX = self.hyperbolicCD(Q, p, dt, 1)
-        fY = self.hyperbolicCD(Q, p, dt, 2)
+        # fX = self.hyperbolicCD(Q, p, dt, 1)
+        # fY = self.hyperbolicCD(Q, p, dt, 2)
 
         if bool(self.material['Fluctuating']) is True:
             sX = self.stochasticFlux(cov3, dt, 1)
