@@ -39,11 +39,6 @@ class Newtonian:
         dz = np.amin(h0)
 
         if bool(self.mat['Rey']) is False:
-            # origin center
-            # out.field[0] =  (-3*(lam + 2*mu)*(U*rho - 2*j_x)*hx - 3*lam*(V*rho - 2*j_y)*hy)/(2*h0*rho)
-            # out.field[1] =  (-3*(lam + 2*mu)*(V*rho - 2*j_y)*hy - 3*lam*(U*rho - 2*j_x)*hx)/(2*h0*rho)
-            # out.field[2] = -3*((V*rho - 2*j_y)*hx + hy*(U*rho - 2*j_x))*mu/(2*h0*rho)
-
             # origin bottom
             out.field[0] = (-4 * (U * rho - (3 * j_x) / 2) * (mu + lam / 2) * hx - 2 * lam * (V * rho - (3 * j_y) / 2) * hy) / (h0 * rho)
             out.field[1] = (-4 * (V * rho - (3 * j_y) / 2) * (mu + lam / 2) * hy - 2 * lam * (U * rho - (3 * j_x) / 2) * hx) / (h0 * rho)
