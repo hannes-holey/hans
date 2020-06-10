@@ -82,9 +82,11 @@ class Flux:
         Q.field[2] = 0.5 * (q.field[2] + np.roll(q.field[2], dir, axis=ax)) - dt / (2. * dx) * dir * (f3 - np.roll(f3, dir, axis=ax))
 
         H = h.stagArray(dir, ax)
-        Stress = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, H, dt)[1]
-        # if self.fluct is True:
-        #     Stress.addNoise_FH(cov3)
+
+        vStress, Stress, cov, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, H, dt)
+
+        if self.fluct is True:
+            Stress.addNoise_FH(cov)
 
         if ax == 0:
             flux.field[0] = -Stress.field[0]
