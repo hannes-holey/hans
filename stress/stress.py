@@ -65,8 +65,8 @@ class Newtonian:
 
         pressure = eqOfState.isoT_pressure(q.field[2])
 
-        stress.field[0] -= pressure
-        stress.field[1] -= pressure
+        stress.field[0] = viscStress.field[0] - pressure
+        stress.field[1] = viscStress.field[1] - pressure
 
         return viscStress, stress, cov, pressure
 
