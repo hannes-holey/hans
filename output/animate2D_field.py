@@ -35,7 +35,6 @@ def plot_update(i, A, t):
 if __name__ == "__main__":
 
     plt.style.use('presentation')
-    fig, ax = plt.subplots(figsize=(8,6))
 
     filename, file = getFile()
 
@@ -61,12 +60,15 @@ if __name__ == "__main__":
     Ny = file.Ny
     name = file.name
 
+    ratio = file.Nx / file.Ny
+    fig, ax = plt.subplots(figsize=(ratio * 3, 3))
+
     # Global colorbar limits
     glob_min = np.amin(A[0])
     glob_max = np.amax(A[0])
 
     # Initial plotting
-    im = ax.imshow(np.empty((Nx,Ny)), interpolation='nearest', cmap='viridis')
+    im = ax.imshow(np.empty((Ny,Nx)), interpolation='nearest', aspect='equal', cmap='viridis')
     cbar = plt.colorbar(im, ax=ax, label=toPlot[choice][1])
     ax.set_xlabel('x')
     ax.set_ylabel('y')
