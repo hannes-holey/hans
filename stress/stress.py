@@ -65,6 +65,16 @@ class Newtonian:
 
         return viscStress, stress, cov, pressure
 
+    def getPressure(self, q):
+        if self.mat['EOS'] == 'DH':
+            eqOfState = DowsonHigginson(self.mat)
+        elif self.mat['EOS'] == 'PL':
+            eqOfState = PowerLaw(self.mat)
+
+        pressure = eqOfState.isoT_pressure(q.field[2])
+
+        return pressure
+
     def viscousStress_wall(self, q, h, dt, bound):
 
         out = TensorField(self.disc)
