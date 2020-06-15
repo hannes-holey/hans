@@ -10,15 +10,10 @@ class Analytic:
 
         self.geometry = geometry
 
-        dx = float(disc['dx'])
-        dy = float(disc['dy'])
-        Nx = int(disc['Nx'])
-        Ny = int(disc['Ny'])
+        self.Lx = float(disc['Lx'])
+        self.Ly = float(disc['Ly'])
 
-        self.Lx = dx * Nx
-        self.Ly = dy * Ny
-
-    def linearSlider(self, x, y):
+    def linearSlider(self, x, y, kwargs):
         "Linear height profile"
 
         h1 = float(self.geometry['h1'])
@@ -28,12 +23,22 @@ class Analytic:
         sy = 0.
         return h1 + sx * x + sy * y
 
-    def journalBearing(self, x, y):
+    def journalBearing(self, x, y, kwargs):
+
+        if len(kwargs) == 0:
+            ax = 0
+        else:
+            ax = kwargs['axis']
 
         CR = float(self.geometry['CR'])
         eps = float(self.geometry['eps'])
+        L = self.Lx
 
-        Rb = self.Lx / (2 * np.pi)
+        if ax == 1:
+            L = self.Ly
+            x = y
+
+        Rb = L / (2 * np.pi)
 
         c = CR * Rb
         e = eps * c

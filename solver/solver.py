@@ -32,9 +32,9 @@ class Solver:
         self.height = VectorField(disc)
 
         if self.type == 'journal':
-            self.height.fromFunctionXY(Analytic(disc, geometry).journalBearing, 0)
+            self.height.fromFunctionXY(Analytic(disc, geometry).journalBearing, 0, axis=0)
         else:
-            self.height.fromFunctionXY(Analytic(disc, geometry).linearSlider, 0)
+            self.height.fromFunctionXY(Analytic(disc, geometry).linearSlider, 0, axis=0)
 
         self.height.getGradients()
 

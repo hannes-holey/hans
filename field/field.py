@@ -51,8 +51,8 @@ class Field:
         mask = abs(self.xx - loc[ax]) < width / 2.
         self.field[comp][mask] = value
 
-    def fromFunctionXY(self, func, comp):
-        self.field[comp] = func(self.xx, self.yy)
+    def fromFunctionXY(self, func, comp, **kwargs):
+        self.field[comp] = func(self.xx, self.yy, kwargs)
 
     def edgesField(self):
         self.dx = self.Lx / (self.Nx - 1)
