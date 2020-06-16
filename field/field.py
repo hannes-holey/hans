@@ -113,8 +113,7 @@ class VectorField(Field):
 
     def getGradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
-        self.field[1] = np.gradient(self.field[0], self.dx, self.dy, edge_order=2)[0]
-        self.field[2] = np.gradient(self.field[0], self.dx, self.dy, edge_order=2)[1]
+        self.field[1:] = np.gradient(self.field[0], self.dx, self.dy, edge_order=2)
 
 
 class TensorField(Field):
