@@ -60,13 +60,14 @@ for choice in choices:
     col = 'C' + str(choice)
     # np.savetxt('var_' + toPlot[choice][0] + '-vs-N.dat', var, header="samples variance(cgs units)", comments="")
     ax[choice, 1].plot(var[:,0], var[:,1], '-o', color=col)
+    # ax[choice, 0].set_xlim(mean - 0.5 * np.sqrt(variance), mean + 0.5 * np.sqrt(variance))
 
     # plot histogram of mean value time series
-    mean_t = np.mean(full_array, axis=(1,2))
-    yhist, xhist, _ = ax[choice, 0].hist(mean_t, bins=25, color=col)
+    # mean_t = np.mean(full_array, axis=(1,2))
+    # yhist, xhist, _ = ax[choice, 0].hist(mean_t, bins=25, color=col)
 
     # plot histogram of fluctuating quantity in the center cell
-    # yhist, xhist, _ = ax[choice,0].hist(full_array[:,Nx // 2, Ny // 2], bins=25, color=col)
+    yhist, xhist, _ = ax[choice,0].hist(full_array[:,Nx // 2, Ny // 2], bins=25, color=col)
 
 plotVar = int(input("Show (0) or save (1) figure? "))
 
