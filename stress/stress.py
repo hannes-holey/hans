@@ -71,7 +71,7 @@ class Newtonian:
         elif self.mat['EOS'] == 'PL':
             eqOfState = PowerLaw(self.mat)
 
-        pressure = eqOfState.isoT_pressure(q.field[2])
+        pressure = eqOfState.isoT_pressure(q[2])
 
         return pressure
 
@@ -82,7 +82,7 @@ class Newtonian:
         U = float(self.geo['U'])
         V = float(self.geo['V'])
         mu = float(self.mat['mu'])
-        T = float(self.mat['T0'])
+        # T = float(self.mat['T0'])
 
         if bool(self.mat['Stokes']) is True:
             lam = -2 / 3 * mu
@@ -97,7 +97,7 @@ class Newtonian:
         hx = h.field[1]
         hy = h.field[2]
 
-        dz = np.amin(h0)
+        # dz = np.amin(h0)
 
         if bound == 1:
             if bool(self.mat['Rey']) is False:
@@ -114,9 +114,9 @@ class Newtonian:
             out.field[3] = -2 * mu * (V * rho - 3 * j_y) / (h0 * rho)
             out.field[4] = -2 * mu * (U * rho - 3 * j_x) / (h0 * rho)
 
-        if bool(self.mat['Fluctuating']) is True:
-            cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
-            out.addNoise_FH(cov)
+        # if bool(self.mat['Fluctuating']) is True:
+        #     cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
+        #     out.addNoise_FH(cov)
 
         return out
 
