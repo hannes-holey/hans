@@ -140,10 +140,10 @@ class Flux:
 
         return flux
 
-    def MacCormack(self, q, h, dt, corrector=True):
+    def MacCormack_total(self, q, h, dt, corrector=True):
 
         if corrector:
-            Q = self.MacCormack(q, h, dt, corrector=False)
+            Q = self.MacCormack_total(q, h, dt, corrector=False)
             dir = -1                # forwards difference
         else:
             Q = q
@@ -168,163 +168,207 @@ class Flux:
 
     def getSource(self, stress, q, h, dt):
 
-        out = VectorField(self.disc)
+        out = np.zeros_like(q.field)
 
-        stress_wall_top = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(q, h, dt, 1)
-        stress_wall_bot = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(q, h, dt, 0)
+        Q = self.cellAverageFaces(q)
+        # print(np.mean(q.field[2]) - np.mean(Q.field[2]))
+
+        # Q = q
+
+        stress_wall_top = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(Q, h, dt, 1)
+        stress_wall_bot = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(Q, h, dt, 0)
 
         h0 = h.field[0]
         hx = h.field[1]
         hy = h.field[2]
 
-        j_x = q.field[0]
-        j_y = q.field[1]
+        j_x = Q.field[0]
+        j_y = Q.field[1]
 
-        out.field[0] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
-        out.field[1] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
-        out.field[2] = -j_x * hx / h0 - j_y * hy / h0
+        # j_x = q.field[0]
+        # j_y = q.field[1]
 
-        out.field *= dt
+        out[0] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        out[1] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
+        out[2] = -j_x * hx / h0 - j_y * hy / h0
 
-        return out
+        # out.field *= dt
 
-    def hyperbolicFW_BW(self, q, p, dt, d, ax):
+        return out * dt
 
-        F = np.empty([3, q.Nx, q.Ny])
+    def cellAverageFaces(self, q):
+
+        Q_avg = VectorField(self.disc)
+
+        qE = 0.5 * (np.roll(q.field, -1, axis=1) + q.field)
+        qW = 0.5 * (np.roll(q.field, 1, axis=1) + q.field)
+        qN = 0.5 * (np.roll(q.field, -1, axis=2) + q.field)
+        qS = 0.5 * (np.roll(q.field, 1, axis=2) + q.field)
+
+        Q_avg.field = 0.25 * (qE + qW + qN + qS)
+
+        # qX = self.cubicInterpolation(q, 0)
+        # qY = self.cubicInterpolation(q, 1)
+        # Q_avg.field = 0.25 * (np.roll(qX, 1, axis=0) + np.roll(qY, 1, axis=1) + qX + qY)
+
+        return q
+
+    def hyperbolicFlux(self, q, p, ax):
+
+        F = np.zeros_like(q)
 
         if ax == 1:
             F[0] = p
-            F[1] = np.zeros_like(p)
-            F[2] = q.field[0]
-
-            dx = q.dx
+            F[2] = q[0]
 
         elif ax == 2:
-            F[0] = np.zeros_like(p)
             F[1] = p
-            F[2] = q.field[1]
-
-            dx = q.dy
-
-        flux = VectorField(self.disc)
-
-        flux.field = dt / dx * (-d) * (np.roll(F, d, axis=ax) - F)
-
-        return flux
-
-    def hyperbolicFlux(self, q, p, ax, dir):
-
-        F = np.zeros([3, q.Nx, q.Ny])
-
-        if ax == 1:
-            F[0] = np.roll(p, dir, axis=ax - 1)
-            F[2] = np.roll(q.field[0], dir, axis=ax - 1)
-
-        elif ax == 2:
-            F[1] = np.roll(p, dir, axis=ax - 1)
-            F[2] = np.roll(q.field[0], dir, axis=ax - 1)
+            F[2] = q[1]
 
         return F
 
+    def cubicInterpolation(self, q, ax):
+
+        # weights proposed by Bell et al., PRE 76 (2007)
+        # a1 = (np.sqrt(7) + 1) / 4
+        # a2 = (np.sqrt(7) - 1) / 4
+
+        # weights from piecewise parabolic method (PPM)
+        # Collela and Woodward, J. Comp. Phys. 54 (1984)
+        a1 = 7 / 12
+        a2 = 1 / 12
+
+        Q = a1 * (q.field + np.roll(q.field, -1, axis=ax)) - a2 * (np.roll(q.field, 1, axis=ax) + np.roll(q.field, -2, axis=ax))
+
+        return Q
+
     def hyperbolicTVD(self, q, dt, ax):
 
-        Q = VectorField(self.disc)
-        flux = VectorField(self.disc)
-
-        a1 = (np.sqrt(7) + 1) / 4
-        a2 = (np.sqrt(7) - 1) / 4
-
-        Q.field = a1 * (q.field + np.roll(q.field, -1, axis=ax)) - a2 * (np.roll(q.field, 1, axis=ax) + np.roll(q.field, -2, axis=ax))
-
+        Q = self.cubicInterpolation(q, ax)
         P = Newtonian(self.disc, self.geometry, self.material).getPressure(Q)
+        F = self.hyperbolicFlux(Q, P, ax)
 
-        flux.field = self.hyperbolicFlux(Q, P, ax, 0) - self.hyperbolicFlux(Q, P, ax, 1)
+        flux = np.roll(F, 0, axis=ax) - np.roll(F, 1, axis=ax)
 
         if ax == 1:
             dx = q.dx
         elif ax == 2:
             dx = q.dy
 
-        flux.field *= dt / dx
-
-        return flux
+        return dt / dx * flux
 
     def hyperbolicCD(self, q, p, dt, ax):
 
-        F = np.empty([3, q.Nx, q.Ny])
+        F = self.hyperbolicFlux(q.field, p, ax)
+
+        flux = np.roll(F, -1, axis=ax) - np.roll(F, 1, axis=ax)
 
         if ax == 1:
-            F[0] = p
-            F[1] = np.zeros_like(p)
-            F[2] = q.field[0]
             dx = q.dx
 
         elif ax == 2:
-            F[0] = np.zeros_like(p)
-            F[1] = p
-            F[2] = q.field[1]
             dx = q.dy
 
-        flux = VectorField(self.disc)
+        return dt / (2 * dx) * flux
 
-        flux.field = dt / (2 * dx) * (np.roll(F, -1, axis=ax) - np.roll(F, 1, axis=ax))
+    def hyperbolicFW_BW(self, q, p, dt, dir, ax):
 
-        return flux
+        F = self.hyperbolicFlux(q.field, p, ax)
+        flux = -dir * (np.roll(F, dir, axis=ax) - F)
+
+        if ax == 1:
+            dx = q.dx
+
+        elif ax == 2:
+            dx = q.dy
+
+        return dt / dx * flux
+
+    def diffusiveFlux(self, visc_stress, ax):
+
+        D = np.zeros_like(visc_stress)
+        if ax == 1:
+            D[0] = visc_stress[0]
+            D[1] = visc_stress[2]
+
+        elif ax == 2:
+            D[0] = visc_stress[2]
+            D[1] = visc_stress[1]
+
+        return D
 
     def diffusiveCD(self, q, visc_stress, dt, ax):
 
-        D = np.empty([3, q.Nx, q.Ny])
+        D = self.diffusiveFlux(visc_stress.field, ax)
+        flux = np.roll(D, -1, axis=ax) - np.roll(D, 1, axis=ax)
 
         if ax == 1:
-            D[0] = visc_stress.field[0]
-            D[1] = visc_stress.field[2]
-            D[2] = np.zeros_like(D[0])
             dx = q.dx
 
         elif ax == 2:
-            D[0] = visc_stress.field[2]
-            D[1] = visc_stress.field[1]
-            D[2] = np.zeros_like(D[0])
             dx = q.dy
 
-        flux = VectorField(self.disc)
+        return dt / (2 * dx) * flux
 
-        flux.field = dt / (2 * dx) * (np.roll(D, -1, axis=ax) - np.roll(D, 1, axis=ax))
+    def stochasticFlux(self, cov, dt, ax, seed):
 
-        return flux
+        Nx = int(self.disc['Nx'])
+        Ny = int(self.disc['Ny'])
+        dx = float(self.disc['dx'])
+        dy = float(self.disc['dy'])
 
-    def stochasticFlux(self, cov, dt, ax):
+        mu = float(self.material['mu'])
+        # lam = float(self.material['lambda'])
+        lam = -2 / 3 * mu
+        T = float(self.material['T0'])
+        kB = 1.38064852e-23
 
-        flux_left = VectorField(self.disc)
-        # flux_right = VectorField(self.disc)
-        out = VectorField(self.disc)
+        S = np.zeros([3, Nx, Ny])
 
-        flux_left.addNoise_FH(cov)
-        # flux_right.addNoise_FH(cov)
+        # can be used to modify, how often random fields are generated (within one timestep)
+        # np.random.seed(seed)
 
-        S = np.zeros([3, out.Nx, out.Ny])
+        # mean = np.zeros(3)
+        # noise = np.random.multivariate_normal(mean, cov, size=(Nx, Ny))
+        # noise = noise.transpose(2, 0, 1)
+
+        # print(seed, noise[0][10,10])
+        # noise[1] = - noise[0]
+
+        R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / dx**3 / dt) * np.random.normal(size=(Nx,Ny))
+        R22 = -R11
+        R12 = np.sqrt(2 * kB * T * mu / dx**3 / dt) * np.random.normal(size=(Nx,Ny))
 
         if ax == 1:
-            S[0] = flux_left.field[0] - np.roll(flux_left.field[0], 1, axis=ax - 1)
-            S[1] = flux_left.field[2] - np.roll(flux_left.field[2], 1, axis=ax - 1)
-            dx = flux_left.dx
+            S[0] = R11 - np.roll(R11, 1, axis=ax - 1)
+            S[1] = R12 - np.roll(R12, 1, axis=ax - 1)
+            dx = dx
         if ax == 2:
-            S[0] = flux_left.field[2] - np.roll(flux_left.field[2], 1, axis=ax - 1)
-            S[1] = flux_left.field[1] - np.roll(flux_left.field[1], 1, axis=ax - 1)
-            dx = flux_left.dy
+            S[0] = R12 - np.roll(R12, 1, axis=ax - 1)
+            S[1] = R22 - np.roll(R22, 1, axis=ax - 1)
+            dx = dy
 
-        out.field = dt / dx * S * np.sqrt(2)
+        # if ax == 1:
+        #     S[0] = noise[0] - np.roll(noise[0], 1, axis=ax - 1)
+        #     S[1] = noise[2] - np.roll(noise[2], 1, axis=ax - 1)
+        #     dx = dx
+        # if ax == 2:
+        #     S[0] = noise[2] - np.roll(noise[2], 1, axis=ax - 1)
+        #     S[1] = noise[1] - np.roll(noise[1], 1, axis=ax - 1)
+        #     dx = dy
 
-        return out
+        return dt / dx * S
 
-    def MacCormack_split(self, q, h, dt, corrector=True):
+    def MacCormack(self, q, h, dt, i, corrector=True):
 
         if corrector:
-            Q = self.MacCormack_split(q, h, dt, corrector=False)
+            Q = self.MacCormack(q, h, dt, corrector=False)
             dir = -1                # forwards difference
+            weight = np.sqrt(2)
         else:
             Q = q
             dir = 1                 # backwards difference
+            weight = np.sqrt(2)
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
 
@@ -332,62 +376,67 @@ class Flux:
         fY = self.hyperbolicFW_BW(Q, p, dt, dir, 2)
 
         if bool(self.material['Fluctuating']) is True:
-            sX = self.stochasticFlux(cov3, dt, 1)
-            sY = self.stochasticFlux(cov3, dt, 2)
+            sX = weight * self.stochasticFlux(cov3, dt, 1, i)
+            sY = weight * self.stochasticFlux(cov3, dt, 2, i)
         else:
-            sX = VectorField(self.disc)
-            sY = VectorField(self.disc)
+            sX = np.zeros_like(fX)
+            sY = np.zeros_like(fX)
 
         if bool(self.material['Rey']) is False:
             dX = self.diffusiveCD(Q, viscousStress, dt, 1)
             dY = self.diffusiveCD(Q, viscousStress, dt, 2)
         else:
-            dX = VectorField(self.disc)
-            dY = VectorField(self.disc)
+            dX = np.zeros_like(fX)
+            dY = np.zeros_like(fX)
 
         src = self.getSource(viscousStress, Q, h, dt)
 
-        Q.field = Q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
+        Q.field = Q.field - fX - fY + dX + dY + sX + sY + src
 
         if corrector:
             Q.field = 0.5 * (Q.field + q.field)
 
         return Q
 
-    def RungeKutta3(self, q, h, dt, step=3):
+    def RungeKutta3(self, q, h, dt, i, step=3):
+
+        assert step in np.arange(1,4)
 
         if step == 3:
-            Q = self.RungeKutta3(q, h, dt, step=2)
+            Q = self.RungeKutta3(q, h, dt, i, step=2)
+            weight = np.sqrt(3)
+            # weight = 15 / 16
         if step == 2:
-            Q = self.RungeKutta3(q, h, dt, step=1)
+            Q = self.RungeKutta3(q, h, dt, i, step=1)
+            weight = np.sqrt(3)
+            # weight = 3 / 2
         if step == 1:
             Q = q
+            weight = np.sqrt(3)
+            # weight = 3 / 4
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
 
         fX = self.hyperbolicTVD(Q, dt, 1)
         fY = self.hyperbolicTVD(Q, dt, 2)
 
-        # fX = self.hyperbolicCD(Q, p, dt, 1)
-        # fY = self.hyperbolicCD(Q, p, dt, 2)
-
         if bool(self.material['Fluctuating']) is True:
-            sX = self.stochasticFlux(cov3, dt, 1)
-            sY = self.stochasticFlux(cov3, dt, 2)
+            sX = weight * self.stochasticFlux(cov3, dt, 1, i)
+            sY = weight * self.stochasticFlux(cov3, dt, 2, i)
         else:
-            sX = VectorField(self.disc)
-            sY = VectorField(self.disc)
+            sX = np.zeros_like(fX)
+            sY = np.zeros_like(fX)
 
         if bool(self.material['Rey']) is False:
             dX = self.diffusiveCD(Q, viscousStress, dt, 1)
             dY = self.diffusiveCD(Q, viscousStress, dt, 2)
         else:
-            dX = VectorField(self.disc)
-            dY = VectorField(self.disc)
+            dX = np.zeros_like(fX)
+            dY = np.zeros_like(fX)
 
         src = self.getSource(viscousStress, Q, h, dt)
 
-        tmp = Q.field - fX.field - fY.field + dX.field + dY.field + sX.field + sY.field + src.field
+        tmp = Q.field - fX - fY + dX + dY + sX + sY + src
 
         if step == 3:
             Q.field = 1 / 3 * q.field + 2 / 3 * tmp
