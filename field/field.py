@@ -88,11 +88,14 @@ class Field:
 
         return out
 
-    def addNoise_FH(self, cov):
-        mean = np.zeros(self.ndim)
-        noise = np.random.multivariate_normal(mean, cov, size=(self.Ny, self.Nx)).T
+    def addNoise_FH(self, cov, seed):
 
-        self.field += noise
+        np.random.seed(seed)
+
+        mean = np.zeros(self.ndim)
+        noise = np.random.multivariate_normal(mean, cov, size=(self.Nx, self.Ny))
+
+        self.field += noise.transpose(2, 0, 1)
 
 
 class ScalarField(Field):
