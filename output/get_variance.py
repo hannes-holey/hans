@@ -37,6 +37,9 @@ for choice in choices:
         print("Not enough memory, using single precision!")
         full_array = np.array(file.variables[toPlot[choice][0]], copy=False).astype(np.float32) / toPlot[choice][2]
 
+    mask = np.all(np.isfinite(full_array), axis=(1,2))
+    full_array = full_array[mask]
+
     cellVariance = np.var(full_array, axis=0)
     variance = np.mean(cellVariance)
     mean = np.mean(full_array)
