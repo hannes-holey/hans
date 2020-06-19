@@ -24,9 +24,9 @@ numerics:
 material:
     EOS: DH
     Fluctuating: 0
-    Stokes: 1
     Rey: 1
-    mu: 0.0794
+    shear: 0.0794
+    bulk: 0.
     P0: 101325
     rho0: 877.7007
     T0: 323.15

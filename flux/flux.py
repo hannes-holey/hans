@@ -317,9 +317,10 @@ class Flux:
         dx = float(self.disc['dx'])
         dy = float(self.disc['dy'])
 
-        mu = float(self.material['mu'])
-        # lam = float(self.material['lambda'])
-        lam = -2 / 3 * mu
+        mu = float(self.material['shear'])
+        ceta = float(self.material['bulk'])
+        lam = ceta - 2 / 3 * mu
+
         T = float(self.material['T0'])
         kB = 1.38064852e-23
 

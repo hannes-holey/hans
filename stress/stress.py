@@ -20,13 +20,10 @@ class Newtonian:
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        mu = float(self.mat['mu'])
         T = float(self.mat['T0'])
-
-        if bool(self.mat['Stokes']) is True:
-            lam = -2 / 3 * mu
-        else:
-            lam = self.mat['lambda']
+        mu = float(self.mat['shear'])
+        ceta = float(self.mat['bulk'])
+        lam = ceta - 2 / 3 * mu
 
         j_x = q.field[0]
         j_y = q.field[1]
@@ -81,13 +78,9 @@ class Newtonian:
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        mu = float(self.mat['mu'])
-        # T = float(self.mat['T0'])
-
-        if bool(self.mat['Stokes']) is True:
-            lam = -2 / 3 * mu
-        else:
-            lam = self.mat['lambda']
+        mu = float(self.mat['shear'])
+        ceta = float(self.mat['bulk'])
+        lam = ceta - 2 / 3 * mu
 
         j_x = q.field[0]
         j_y = q.field[1]
