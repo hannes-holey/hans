@@ -75,7 +75,6 @@ class Flux:
             dx = q.dy
 
         Q = VectorField(self.disc)
-        flux = VectorField(self.disc)
 
         Q.field[0] = 0.5 * (q.field[0] + np.roll(q.field[0], dir, axis=ax)) - dt / (2. * dx) * dir * (f1 - np.roll(f1, dir, axis=ax))
         Q.field[1] = 0.5 * (q.field[1] + np.roll(q.field[1], dir, axis=ax)) - dt / (2. * dx) * dir * (f2 - np.roll(f2, dir, axis=ax))
@@ -88,14 +87,16 @@ class Flux:
         if self.fluct is True:
             Stress.addNoise_FH(cov)
 
+        flux = np.empty_like(q.field)
+
         if ax == 0:
-            flux.field[0] = -Stress.field[0]
-            flux.field[1] = -Stress.field[2]
-            flux.field[2] = Q.field[0]
+            flux[0] = -Stress.field[0]
+            flux[1] = -Stress.field[2]
+            flux[2] = Q.field[0]
         elif ax == 1:
-            flux.field[0] = -Stress.field[2]
-            flux.field[1] = -Stress.field[1]
-            flux.field[2] = Q.field[1]
+            flux[0] = -Stress.field[2]
+            flux[1] = -Stress.field[1]
+            flux[2] = Q.field[1]
 
         return flux
 
@@ -115,7 +116,7 @@ class Flux:
 
         Q = VectorField(self.disc)
 
-        Q.field = q.field - dt / q.dx * (fXE.field - fXW.field) - dt / q.dy * (fYN.field - fYS.field) + src.field
+        Q.field = q.field - dt / q.dx * (fXE - fXW) - dt / q.dy * (fYN - fYS) + src
 
         return Q
 
@@ -132,11 +133,11 @@ class Flux:
             F3 = q.field[1]
             dx = q.dy
 
-        flux = VectorField(self.disc)
+        flux = np.empty_like(q.field)
 
-        flux.field[0] = dt / dx * (-dir) * (np.roll(F1, dir, axis=ax) - F1)
-        flux.field[1] = dt / dx * (-dir) * (np.roll(F2, dir, axis=ax) - F2)
-        flux.field[2] = dt / dx * (-dir) * (np.roll(F3, dir, axis=ax) - F3)
+        flux[0] = dt / dx * (-dir) * (np.roll(F1, dir, axis=ax) - F1)
+        flux[1] = dt / dx * (-dir) * (np.roll(F2, dir, axis=ax) - F2)
+        flux[2] = dt / dx * (-dir) * (np.roll(F3, dir, axis=ax) - F3)
 
         return flux
 
@@ -159,7 +160,7 @@ class Flux:
 
         src = self.getSource(viscousStress, Q, h, dt)
 
-        Q.field = Q.field - fX.field - fY.field + src.field
+        Q.field = Q.field - fX - fY + src
 
         if corrector:
             Q.field = 0.5 * (Q.field + q.field)
