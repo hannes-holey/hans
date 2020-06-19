@@ -44,25 +44,26 @@ for choice in choices:
     variance = np.mean(cellVariance)
     mean = np.mean(full_array)
 
-    print("{:^10s}| {: .10e} | {: .10e} ".format(toPlot[choice][0], mean, variance))
-
 # --- Loop over n different sampling numbers --- #
     n = 10
-    var = np.zeros((n,2))
-    size = file.dimensions['step'].size
+    var = np.zeros((n,3))
+    # size = file.dimensions['step'].size
+    size = int(full_array.size / Nx / Ny)
 
     for i in range(n):
         samples = (i + 1) * size // n
 
         cellVariance = np.var(full_array[0:samples + 1], axis=0)
+        mean = np.mean(full_array[0:samples + 1])
         variance = np.mean(cellVariance)
 
         var[i,0] = samples
-        var[i,1] = variance
+        var[i,1] = mean
+        var[i,2] = variance
 
     col = 'C' + str(choice)
     # np.savetxt('var_' + toPlot[choice][0] + '-vs-N.dat', var, header="samples variance(cgs units)", comments="")
-    ax[choice, 1].plot(var[:,0], var[:,1], '-o', color=col)
+    ax[choice, 1].plot(var[:,0], var[:,2], '-o', color=col)
     # ax[choice, 0].set_xlim(mean - 0.5 * np.sqrt(variance), mean + 0.5 * np.sqrt(variance))
 
     # plot histogram of mean value time series
@@ -71,6 +72,12 @@ for choice in choices:
 
     # plot histogram of fluctuating quantity in the center cell
     yhist, xhist, _ = ax[choice,0].hist(full_array[:,Nx // 2, Ny // 2], bins=25, color=col)
+
+    # print variance to screen
+    if not(np.isfinite(variance)):
+        mean = var[np.isfinite(var[:,1])][-1,1]
+        variance = var[np.isfinite(var[:,2])][-1,2]
+    print("{:^10s}| {: .10e} | {: .10e} ".format(toPlot[choice][0], mean, variance))
 
 plotVar = int(input("Show (0) or save (1) figure? "))
 
