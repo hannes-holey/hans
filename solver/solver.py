@@ -97,7 +97,7 @@ class Solver:
             self.q = self.Flux.MacCormack_total(self.q, self.height, self.dt)
 
         elif self.numFlux == 'MC':
-            self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
+            self.q = self.Flux.MacCormack(self.q, self.height, self.dt, i)
 
         elif self.numFlux == 'RK3':
             self.q = self.Flux.RungeKutta3(self.q, self.height, self.dt, i)

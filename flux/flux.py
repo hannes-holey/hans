@@ -364,7 +364,7 @@ class Flux:
     def MacCormack(self, q, h, dt, i, corrector=True):
 
         if corrector:
-            Q = self.MacCormack(q, h, dt, corrector=False)
+            Q = self.MacCormack(q, h, dt, i, corrector=False)
             dir = -1                # forwards difference
             weight = np.sqrt(2)
         else:
