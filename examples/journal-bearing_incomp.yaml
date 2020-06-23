@@ -1,6 +1,6 @@
 options:
     name: journal-bearing_incomp
-    writeInterval: 1000
+    writeInterval: 1
 disc:
     dx: 2.e-5
     dy: 2.e-5
@@ -15,7 +15,7 @@ geometry:
 numerics:
     adaptive: 1
     C: 0.2
-    tol: 1.e-5
+    tol: 1.e-10
     dt: 1.e-10
     maxT: 3.e-5
     numFlux: RK3

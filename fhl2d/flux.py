@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from field.field import VectorField
-from stress.stress import Newtonian
+from .field import VectorField
+from .stress import Newtonian
 
 
 class Flux:

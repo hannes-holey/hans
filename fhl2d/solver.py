@@ -3,11 +3,11 @@
 
 import numpy as np
 
-from eos.eos import DowsonHigginson, PowerLaw
-from geo.geometry import Analytic
-from field.field import VectorField
-from flux.flux import Flux
-from stress.stress import Newtonian
+from .eos import EquationOfState
+from .geometry import Analytic
+from .field import VectorField
+from .flux import Flux
+from .stress import Newtonian
 
 
 class Solver:
@@ -21,10 +21,12 @@ class Solver:
         self.C = numerics['C']
         self.fluct = bool(material['Fluctuating'])
 
-        if material['EOS'] == 'DH':
-            self.eqOfState = DowsonHigginson(material)
-        elif material['EOS'] == 'PL':
-            self.eqOfState = PowerLaw(material)
+        # if material['EOS'] == 'DH':
+        #     self.eqOfState = DowsonHigginson(material)
+        # elif material['EOS'] == 'PL':
+        #     self.eqOfState = PowerLaw(material)
+
+        self.material = material
 
         self.time = 0
 
@@ -45,34 +47,31 @@ class Solver:
         self.q.field[2] = rho0
 
         if self.type == 'inclined':
-            self.q.field[2][0,:] = self.eqOfState.isoT_density(P0)
-            self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
+            self.q.field[2][0,:] = EquationOfState(self.material).isoT_density(P0)
+            self.q.field[2][-1,:] = EquationOfState(self.material).isoT_density(P0)
         elif self.type == 'poiseuille':
-            self.q.field[2][-1,:] = self.eqOfState.isoT_density(P0)
-            self.q.field[2][0,:] = self.eqOfState.isoT_density(2. * P0)
+            self.q.field[2][-1,:] = EquationOfState(self.material).isoT_density(P0)
+            self.q.field[2][0,:] = EquationOfState(self.material).isoT_density(2. * P0)
         elif self.type == 'droplet':
-            self.q.fill_circle(self.eqOfState.isoT_density(2. * P0), 2)
+            self.q.fill_circle(EquationOfState(self.material).isoT_density(2. * P0), 2)
         elif self.type == 'wavefront':
-            self.q.fill_line(self.eqOfState.isoT_density(2. * P0), 0, 2)
+            self.q.fill_line(EquationOfState(self.material).isoT_density(2. * P0), 0, 2)
 
         self.Flux = Flux(disc, geometry, numerics, material)
         self.Newtonian = Newtonian(disc, geometry, material)
 
         # self.HFlux = HyperbolicFlux(disc, geometry, numerics, material)
-        # self.vSound = self.eqOfState.soundSpeed(rho0)
+        self.vSound = EquationOfState(self.material).soundSpeed(rho0)
 
     def solve(self, i):
 
-        self.vSound = np.amax(self.eqOfState.soundSpeed(self.q.field[2]))
-        self.vmax = max(np.amax(1. / self.q.field[2] * np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)), 1e-3)
-
-        # self.vmax = self.vSound
+        self.vmax = self.vSound + max(np.amax(1. / self.q.field[2] * np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)), 1e-3)
 
         if self.adaptive is True:
             if i == 0:
                 self.dt = self.dt
             else:
-                self.dt = self.C * min(self.q.dx, self.q.dy) / (self.vSound + self.vmax)
+                self.dt = self.C * min(self.q.dx, self.q.dy) / self.vmax
 
         # viscousStress, stress, cov3, p = self.Newtonian.stress_avg(self.q, self.height, self.dt)
 
@@ -106,6 +105,7 @@ class Solver:
         self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
         self.time += self.dt
 
-        vmax_new = np.amax(np.sqrt(self.q.field[0] * self.q.field[0] + self.q.field[1] * self.q.field[1]) / self.q.field[2])
+        self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[2])
+        vmax_new = self.vSound + np.amax(np.sqrt(self.q.field[0] * self.q.field[0] + self.q.field[1] * self.q.field[1]) / self.q.field[2])
         self.eps = abs(vmax_new - self.vmax) / self.vmax / self.C
         # self.eps = 1.

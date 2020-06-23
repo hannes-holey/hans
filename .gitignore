@@ -3,14 +3,7 @@
 *.pyc
 *.cpython*.so
 __pycache__
-output/*.h5
-output/*.nc
-output/*.mp4
-output/*.pdf
-output/*.dat
-output/*.log
-output/animations/
+data/*.nc
 config/
 submit.sh
-profile*
 .docblock.json

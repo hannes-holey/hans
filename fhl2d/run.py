@@ -8,8 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from eos.eos import DowsonHigginson, PowerLaw
-from solver.solver import Solver
+from .eos import EquationOfState
+from .solver import Solver
 
 
 class Run:
@@ -39,10 +39,10 @@ class Run:
         disc['Lx'] = self.Lx
         disc['Ly'] = self.Ly
 
-        if material['EOS'] == 'DH':
-            self.eqOfState = DowsonHigginson(material)
-        elif material['EOS'] == 'PL':
-            self.eqOfState = PowerLaw(material)
+        # if material['EOS'] == 'DH':
+        #     self.eqOfState = DowsonHigginson(material)
+        # elif material['EOS'] == 'PL':
+        #     self.eqOfState = PowerLaw(material)
 
         tStart = time.time()
 
@@ -52,10 +52,10 @@ class Run:
             self.file_tag = 1
             self.j = 0
 
-            if 'output' not in os.listdir():
-                os.mkdir('output')
+            if 'data' not in os.listdir():
+                os.mkdir('data')
 
-            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir('output'):
+            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir('data'):
                 self.file_tag += 1
 
             outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc'
@@ -63,7 +63,7 @@ class Run:
             i = 0
 
             # initialize NetCDF file
-            self.nc = netCDF4.Dataset(os.path.join('output', outfile), 'w', format='NETCDF3_64BIT_OFFSET')
+            self.nc = netCDF4.Dataset(os.path.join('data', outfile), 'w', format='NETCDF3_64BIT_OFFSET')
             self.nc.createDimension('x', self.Nx)
             self.nc.createDimension('y', self.Ny)
             self.nc.createDimension('step', None)
@@ -149,7 +149,7 @@ class Run:
             self.jy[self.j] = self.sol.q.field[1]
             self.rho[self.j] = self.sol.q.field[2]
             if reduced is False:
-                self.p[self.j] = self.eqOfState.isoT_pressure(self.sol.q.field[2])
+                self.p[self.j] = EquationOfState(self.material).isoT_pressure(self.sol.q.field[2])
 
             self.time[self.j] = self.sol.time
             self.mass[self.j] = self.sol.mass
@@ -168,7 +168,7 @@ class Run:
         line0, = ax[0,0].plot(x, self.sol.q.field[0][:,int(self.Ny / 2)])
         line1, = ax[0,1].plot(x, self.sol.q.field[1][:,int(self.Ny / 2)])
         line2, = ax[1,0].plot(x, self.sol.q.field[2][:,int(self.Ny / 2)])
-        line3, = ax[1,1].plot(x, self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        line3, = ax[1,1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         ax[0,0].set_title(r'$j_x$')
         ax[0,1].set_title(r'$j_y$')
@@ -184,8 +184,8 @@ class Run:
             limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny / 2)])
             limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny / 2)])
 
-        limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
-        limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        limits[3,0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        limits[3,1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         _ = animation.FuncAnimation(fig, self.animate1D, 100000,fargs=(fig, ax,
                                     line0, line1, line2, line3, limits,), interval=1, repeat=False)
@@ -206,7 +206,7 @@ class Run:
         line0.set_ydata(self.sol.q.field[0][:,int(self.Ny / 2)])
         line1.set_ydata(self.sol.q.field[1][:,int(self.Ny / 2)])
         line2.set_ydata(self.sol.q.field[2][:,int(self.Ny / 2)])
-        line3.set_ydata(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         self.sol.solve(i)
 
@@ -218,10 +218,10 @@ class Run:
             if np.amax(self.sol.q.field[j][:,int(self.Ny / 2)]) > limits[j,1]:
                 limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny / 2)])
 
-        if np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)])) < limits[3,0]:
-            limits[3,0] = np.amin(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
-        if np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)])) > limits[3,1]:
-            limits[3,1] = np.amax(self.eqOfState.isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        if np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)])) < limits[3,0]:
+            limits[3,0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
+        if np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)])) > limits[3,1]:
+            limits[3,1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         for j in range(4):
             if limits[j,1] == limits[j,0] and limits[j,0] != 0.:

@@ -13,9 +13,9 @@ def getFiles():
     pathList = os.getcwd().split(sep=os.path.sep)
     assert "MD-FVM" in pathList, "Not in a subdirectory of MD-FVM"
 
-    if pathList[-2:] != ["MD-FVM", "output"]:
+    if pathList[-2:] != ["MD-FVM", "data"]:
         depth = len(pathList) - pathList.index("MD-FVM") - 1
-        os.chdir(depth * (".." + os.path.sep) + "output")
+        os.chdir(depth * (".." + os.path.sep) + "data")
 
     for file in sorted(os.listdir()):
         if file.endswith(".nc"):
@@ -49,9 +49,9 @@ def getFile():
     pathList = os.getcwd().split(sep=os.path.sep)
     assert "MD-FVM" in pathList, "Not in a subdirectory of MD-FVM"
 
-    if pathList[-2:] != ["MD-FVM", "output"]:
+    if pathList[-2:] != ["MD-FVM", "data"]:
         depth = len(pathList) - pathList.index("MD-FVM") - 1
-        os.chdir(depth * (".." + os.path.sep) + "output")
+        os.chdir(depth * (".." + os.path.sep) + "data")
 
     for file in sorted(os.listdir()):
         if file.endswith(".nc"):

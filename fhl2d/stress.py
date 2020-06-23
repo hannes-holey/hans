@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from eos.eos import DowsonHigginson, PowerLaw
-from field.field import VectorField, TensorField
+from .eos import EquationOfState
+from .field import VectorField, TensorField
 
 
 class Newtonian:
@@ -47,15 +47,15 @@ class Newtonian:
 
     def stress_avg(self, q, h, dt):
 
-        if self.mat['EOS'] == 'DH':
-            eqOfState = DowsonHigginson(self.mat)
-        elif self.mat['EOS'] == 'PL':
-            eqOfState = PowerLaw(self.mat)
+        # if self.mat['EOS'] == 'DH':
+        #     eqOfState = DowsonHigginson(self.mat)
+        # elif self.mat['EOS'] == 'PL':
+        #     eqOfState = PowerLaw(self.mat)
 
         viscStress, cov = self.viscousStress_avg(q, h, dt)
         stress = VectorField(self.disc)
 
-        pressure = eqOfState.isoT_pressure(q.field[2])
+        pressure = EquationOfState(self.mat).isoT_pressure(q.field[2])
 
         stress.field[0] = viscStress.field[0] - pressure
         stress.field[1] = viscStress.field[1] - pressure
@@ -63,12 +63,12 @@ class Newtonian:
         return viscStress, stress, cov, pressure
 
     def getPressure(self, q):
-        if self.mat['EOS'] == 'DH':
-            eqOfState = DowsonHigginson(self.mat)
-        elif self.mat['EOS'] == 'PL':
-            eqOfState = PowerLaw(self.mat)
+        # if self.mat['EOS'] == 'DH':
+        #     eqOfState = DowsonHigginson(self.mat)
+        # elif self.mat['EOS'] == 'PL':
+        #     eqOfState = PowerLaw(self.mat)
 
-        pressure = eqOfState.isoT_pressure(q[2])
+        pressure = EquationOfState(self.mat).isoT_pressure(q[2])
 
         return pressure
 

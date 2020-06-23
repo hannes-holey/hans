@@ -29,8 +29,9 @@ Ny = int(file.Ny)
 dx = float(file.dx)
 dy = float(file.dy)
 # dt = float(file.dt)
-mu = float(file.mu)
-lam = float(file.lam)
+mu = float(file.shear)
+ceta = float(file.bulk)
+# lam = float(file.lam)
 rho0 = float(file.rho0)
 P0 = float(file.P0)
 time = np.array(file.variables['time'])
@@ -89,7 +90,7 @@ C /= C[0]
 k = np.sqrt((ky[iky] - ky[Ny // 2])**2 + (kx[ikx] - kx[Nx // 2])**2)
 
 # Conversion to some parameters (sth wrong ???)
-ceta = 2 / 3 * mu + lam
+# ceta = 2 / 3 * mu + lam
 Gamma_T = 1 / (2 * rho0) * (mu + (mu / 3 + ceta))
 nu = mu / rho0
 c = np.sqrt(abs(P0 / rho0))
