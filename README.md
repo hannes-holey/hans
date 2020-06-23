@@ -10,6 +10,6 @@ pip install -r requirements.txt
 ## Running
 Run the program from the command line using
 ```
-./main.py -i <path to your configuration file>
+python3 -m fhl2d -i <path to your configuration file>
 ```
 Example input files are given in the *examples/* directory.
