@@ -21,11 +21,6 @@ class Solver:
         self.C = numerics['C']
         self.fluct = bool(material['Fluctuating'])
 
-        # if material['EOS'] == 'DH':
-        #     self.eqOfState = DowsonHigginson(material)
-        # elif material['EOS'] == 'PL':
-        #     self.eqOfState = PowerLaw(material)
-
         self.material = material
 
         self.time = 0
@@ -60,7 +55,6 @@ class Solver:
         self.Flux = Flux(disc, geometry, numerics, material)
         self.Newtonian = Newtonian(disc, geometry, material)
 
-        # self.HFlux = HyperbolicFlux(disc, geometry, numerics, material)
         self.vSound = EquationOfState(self.material).soundSpeed(rho0)
 
     def solve(self, i):

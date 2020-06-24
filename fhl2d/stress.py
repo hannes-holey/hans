@@ -47,11 +47,6 @@ class Newtonian:
 
     def stress_avg(self, q, h, dt):
 
-        # if self.mat['EOS'] == 'DH':
-        #     eqOfState = DowsonHigginson(self.mat)
-        # elif self.mat['EOS'] == 'PL':
-        #     eqOfState = PowerLaw(self.mat)
-
         viscStress, cov = self.viscousStress_avg(q, h, dt)
         stress = VectorField(self.disc)
 
@@ -63,10 +58,6 @@ class Newtonian:
         return viscStress, stress, cov, pressure
 
     def getPressure(self, q):
-        # if self.mat['EOS'] == 'DH':
-        #     eqOfState = DowsonHigginson(self.mat)
-        # elif self.mat['EOS'] == 'PL':
-        #     eqOfState = PowerLaw(self.mat)
 
         pressure = EquationOfState(self.mat).isoT_pressure(q[2])
 

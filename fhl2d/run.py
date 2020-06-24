@@ -39,11 +39,6 @@ class Run:
         disc['Lx'] = self.Lx
         disc['Ly'] = self.Ly
 
-        # if material['EOS'] == 'DH':
-        #     self.eqOfState = DowsonHigginson(material)
-        # elif material['EOS'] == 'PL':
-        #     self.eqOfState = PowerLaw(material)
-
         tStart = time.time()
 
         self.sol = Solver(disc, geometry, numerics, material)
