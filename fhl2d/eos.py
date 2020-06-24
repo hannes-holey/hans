@@ -88,4 +88,4 @@ class EquationOfState:
 
             c_squared = K / rho0**n * rho**(n - 1)
 
-        return np.sqrt(np.amax(c_squared))
+        return np.sqrt(np.mean(c_squared))
