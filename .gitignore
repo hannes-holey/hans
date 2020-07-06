@@ -4,6 +4,7 @@
 *.cpython*.so
 __pycache__
 data/*.nc
+data/*.dat
 config/
 submit.sh
 .docblock.json
