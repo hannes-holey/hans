@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from helper import getFile
+from scipy.optimize import curve_fit
+
+filename, file = getFile()
+
+toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]'],
+          1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]'],
+          2: ['rho', r'density [kg/m$^3$]'],
+          3: ['p', r'pressure (MPa)']}
+
+Nx = file.Nx
+Ny = file.Ny
+dx = float(file.dx)
+dy = float(file.dy)
+dt = float(file.dt)
+
+f_header_disc = f"Nx: {Nx:3d}, Ny: {Ny:3d}, dx: {dx:.2g}, dy: {dy:.2g}, dt: {dt:.2g}"
+f_var_cols = "time, var(jx), var(jy), var(rho)"
+f_ac_cols = "time, ac_l(jx) ac_t(jx) ac_l(jy) ac_t(jy) ac_l(rho) ac_t(rho)"
+
+time = np.array(file.variables["time"])
+out_var = np.empty([10, 4])
+out_ac = np.empty([len(time), 7])
+
+wave_num = {0: [1, 0], 1: [0, 1]}
+
+kx = 2 * np.pi * np.fft.fftfreq(Nx, d=dx)
+ky = 2 * np.pi * np.fft.fftfreq(Ny, d=dy)
+out_ac[:,0] = time
+
+for choice in np.arange(3):
+
+    try:
+        full_array = np.array(file.variables[toPlot[choice][0]], copy=False)
+    except MemoryError:
+        print("Not enough memory, using single precision!")
+        full_array = np.array(file.variables[toPlot[choice][0]], copy=False).astype(np.float32)
+
+    mask = np.all(np.isfinite(full_array), axis=(1,2))
+    full_array = full_array[mask]
+    size = len(time)
+
+    n = 10
+    for i in range(n):
+        samples = (i + 1) * size // n
+
+        cellVariance = np.var(full_array[0:samples], axis=0)
+        # mean = np.mean(full_array[0:samples + 1])
+        variance = np.mean(cellVariance)
+
+        out_var[i, choice + 1] = variance
+        out_var[i, 0] = time[samples - 1]
+        # out_var[i,1] = mean
+        # out_var[i,2] = variance
+
+    field_fft = np.real(np.fft.fft2(full_array))
+
+    for d in [0, 1]:
+        ikx, iky = wave_num[d]
+
+        C = np.correlate(field_fft[:, ikx, iky], field_fft[:, ikx, iky], mode="full") / field_fft[:, ikx, iky].size
+        C = C[C.size // 2:]
+        C /= C[0]
+
+        out_ac[:, 2 * choice + d + 1] = C
+
+np.savetxt(os.path.splitext(filename)[0] + "_stats_var.dat", out_var, header=f_var_cols)
+np.savetxt(os.path.splitext(filename)[0] + "_stats_ac.dat", out_ac, header=f_ac_cols)
+
+# out_var[:,0] = np.array(file.variables["time"])
