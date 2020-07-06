@@ -29,7 +29,7 @@ def plot_update(i, A, t):
 
     im.set_array(A[i].T)
     im.set_clim(vmin=glob_min, vmax=glob_max)
-    fig.suptitle("Time: {:.1f} µs".format(t[i]))
+    # fig.suptitle("Time: {:.1f} µs".format(t[i]))
 
 
 if __name__ == "__main__":
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # User input
     toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
               1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
-              2: ['rho', r'density [kg/m$^3$]', 1.],
+              2: ['rho', r'mass density (kg/m$^3$)', 1.],
               3: ['p', r'pressure (MPa)', 1e-6]}
 
     reduced = not('p' in file.variables)
@@ -58,20 +58,33 @@ if __name__ == "__main__":
     t = np.array(file.variables['time']) * 1e6
     Nx = file.Nx
     Ny = file.Ny
+    Lx = file.Lx
+    Ly = file.Ly
+    rho0 = file.rho0
     name = file.name
 
     ratio = file.Nx / file.Ny
-    fig, ax = plt.subplots(figsize=(ratio * 3, 3))
+    fig, ax = plt.subplots(figsize=(ratio * 5, 5))
 
     # Global colorbar limits
     glob_min = np.amin(A[0])
     glob_max = np.amax(A[0])
 
     # Initial plotting
-    im = ax.imshow(np.empty((Ny,Nx)), interpolation='nearest', aspect='equal', cmap='viridis')
+    im = ax.imshow(np.empty((Ny,Nx)), interpolation='gaussian', aspect='equal', cmap='viridis')
     cbar = plt.colorbar(im, ax=ax, label=toPlot[choice][1])
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
+
+    ax.invert_yaxis()
+
+    # Adjust ticks
+    ticksx = np.linspace(0, Lx, 3)
+    ticksy = np.linspace(0, Ly, 3)
+    ax.set_xticks(ticksx / Lx * Nx - 0.5)
+    ax.set_xticklabels([f"{v*1e9:.0f}" for v in ticksx])
+    ax.set_yticks(ticksy / Ly * Ny - 0.5)
+    ax.set_yticklabels([f"{v*1e9:.0f}" for v in ticksy])
+    ax.set_xlabel(r'$L_x$ (nm)')
+    ax.set_ylabel(r'$L_y$ (nm)')
 
     # Create animation
     anim = animation.FuncAnimation(fig, plot_update, frames=len(A), fargs=(A, t,), interval=100, repeat=True)

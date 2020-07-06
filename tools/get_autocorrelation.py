@@ -151,8 +151,8 @@ if flag == 1:
 
 
 fig_out, ax_out = plt.subplots(1,1, figsize=(8,6))
+ax_out.plot(time[::5] * 1e12, C[::5], 's', color='C0', label='simulation')
 ax_out.plot(time * 1e12, func(time, *popt), '--', label='fit')
-ax_out.plot(time[::5] * 1e12, C[::5], 's', color='C0')
 if flag == 0:
     ax_out.plot(time * 1e12, ac_long_ana, '--', label='theory')
     ax_out.set_xlabel(r'$t$ (ps)')
