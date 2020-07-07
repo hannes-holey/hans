@@ -2,9 +2,7 @@
 
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 from helper import getFile
-from scipy.optimize import curve_fit
 
 filename, file = getFile()
 
@@ -22,7 +20,7 @@ dt = float(file.dt)
 
 f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {dt:.2g}"
 f_var_cols = "time, var(jx), var(jy), var(rho)"
-f_ac_cols = "time, ac_l(jx) ac_t(jx) ac_t(jy) ac_l(jy) ac(rho) ac(rho)"
+f_ac_cols = "time, ac_l(jx) ac_t(jx) ac_l(jy) ac_t(jy) ac(rho) ac(rho)"
 
 time = np.array(file.variables["time"])
 out_var = np.empty([10, 4])
@@ -62,7 +60,10 @@ for choice in np.arange(3):
     field_fft = np.real(np.fft.fft2(full_array))
 
     for d in [0, 1]:
-        ikx, iky = wave_num[d]
+        if choice == 1:
+            iky, ikx = wave_num[d]
+        else:
+            ikx, iky = wave_num[d]
 
         C = np.correlate(field_fft[:, ikx, iky], field_fft[:, ikx, iky], mode="full") / field_fft[:, ikx, iky].size
         C = C[C.size // 2:]
