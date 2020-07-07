@@ -17,11 +17,12 @@ Nx = file.Nx
 Ny = file.Ny
 dx = float(file.dx)
 dy = float(file.dy)
+dz = float(file.h1)
 dt = float(file.dt)
 
-f_header_disc = f"Nx: {Nx:3d}, Ny: {Ny:3d}, dx: {dx:.2g}, dy: {dy:.2g}, dt: {dt:.2g}"
+f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {dt:.2g}"
 f_var_cols = "time, var(jx), var(jy), var(rho)"
-f_ac_cols = "time, ac_l(jx) ac_t(jx) ac_l(jy) ac_t(jy) ac_l(rho) ac_t(rho)"
+f_ac_cols = "time, ac_l(jx) ac_t(jx) ac_t(jy) ac_l(jy) ac(rho) ac(rho)"
 
 time = np.array(file.variables["time"])
 out_var = np.empty([10, 4])
@@ -69,7 +70,7 @@ for choice in np.arange(3):
 
         out_ac[:, 2 * choice + d + 1] = C
 
-np.savetxt(os.path.splitext(filename)[0] + "_stats_var.dat", out_var, header=f_var_cols)
-np.savetxt(os.path.splitext(filename)[0] + "_stats_ac.dat", out_ac, header=f_ac_cols)
+np.savetxt(os.path.splitext(filename)[0] + "_stats_var.dat", out_var, header=f_header_disc + "\n" + f_var_cols)
+np.savetxt(os.path.splitext(filename)[0] + "_stats_ac.dat", out_ac, header=f_header_disc + "\n" + f_ac_cols)
 
 # out_var[:,0] = np.array(file.variables["time"])
