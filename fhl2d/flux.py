@@ -311,12 +311,13 @@ class Flux:
 
         return dt / (2 * dx) * flux
 
-    def stochasticFlux(self, cov, dt, ax, seed):
+    def stochasticFlux(self, cov, h, dt, ax, seed):
 
         Nx = int(self.disc['Nx'])
         Ny = int(self.disc['Ny'])
         dx = float(self.disc['dx'])
         dy = float(self.disc['dy'])
+        dz = np.amin(h.field[0])
 
         mu = float(self.material['shear'])
         ceta = float(self.material['bulk'])
@@ -337,9 +338,9 @@ class Flux:
         # print(seed, noise[0][10,10])
         # noise[1] = - noise[0]
 
-        R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / dx**3 / dt) * np.random.normal(size=(Nx,Ny))
+        R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / dx / dy / dt) * np.random.normal(size=(Nx,Ny))
         R22 = -R11
-        R12 = np.sqrt(2 * kB * T * mu / dx**3 / dt) * np.random.normal(size=(Nx,Ny))
+        R12 = np.sqrt(2 * kB * T * mu / dx / dy / dt) * np.random.normal(size=(Nx,Ny))
 
         if ax == 1:
             S[0] = R11 - np.roll(R11, 1, axis=ax - 1)
@@ -378,8 +379,8 @@ class Flux:
         fY = self.hyperbolicFW_BW(Q, p, dt, dir, 2)
 
         if bool(self.material['Fluctuating']) is True:
-            sX = weight * self.stochasticFlux(cov3, dt, 1, i)
-            sY = weight * self.stochasticFlux(cov3, dt, 2, i)
+            sX = weight * self.stochasticFlux(cov3, h, dt, 1, i)
+            sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
@@ -423,8 +424,8 @@ class Flux:
         fY = self.hyperbolicTVD(Q, dt, 2)
 
         if bool(self.material['Fluctuating']) is True:
-            sX = weight * self.stochasticFlux(cov3, dt, 1, i)
-            sY = weight * self.stochasticFlux(cov3, dt, 2, i)
+            sX = weight * self.stochasticFlux(cov3, h, dt, 1, i)
+            sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
