@@ -4,8 +4,6 @@ import os
 import numpy as np
 from helper import getFiles
 
-# filename, file = getFile()
-
 toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]'],
           1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]'],
           2: ['rho', r'density [kg/m$^3$]'],
