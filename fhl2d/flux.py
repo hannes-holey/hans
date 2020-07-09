@@ -338,9 +338,9 @@ class Flux:
         # print(seed, noise[0][10,10])
         # noise[1] = - noise[0]
 
-        R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / dx / dy / dt) * np.random.normal(size=(Nx,Ny))
+        R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / dx / dy / dz / dt) * np.random.normal(size=(Nx,Ny))
         R22 = -R11
-        R12 = np.sqrt(2 * kB * T * mu / dx / dy / dt) * np.random.normal(size=(Nx,Ny))
+        R12 = np.sqrt(2 * kB * T * mu / dx / dy / dz / dt) * np.random.normal(size=(Nx,Ny))
 
         if ax == 1:
             S[0] = R11 - np.roll(R11, 1, axis=ax - 1)
