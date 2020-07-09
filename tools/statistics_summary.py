@@ -70,9 +70,12 @@ for f in files.values():
             else:
                 ikx, iky = wave_num[d]
 
-            C = np.correlate(field_fft[:, ikx, iky], field_fft[:, ikx, iky], mode="full") / field_fft[:, ikx, iky].size
+            var = np.var(field_fft[:, ikx, iky])
+            mean = np.mean(field_fft[:, ikx, iky])
+            C = np.correlate(field_fft[:, ikx, iky] - mean, field_fft[:, ikx, iky] - mean, mode="full")
             C = C[C.size // 2:]
-            C /= C[0]
+            C /= len(C)
+            C /= var
 
             out_ac[:, 2 * choice + d + 1] = C
 

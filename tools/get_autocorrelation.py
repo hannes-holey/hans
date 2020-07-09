@@ -88,12 +88,12 @@ ky = 2 * np.pi * np.fft.fftfreq(Ny, d=dy)
 ax[1, 0].plot(time, field_fft[:, ikx, iky])
 
 # Compute autocorrelation function
-# var = np.var(field_fft[:, ikx, iky])
-# denom = np.absolute(field_fft[0, ikx, iky])**2
-C = np.correlate(field_fft[:, ikx, iky], field_fft[:, ikx, iky], mode="full") / field_fft[:, ikx, iky].size
+var = np.var(field_fft[:, ikx, iky])
+mean = np.mean(field_fft[:, ikx, iky])
+C = np.correlate(field_fft[:, ikx, iky] - mean, field_fft[:, ikx, iky] - mean, mode="full")
 C = C[C.size // 2:]
-C /= C[0]
-# C /= var
+C /= len(C)
+C /= var
 
 # magnitude of wave vector
 # k = np.sqrt((ky[iky] - ky[Ny // 2])**2 + (kx[ikx] - kx[Nx // 2])**2)
