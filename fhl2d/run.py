@@ -106,6 +106,7 @@ class Run:
                     print("Output written to: {:s}".format(outfile))
 
         else:
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
             self.plot()
 
         tDiff = time.time() - tStart
@@ -186,7 +187,7 @@ class Run:
         limits[3,0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
         limits[3,1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
-        _ = animation.FuncAnimation(fig, self.animate1D, 100000,fargs=(fig, ax,
+        _ = animation.FuncAnimation(fig, self.animate1D, 100000, fargs=(fig, ax,
                                     line0, line1, line2, line3, limits,), interval=1, repeat=False)
 
         plt.show()
@@ -208,6 +209,8 @@ class Run:
         line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[2][:,int(self.Ny / 2)]))
 
         self.sol.solve(i)
+        if i % self.writeInterval == 0:
+            print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
 
     def adaptiveLimits(self, limits):
 
