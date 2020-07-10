@@ -317,7 +317,7 @@ class Flux:
         Ny = int(self.disc['Ny'])
         dx = float(self.disc['dx'])
         dy = float(self.disc['dy'])
-        dz = np.amin(h.field[0])
+        dz = h.field[0]
 
         mu = float(self.material['shear'])
         ceta = float(self.material['bulk'])
