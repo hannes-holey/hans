@@ -43,6 +43,10 @@ class Run:
 
         self.sol = Solver(disc, geometry, numerics, material)
 
+        self.run(plot, reducedOut, tol, maxT, tStart)
+
+    def run(self, plot, reducedOut, tol, maxT, tStart):
+
         if plot is False:
             self.file_tag = 1
             self.j = 0
