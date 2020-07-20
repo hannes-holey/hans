@@ -13,10 +13,11 @@ class Flux:
         self.disc = disc
         self.geometry = geometry
         self.material = material
+        self.numerics = numerics
 
         self.periodicX = bool(numerics['periodicX'])
         self.periodicY = bool(numerics['periodicY'])
-        self.fluct = bool(material['Fluctuating'])
+        self.fluct = bool(numerics['Fluctuating'])
 
     def getFlux_LF(self, q, h, stress, dt, d, ax):
 
@@ -82,7 +83,7 @@ class Flux:
 
         H = h.stagArray(dir, ax)
 
-        vStress, Stress, cov, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, H, dt)
+        vStress, Stress, cov, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, H, dt)
 
         if self.fluct is True:
             Stress.addNoise_FH(cov)
@@ -102,7 +103,7 @@ class Flux:
 
     def Richtmyer(self, q, h, dt):
 
-        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(q, h, dt)
+        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self. numerics, self.material).stress_avg(q, h, dt)
 
         if self.fluct is True:
             stress.addNoise_FH(cov3)
@@ -150,7 +151,7 @@ class Flux:
             Q = q
             dir = 1                 # backwards difference
 
-        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, h, dt)
 
         if self.fluct is True:
             stress.addNoise_FH(cov3)
@@ -176,8 +177,8 @@ class Flux:
 
         # Q = q
 
-        stress_wall_top = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(Q, h, dt, 1)
-        stress_wall_bot = Newtonian(self.disc, self.geometry, self.material).viscousStress_wall(Q, h, dt, 0)
+        stress_wall_top = Newtonian(self.disc, self.geometry, self.numerics, self.material).viscousStress_wall(Q, h, dt, 1)
+        stress_wall_bot = Newtonian(self.disc, self.geometry, self.numerics, self.material).viscousStress_wall(Q, h, dt, 0)
 
         h0 = h.field[0]
         hx = h.field[1]
@@ -246,7 +247,7 @@ class Flux:
     def hyperbolicTVD(self, q, dt, ax):
 
         Q = self.cubicInterpolation(q, ax)
-        P = Newtonian(self.disc, self.geometry, self.material).getPressure(Q)
+        P = Newtonian(self.disc, self.geometry, self.numerics, self.material).getPressure(Q)
         F = self.hyperbolicFlux(Q, P, ax)
 
         flux = np.roll(F, 0, axis=ax) - np.roll(F, 1, axis=ax)
@@ -373,19 +374,19 @@ class Flux:
             dir = 1                 # backwards difference
             weight = np.sqrt(2)
 
-        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, h, dt)
 
         fX = self.hyperbolicFW_BW(Q, p, dt, dir, 1)
         fY = self.hyperbolicFW_BW(Q, p, dt, dir, 2)
 
-        if bool(self.material['Fluctuating']) is True:
+        if bool(self.numerics['Fluctuating']) is True:
             sX = weight * self.stochasticFlux(cov3, h, dt, 1, i)
             sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
 
-        if bool(self.material['Rey']) is False:
+        if bool(self.numerics['Rey']) is False:
             dX = self.diffusiveCD(Q, viscousStress, dt, 1)
             dY = self.diffusiveCD(Q, viscousStress, dt, 2)
         else:
@@ -418,19 +419,19 @@ class Flux:
             weight = np.sqrt(3)
             # weight = 3 / 4
 
-        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.material).stress_avg(Q, h, dt)
+        viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, h, dt)
 
         fX = self.hyperbolicTVD(Q, dt, 1)
         fY = self.hyperbolicTVD(Q, dt, 2)
 
-        if bool(self.material['Fluctuating']) is True:
+        if bool(self.numerics['Fluctuating']) is True:
             sX = weight * self.stochasticFlux(cov3, h, dt, 1, i)
             sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
 
-        if bool(self.material['Rey']) is False:
+        if bool(self.numerics['Rey']) is False:
             dX = self.diffusiveCD(Q, viscousStress, dt, 1)
             dY = self.diffusiveCD(Q, viscousStress, dt, 2)
         else:
