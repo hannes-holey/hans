@@ -7,6 +7,7 @@ def get_parser():
     parser = ArgumentParser()
     parser.add_argument('--plot', dest='plot', default=False, help="on-the-fly plot option", action='store_true')
     parser.add_argument('--reduced-output', dest='reducedOut', default=False, help="don't write pressure field", action='store_true')
+    parser.add_argument('--restart', dest="restart_file", default=None, help="restart simulation from last step of specified file")
     required = parser.add_argument_group('required arguments')
     required.add_argument("-i", dest="filename", help="path to input file", required=True)
 
@@ -19,5 +20,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     inputFile = os.path.join(os.getcwd(), args.filename)
-    myProblem = problem.yamlInput(inputFile).getProblem()
+    if args.restart_file is not None:
+        restartFile = os.path.join(os.getcwd(), args.restart_file)
+    else:
+        restartFile = None
+    myProblem = problem.Input(inputFile, restartFile).getProblem()
     myProblem.run(args.plot, args.reducedOut)

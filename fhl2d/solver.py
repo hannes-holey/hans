@@ -39,7 +39,11 @@ class Solver:
         rho0 = float(material['rho0'])
 
         self.q = VectorField(disc)
-        self.q.field[2] = rho0
+
+        if q_init is not None:
+            self.q.field = q_init
+        else:
+            self.q.field[2] = rho0
 
         if self.type == 'inclined':
             self.q.field[2][0,:] = EquationOfState(self.material).isoT_density(P0)
