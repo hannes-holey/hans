@@ -14,7 +14,7 @@ from .solver import Solver
 
 class Run:
 
-    def __init__(self, options, disc, geometry, numerics, material, plot, reducedOut):
+    def __init__(self, options, disc, geometry, numerics, material, plot, reducedOut, q_init):
 
         self.options = options
         self.disc = disc
@@ -41,7 +41,7 @@ class Run:
 
         tStart = time.time()
 
-        self.sol = Solver(disc, geometry, numerics, material)
+        self.sol = Solver(disc, geometry, numerics, material, q_init)
 
         self.run(plot, reducedOut, tol, maxT, tStart)
 

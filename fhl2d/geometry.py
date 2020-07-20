@@ -43,4 +43,7 @@ class Analytic:
         c = CR * Rb
         e = eps * c
 
+        print("Min. channel height: {:.2g} m".format(np.amin(c + e * np.cos(x / Rb))))
+        print("Max. channel height: {:.2g} m".format(np.amax(c + e * np.cos(x / Rb))))
+
         return c + e * np.cos(x / Rb)

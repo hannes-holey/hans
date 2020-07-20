@@ -12,14 +12,14 @@ from .stress import Newtonian
 
 class Solver:
 
-    def __init__(self, disc, geometry, numerics, material):
+    def __init__(self, disc, geometry, numerics, material, q_init):
 
         self.type = str(geometry['type'])
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
         self.C = numerics['C']
-        self.fluct = bool(material['Fluctuating'])
+        self.fluct = bool(numerics['Fluctuating'])
 
         self.material = material
 
@@ -39,7 +39,11 @@ class Solver:
         rho0 = float(material['rho0'])
 
         self.q = VectorField(disc)
-        self.q.field[2] = rho0
+
+        if q_init is not None:
+            self.q.field = q_init
+        else:
+            self.q.field[2] = rho0
 
         if self.type == 'inclined':
             self.q.field[2][0,:] = EquationOfState(self.material).isoT_density(P0)
@@ -53,7 +57,7 @@ class Solver:
             self.q.fill_line(EquationOfState(self.material).isoT_density(2. * P0), 0, 2)
 
         self.Flux = Flux(disc, geometry, numerics, material)
-        self.Newtonian = Newtonian(disc, geometry, material)
+        self.Newtonian = Newtonian(disc, geometry, numerics, material)
 
         self.vSound = EquationOfState(self.material).soundSpeed(rho0)
 

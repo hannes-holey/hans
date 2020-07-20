@@ -8,11 +8,12 @@ from .field import VectorField, TensorField
 
 class Newtonian:
 
-    def __init__(self, disc, geometry, material):
+    def __init__(self, disc, geometry, numerics, material):
 
         self.disc = disc
         self.geo = geometry
         self.mat = material
+        self.num = numerics
 
     def viscousStress_avg(self, q, h, dt):
 
@@ -35,7 +36,7 @@ class Newtonian:
 
         dz = np.amin(h0)
 
-        if bool(self.mat['Rey']) is False:
+        if bool(self.num['Rey']) is False:
             # origin bottom
             out.field[0] = (-4 * (U * rho - (3 * j_x) / 2) * (mu + lam / 2) * hx - 2 * lam * (V * rho - (3 * j_y) / 2) * hy) / (h0 * rho)
             out.field[1] = (-4 * (V * rho - (3 * j_y) / 2) * (mu + lam / 2) * hy - 2 * lam * (U * rho - (3 * j_x) / 2) * hx) / (h0 * rho)
@@ -84,7 +85,7 @@ class Newtonian:
         # dz = np.amin(h0)
 
         if bound == 1:
-            if bool(self.mat['Rey']) is False:
+            if bool(self.num['Rey']) is False:
                 out.field[0] = (-8 * (mu + lam / 2) * (U * rho - (3 * j_x) / 2) * hx - 4 * hy * lam * (V * rho - (3 * j_y) / 2)) / (h0 * rho)
                 out.field[1] = (-8 * (mu + lam / 2) * (V * rho - (3 * j_y) / 2) * hy - 4 * hx * lam * (U * rho - (3 * j_x) / 2)) / (h0 * rho)
                 out.field[2] = -4 * lam * ((U * rho - (3 * j_x) / 2) * hx + hy * (V * rho - (3 * j_y) / 2)) / (h0 * rho)
