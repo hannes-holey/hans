@@ -5,6 +5,7 @@
 __pycache__
 data/*.nc
 data/*.dat
+data/restart/
 config/
 submit.sh
 .docblock.json
