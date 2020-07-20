@@ -327,8 +327,8 @@ class Flux:
         T = float(self.material['T0'])
         kB = 1.38064852e-23
 
-        S = np.zeros([3, Nx, Ny])
-
+        Sx = np.zeros([3, Nx, Ny])
+        Sy = np.zeros([3, Nx, Ny])
         # can be used to modify, how often random fields are generated (within one timestep)
         # np.random.seed(seed)
 
@@ -343,14 +343,20 @@ class Flux:
         R22 = -R11
         R12 = np.sqrt(2 * kB * T * mu / dx / dy / dz / dt) * np.random.normal(size=(Nx,Ny))
 
-        if ax == 1:
-            S[0] = R11 - np.roll(R11, 1, axis=ax - 1)
-            S[1] = R12 - np.roll(R12, 1, axis=ax - 1)
-            dx = dx
-        if ax == 2:
-            S[0] = R12 - np.roll(R12, 1, axis=ax - 1)
-            S[1] = R22 - np.roll(R22, 1, axis=ax - 1)
-            dx = dy
+        Sx[0] = R11 - np.roll(R11, 1, axis=0)
+        Sx[1] = R12 - np.roll(R12, 1, axis=0)
+
+        Sy[0] = R12 - np.roll(R12, 1, axis=1)
+        Sy[1] = R22 - np.roll(R22, 1, axis=1)
+
+        # if ax == 1:
+        #     S[0] = R11 - np.roll(R11, 1, axis=ax - 1)
+        #     S[1] = R12 - np.roll(R12, 1, axis=ax - 1)
+        #     dx = dx
+        # if ax == 2:
+        #     S[0] = R12 - np.roll(R12, 1, axis=ax - 1)
+        #     S[1] = R22 - np.roll(R22, 1, axis=ax - 1)
+        #     dx = dy
 
         # if ax == 1:
         #     S[0] = noise[0] - np.roll(noise[0], 1, axis=ax - 1)
@@ -361,7 +367,7 @@ class Flux:
         #     S[1] = noise[1] - np.roll(noise[1], 1, axis=ax - 1)
         #     dx = dy
 
-        return dt / dx * S
+        return dt / dx * Sx, dt / dy * Sy
 
     def MacCormack(self, q, h, dt, i, corrector=True):
 
@@ -425,8 +431,10 @@ class Flux:
         fY = self.hyperbolicTVD(Q, dt, 2)
 
         if bool(self.numerics['Fluctuating']) is True:
-            sX = weight * self.stochasticFlux(cov3, h, dt, 1, i)
-            sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
+            sX, sY = self.stochasticFlux(cov3, h, dt, 1, i)
+            sX *= weight
+            sY *= weight
+            # sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
