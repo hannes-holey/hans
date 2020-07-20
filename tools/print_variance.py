@@ -14,10 +14,12 @@ for f in files.values():
 
     dx = float(file.dx)
     dy = float(file.dy)
+    Nx = float(file.Nx)
+    Ny = float(file.Ny)
     dz = float(file.h1)
     dt = float(file.dt)
 
-    f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {dt:.2g}"
+    f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {Nx:.2g} {Ny:.2g} {dt:.2g}"
     f_var_cols = "time, var(jx), var(jy), var(rho)"
 
     out_var = getVariance_vs_time(file, 10)
