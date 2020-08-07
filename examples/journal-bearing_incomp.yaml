@@ -13,6 +13,8 @@ geometry:
     U: 0.1
     V: 0.
 numerics:
+    Fluctuating: 0
+    Rey: 1
     adaptive: 1
     C: 0.2
     tol: 2.e-12
@@ -23,8 +25,6 @@ numerics:
     periodicY: 1
 material:
     EOS: DH
-    Fluctuating: 0
-    Rey: 1
     shear: 0.0794
     bulk: 0.
     P0: 101325
