@@ -124,26 +124,22 @@ class Run:
         if i % self.writeInterval == 0 or last == 1:
 
             if self.j == 0:
-
-                categories = [self.options,
-                              self.disc,
-                              self.geometry,
-                              self.numerics,
-                              self.material]
-
-                from datetime import datetime
-                from git import Repo
-
                 now = datetime.now()
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
                 git_commit = str(Repo(search_parent_directories=True).head.object.hexsha)
-
                 self.nc.tStart = timeString
                 self.nc.commit = git_commit
 
-                for cat in categories:
+                categories = {"options": self.options,
+                              "disc": self.disc,
+                              "geometry": self.geometry,
+                              "numerics": self.numerics,
+                              "material": self.material}
+
+                for cat_name, cat in categories.items():
                     for key, value in cat.items():
-                        self.nc.setncattr(key, value)
+                        name = cat_name + "_" + key
+                        self.nc.setncattr(name, value)
 
             self.jx[self.j] = self.sol.q.field[0]
             self.jy[self.j] = self.sol.q.field[1]
