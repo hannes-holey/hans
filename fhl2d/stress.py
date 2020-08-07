@@ -23,8 +23,8 @@ class Newtonian:
         V = float(self.geo['V'])
         T = float(self.mat['T0'])
         mu = float(self.mat['shear'])
-        ceta = float(self.mat['bulk'])
-        lam = ceta - 2 / 3 * mu
+        zeta = float(self.mat['bulk'])
+        lam = zeta - 2 / 3 * mu
 
         j_x = q.field[0]
         j_y = q.field[1]
@@ -71,8 +71,8 @@ class Newtonian:
         U = float(self.geo['U'])
         V = float(self.geo['V'])
         mu = float(self.mat['shear'])
-        ceta = float(self.mat['bulk'])
-        lam = ceta - 2 / 3 * mu
+        zeta = float(self.mat['bulk'])
+        lam = zeta - 2 / 3 * mu
 
         j_x = q.field[0]
         j_y = q.field[1]
@@ -81,8 +81,6 @@ class Newtonian:
         h0 = h.field[0]
         hx = h.field[1]
         hy = h.field[2]
-
-        # dz = np.amin(h0)
 
         if bound == 1:
             if bool(self.num['Rey']) is False:
@@ -98,10 +96,6 @@ class Newtonian:
         elif bound == 0:
             out.field[3] = -2 * mu * (V * rho - 3 * j_y) / (h0 * rho)
             out.field[4] = -2 * mu * (U * rho - 3 * j_x) / (h0 * rho)
-
-        # if bool(self.mat['Fluctuating']) is True:
-        #     cov = self.getCovariance(out.ndim, mu, lam, T, q.dx, q.dy, dz, dt)
-        #     out.addNoise_FH(cov)
 
         return out
 
