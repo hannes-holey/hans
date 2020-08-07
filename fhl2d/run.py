@@ -7,6 +7,8 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from datetime import datetime
+from git import Repo
 
 from .eos import EquationOfState
 from .solver import Solver
@@ -97,6 +99,8 @@ class Run:
                     self.write(i, 1, reducedOut)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nSolution has converged after {:d} steps, Output written to: {:s}".format(i, outfile))
+                    timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    self.nc.tEnd = timeString
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
@@ -104,6 +108,8 @@ class Run:
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:.1e} s reached.".format(i, maxT))
                     print("Output written to: {:s}".format(outfile))
+                    timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    self.nc.tEnd = timeString
 
         else:
             print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
