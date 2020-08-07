@@ -15,6 +15,8 @@ class Input:
     ----------
     inputFile : str
         filename of the .yaml input file
+    restartFile : str
+        filename of the .nc data file
     """
 
     def __init__(self, inputFile, restartFile):
@@ -24,6 +26,8 @@ class Input:
         ----------
         inputFile : str
             filename of the .yaml input file
+        restartFile : str
+            filename of the .nc data file
         """
         self.inputFile = inputFile
         self.restartFile = restartFile
@@ -57,6 +61,9 @@ class Input:
         return thisProblem
 
     def checkDisc(self):
+        """Reads parameters of the restart file. Throws assertion error if discretization doesn't match.
+            Warning if geometry and/or material doesn't match.
+        """
         file = netCDF4.Dataset(self.restartFile)
 
         disc = {'dx': file.dx, 'dy': file.dy, 'Nx': file.Nx, 'Ny': file.Ny}
@@ -84,6 +91,14 @@ class Input:
             warnings.warn("Restart simulation with different material", UserWarning)
 
     def getInitialField(self):
+        """Read final field from NetCDF restart datafile.
+
+        Returns
+        -------
+        q0 : numpy.ndarray
+            Initial field to restart a simulation from a previous run.
+        """
+
         file = netCDF4.Dataset(self.restartFile)
 
         q0 = np.empty([3, self.disc['Nx'], self.disc['Ny']])
@@ -144,7 +159,7 @@ class Problem:
         plot : bool
             Flag for live plotting (the default is False).
         reducedOut : bool
-            if True, no pressure outpur is written (the default is False).
+            if True, no pressure output is written (the default is False).
         """
         from .run import Run
         Run(self.options, self.disc, self.geometry, self.numerics, self.material, plot, reducedOut, self.q_init)
