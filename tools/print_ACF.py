@@ -9,8 +9,10 @@ files = getFiles()
 
 for f in files.values():
 
-    filename = f[0]
-    file = f[1]
+    filename, file = f
+    print(f"Processing {filename}...")
+    # filename = f[0]
+    # file = f[1]
 
     dx = float(file.dx)
     dy = float(file.dy)
