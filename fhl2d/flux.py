@@ -307,57 +307,53 @@ class Flux:
         Ny = int(self.disc['Ny'])
         dx = float(self.disc['dx'])
         dy = float(self.disc['dy'])
-        # dz = h.field[0]
-        dz = 1.
-        
+        dz = h.field[0]
+
         mu = float(self.material['shear'])
-        ceta = float(self.material['bulk'])
-        lam = ceta - 2 / 3 * mu
+        zeta = float(self.material['bulk'])
+        # lam = zeta - 2 / 3 * mu
 
         T = float(self.material['T0'])
         kB = 1.38064852e-23
 
-        Sx = np.zeros([3, Nx, Ny])
-        Sy = np.zeros([3, Nx, Ny])
+        Sx_E = np.zeros([3, Nx, Ny])
+        Sx_W = np.zeros([3, Nx, Ny])
+        Sy_N = np.zeros([3, Nx, Ny])
+        Sy_S = np.zeros([3, Nx, Ny])
+
+        dim = 3
+
+        W_field = np.random.normal(size=(dim * (dim - 1),Nx,Ny))
+        W_trace = np.sum(W_field[:dim],axis=0)
+
+        W_field_traceless = W_field - W_trace / dim
+
+        a_coeff = np.sqrt(4 * kB * T * mu / (dx * dy * dz * dt))
+        b_coeff = np.sqrt(2 * dim * kB * T * zeta / (dx * dy * dz * dt))
+
         # can be used to modify, how often random fields are generated (within one timestep)
         # np.random.seed(seed)
 
-        # mean = np.zeros(3)
-        # noise = np.random.multivariate_normal(mean, cov, size=(Nx, Ny))
-        # noise = noise.transpose(2, 0, 1)
+        # R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
+        # R22 = -R11
+        # R12 = np.sqrt(2 * kB * T * mu / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
 
-        # print(seed, noise[0][10,10])
-        # noise[1] = - noise[0]
+        corr = np.sqrt(dx * dy) / dz
+        # corr = 1
 
-        R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / dx / dy / dz / dt) * np.random.normal(size=(Nx,Ny))
-        R22 = -R11
-        R12 = np.sqrt(2 * kB * T * mu / dx / dy / dz / dt) * np.random.normal(size=(Nx,Ny))
+        Sx_E[0] = (a_coeff * W_field_traceless[0] + b_coeff * W_trace / dim) / 2
+        Sx_E[1] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
 
-        Sx[0] = R11 - np.roll(R11, 1, axis=0)
-        Sx[1] = R12 - np.roll(R12, 1, axis=0)
+        Sx_W[0] = (a_coeff * np.roll(W_field_traceless[0], 1, axis=0) + b_coeff * np.roll(W_trace, 1, axis=0) / dim) / 2
+        Sx_W[1] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=0) + b_coeff * np.roll(W_trace, 1, axis=0) / dim) / 2
 
-        Sy[0] = R12 - np.roll(R12, 1, axis=1)
-        Sy[1] = R22 - np.roll(R22, 1, axis=1)
+        Sy_N[0] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
+        Sy_N[1] = (a_coeff * W_field_traceless[1] + b_coeff * W_trace / dim) / 2
 
-        # if ax == 1:
-        #     S[0] = R11 - np.roll(R11, 1, axis=ax - 1)
-        #     S[1] = R12 - np.roll(R12, 1, axis=ax - 1)
-        #     dx = dx
-        # if ax == 2:
-        #     S[0] = R12 - np.roll(R12, 1, axis=ax - 1)
-        #     S[1] = R22 - np.roll(R22, 1, axis=ax - 1)
-        #     dx = dy
+        Sy_S[0] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
+        Sy_S[1] = (a_coeff * np.roll(W_field_traceless[1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
 
-        # if ax == 1:
-        #     S[0] = noise[0] - np.roll(noise[0], 1, axis=ax - 1)
-        #     S[1] = noise[2] - np.roll(noise[2], 1, axis=ax - 1)
-        #     dx = dx
-        # if ax == 2:
-        #     S[0] = noise[2] - np.roll(noise[2], 1, axis=ax - 1)
-        #     S[1] = noise[1] - np.roll(noise[1], 1, axis=ax - 1)
-        #     dx = dy
-
-        return dt / dx * Sx, dt / dy * Sy
+        return dt / dx * (Sx_E - Sx_W) * corr, dt / dy * (Sy_N - Sy_S) * corr
 
     def MacCormack(self, q, h, dt, i, corrector=True):
 
@@ -376,8 +372,9 @@ class Flux:
         fY = self.hyperbolicFW_BW(Q, p, dt, dir, 2)
 
         if bool(self.numerics['Fluctuating']) is True:
-            sX = weight * self.stochasticFlux(cov3, h, dt, 1, i)
-            sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
+            sX, sY = self.stochasticFlux(cov3, h, dt, 1, i)
+            sX *= weight
+            sY *= weight
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
@@ -424,7 +421,6 @@ class Flux:
             sX, sY = self.stochasticFlux(cov3, h, dt, 1, i)
             sX *= weight
             sY *= weight
-            # sY = weight * self.stochasticFlux(cov3, h, dt, 2, i)
         else:
             sX = np.zeros_like(fX)
             sY = np.zeros_like(fX)
