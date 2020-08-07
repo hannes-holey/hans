@@ -172,10 +172,8 @@ class Flux:
 
         out = np.zeros_like(q.field)
 
-        Q = self.cellAverageFaces(q)
-        # print(np.mean(q.field[2]) - np.mean(Q.field[2]))
-
-        # Q = q
+        # Q = self.cellAverageFaces(q)
+        Q = q
 
         stress_wall_top = Newtonian(self.disc, self.geometry, self.numerics, self.material).viscousStress_wall(Q, h, dt, 1)
         stress_wall_bot = Newtonian(self.disc, self.geometry, self.numerics, self.material).viscousStress_wall(Q, h, dt, 0)
@@ -187,14 +185,9 @@ class Flux:
         j_x = Q.field[0]
         j_y = Q.field[1]
 
-        # j_x = q.field[0]
-        # j_y = q.field[1]
-
         out[0] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
         out[1] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
         out[2] = -j_x * hx / h0 - j_y * hy / h0
-
-        # out.field *= dt
 
         return out * dt
 
@@ -209,11 +202,7 @@ class Flux:
 
         Q_avg.field = 0.25 * (qE + qW + qN + qS)
 
-        # qX = self.cubicInterpolation(q, 0)
-        # qY = self.cubicInterpolation(q, 1)
-        # Q_avg.field = 0.25 * (np.roll(qX, 1, axis=0) + np.roll(qY, 1, axis=1) + qX + qY)
-
-        return q
+        return Q_avg
 
     def hyperbolicFlux(self, q, p, ax):
 
