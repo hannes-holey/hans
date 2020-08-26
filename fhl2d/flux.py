@@ -339,8 +339,8 @@ class Flux:
         # R12 = np.sqrt(2 * kB * T * mu / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
 
         corr = np.sqrt(dx * dy) / dz
-        corrX = dy / dz
-        corrY = dx / dz
+        corrX = dx / dz
+        corrY = dy / dz
         # corr = 1
 
         Sx_E[0] = (a_coeff * W_field_traceless[0] + b_coeff * W_trace / dim) / 2
