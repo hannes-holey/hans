@@ -41,8 +41,8 @@ for file in files.values():
     step = np.argmin(abs(time - plotTime))
 
     d = np.array(file[1].variables[toPlot[choice][0]])[step]
-    Lx = file[1].Lx
-    Nx = file[1].Nx
+    Lx = file[1].disc_Lx
+    Nx = file[1].disc_Nx
 
     x = (np.arange(Nx) + 0.5) * Lx / Nx
     t = time[step]

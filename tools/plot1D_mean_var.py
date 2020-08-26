@@ -16,9 +16,9 @@ def gaussian(x, a, mean, sigma):
 
 filename, file = getFile()
 
-Nx = file.Nx
-Ny = file.Ny
-Lx = file.Lx
+Nx = file.disc_Nx
+Ny = file.disc_Ny
+Lx = file.disc_Lx
 
 toPlot = {0: ['jx', r'mass flux $x$ (kg/(m²s))'],
           1: ['jy', r'mass flux $y$ (kg/(m²s))'],

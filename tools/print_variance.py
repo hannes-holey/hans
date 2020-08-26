@@ -14,12 +14,12 @@ for f in files.values():
     # filename = f[0]
     # file = f[1]
 
-    dx = float(file.dx)
-    dy = float(file.dy)
-    Nx = float(file.Nx)
-    Ny = float(file.Ny)
-    dz = float(file.h1)
-    dt = float(file.dt)
+    dx = float(file.disc_dx)
+    dy = float(file.disc_dy)
+    Nx = float(file.disc_Nx)
+    Ny = float(file.disc_Ny)
+    dz = float(file.geometry_h1)
+    dt = float(file.numerics_dt)
 
     f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {Nx:.2g} {Ny:.2g} {dt:.2g}"
     f_var_cols = "time, var(jx), var(jy), var(rho)"

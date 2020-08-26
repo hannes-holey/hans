@@ -20,11 +20,11 @@ fig, ax = plt.subplots(3,1, sharex=True)
 file = getFile()[1]
 
 # read parameters from NetCDF file
-Lx = file.Lx
-Ly = file.Ly
-rho0 = file.rho0
-eta = file.shear
-ceta = file.bulk
+Lx = file.disc_Lx
+Ly = file.disc_Ly
+rho0 = file.material_rho0
+eta = file.material_shear
+ceta = file.material_bulk
 
 # mean velocity of sound (internally calculated from EOS)
 c = np.mean(np.array(file.variables['vSound']))

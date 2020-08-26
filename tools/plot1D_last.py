@@ -35,8 +35,8 @@ for file in files.values():
 
     label = input("Enter Legend for " + file[0] + ": ")
 
-    Lx = file[1].Lx
-    Nx = file[1].Nx
+    Lx = file[1].disc_Lx
+    Nx = file[1].disc_Nx
 
     d = np.array(file[1].variables[toPlot[choice][0]])[-1]
     x = (np.arange(Nx) + 0.5) * Lx / Nx

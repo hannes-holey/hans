@@ -9,8 +9,8 @@ plt.figure(figsize=(10,6), tight_layout=True)
 
 filename, file = getFile()
 
-Lx = file.Lx
-Nx = file.Nx
+Lx = file.disc_Lx
+Nx = file.disc_Nx
 
 toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
           1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],

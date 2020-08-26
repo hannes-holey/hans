@@ -56,14 +56,14 @@ if __name__ == "__main__":
     # A, t, Nx, Ny, name = assembleArrays(file, toPlot[choice])
     A = np.array(file.variables[toPlot[choice][0]]) * toPlot[choice][2]
     t = np.array(file.variables['time']) * 1e6
-    Nx = file.Nx
-    Ny = file.Ny
-    Lx = file.Lx
-    Ly = file.Ly
-    rho0 = file.rho0
-    name = file.name
+    Nx = file.disc_Nx
+    Ny = file.disc_Ny
+    Lx = file.disc_Lx
+    Ly = file.disc_Ly
+    rho0 = file.material_rho0
+    name = file.options_name
 
-    ratio = file.Nx / file.Ny
+    ratio = Nx / Ny
     fig, ax = plt.subplots(figsize=(ratio * 5, 5))
 
     # Global colorbar limits
