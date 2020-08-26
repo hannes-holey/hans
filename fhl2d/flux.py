@@ -339,6 +339,8 @@ class Flux:
         # R12 = np.sqrt(2 * kB * T * mu / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
 
         corr = np.sqrt(dx * dy) / dz
+        corrX = dy / dz
+        corrY = dx / dz
         # corr = 1
 
         Sx_E[0] = (a_coeff * W_field_traceless[0] + b_coeff * W_trace / dim) / 2
@@ -353,7 +355,7 @@ class Flux:
         Sy_S[0] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
         Sy_S[1] = (a_coeff * np.roll(W_field_traceless[1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
 
-        return dt / dx * (Sx_E - Sx_W) * corr, dt / dy * (Sy_N - Sy_S) * corr
+        return dt / dx * (Sx_E - Sx_W) * corrX, dt / dy * (Sy_N - Sy_S) * corrY
 
     def MacCormack(self, q, h, dt, i, corrector=True):
 
