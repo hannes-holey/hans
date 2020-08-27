@@ -323,6 +323,9 @@ class Flux:
 
         dim = 3
 
+        # can be used to modify, how often random fields are generated (within one timestep)
+        np.random.seed(seed)
+
         W_field = np.random.normal(size=(dim * (dim - 1),Nx,Ny))
         W_trace = np.sum(W_field[:dim],axis=0)
 
@@ -330,9 +333,6 @@ class Flux:
 
         a_coeff = np.sqrt(4 * kB * T * mu / (dx * dy * dz * dt))
         b_coeff = np.sqrt(2 * dim * kB * T * zeta / (dx * dy * dz * dt))
-
-        # can be used to modify, how often random fields are generated (within one timestep)
-        # np.random.seed(seed)
 
         # R11 = np.sqrt(2 * kB * T * (2 * mu + lam) / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
         # R22 = -R11
@@ -403,16 +403,16 @@ class Flux:
 
         if step == 3:
             Q = self.RungeKutta3(q, h, dt, i, step=2)
-            # weight = np.sqrt(3)
-            weight = 15 / 16
+            weight = np.sqrt(1)
+            # weight = 15 / 16
         if step == 2:
             Q = self.RungeKutta3(q, h, dt, i, step=1)
-            # weight = np.sqrt(3)
-            weight = 3 / 2
+            weight = np.sqrt(1)
+            # weight = 3 / 2
         if step == 1:
             Q = q
-            # weight = np.sqrt(3)
-            weight = 3 / 4
+            weight = np.sqrt(1)
+            # weight = 3 / 4
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, h, dt)
 
