@@ -338,7 +338,7 @@ class Flux:
         # R22 = -R11
         # R12 = np.sqrt(2 * kB * T * mu / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
 
-        corr = np.sqrt(dx * dy) / dz
+        # corr = np.sqrt(dx * dy) / dz
         corrX = dx / dz
         corrY = dy / dz
         # corr = 1
@@ -403,15 +403,15 @@ class Flux:
 
         if step == 3:
             Q = self.RungeKutta3(q, h, dt, i, step=2)
-            weight = np.sqrt(2)
+            weight = np.sqrt(3)
             # weight = 15 / 16
         if step == 2:
             Q = self.RungeKutta3(q, h, dt, i, step=1)
-            weight = np.sqrt(2)
+            weight = np.sqrt(3)
             # weight = 3 / 2
         if step == 1:
             Q = q
-            weight = np.sqrt(2)
+            weight = np.sqrt(3)
             # weight = 3 / 4
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, h, dt)
