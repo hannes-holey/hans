@@ -403,16 +403,13 @@ class Flux:
 
         if step == 3:
             Q = self.RungeKutta3(q, h, dt, i, step=2)
-            # weight = np.sqrt(1)
-            weight = 15 / 16
+            weight = np.sqrt(3)
         if step == 2:
             Q = self.RungeKutta3(q, h, dt, i, step=1)
-            # weight = np.sqrt(1)
-            weight = 3 / 2
+            weight = np.sqrt(3)
         if step == 1:
             Q = q
-            # weight = np.sqrt(1)
-            weight = 3 / 4
+            weight = np.sqrt(3)
 
         viscousStress, stress, cov3, p = Newtonian(self.disc, self.geometry, self.numerics, self.material).stress_avg(Q, h, dt)
 
@@ -425,14 +422,14 @@ class Flux:
             sY *= weight
         else:
             sX = np.zeros_like(fX)
-            sY = np.zeros_like(fX)
+            sY = np.zeros_like(fY)
 
         if bool(self.numerics['Rey']) is False:
             dX = self.diffusiveCD(Q, viscousStress, dt, 1)
             dY = self.diffusiveCD(Q, viscousStress, dt, 2)
         else:
             dX = np.zeros_like(fX)
-            dY = np.zeros_like(fX)
+            dY = np.zeros_like(fY)
 
         src = self.getSource(viscousStress, Q, h, dt)
 
