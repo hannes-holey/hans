@@ -102,9 +102,9 @@ class Input:
         file = netCDF4.Dataset(self.restartFile)
 
         q0 = np.empty([3, self.disc['Nx'], self.disc['Ny']])
-        q0[0] = np.array(file.variables['jx'])[-1]
-        q0[1] = np.array(file.variables['jy'])[-1]
-        q0[2] = np.array(file.variables['rho'])[-1]
+        q0[0] = np.array(file.variables['rho'])[-1]
+        q0[1] = np.array(file.variables['jx'])[-1]
+        q0[2] = np.array(file.variables['jy'])[-1]
 
         return q0
 

@@ -22,7 +22,7 @@ for f in files.values():
     dt = float(file.numerics_dt)
 
     f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {Nx:.2g} {Ny:.2g} {dt:.2g}"
-    f_var_cols = "time, var(jx), var(jy), var(rho)"
+    f_var_cols = "time, var(rho), var(jx), var(jy)"
 
     out_var = getVariance_vs_time(file, 10)
 

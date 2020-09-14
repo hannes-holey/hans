@@ -10,9 +10,9 @@ fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
 
 files = getFiles()
 
-toPlot = {0: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
-          1: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
-          2: ['rho', r'density [kg/m$^3$]', 1.],
+toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
+          1: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
+          2: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
           3: ['p', r'pressure (MPa)', 1e-6]}
 
 reduced = False
@@ -22,9 +22,9 @@ for file in files.values():
         break
 
 if reduced is True:
-    choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n"))
+    choice = int(input("Choose field variable to plot:\n0:\tdensity\n1:\tmass flux x\n2:\tmass flux y\n"))
 else:
-    choice = int(input("Choose field variable to plot:\n0:\tmass flux x\n1:\tmass flux y\n2:\tdensity\n3:\tpressure\n"))
+    choice = int(input("Choose field variable to plot:\n0:\tdensity\n1:\tmass flux x\n2:\tmass flux y\n3:\tpressure\n"))
 
 for file in files.values():
 

@@ -20,9 +20,9 @@ Nx = file.disc_Nx
 Ny = file.disc_Ny
 Lx = file.disc_Lx
 
-toPlot = {0: ['jx', r'mass flux $x$ (kg/(m²s))'],
-          1: ['jy', r'mass flux $y$ (kg/(m²s))'],
-          2: ['rho', r'density (kg/m³)]'],
+toPlot = {0: ['rho', r'density (kg/m³)]'],
+          1: ['jx', r'mass flux $x$ (kg/(m²s))'],
+          2: ['jy', r'mass flux $y$ (kg/(m²s))'],
           3: ['p', r'pressure (MPa)']}
 
 choice = int(input("Which field variable? "))

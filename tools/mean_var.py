@@ -5,7 +5,7 @@ import numpy as np
 
 def getVariance_vs_time(f, n):
 
-    unknowns = {0: "jx", 1: "jy", 2: "rho"}
+    unknowns = {0: "rho", 1: "jx", 2: "jy"}
     out_var = np.empty([n, len(unknowns) + 1])
 
     for key, val in unknowns.items():
@@ -33,7 +33,7 @@ def getVariance_vs_time(f, n):
 
 
 def getVariance_field(f):
-    unknowns = {0: "jx", 1: "jy", 2: "rho"}
+    unknowns = {0: "rho", 1: "jx", 2: "jy"}
     out_field = np.empty([3, f.Nx, f.Ny])
 
     for key, val in unknowns.items():
@@ -53,7 +53,7 @@ def getVariance_field(f):
 
 
 def getMean_field(f):
-    unknowns = {0: "jx", 1: "jy", 2: "rho"}
+    unknowns = {0: "rho", 1: "jx", 2: "jy"}
     out_field = np.empty([3, f.Nx, f.Ny])
 
     for key, val in unknowns.items():

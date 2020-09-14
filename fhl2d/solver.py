@@ -43,18 +43,18 @@ class Solver:
         if q_init is not None:
             self.q.field = q_init
         else:
-            self.q.field[2] = rho0
+            self.q.field[0] = rho0
 
         if self.type == 'inclined':
-            self.q.field[2][0,:] = EquationOfState(self.material).isoT_density(P0)
-            self.q.field[2][-1,:] = EquationOfState(self.material).isoT_density(P0)
+            self.q.field[0][0,:] = EquationOfState(self.material).isoT_density(P0)
+            self.q.field[0][-1,:] = EquationOfState(self.material).isoT_density(P0)
         elif self.type == 'poiseuille':
-            self.q.field[2][-1,:] = EquationOfState(self.material).isoT_density(P0)
-            self.q.field[2][0,:] = EquationOfState(self.material).isoT_density(2. * P0)
+            self.q.field[0][-1,:] = EquationOfState(self.material).isoT_density(P0)
+            self.q.field[0][0,:] = EquationOfState(self.material).isoT_density(2. * P0)
         elif self.type == 'droplet':
-            self.q.fill_circle(EquationOfState(self.material).isoT_density(2. * P0), 2)
+            self.q.fill_circle(EquationOfState(self.material).isoT_density(2. * P0), 0)
         elif self.type == 'wavefront':
-            self.q.fill_line(EquationOfState(self.material).isoT_density(2. * P0), 0, 2)
+            self.q.fill_line(EquationOfState(self.material).isoT_density(2. * P0), 0, 0)
 
         self.Flux = Flux(disc, geometry, numerics, material)
         self.Newtonian = Newtonian(disc, geometry, numerics, material)
@@ -63,7 +63,7 @@ class Solver:
 
     def solve(self, i):
 
-        self.vmax = self.vSound + max(np.amax(1. / self.q.field[2] * np.sqrt(self.q.field[0]**2 + self.q.field[1]**2)), 1e-3)
+        self.vmax = self.vSound + max(np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0]), 1e-3)
 
         if self.adaptive is True:
             if i == 0:
@@ -100,10 +100,10 @@ class Solver:
             self.q = self.Flux.RungeKutta3(self.q, self.height, self.dt, i)
 
         # some scalar output
-        self.mass = np.sum(self.q.field[2] * self.height.field[0] * self.q.dx * self.q.dy)
+        self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
         self.time += self.dt
 
-        self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[2])
-        vmax_new = self.vSound + np.amax(np.sqrt(self.q.field[0] * self.q.field[0] + self.q.field[1] * self.q.field[1]) / self.q.field[2])
+        self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
+        vmax_new = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
         self.eps = abs(vmax_new - self.vmax) / self.vmax / self.C
         # self.eps = 1.

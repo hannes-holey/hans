@@ -26,9 +26,9 @@ class Newtonian:
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * mu
 
-        j_x = q.field[0]
-        j_y = q.field[1]
-        rho = q.field[2]
+        rho = q.field[0]
+        j_x = q.field[1]
+        j_y = q.field[2]
 
         h0 = h.field[0]
         hx = h.field[1]
@@ -51,7 +51,7 @@ class Newtonian:
         viscStress, cov = self.viscousStress_avg(q, h, dt)
         stress = VectorField(self.disc)
 
-        pressure = EquationOfState(self.mat).isoT_pressure(q.field[2])
+        pressure = EquationOfState(self.mat).isoT_pressure(q.field[0])
 
         stress.field[0] = viscStress.field[0] - pressure
         stress.field[1] = viscStress.field[1] - pressure
@@ -60,7 +60,7 @@ class Newtonian:
 
     def getPressure(self, q):
 
-        pressure = EquationOfState(self.mat).isoT_pressure(q[2])
+        pressure = EquationOfState(self.mat).isoT_pressure(q[0])
 
         return pressure
 
@@ -74,9 +74,9 @@ class Newtonian:
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * mu
 
-        j_x = q.field[0]
-        j_y = q.field[1]
-        rho = q.field[2]
+        rho = q.field[0]
+        j_x = q.field[1]
+        j_y = q.field[2]
 
         h0 = h.field[0]
         hx = h.field[1]

@@ -5,7 +5,7 @@ import numpy as np
 
 def getTimeACF(f):
 
-    unknowns = {0: "jx", 1: "jy", 2: "rho"}
+    unknowns = {0: "rho", 1: "jx", 2: "jy"}
     time = np.array(f.variables['time'])
     wave_num = {0: [1, 0], 1: [0, 1]}
 

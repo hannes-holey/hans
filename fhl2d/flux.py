@@ -22,14 +22,14 @@ class Flux:
     def getFlux_LF(self, q, h, stress, dt, d, ax):
 
         if ax == 0:
-            f1 = -stress.field[0]
-            f2 = -stress.field[2]
-            f3 = q.field[0]
+            f1 = q.field[0]
+            f2 = -stress.field[0]
+            f3 = -stress.field[2]
             dx = q.dx
         elif ax == 1:
-            f1 = -stress.field[2]
-            f2 = -stress.field[1]
-            f3 = q.field[1]
+            f1 = q.field[1]
+            f2 = -stress.field[2]
+            f3 = -stress.field[1]
             dx = q.dy
 
         flux = VectorField(self.disc)
@@ -40,39 +40,39 @@ class Flux:
 
         if self.periodicX is False:
             if d == -1:
-                flux.field[0][-1,:] = f1[-1,:]  # Neumann
+                flux.field[0][-1,:] = flux.field[0][-2,:]  # Dirichlet
                 flux.field[1][-1,:] = f2[-1,:]  # Neumann
-                flux.field[2][-1,:] = flux.field[2][-2,:]  # Dirichlet
+                flux.field[2][-1,:] = f3[-1,:]  # Neumann
 
             elif d == 1:
-                flux.field[0][0,:] = f1[0,:]
+                flux.field[0][0,:] = flux.field[0][1,:]
                 flux.field[1][0,:] = f2[0,:]
-                flux.field[2][0,:] = flux.field[2][1,:]
+                flux.field[2][0,:] = f3[0,:]
 
         if self.periodicY is False:
             if d == -1:
-                flux.field[0][:,-1] = f1[:,-1]
+                flux.field[0][:,-1] = flux.field[0][:,-2]
                 flux.field[1][:,-1] = f2[:,-1]
-                flux.field[2][:,-1] = flux.field[2][:,-2]
+                flux.field[2][:,-1] = f3[:,-1]
 
             elif d == 1:
-                flux.field[0][:,0] = f1[:,0]
+                flux.field[0][:,0] = flux.field[0][:,1]
                 flux.field[1][:,0] = f2[:,0]
-                flux.field[2][:,0] = flux.field[2][:,1]
+                flux.field[2][:,0] = f3[:,0]
 
         return flux
 
     def LaxStep(self, q, h, stress, dt, dir, ax):
 
         if ax == 0:
-            f1 = -stress.field[0]
-            f2 = -stress.field[2]
-            f3 = q.field[0]
+            f1 = q.field[0]
+            f2 = -stress.field[0]
+            f3 = -stress.field[2]
             dx = q.dx
         elif ax == 1:
-            f1 = -stress.field[2]
-            f2 = -stress.field[1]
-            f3 = q.field[1]
+            f1 = q.field[1]
+            f2 = -stress.field[2]
+            f3 = -stress.field[1]
             dx = q.dy
 
         Q = VectorField(self.disc)
@@ -91,13 +91,13 @@ class Flux:
         flux = np.empty_like(q.field)
 
         if ax == 0:
-            flux[0] = -Stress.field[0]
-            flux[1] = -Stress.field[2]
-            flux[2] = Q.field[0]
+            flux[0] = Q.field[1]
+            flux[1] = -Stress.field[0]
+            flux[2] = -Stress.field[2]
         elif ax == 1:
-            flux[0] = -Stress.field[2]
-            flux[1] = -Stress.field[1]
-            flux[2] = Q.field[1]
+            flux[0] = Q.field[2]
+            flux[1] = -Stress.field[2]
+            flux[2] = -Stress.field[1]
 
         return flux
 
@@ -124,14 +124,14 @@ class Flux:
     def totalFluxFW_BW(self, q, stress, dt, dir, ax):
 
         if ax == 0:
-            F1 = -stress.field[0]
-            F2 = -stress.field[2]
-            F3 = q.field[0]
+            F1 = q.field[1]
+            F2 = -stress.field[0]
+            F3 = -stress.field[2]
             dx = q.dx
         elif ax == 1:
-            F1 = -stress.field[2]
-            F2 = -stress.field[1]
-            F3 = q.field[1]
+            F1 = q.field[2]
+            F2 = -stress.field[2]
+            F3 = -stress.field[1]
             dx = q.dy
 
         flux = np.empty_like(q.field)
@@ -182,12 +182,12 @@ class Flux:
         hx = h.field[1]
         hy = h.field[2]
 
-        j_x = Q.field[0]
-        j_y = Q.field[1]
+        j_x = Q.field[1]
+        j_y = Q.field[2]
 
-        out[0] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
-        out[1] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
-        out[2] = -j_x * hx / h0 - j_y * hy / h0
+        out[0] = -j_x * hx / h0 - j_y * hy / h0
+        out[1] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        out[2] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
         return out * dt
 
@@ -209,12 +209,12 @@ class Flux:
         F = np.zeros_like(q)
 
         if ax == 1:
-            F[0] = p
-            F[2] = q[0]
+            F[0] = q[1]
+            F[1] = p
 
         elif ax == 2:
-            F[1] = p
-            F[2] = q[1]
+            F[0] = q[2]
+            F[2] = p
 
         return F
 
@@ -279,12 +279,12 @@ class Flux:
 
         D = np.zeros_like(visc_stress)
         if ax == 1:
-            D[0] = visc_stress[0]
-            D[1] = visc_stress[2]
+            D[1] = visc_stress[0]
+            D[2] = visc_stress[2]
 
         elif ax == 2:
-            D[0] = visc_stress[2]
-            D[1] = visc_stress[1]
+            D[1] = visc_stress[2]
+            D[2] = visc_stress[1]
 
         return D
 
@@ -343,17 +343,17 @@ class Flux:
         corrY = dy / dz
         # corr = 1
 
-        Sx_E[0] = (a_coeff * W_field_traceless[0] + b_coeff * W_trace / dim) / 2
-        Sx_E[1] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
+        Sx_E[1] = (a_coeff * W_field_traceless[0] + b_coeff * W_trace / dim) / 2
+        Sx_E[2] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
 
-        Sx_W[0] = (a_coeff * np.roll(W_field_traceless[0], 1, axis=0) + b_coeff * np.roll(W_trace, 1, axis=0) / dim) / 2
-        Sx_W[1] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=0) + b_coeff * np.roll(W_trace, 1, axis=0) / dim) / 2
+        Sx_W[1] = (a_coeff * np.roll(W_field_traceless[0], 1, axis=0) + b_coeff * np.roll(W_trace, 1, axis=0) / dim) / 2
+        Sx_W[2] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=0) + b_coeff * np.roll(W_trace, 1, axis=0) / dim) / 2
 
-        Sy_N[0] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
-        Sy_N[1] = (a_coeff * W_field_traceless[1] + b_coeff * W_trace / dim) / 2
+        Sy_N[1] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
+        Sy_N[2] = (a_coeff * W_field_traceless[1] + b_coeff * W_trace / dim) / 2
 
-        Sy_S[0] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
-        Sy_S[1] = (a_coeff * np.roll(W_field_traceless[1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
+        Sy_S[1] = (a_coeff * np.roll(W_field_traceless[-1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
+        Sy_S[2] = (a_coeff * np.roll(W_field_traceless[1], 1, axis=1) + b_coeff * np.roll(W_trace, 1, axis=1) / dim) / 2
 
         return dt / dx * (Sx_E - Sx_W) * corrX, dt / dy * (Sy_N - Sy_S) * corrY
 

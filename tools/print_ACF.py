@@ -22,7 +22,7 @@ for f in files.values():
     dt = float(file.numerics_dt)
 
     f_header_disc = f"{dx:.2g} {dy:.2g} {dz:.2g} {Nx:.2g} {Ny:.2g} {dt:.2g}"
-    f_ac_cols = "time, ac_l(jx) ac_t(jx) ac_l(jy) ac_t(jy) ac(rho) ac(rho)"
+    f_ac_cols = "time ac(rho) ac(rho) ac_l(jx) ac_t(jx) ac_l(jy) ac_t(jy)"
 
     out_ac = getTimeACF(file)
 
