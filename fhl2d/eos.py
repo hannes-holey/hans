@@ -37,6 +37,15 @@ class EquationOfState:
 
             return K / n * ((rho / rho0)**n - 1) + p0
 
+        # Cubic polynomial
+        elif self.material['EOS'] == "cubic":
+            a = float(self.material['a'])
+            b = float(self.material['b'])
+            c = float(self.material['c'])
+            d = float(self.material['d'])
+
+            return a * rho**3 + b * rho**2 + c * rho + d
+
     def isoT_density(self, p):
 
         # Dowson-Higginson
@@ -88,4 +97,12 @@ class EquationOfState:
 
             c_squared = K / rho0**n * rho**(n - 1)
 
-        return np.sqrt(np.mean(c_squared))
+        # Cubic polynomial
+        elif self.material['EOS'] == "cubic":
+            a = float(self.material['a'])
+            b = float(self.material['b'])
+            c = float(self.material['c'])
+
+            c_squared = 3 * a * rho**2 + 2 * b * rho + c
+
+        return np.sqrt(np.amax(abs(c_squared)))
