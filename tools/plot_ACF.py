@@ -54,7 +54,6 @@ for file in getData("../data", single=True).values():
     ax[2].plot(C[:,0] * 1e12, C[:,4])
     ax[2].plot(C[:,0] * 1e12, C[:,5])
 
-
     C_long_ana = ac_exp_cos(C[:,0], Gamma_T * q**2, c * q)
     C_trans_ana = ac_exp(C[:,0], nu * q**2)
     ax[0].plot(C[:,0] * 1e12, C_long_ana, '--', color='0.7')
