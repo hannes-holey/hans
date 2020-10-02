@@ -3,12 +3,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-from helper import getFiles, getBenchmark
+from helper import getData, getBenchmark
 
 plt.style.use('presentation')
 fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
 
-files = getFiles()
+files = getData("../data")
 
 toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
           1: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
@@ -16,8 +16,8 @@ toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
           3: ['p', r'pressure (MPa)', 1e-6]}
 
 reduced = False
-for file in files.values():
-    if not('p' in file[1].variables):
+for data in files.values():
+    if not('p' in data.variables):
         reduced = True
         break
 
@@ -26,22 +26,22 @@ if reduced is True:
 else:
     choice = int(input("Choose field variable to plot:\n0:\tdensity\n1:\tmass flux x\n2:\tmass flux y\n3:\tpressure\n"))
 
-for file in files.values():
+for filename, data in files.items():
 
-    print(file[0] + ": \n" + 40 * "-")
-    for name in file[1].ncattrs():
-        print("{:20s}: {:>}".format(name, getattr(file[1], name)))
+    print(filename + ": \n" + 40 * "-")
+    for name in data.ncattrs():
+        print("{:20s}: {:>}".format(name, getattr(data, name)))
     print(40 * "-")
 
-    label = input("Enter Legend for " + file[0] + ": ")
+    label = input("Enter Legend for " + filename + ": ")
 
-    Lx = file[1].disc_Lx
-    Nx = file[1].disc_Nx
+    Lx = data.disc_Lx
+    Nx = data.disc_Nx
 
-    d = np.array(file[1].variables[toPlot[choice][0]])[-1]
+    d = np.array(data.variables[toPlot[choice][0]])[-1]
     x = (np.arange(Nx) + 0.5) * Lx / Nx
-    t = np.array(file[1].variables['time'])[-1] * 1e9
-    print("Actual time for \'{:s}\': {:.2f} ns".format(file[0], t))
+    t = np.array(data.variables['time'])[-1] * 1e9
+    print("Actual time for \'{:s}\': {:.2f} ns".format(filename, t))
     line = ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
 
     if choice > 1:

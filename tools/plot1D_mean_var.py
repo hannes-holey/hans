@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from helper import getFile
+from helper import getData
 from mean_var import getMean_field, getVariance_field
 
 
@@ -14,11 +14,7 @@ def gaussian(x, a, mean, sigma):
     return a * np.exp(-((x - mean)**2 / (2 * sigma**2)))
 
 
-filename, file = getFile()
-
-Nx = file.disc_Nx
-Ny = file.disc_Ny
-Lx = file.disc_Lx
+files = getData("../data")
 
 toPlot = {0: ['rho', r'density (kg/m³)]'],
           1: ['jx', r'mass flux $x$ (kg/(m²s))'],
@@ -27,19 +23,24 @@ toPlot = {0: ['rho', r'density (kg/m³)]'],
 
 choice = int(input("Which field variable? "))
 
-mean = getMean_field(file)
-var = getVariance_field(file)
+for filename, data in files.items():
 
-x = (np.arange(Nx) + 0.5) * Lx / Nx
+    Nx = data.disc_Nx
+    Ny = data.disc_Ny
+    Lx = data.disc_Lx
+    mean = getMean_field(data)
+    var = getVariance_field(data)
 
-ax.plot(x, mean[choice,:, Ny // 2])
-ax.fill_between(x, mean[choice, :, Ny // 2] - np.sqrt(var[choice,:, Ny // 2]), mean[choice,:, Ny // 2] + np.sqrt(var[choice, :, Ny // 2]), alpha=0.5)
-ax.set_xlabel(r'distance (m)')
-ax.set_ylabel(toPlot[choice][1])
+    x = (np.arange(Nx) + 0.5) * Lx / Nx
 
-plotVar = int(input("Show (0) or save (1) figure? "))
+    ax.plot(x, mean[choice,:, Ny // 2])
+    ax.fill_between(x, mean[choice, :, Ny // 2] - np.sqrt(var[choice,:, Ny // 2]), mean[choice,:, Ny // 2] + np.sqrt(var[choice, :, Ny // 2]), alpha=0.5)
+    ax.set_xlabel(r'distance (m)')
+    ax.set_ylabel(toPlot[choice][1])
 
-if plotVar == 1:
-    plt.savefig(filename.split(".")[0] + "_var_" + toPlot[choice][0] + '.pdf')
-elif plotVar == 0:
-    plt.show()
+    plotVar = int(input("Show (0) or save (1) figure? "))
+
+    if plotVar == 1:
+        plt.savefig(filename.split(".")[0] + "_var_" + toPlot[choice][0] + '.pdf')
+    elif plotVar == 0:
+        plt.show()

@@ -2,12 +2,12 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from helper import getFiles
+from helper import getData
 
 plt.style.use('presentation')
 plt.figure(figsize=(12,7))
 
-files = getFiles()
+files = getData("../data")
 
 toPlot = {0: ['mass', r'$\Delta m/m_0$ [-]', 1.],
           1: ['vmax',r'$v_\mathsf{max}$ [m/s]', 1.],
@@ -17,17 +17,17 @@ toPlot = {0: ['mass', r'$\Delta m/m_0$ [-]', 1.],
 
 choice = int(input("Choose scalar quantity to plot as time series:\n0:\tmass\n1:\tvmax\n2:\tvSound\n3:\ttime step\n4:\tepsilon\n"))
 
-for file in files.values():
+for filename, data in files.items():
 
-    print(file[0] + ": \n" + 40 * "-")
-    for name in file[1].ncattrs():
-        print("{:20s}: {:>}".format(name, getattr(file[1], name)))
+    print(filename + ": \n" + 40 * "-")
+    for name in data.ncattrs():
+        print("{:20s}: {:>}".format(name, getattr(data, name)))
     print(40 * "-")
 
-    label = input("Enter Legend for " + file[0] + ": ")
+    label = input("Enter Legend for " + filename + ": ")
 
-    time = np.array(file[1].variables['time']) * 1e9
-    scalar = np.array(file[1].variables[toPlot[choice][0]])
+    time = np.array(data.variables['time']) * 1e9
+    scalar = np.array(data.variables[toPlot[choice][0]])
     scalefactor = toPlot[choice][2]
 
     if choice == 0:

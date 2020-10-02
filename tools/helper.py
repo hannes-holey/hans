@@ -6,81 +6,30 @@ import time
 import numpy as np
 
 
-def getFiles():
-    availFiles = {}
-    i = 0
+def getData(path, single=False):
 
-    pathList = os.getcwd().split(sep=os.path.sep)
-    assert "MD-FVM" in pathList, "Not in a subdirectory of MD-FVM"
-
-    if pathList[-2:] != ["MD-FVM", "data"]:
-        depth = len(pathList) - pathList.index("MD-FVM") - 1
-        os.chdir(depth * (".." + os.path.sep) + "data")
-
-    for file in sorted(os.listdir()):
-        if file.endswith(".nc"):
-            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
-            availFiles.update({i: [file, date]})
-            i += 1
+    ncFileList = [os.path.join(path, f) for f in sorted(os.listdir(path)) if f.endswith(".nc")]
 
     print("Available files:")
-    for key, val in availFiles.items():
-        print("{:3d}: {:} {:}".format(key, val[1], val[0]))
+    for i, file in enumerate(ncFileList):
+        date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
+        print(f"{i:3d}: {file} {date:>}")
 
-    files = {}
-    ask = True
-    j = 0
-    while ask is True:
-        userInput = input("Enter file key (any other key to exit): ")
-        if userInput in np.arange(0, len(availFiles)).astype(str):
-            filename = availFiles[int(userInput)][0]
-            files.update({j: [filename, netCDF4.Dataset(filename)]})
-            j += 1
-        else:
-            ask = False
+    if single:
+        mask = [int(input("Enter file key: "))]
+    else:
+        mask = [int(i) for i in input("Enter file keys (space separated): ").split()]
 
-    return files
+    out = {f: netCDF4.Dataset(f) for i,f in enumerate(ncFileList) if i in mask}
 
-
-def getFile():
-    availFiles = {}
-    i = 0
-
-    pathList = os.getcwd().split(sep=os.path.sep)
-    assert "MD-FVM" in pathList, "Not in a subdirectory of MD-FVM"
-
-    if pathList[-2:] != ["MD-FVM", "data"]:
-        depth = len(pathList) - pathList.index("MD-FVM") - 1
-        os.chdir(depth * (".." + os.path.sep) + "data")
-
-    for file in sorted(os.listdir()):
-        if file.endswith(".nc"):
-            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
-            availFiles.update({i: [file, date]})
-            i += 1
-
-    print("Available files:")
-    for key, val in availFiles.items():
-        print("{:3d}: {:} {:20s}".format(key, val[1], val[0]))
-
-    flag = False
-    while flag is False:
-        userInput = input("Enter file key: ")
-        if userInput in np.arange(0, len(availFiles)).astype(str):
-            filename = availFiles[int(userInput)][0]
-            file = netCDF4.Dataset(filename)
-            flag = True
-        else:
-            print("File not in list. Try again!")
-            flag = False
-    return filename, file
+    return out
 
 
 def getBenchmark():
     availFiles = {}
     i = 0
-    for file in sorted(os.listdir("benchmark")):
-        availFiles.update({i: os.path.join("benchmark", file)})
+    for file in sorted(os.listdir("../data/benchmark")):
+        availFiles.update({i: os.path.join("../data/benchmark", file)})
         i += 1
 
     if len(availFiles) == 0:

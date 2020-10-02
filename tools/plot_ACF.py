@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from helper import getFile
+from helper import getData
 from autocorrelation import getTimeACF
 
 
@@ -17,50 +17,50 @@ def ac_exp(t, a):
 plt.style.use('presentation')
 fig, ax = plt.subplots(3,1, sharex=True)
 
-file = getFile()[1]
+for file in getData("../data", single=True).values():
 
-# read parameters from NetCDF file
-Lx = file.disc_Lx
-Ly = file.disc_Ly
-rho0 = file.material_rho0
-eta = file.material_shear
-ceta = file.material_bulk
+    # read parameters from NetCDF file
+    Lx = file.disc_Lx
+    Ly = file.disc_Ly
+    rho0 = file.material_rho0
+    eta = file.material_shear
+    ceta = file.material_bulk
 
-# mean velocity of sound (internally calculated from EOS)
-c = np.mean(np.array(file.variables['vSound']))
+    # mean velocity of sound (internally calculated from EOS)
+    c = np.mean(np.array(file.variables['vSound']))
 
-# isothermal sound absorption and kinematic viscosity
-Gamma_T = 1 / (2 * rho0) * (eta + (eta / 3 + ceta))
-nu = eta / rho0
+    # isothermal sound absorption and kinematic viscosity
+    Gamma_T = 1 / (2 * rho0) * (eta + (eta / 3 + ceta))
+    nu = eta / rho0
 
-# smallest wave number
-q = 2 * np.pi / Lx
+    # smallest wave number
+    q = 2 * np.pi / Lx
 
-# Time for one pass through periodic box
-tcross = Lx / c
+    # Time for one pass through periodic box
+    tcross = Lx / c
 
-C = getTimeACF(file)
+    C = getTimeACF(file)
 
-# ??? fudge factor in time
-# C[:,0] *= 2
+    # ??? fudge factor in time
+    # C[:,0] *= 2
 
-ax[0].set_ylabel(r'$C_\rho$')
-ax[0].plot(C[:,0] * 1e12, C[:,1])
-ax[0].plot(C[:,0] * 1e12, C[:,2])
-ax[1].set_ylabel(r'$C_{j\parallel}$')
-ax[1].plot(C[:,0] * 1e12, C[:,3])
-ax[1].plot(C[:,0] * 1e12, C[:,4])
-ax[2].set_ylabel(r'$C_{j\perp}$')
-ax[2].plot(C[:,0] * 1e12, C[:,5])
-ax[2].plot(C[:,0] * 1e12, C[:,6])
+    ax[0].set_ylabel(r'$C_\rho$')
+    ax[0].plot(C[:,0] * 1e12, C[:,1])
+    ax[0].plot(C[:,0] * 1e12, C[:,2])
+    ax[1].set_ylabel(r'$C_{j\parallel}$')
+    ax[1].plot(C[:,0] * 1e12, C[:,3])
+    ax[1].plot(C[:,0] * 1e12, C[:,6])
+    ax[2].set_ylabel(r'$C_{j\perp}$')
+    ax[2].plot(C[:,0] * 1e12, C[:,4])
+    ax[2].plot(C[:,0] * 1e12, C[:,5])
 
 
-C_long_ana = ac_exp_cos(C[:,0], Gamma_T * q**2, c * q)
-C_trans_ana = ac_exp(C[:,0], nu * q**2)
-ax[0].plot(C[:,0] * 1e12, C_long_ana, '--', color='0.7')
-ax[1].plot(C[:,0] * 1e12, C_long_ana, '--', color='0.7')
-ax[2].plot(C[:,0] * 1e12, C_trans_ana, '--', color='0.7')
+    C_long_ana = ac_exp_cos(C[:,0], Gamma_T * q**2, c * q)
+    C_trans_ana = ac_exp(C[:,0], nu * q**2)
+    ax[0].plot(C[:,0] * 1e12, C_long_ana, '--', color='0.7')
+    ax[1].plot(C[:,0] * 1e12, C_long_ana, '--', color='0.7')
+    ax[2].plot(C[:,0] * 1e12, C_trans_ana, '--', color='0.7')
 
-ax[0].set_xlim(0, tcross * 1e12)
-ax[2].set_xlabel(r"time (ps)")
-plt.show()
+    ax[0].set_xlim(0, tcross * 1e12)
+    ax[2].set_xlabel(r"time (ps)")
+    plt.show()
