@@ -35,7 +35,7 @@ class Solver:
 
         self.height.getGradients()
 
-        P0 = float(material['P0'])
+        # P0 = float(material['P0'])
         rho0 = float(material['rho0'])
 
         self.q = VectorField(disc)
@@ -45,16 +45,16 @@ class Solver:
         else:
             self.q.field[0] = rho0
 
-        if self.type == 'inclined':
-            self.q.field[0][0,:] = EquationOfState(self.material).isoT_density(P0)
-            self.q.field[0][-1,:] = EquationOfState(self.material).isoT_density(P0)
-        elif self.type == 'poiseuille':
-            self.q.field[0][-1,:] = EquationOfState(self.material).isoT_density(P0)
-            self.q.field[0][0,:] = EquationOfState(self.material).isoT_density(2. * P0)
-        elif self.type == 'droplet':
-            self.q.fill_circle(EquationOfState(self.material).isoT_density(2. * P0), 0)
-        elif self.type == 'wavefront':
-            self.q.fill_line(EquationOfState(self.material).isoT_density(2. * P0), 0, 0)
+        # if self.type == 'inclined':
+        #     self.q.field[0][0,:] = EquationOfState(self.material).isoT_density(P0)
+        #     self.q.field[0][-1,:] = EquationOfState(self.material).isoT_density(P0)
+        # elif self.type == 'poiseuille':
+        #     self.q.field[0][-1,:] = EquationOfState(self.material).isoT_density(P0)
+        #     self.q.field[0][0,:] = EquationOfState(self.material).isoT_density(2. * P0)
+        # elif self.type == 'droplet':
+        #     self.q.fill_circle(EquationOfState(self.material).isoT_density(2. * P0), 0)
+        # elif self.type == 'wavefront':
+        #     self.q.fill_line(EquationOfState(self.material).isoT_density(2. * P0), 0, 0)
 
         self.Flux = Flux(disc, geometry, numerics, material)
         self.Newtonian = Newtonian(disc, geometry, numerics, material)
