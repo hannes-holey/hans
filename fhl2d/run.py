@@ -132,7 +132,7 @@ class Run:
             if self.j == 0:
                 now = datetime.now()
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
-                if os.getcwd.split(os.sep)[-1] == "MD-FVM":
+                if os.getcwd().split(os.sep)[-1] == "MD-FVM":
                     repo_path = "."
                 else:
                     repo_path = os.environ["PYTHONPATH"]
