@@ -4,7 +4,7 @@ from helper import getData
 
 files = getData("../data")
 
-for filename, data in files.values():
+for filename, data in files.items():
 
     print(filename + ": \n" + 40 * "-")
     for name in data.ncattrs():
