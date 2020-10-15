@@ -23,10 +23,7 @@ def getTimeACF(f):
         field_fft = np.real(np.fft.fft2(full_array))
 
         for dir in wave_num.keys():
-            if key == 1:
-                iky, ikx = wave_num[dir]
-            else:
-                ikx, iky = wave_num[dir]
+            ikx, iky = wave_num[dir]
 
             var = np.var(field_fft[:, ikx, iky])
             mean = np.mean(field_fft[:, ikx, iky])
