@@ -132,7 +132,11 @@ class Run:
             if self.j == 0:
                 now = datetime.now()
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
-                git_commit = str(Repo(search_parent_directories=True).head.object.hexsha)
+                if os.getcwd.split(os.sep)[-1] == "MD-FVM":
+                    repo_path = "."
+                else:
+                    repo_path = os.environ["PYTHONPATH"]
+                git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
                 self.nc.tStart = timeString
                 self.nc.commit = git_commit
 
