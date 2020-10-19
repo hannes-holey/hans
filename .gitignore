@@ -9,3 +9,4 @@ data/restart/
 config/
 submit.sh
 .docblock.json
+README.yml
