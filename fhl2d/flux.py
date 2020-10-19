@@ -18,6 +18,7 @@ class Flux:
         self.periodicX = bool(numerics['periodicX'])
         self.periodicY = bool(numerics['periodicY'])
         self.fluct = bool(numerics['Fluctuating'])
+        self.corr = bool(numerics['correction'])
 
     def getFlux_LF(self, q, h, stress, dt, d, ax):
 
@@ -338,10 +339,11 @@ class Flux:
         # R22 = -R11
         # R12 = np.sqrt(2 * kB * T * mu / (dx * dy * dz * dt)) * np.random.normal(size=(Nx,Ny))
 
-        # corr = np.sqrt(dx * dy) / dz
-        corrX = dx / dz
-        corrY = dy / dz
-        # corr = 1
+        if self.corr:
+            corrX = dx / dz
+            corrY = dy / dz
+        else:
+            corrX = corrY = 1.
 
         Sx_E[1] = (a_coeff * W_field_traceless[0] + b_coeff * W_trace / dim) / 2
         Sx_E[2] = (a_coeff * W_field_traceless[-1] + b_coeff * W_trace / dim) / 2
