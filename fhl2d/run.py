@@ -16,7 +16,7 @@ from .solver import Solver
 
 class Run:
 
-    def __init__(self, options, disc, geometry, numerics, material, plot, reducedOut, q_init):
+    def __init__(self, options, disc, geometry, numerics, material, plot, reducedOut, out_dir, q_init):
 
         self.options = options
         self.disc = disc
@@ -45,18 +45,18 @@ class Run:
 
         self.sol = Solver(disc, geometry, numerics, material, q_init)
 
-        self.run(plot, reducedOut, tol, maxT, tStart)
+        self.run(plot, reducedOut, out_dir, tol, maxT, tStart)
 
-    def run(self, plot, reducedOut, tol, maxT, tStart):
+    def run(self, plot, reducedOut, out_dir, tol, maxT, tStart):
 
         if plot is False:
             self.file_tag = 1
             self.j = 0
 
-            if 'data' not in os.listdir():
-                os.mkdir('data')
+            if out_dir not in os.listdir():
+                os.mkdir(out_dir)
 
-            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir('data'):
+            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir(out_dir):
                 self.file_tag += 1
 
             outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc'
@@ -64,7 +64,7 @@ class Run:
             i = 0
 
             # initialize NetCDF file
-            self.nc = netCDF4.Dataset(os.path.join('data', outfile), 'w', format='NETCDF3_64BIT_OFFSET')
+            self.nc = netCDF4.Dataset(os.path.join(out_dir, outfile), 'w', format='NETCDF3_64BIT_OFFSET')
             self.nc.createDimension('x', self.Nx)
             self.nc.createDimension('y', self.Ny)
             self.nc.createDimension('step', None)
