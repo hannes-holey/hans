@@ -53,8 +53,8 @@ class Run:
             self.file_tag = 1
             self.j = 0
 
-            if out_dir not in os.listdir():
-                os.mkdir(out_dir)
+            if not(os.path.exists(out_dir)):
+                os.makedirs(out_dir)
 
             while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir(out_dir):
                 self.file_tag += 1
@@ -98,7 +98,7 @@ class Run:
                 if self.sol.eps < tol:
                     self.write(i, 1, reducedOut)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    print("\nSolution has converged after {:d} steps, Output written to: {:s}".format(i, outfile))
+                    print("\nSolution has converged after {:d} steps, Output written to: {:s}".format(i, os.path.join(out_dir,outfile)))
                     timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     self.nc.tEnd = timeString
                     break
@@ -107,7 +107,7 @@ class Run:
                     self.write(i, 1, reducedOut)
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:.1e} s reached.".format(i, maxT))
-                    print("Output written to: {:s}".format(outfile))
+                    print("Output written to: {:s}".format(os.path.join(out_dir, outfile)))
                     timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     self.nc.tEnd = timeString
 
