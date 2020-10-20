@@ -18,7 +18,8 @@ class Flux:
         self.periodicX = bool(numerics['periodicX'])
         self.periodicY = bool(numerics['periodicY'])
         self.fluct = bool(numerics['Fluctuating'])
-        self.corr = bool(numerics['correction'])
+        if self.fluct:
+            self.corr = bool(numerics['correction'])
 
     def getFlux_LF(self, q, h, stress, dt, d, ax):
 
