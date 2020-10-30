@@ -2,12 +2,12 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from helper import getData
+from fhl2d.helper.data_parser import getData
 
 plt.style.use('presentation')
 plt.figure(figsize=(12,7))
 
-files = getData("../data")
+files = getData(".")
 
 toPlot = {0: ['mass', r'$\Delta m/m_0$ [-]', 1.],
           1: ['vmax',r'$v_\mathsf{max}$ [m/s]', 1.],

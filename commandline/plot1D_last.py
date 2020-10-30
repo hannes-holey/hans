@@ -3,12 +3,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-from helper import getData
+from fhl2d.helper.data_parser import getData
 
 plt.style.use('presentation')
 fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
 
-files = getData("../data")
+files = getData(".")
 
 toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
           1: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
@@ -33,25 +33,27 @@ for filename, data in files.items():
         print("{:20s}: {:>}".format(name, getattr(data, name)))
     print(40 * "-")
 
-    time = np.array(data.variables['time']) * 1e9
-    maxT = time[-1]
+    label = input("Enter Legend for " + filename + ": ")
 
-    plotTime = float(input("Approximate time in ns for \'{:s}\' (max = {:.1f} ns): ".format(filename, maxT)))
-
-    step = np.argmin(abs(time - plotTime))
-
-    d = np.array(data.variables[toPlot[choice][0]])[step]
     Lx = data.disc_Lx
     Nx = data.disc_Nx
 
+    d = np.array(data.variables[toPlot[choice][0]])[-1]
     x = (np.arange(Nx) + 0.5) * Lx / Nx
-    t = time[step]
+    t = np.array(data.variables['time'])[-1] * 1e9
+    print("Actual time for \'{:s}\': {:.2f} ns".format(filename, t))
+    line = ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
 
-    print("Closest available snapshot for \'{:s}\' at t = {:.2f} ns".format(filename, t))
-    ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=r'$t = ${:.1f} ns'.format(t))
+    # plot reference solution
+    if choice in [0, 3]:
+        for ref_fname in getData(".", suffix='dat').keys():
+            ref_data = np.loadtxt(ref_fname, skiprows=1, usecols=(choice // 3,))
+            # ref_label = input("Enter Legend for reference: ")
+            x_ref = (np.arange(len(ref_data)) + 0.5) * Lx / len(ref_data)
+            ax.plot(x_ref * 1e3, ref_data * 1e-6, '--', color=line[0].get_color())
 
-ax.set_xlabel('distance [mm]')
-ax.set_ylabel(toPlot[choice][1])
+ax.set_xlabel('distance (mm)')
+plt.ylabel(toPlot[choice][1])
 
 ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 ax.legend(loc='best')

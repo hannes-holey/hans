@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from helper import getData
+from fhl2d.helper.data_parser import getData
 
-files = getData("../data")
+files = getData(".")
 
 for filename, data in files.items():
 

@@ -2,10 +2,10 @@
 
 import os
 import numpy as np
-from helper import getData
-from mean_var import getVariance_vs_time
+from fhl2d.helper.data_parser import getData
+from fhl2d.helper.mean_var import getVariance_vs_time
 
-for filename, data in getData("../data").items():
+for filename, data in getData(".").items():
 
     print(f"Processing {filename}...")
 

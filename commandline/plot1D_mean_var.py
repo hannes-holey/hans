@@ -2,8 +2,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from helper import getData
-from mean_var import getMean_field, getVariance_field
+from fhl2d.helper.data_parser import getData
+from fhl2d.helper.mean_var import getMean_field, getVariance_field
 
 
 plt.style.use('presentation')
@@ -14,7 +14,7 @@ def gaussian(x, a, mean, sigma):
     return a * np.exp(-((x - mean)**2 / (2 * sigma**2)))
 
 
-files = getData("../data")
+files = getData(".")
 
 toPlot = {0: ['rho', r'density (kg/m³)]'],
           1: ['jx', r'mass flux $x$ (kg/(m²s))'],

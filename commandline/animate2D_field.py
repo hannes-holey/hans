@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from helper import getData
+from fhl2d.helper.data_parser import getData
 
 
 def plot_update(i, A, t):
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     plt.style.use('presentation')
 
-    for filename, file in getData("../data", single=True).items():
+    for filename, file in getData(".", single=True).items():
 
         # User input
         toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
