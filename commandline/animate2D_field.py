@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     plt.style.use('presentation')
 
-    for filename, file in getData(".", mode="singl").items():
+    for filename, file in getData(".", mode="single").items():
 
         # User input
         toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
