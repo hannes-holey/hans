@@ -7,7 +7,7 @@ from fhl2d.helper.data_parser import getData
 plt.style.use('presentation')
 plt.figure(figsize=(10,6), tight_layout=True)
 
-files = getData(".", single=True)
+files = getData(".", mode="single")
 
 for filename, data in files.items():
 

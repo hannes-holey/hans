@@ -17,7 +17,7 @@ with open(config_file) as cf:
     append = yaml.load(cf)
     name = append["options"]["name"]
 
-files = getData(".", prefix=name, single=True)
+files = getData(".", prefix=name, mode="single")
 
 for filename, data in files.items():
     commit = getattr(data, "commit")

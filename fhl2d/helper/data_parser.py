@@ -6,7 +6,9 @@ import time
 import numpy as np
 
 
-def getData(path, prefix="", suffix="nc", single=False, all=False):
+def getData(path, prefix="", suffix="nc", mode="select"):
+
+    assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
 
     fileList = sorted(getFromSubDir(path, prefix, suffix))
 
@@ -22,9 +24,11 @@ def getData(path, prefix="", suffix="nc", single=False, all=False):
               "yaml": lambda s: None,
               "yml": lambda s: None}
 
-    if single:
+    if mode == "single":
         mask = [int(input("Enter file key: "))]
-    else:
+    elif mode == "all":
+        mask = list(range(len(fileList)))
+    elif mode == "select":
         inp = input("Enter file keys (space separated or range [start]-[end] or combination of both): ")
 
         mask = [int(i) for i in inp.split() if len(i.split("-")) < 2]
@@ -38,7 +42,9 @@ def getData(path, prefix="", suffix="nc", single=False, all=False):
     return out
 
 
-def getSubDirs(path, single=False):
+def getSubDirs(path, mode="select"):
+
+    assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
 
     subdirs = [os.path.join(path, i) for i in sorted(next(os.walk(path))[1])]
 
@@ -46,9 +52,11 @@ def getSubDirs(path, single=False):
         date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(sub)))
         print(f"{i:3d}: {sub:<50} {date}")
 
-    if single:
+    if mode == "single":
         mask = [int(input("Enter file key: "))]
-    else:
+    elif mode == "all":
+        mask = list(range(len(subdirs)))
+    elif mode == "select":
         inp = input("Enter file keys (space separated or range [start]-[end] or combination of both): ")
 
         mask = [int(i) for i in inp.split() if len(i.split("-")) < 2]
