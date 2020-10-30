@@ -5,10 +5,40 @@ import numpy as np
 
 
 def getData(path, prefix="", suffix="nc", mode="select"):
+    """
+    Function to interactively select data files for further processing, e.g. for plotting.
+
+    Parameters
+    ----------
+    path : str
+        relative path below which is searched for files
+    prefix : str
+        filter files that start with prefix, default=""
+    suffix : str
+        filter files that end with suffix, default="nc"
+    mode : str
+        can be one of the following, default="select"
+        - select: manually select files
+        - single: manually select a single file
+        - all: select all files found below path with prefix and suffix
+
+    Returns
+    ----------
+    out : dict
+        dictionary where keys are filenames and values are corresponding datasets. Datasets currently only implemented for suffices "nc" (netCDF4.Dataset) and "dat" (numpy.ndarray).
+        Else, values are None.
+    """
 
     assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
 
-    fileList = sorted(getFromSubDir(path, prefix, suffix))
+    fileList = []
+
+    for root, dirs, files in os.walk(path, topdown=False):
+        for name in files:
+            if name.startswith(prefix) and name.endswith(suffix):
+                fileList.append(os.path.join(root, name))
+
+    fileList = sorted(fileList)
 
     print("Available files:")
     for i, file in enumerate(fileList):
@@ -41,6 +71,24 @@ def getData(path, prefix="", suffix="nc", mode="select"):
 
 
 def getSubDirs(path, mode="select"):
+    """
+    Function to interactively select subdirectories.
+
+    Parameters
+    ----------
+    path : str
+        relative path in which is searched for directories.
+    mode : str
+        can be one of the following, default="select"
+        - select: manually select directories
+        - single: manually select a single directory
+        - all: select all directories found in path
+
+    Returns
+    ----------
+    out : list
+        list with subdirectory names (relative path)
+    """
 
     assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
 
@@ -69,16 +117,18 @@ def getSubDirs(path, mode="select"):
 
 
 def get_nc_from_name(fname):
-    return netCDF4.Dataset(fname)
+    """
+    Get netCDF4 Dataset from filename
 
+    Parameters
+    ----------
+    fname : str
+        filename
+    Returns
+    ----------
+    out : netCDF4.Dataset
+        Dataset
+    """
 
-def getFromSubDir(path, prefix, suffix):
-
-    fileList = []
-
-    for root, dirs, files in os.walk(path, topdown=False):
-        for name in files:
-            if name.startswith(prefix) and name.endswith(suffix):
-                fileList.append(os.path.join(root, name))
-
-    return fileList
+    out = netCDF4.Dataset(fname)
+    return out
