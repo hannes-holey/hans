@@ -25,7 +25,8 @@ def getData(path, prefix="", suffix="nc", mode="select"):
     Returns
     ----------
     out : dict
-        dictionary where keys are filenames and values are corresponding datasets. Datasets currently only implemented for suffices "nc" (netCDF4.Dataset) and "dat" (numpy.ndarray).
+        dictionary where keys are filenames and values are corresponding datasets.
+        Datasets currently only implemented for suffices "nc" (netCDF4.Dataset) and "dat" (numpy.ndarray).
         Else, values are None.
     """
 
