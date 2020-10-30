@@ -13,7 +13,7 @@ def getData(path, prefix="", suffix="nc", single=False, all=False):
     print("Available files:")
     for i, file in enumerate(fileList):
         date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
-        print(f"{i:3d}: {file} {date:>}")
+        print(f"{i:3d}: {file:<50} {date}")
 
     loader = {"nc": netCDF4.Dataset,
               "dat": np.loadtxt,
@@ -36,6 +36,34 @@ def getData(path, prefix="", suffix="nc", single=False, all=False):
     out = {f: loader[suffix](f) for i, f in enumerate(fileList) if i in mask}
 
     return out
+
+
+def getSubDirs(path, single=False):
+
+    subdirs = [os.path.join(path, i) for i in sorted(next(os.walk(path))[1])]
+
+    for i, sub in enumerate(subdirs):
+        date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(sub)))
+        print(f"{i:3d}: {sub:<50} {date}")
+
+    if single:
+        mask = [int(input("Enter file key: "))]
+    else:
+        inp = input("Enter file keys (space separated or range [start]-[end] or combination of both): ")
+
+        mask = [int(i) for i in inp.split() if len(i.split("-")) < 2]
+        mask_range = [i for i in inp.split() if len(i.split("-")) == 2]
+
+        for j in mask_range:
+            mask += list(range(int(j.split("-")[0]), int(j.split("-")[1]) + 1))
+
+    out = [d for i, d in enumerate(subdirs) if i in mask]
+
+    return out
+
+
+def get_nc_from_name(fname):
+    return netCDF4.Dataset(fname)
 
 
 def getFromSubDir(path, prefix, suffix):
