@@ -26,9 +26,11 @@ class Solver:
         self.height = VectorField(disc)
 
         if self.type == 'journal':
-            self.height.fromFunctionXY(Analytic(disc, geometry).journalBearing, 0, axis=0)
-        else:
-            self.height.fromFunctionXY(Analytic(disc, geometry).linearSlider, 0, axis=0)
+            self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
+        elif self.type == 'inclined':
+            self.height.field[0] = Analytic(disc, geometry).linearSlider(self.height.xx, self.height.yy)
+        elif self.type == 'step':
+            self.height.field[0] = Analytic(disc, geometry).doubleStep(self.height.xx, self.height.yy, axis=0)
 
         self.height.getGradients()
 
