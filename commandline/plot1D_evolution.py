@@ -45,8 +45,8 @@ for filename, data in files.items():
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
 
-    plt.xlabel('distance [mm]')
+    plt.xlabel('distance (mm)')
     plt.ylabel(toPlot[choice][1])
 
-    plt.colorbar(sm, label='time [µs]', extend='max')
+    plt.colorbar(sm, label='time (µs)', extend='max')
     plt.show()
