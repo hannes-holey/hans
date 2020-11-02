@@ -48,9 +48,10 @@ for filename, data in files.items():
     if choice in [0, 3]:
         for ref_fname in getData(".", suffix='dat').keys():
             ref_data = np.loadtxt(ref_fname, skiprows=1, usecols=(choice // 3,))
-            # ref_label = input("Enter Legend for reference: ")
+            ref_label = input("Enter Legend for reference: ")
+            scale_factor = {0: 1., 3: 1e-6}
             x_ref = (np.arange(len(ref_data)) + 0.5) * Lx / len(ref_data)
-            ax.plot(x_ref * 1e3, ref_data * 1e-6, '--', color=line[0].get_color())
+            ax.plot(x_ref * 1e3, ref_data * scale_factor[choice], '--', color=line[0].get_color(), label=ref_label)
 
 ax.set_xlabel('distance (mm)')
 plt.ylabel(toPlot[choice][1])
