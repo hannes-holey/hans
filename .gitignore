@@ -3,9 +3,7 @@
 *.pyc
 *.cpython*.so
 __pycache__
-data/*.nc
-data/*.dat
-data/restart/
+data/
 config/
 submit.sh
 .docblock.json
