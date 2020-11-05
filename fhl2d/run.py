@@ -94,22 +94,22 @@ class Run:
 
                 if self.sol.eps < tol:
                     self.write(i, 1, reducedOut)
-                    print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    print("\nSolution has converged after {:d} steps, Output written to: {:s}".format(i, os.path.join(out_dir,outfile)))
+                    print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
+                    print(f"\nSolution has converged after {i:d} steps, Output written to: {os.path.join(out_dir, outfile):s}")
                     timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     self.nc.tEnd = timeString
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
                     self.write(i, 1, reducedOut)
-                    print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    print("\nNo convergence within {:d} steps. Stopping criterion: maximum time {:.1e} s reached.".format(i, maxT))
-                    print("Output written to: {:s}".format(os.path.join(out_dir, outfile)))
+                    print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
+                    print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {maxT:.1e} s reached.")
+                    print(f"Output written to: {os.path.join(out_dir, outfile):s}")
                     timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                     self.nc.tEnd = timeString
 
         else:
-            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Time step", "Time", "Epsilon"))
             self.plot()
 
         tDiff = time.time() - tStart
@@ -119,7 +119,7 @@ class Run:
         MM = int(MM - HH * 60)
         SS = int(tDiff - HH * 60 * 60 - MM * 60)
 
-        print("Total wall clock time: {:02d}:{:02d}:{:02d} (Performance: {:.2f} ns/s)".format(HH, MM, SS, self.sol.time * 1e9 / tDiff))
+        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e12 / tDiff:.2f} ps/s)")
 
     def write(self, i, last, reduced):
 
