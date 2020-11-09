@@ -4,7 +4,6 @@ from .eos import EquationOfState
 from .geometry import Analytic
 from .field import VectorField
 from .flux import Flux
-from .stress import Newtonian
 
 
 class Solver:
@@ -50,7 +49,6 @@ class Solver:
             self.q.fill_line(1.05 * rho0, 0, 0)
 
         self.Flux = Flux(disc, geometry, numerics, material)
-        self.Newtonian = Newtonian(disc, geometry, numerics, material)
 
         self.vSound = EquationOfState(self.material).soundSpeed(rho0)
 
