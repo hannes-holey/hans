@@ -342,6 +342,7 @@ class Flux:
             stochastic_stress = self.stochStress.full_tensor(W_A, W_B, h, dt, int(corrector) + 1)
             sX, sY = self.stochasticFlux(stochastic_stress, h, dt)
         else:
+            stochastic_stress = np.zeros([6, q.Nx, q.Ny])
             sX = sY = np.zeros_like(fX)
 
         if bool(self.numerics['Rey']) is False:
@@ -350,7 +351,6 @@ class Flux:
             dX = dY = np.zeros_like(fX)
 
         src = self.getSource(viscousStress, stochastic_stress, Q, h, dt)
-
         Q.field = Q.field - fX - fY + dX + dY + sX + sY + src
 
         if corrector:
@@ -373,12 +373,11 @@ class Flux:
 
         fX, fY = self.hyperbolicTVD(Q, dt)
 
-        stochastic_stress = self.stochStress.full_tensor(W_A, W_B, h, dt, stage)
-        src = self.getSource(viscousStress, stochastic_stress, Q, h, dt)
-
         if bool(self.numerics['Fluctuating']) is True:
+            stochastic_stress = self.stochStress.full_tensor(W_A, W_B, h, dt, stage)
             sX, sY = self.stochasticFlux(stochastic_stress, h, dt)
         else:
+            stochastic_stress = np.zeros([6, q.Nx, q.Ny])
             sX = sY = np.zeros_like(fX)
 
         if bool(self.numerics['Rey']) is False:
@@ -386,6 +385,7 @@ class Flux:
         else:
             dX = dY = np.zeros_like(fX)
 
+        src = self.getSource(viscousStress, stochastic_stress, Q, h, dt)
         tmp = Q.field - fX - fY + dX + dY + sX + sY + src
 
         if stage == 3:
