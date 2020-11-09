@@ -64,21 +64,11 @@ class Solver:
             else:
                 self.dt = self.C * min(self.q.dx, self.q.dy) / self.vmax
 
-        # viscousStress, stress, cov3, p = self.Newtonian.stress_avg(self.q, self.height, self.dt)
-
-        # if self.fluct is True:
-        #     stress.addNoise_FH(cov3)
-
-        # if self.numFlux == 'LF':
-        #     fXE = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 0)
-        #     fXW = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 0)
-        #     fYN = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, -1, 1)
-        #     fYS = self.Flux.getFlux_LF(self.q, self.height, stress, self.dt, 1, 1)
-        #
-        #     rhs = -1. / self.q.dx * (fXE.field - fXW.field) - 1. / self.q.dy * (fYN.field - fYS.field)
-        #     source = self.Flux.getSource(viscousStress, self.q, self.height, self.dt)
-        #     rhs += source.field
-        #     self.q.field += self.dt * rhs
+        if self.fluct is True:
+            W_A = np.random.normal(size=(3, 3, self.q.Nx, self.q.Ny))
+            W_B = np.random.normal(size=(3, 3, self.q.Nx, self.q.Ny))
+        else:
+            W_A = W_B = np.zeros([3, 3, self.q.Nx, self.q.Ny])
 
         if self.numFlux == 'LW':
             self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
@@ -87,10 +77,10 @@ class Solver:
             self.q = self.Flux.MacCormack_total(self.q, self.height, self.dt)
 
         elif self.numFlux == 'MC':
-            self.q = self.Flux.MacCormack(self.q, self.height, self.dt, i)
+            self.q = self.Flux.MacCormack(self.q, self.height, self.dt, W_A, W_B)
 
         elif self.numFlux == 'RK3':
-            self.q = self.Flux.RungeKutta3(self.q, self.height, self.dt, i)
+            self.q = self.Flux.RungeKutta3(self.q, self.height, self.dt, W_A, W_B)
 
         # some scalar output
         self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
