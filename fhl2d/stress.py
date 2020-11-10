@@ -116,7 +116,7 @@ class Stochastic:
         # weight = {1: [0., 1.], 2: [0., 1.], 3: [0., 1.]}
 
         # 2RNG_V1
-        # weight = {1: [1., -np.sqrt(3)], 2: [1., np.sqrt(3)], 3: [1. 0.]}
+        # weight = {1: [1., -np.sqrt(3)], 2: [1., np.sqrt(3)], 3: [1., 0.]}
 
         # 2RNG_V2
         weight = {1: [1., (2 * np.sqrt(2) - np.sqrt(3)) / 5],
