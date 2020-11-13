@@ -1,4 +1,6 @@
 import os
+import sys
+import signal
 import netCDF4
 import time
 import numpy as np
@@ -38,13 +40,29 @@ class Run:
         disc['Lx'] = self.Lx
         disc['Ly'] = self.Ly
 
-        tStart = time.time()
+        self.tStart = time.time()
 
         self.sol = Solver(disc, geometry, numerics, material, q_init)
 
-        self.run(plot, reducedOut, out_dir, tol, maxT, tStart)
+        self.run(plot, reducedOut, out_dir, tol, maxT)
 
-    def run(self, plot, reducedOut, out_dir, tol, maxT, tStart):
+    def receive_signal(self, signum, stack):
+        total_time = time.time() - self.tStart
+        print(f"python: PID: {os.getpid()} recieved {signum} at time {total_time}")
+        sys.stdout.flush()                             # displays the message right now, othervise it would be buffered
+
+        if signum == signal.SIGTERM:
+            sys.exit()
+
+        if signum == signal.SIGUSR1:
+            timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.nc.tEnd = timeString
+            HH, MM, SS = self.time_to_HHMMSS(total_time)
+            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e12 / total_time:.2f} ps/s)")
+            # print("python: finishing properly")
+            sys.exit()
+
+    def run(self, plot, reducedOut, out_dir, tol, maxT):
 
         if plot is False:
             self.file_tag = 1
@@ -88,7 +106,13 @@ class Run:
                 self.write(i, 0, reducedOut)
                 if i % self.writeInterval == 0:
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
+                    sys.stdout.flush()
                 i += 1
+
+                signal.signal(signal.SIGTERM, self.receive_signal)
+                signal.signal(signal.SIGHUP, self.receive_signal)
+                signal.signal(signal.SIGUSR1, self.receive_signal)
+                signal.signal(signal.SIGUSR2, self.receive_signal)
 
                 tDiff = maxT - self.sol.time
 
@@ -112,14 +136,19 @@ class Run:
             print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Time step", "Time", "Epsilon"))
             self.plot()
 
-        tDiff = time.time() - tStart
-
-        MM = tDiff // 60
-        HH = int(MM // 60)
-        MM = int(MM - HH * 60)
-        SS = int(tDiff - HH * 60 * 60 - MM * 60)
+        tDiff = time.time() - self.tStart
+        HH, MM, SS = self.time_to_HHMMSS(tDiff)
 
         print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e12 / tDiff:.2f} ps/s)")
+
+    def time_to_HHMMSS(self, t):
+
+        MM = t // 60
+        HH = int(MM // 60)
+        MM = int(MM - HH * 60)
+        SS = int(t - HH * 60 * 60 - MM * 60)
+
+        return HH, MM, SS
 
     def write(self, i, last, reduced):
 
