@@ -207,11 +207,13 @@ class Flux:
 
         if ax == 1:
             F[0] = q[1]
-            F[1] = p
+            F[1] = q[1] * q[1] / q[0] + p
+            F[2] = q[2] * q[1] / q[0]
 
         elif ax == 2:
             F[0] = q[2]
-            F[2] = p
+            F[1] = q[1] * q[2] / q[0]
+            F[2] = q[2] * q[2] / q[0] + p
 
         return F
 
