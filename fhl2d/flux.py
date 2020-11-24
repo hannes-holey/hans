@@ -172,19 +172,20 @@ class Flux:
         hx = h.field[1]
         hy = h.field[2]
 
+        rho = q.field[0]
         j_x = q.field[1]
         j_y = q.field[2]
 
-        stress_wall_top.field += stochastic_stress
-        stress_wall_bot.field += np.roll(stochastic_stress, 1, axis=1)
+        # stress_wall_top.field += stochastic_stress
+        # stress_wall_bot.field += np.roll(stochastic_stress, 1, axis=1)
 
         # stress.field[0] += stochastic_stress[0]
         # stress.field[1] += stochastic_stress[1]
         # stress.field[2] += stochastic_stress[5]
 
         out[0] = -j_x * hx / h0 - j_y * hy / h0
-        out[1] = ((stress.field[0] - stress_wall_top.field[0]) * hx + (stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
-        out[2] = ((stress.field[2] - stress_wall_top.field[5]) * hx + (stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
+        out[1] = ((j_x * j_x / rho + stress.field[0] - stress_wall_top.field[0]) * hx + (j_x * j_y / rho + stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        out[2] = ((j_y * j_x / rho + stress.field[2] - stress_wall_top.field[5]) * hx + (j_y * j_y / rho + stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
         return out * dt
 
