@@ -135,16 +135,16 @@ class Stochastic:
 
         W_field = weight[stage][0] * W_field_A + weight[stage][1] * W_field_B
 
-        W_field_sym = (W_field + np.transpose(W_field, axes=(1,0,2,3))) / np.sqrt(2)
+        W_field_sym = (W_field + np.transpose(W_field, axes=(1, 0, 2, 3))) / np.sqrt(2)
 
         W_field = TensorField(self.disc)
 
-        W_field.field[0] = W_field_sym[0,0,:,:]
-        W_field.field[1] = W_field_sym[1,1,:,:]
-        W_field.field[2] = W_field_sym[2,2,:,:]
-        W_field.field[3] = W_field_sym[1,2,:,:]
-        W_field.field[4] = W_field_sym[0,2,:,:]
-        W_field.field[5] = W_field_sym[0,1,:,:]
+        W_field.field[0] = W_field_sym[0, 0, :, :]
+        W_field.field[1] = W_field_sym[1, 1, :, :]
+        W_field.field[2] = W_field_sym[2, 2, :, :]
+        W_field.field[3] = W_field_sym[1, 2, :, :]
+        W_field.field[4] = W_field_sym[0, 2, :, :]
+        W_field.field[5] = W_field_sym[0, 1, :, :]
 
         diag = np.array([1, 1, 1, 0, 0, 0])
 

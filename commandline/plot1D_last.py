@@ -6,7 +6,7 @@ from matplotlib.ticker import FormatStrFormatter
 from fhl2d.helper.data_parser import getData
 
 plt.style.use('presentation')
-fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
+fig, ax = plt.subplots(figsize=(12, 9), tight_layout=False)
 
 files = getData(".")
 
@@ -42,7 +42,7 @@ for filename, data in files.items():
     x = (np.arange(Nx) + 0.5) * Lx / Nx
     t = np.array(data.variables['time'])[-1] * 1e9
     print("Actual time for \'{:s}\': {:.2f} ns".format(filename, t))
-    line = ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
+    line = ax.plot(x * 1.e3, (d[:, int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=label)
 
     # plot reference solution
     if choice in [0, 3]:

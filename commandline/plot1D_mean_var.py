@@ -7,7 +7,7 @@ from fhl2d.helper.mean_var import getMean_field, getVariance_field
 
 
 plt.style.use('presentation')
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(1, 1)
 
 
 def gaussian(x, a, mean, sigma):
@@ -33,8 +33,9 @@ for filename, data in files.items():
 
     x = (np.arange(Nx) + 0.5) * Lx / Nx
 
-    ax.plot(x, mean[choice,:, Ny // 2])
-    ax.fill_between(x, mean[choice, :, Ny // 2] - np.sqrt(var[choice,:, Ny // 2]), mean[choice,:, Ny // 2] + np.sqrt(var[choice, :, Ny // 2]), alpha=0.5)
+    ax.plot(x, mean[choice, :, Ny // 2])
+    ax.fill_between(x, mean[choice, :, Ny // 2] - np.sqrt(var[choice, :, Ny // 2]),
+                    mean[choice, :, Ny // 2] + np.sqrt(var[choice, :, Ny // 2]), alpha=0.5)
     ax.set_xlabel(r'distance (m)')
     ax.set_ylabel(toPlot[choice][1])
 

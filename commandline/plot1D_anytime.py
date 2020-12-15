@@ -6,7 +6,7 @@ from matplotlib.ticker import FormatStrFormatter
 from fhl2d.helper.data_parser import getData
 
 plt.style.use('presentation')
-fig, ax = plt.subplots(figsize=(12,9), tight_layout=False)
+fig, ax = plt.subplots(figsize=(12, 9), tight_layout=False)
 
 files = getData(".")
 
@@ -48,7 +48,7 @@ for filename, data in files.items():
     t = time[step]
 
     print("Closest available snapshot for \'{:s}\' at t = {:.2f} ns".format(filename, t))
-    ax.plot(x * 1.e3, (d[:,int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=r'$t = ${:.1f} ns'.format(t))
+    ax.plot(x * 1.e3, (d[:, int(d.shape[1] / 2)]) * toPlot[choice][2], '-', label=r'$t = ${:.1f} ns'.format(t))
 
 ax.set_xlabel('distance [mm]')
 ax.set_ylabel(toPlot[choice][1])

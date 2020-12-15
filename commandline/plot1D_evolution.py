@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from fhl2d.helper.data_parser import getData
 
 plt.style.use('presentation')
-plt.figure(figsize=(10,6), tight_layout=True)
+plt.figure(figsize=(10, 6), tight_layout=True)
 
 files = getData(".", mode="single")
 
@@ -41,7 +41,7 @@ for filename, data in files.items():
         t = time[i]
         c = t / maxT
 
-        plt.plot(x * 1.e3, d[:,int(d.shape[1] / 2)] * toPlot[choice][2], '-', color=cmap(c))
+        plt.plot(x * 1.e3, d[:, int(d.shape[1] / 2)] * toPlot[choice][2], '-', color=cmap(c))
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
 

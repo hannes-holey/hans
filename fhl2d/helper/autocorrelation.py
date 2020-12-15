@@ -32,11 +32,11 @@ def getTimeACF(time, field, dim, length=1):
     wave_vec = np.eye(3, dtype=int) * length
 
     # all possible axes over which FFT is computed
-    fft_axes = np.arange(1,4)
+    fft_axes = np.arange(1, 4)
 
     # init output array, 1st column: time
     out_ac = np.empty([len(time), ndim + 1])
-    out_ac[:,0] = time
+    out_ac[:, 0] = time
 
     # compute FFT
     field_fft = np.real(np.fft.fftn(field, axes=fft_axes[dim]))

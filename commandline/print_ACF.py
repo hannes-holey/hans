@@ -33,11 +33,11 @@ for filename, data in getData(".").items():
     time = np.array(data.variables['time'])
 
     out = np.empty([len(time), 1 + 3 * ndim])
-    out[:,0] = time
+    out[:, 0] = time
 
     for i in range(1, min(Nx, Ny) // 2):
         for j, name in unknowns.items():
-            out_ac = getTimeACF(time, np.array(data.variables[name])[:,:,:,np.newaxis], dim, i)[0][:,1:]
+            out_ac = getTimeACF(time, np.array(data.variables[name])[:, :, :, np.newaxis], dim, i)[0][:, 1:]
             out[:, 1 + j * ndim: 1 + (j + 1) * ndim] = out_ac
 
         head2 = f"\nabs(k): {2. * np.pi / lengths * i}"

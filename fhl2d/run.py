@@ -85,9 +85,9 @@ class Run:
             self.nc.createDimension('step', None)
 
             # create conserved variables timeseries of fields
-            self.rho = self.nc.createVariable('rho', 'f8', ('step','x','y'))
-            self.jx = self.nc.createVariable('jx', 'f8', ('step','x','y'))
-            self.jy = self.nc.createVariable('jy', 'f8', ('step','x','y'))
+            self.rho = self.nc.createVariable('rho', 'f8', ('step', 'x', 'y'))
+            self.jx = self.nc.createVariable('jx', 'f8', ('step', 'x', 'y'))
+            self.jy = self.nc.createVariable('jy', 'f8', ('step', 'x', 'y'))
             if reducedOut is False:
                 self.p = self.nc.createVariable('p', 'f8', ('step', 'x', 'y'))
 
@@ -195,33 +195,33 @@ class Run:
 
     def plot(self):
 
-        fig, ax = plt.subplots(2,2, figsize=(14,9), sharex=True)
+        fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
         x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
 
-        line0, = ax[0,0].plot(x, self.sol.q.field[1][:,int(self.Ny / 2)])
-        line1, = ax[0,1].plot(x, self.sol.q.field[2][:,int(self.Ny / 2)])
-        line2, = ax[1,0].plot(x, self.sol.q.field[0][:,int(self.Ny / 2)])
-        line3, = ax[1,1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:,int(self.Ny / 2)]))
+        line0, = ax[0, 0].plot(x, self.sol.q.field[1][:, int(self.Ny / 2)])
+        line1, = ax[0, 1].plot(x, self.sol.q.field[2][:, int(self.Ny / 2)])
+        line2, = ax[1, 0].plot(x, self.sol.q.field[0][:, int(self.Ny / 2)])
+        line3, = ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
 
-        ax[0,0].set_title(r'$j_x$')
-        ax[0,1].set_title(r'$j_y$')
-        ax[1,0].set_title(r'$\rho$')
-        ax[1,1].set_title(r'$p$')
+        ax[0, 0].set_title(r'$j_x$')
+        ax[0, 1].set_title(r'$j_y$')
+        ax[1, 0].set_title(r'$\rho$')
+        ax[1, 1].set_title(r'$p$')
 
-        ax[1,0].set_xlabel('distance x (m)')
-        ax[1,1].set_xlabel('distance x (m)')
+        ax[1, 0].set_xlabel('distance x (m)')
+        ax[1, 1].set_xlabel('distance x (m)')
 
-        limits = np.zeros((4,3))
+        limits = np.zeros((4, 3))
 
         for j in range(3):
-            limits[j,0] = np.amin(self.sol.q.field[j][:,int(self.Ny / 2)])
-            limits[j,1] = np.amax(self.sol.q.field[j][:,int(self.Ny / 2)])
+            limits[j, 0] = np.amin(self.sol.q.field[j][:, int(self.Ny / 2)])
+            limits[j, 1] = np.amax(self.sol.q.field[j][:, int(self.Ny / 2)])
 
-        limits[3,0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:,int(self.Ny / 2)]))
-        limits[3,1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:,int(self.Ny / 2)]))
+        limits[3, 0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
+        limits[3, 1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
 
         _ = animation.FuncAnimation(fig, self.animate1D, 100000, fargs=(fig, ax,
-                                    line0, line1, line2, line3, limits,), interval=1, repeat=False)
+                                                                        line0, line1, line2, line3, limits,), interval=1, repeat=False)
 
         plt.show()
 
@@ -231,15 +231,15 @@ class Run:
 
         fig.suptitle('time = {:.2f} ns'.format(self.sol.time * 1e9))
 
-        ax[0,0].set_ylim(limits[1,0] - limits[1,2], limits[1,1] + limits[1,2])
-        ax[0,1].set_ylim(limits[2,0] - limits[2,2], limits[2,1] + limits[2,2])
-        ax[1,0].set_ylim(limits[0,0] - limits[0,2], limits[0,1] + limits[0,2])
-        ax[1,1].set_ylim(limits[3,0] - limits[3,2], limits[3,1] + limits[3,2])
+        ax[0, 0].set_ylim(limits[1, 0] - limits[1, 2], limits[1, 1] + limits[1, 2])
+        ax[0, 1].set_ylim(limits[2, 0] - limits[2, 2], limits[2, 1] + limits[2, 2])
+        ax[1, 0].set_ylim(limits[0, 0] - limits[0, 2], limits[0, 1] + limits[0, 2])
+        ax[1, 1].set_ylim(limits[3, 0] - limits[3, 2], limits[3, 1] + limits[3, 2])
 
-        line0.set_ydata(self.sol.q.field[1][:,int(self.Ny / 2)])
-        line1.set_ydata(self.sol.q.field[2][:,int(self.Ny / 2)])
-        line2.set_ydata(self.sol.q.field[0][:,int(self.Ny / 2)])
-        line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:,int(self.Ny / 2)]))
+        line0.set_ydata(self.sol.q.field[1][:, int(self.Ny / 2)])
+        line1.set_ydata(self.sol.q.field[2][:, int(self.Ny / 2)])
+        line2.set_ydata(self.sol.q.field[0][:, int(self.Ny / 2)])
+        line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
 
         self.sol.solve(i)
         if i % self.writeInterval == 0:
@@ -248,22 +248,22 @@ class Run:
     def adaptiveLimits(self, limits):
 
         for j in range(3):
-            if np.amin(self.sol.q.field[j]) < limits[j,0]:
-                limits[j,0] = np.amin(self.sol.q.field[j])
-            if np.amax(self.sol.q.field[j]) > limits[j,1]:
-                limits[j,1] = np.amax(self.sol.q.field[j])
+            if np.amin(self.sol.q.field[j]) < limits[j, 0]:
+                limits[j, 0] = np.amin(self.sol.q.field[j])
+            if np.amax(self.sol.q.field[j]) > limits[j, 1]:
+                limits[j, 1] = np.amax(self.sol.q.field[j])
 
-        if np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])) < limits[3,0]:
-            limits[3,0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0]))
-        if np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])) > limits[3,1]:
-            limits[3,1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0]))
+        if np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])) < limits[3, 0]:
+            limits[3, 0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0]))
+        if np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])) > limits[3, 1]:
+            limits[3, 1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0]))
 
         for j in range(4):
-            if limits[j,1] == limits[j,0] and limits[j,0] != 0.:
-                limits[j,2] = 0.5 * limits[j,1]
-            elif limits[j,1] == limits[j,0] and limits[j,0] == 0.:
-                limits[j,2] = 1.
+            if limits[j, 1] == limits[j, 0] and limits[j, 0] != 0.:
+                limits[j, 2] = 0.5 * limits[j, 1]
+            elif limits[j, 1] == limits[j, 0] and limits[j, 0] == 0.:
+                limits[j, 2] = 1.
             else:
-                limits[j,2] = 0.1 * (limits[j,1] - limits[j,0])
+                limits[j, 2] = 0.1 * (limits[j, 1] - limits[j, 0])
 
         return limits

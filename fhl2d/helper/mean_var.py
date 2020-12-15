@@ -14,7 +14,7 @@ def getVariance_vs_time(f, n):
             print("Not enough memory, using single precision!")
             full_array = np.array(f.variables[val], copy=False).astype(np.float32)
 
-        mask = np.all(np.isfinite(full_array), axis=(1,2))
+        mask = np.all(np.isfinite(full_array), axis=(1, 2))
         full_array = full_array[mask]
         time = np.array(f.variables["time"])
         size = len(time)
@@ -42,7 +42,7 @@ def getVariance_field(f):
             print("Not enough memory, using single precision!")
             full_array = np.array(f.variables[val], copy=False).astype(np.float32)
 
-        mask = np.all(np.isfinite(full_array), axis=(1,2))
+        mask = np.all(np.isfinite(full_array), axis=(1, 2))
         full_array = full_array[mask]
 
         out_field[key] = np.var(full_array, axis=0)
@@ -62,7 +62,7 @@ def getMean_field(f):
             print("Not enough memory, using single precision!")
             full_array = np.array(f.variables[val], copy=False).astype(np.float32)
 
-        mask = np.all(np.isfinite(full_array), axis=(1,2))
+        mask = np.all(np.isfinite(full_array), axis=(1, 2))
         full_array = full_array[mask]
 
         out_field[key] = np.mean(full_array, axis=0)

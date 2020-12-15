@@ -21,7 +21,7 @@ class Field:
 
         x = np.linspace(self.dx / 2, self.Lx - self.dx / 2, self.Nx)
         y = np.linspace(self.dy / 2, self.Ly - self.dy / 2, self.Ny)
-        xx, yy = np.meshgrid(x,y)
+        xx, yy = np.meshgrid(x, y)
 
         self.xx = xx.T
         self.yy = yy.T
@@ -57,7 +57,7 @@ class Field:
 
         x = np.linspace(0., self.Lx, self.Nx)
         y = np.linspace(0., self.Ly, self.Ny)
-        xx, yy = np.meshgrid(x,y)
+        xx, yy = np.meshgrid(x, y)
 
         self.xx = xx.T
         self.yy = yy.T
