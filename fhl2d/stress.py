@@ -1,5 +1,3 @@
-import numpy as np
-import scipy.constants as const
 from .eos import EquationOfState
 from .field import VectorField, TensorField
 
@@ -118,64 +116,3 @@ class Deterministic:
             # out.field[5] = eta * ((V * rho + 6 * j_y) * hx + hy * (U * rho + 6 * j_x)) / (2 * rho * h0)
 
         return out
-
-
-class Stochastic:
-
-    def __init__(self, disc, material):
-
-        self.disc = disc
-        self.material = material
-
-    def full_tensor(self, W_field_A, W_field_B, h, dt, stage):
-
-        dx = float(self.disc['dx'])
-        dy = float(self.disc['dy'])
-        dz = h.field[0]
-
-        eta = float(self.material['shear'])
-        zeta = float(self.material['bulk'])
-        T = float(self.material['T0'])
-
-        a_coeff = np.sqrt(2 * const.k * T * eta / (dx * dy * dz * dt))
-        b_coeff = np.sqrt(const.k * T * zeta / (3 * dx * dy * dz * dt))
-
-        # weights
-        # 1RNG
-        # weight = {1: [0., 1.], 2: [0., 1.], 3: [0., 1.]}
-
-        # 2RNG_V1
-        # weight = {1: [1., -np.sqrt(3)], 2: [1., np.sqrt(3)], 3: [1., 0.]}
-
-        # 2RNG_V2
-        weight = {1: [1., (2 * np.sqrt(2) - np.sqrt(3)) / 5],
-                  2: [1., (-4 * np.sqrt(2) - 3 * np.sqrt(3)) / 5],
-                  3: [1., (np.sqrt(2) + 2 * np.sqrt(3)) / 10]}
-
-        # 2RNG_V3
-        # weight = {1: [1., (2 * np.sqrt(2) + np.sqrt(3)) / 5],
-        #           2: [1., (-4 * np.sqrt(2) + 3 * np.sqrt(3)) / 5],
-        #           3: [1., (np.sqrt(2) - 2 * np.sqrt(3)) / 10]}
-
-        W_field = weight[stage][0] * W_field_A + weight[stage][1] * W_field_B
-
-        W_field_sym = (W_field + np.transpose(W_field, axes=(1, 0, 2, 3))) / np.sqrt(2)
-
-        W_field = TensorField(self.disc)
-
-        W_field.field[0] = W_field_sym[0, 0, :, :]
-        W_field.field[1] = W_field_sym[1, 1, :, :]
-        W_field.field[2] = W_field_sym[2, 2, :, :]
-        W_field.field[3] = W_field_sym[1, 2, :, :]
-        W_field.field[4] = W_field_sym[0, 2, :, :]
-        W_field.field[5] = W_field_sym[0, 1, :, :]
-
-        diag = np.array([1, 1, 1, 0, 0, 0])
-
-        W_trace = np.sum(W_field.field[diag], axis=0)
-
-        W_field.field[diag] -= W_trace / 3
-        W_field.field *= a_coeff
-        W_field.field[diag] += b_coeff * W_trace
-
-        return W_field.field

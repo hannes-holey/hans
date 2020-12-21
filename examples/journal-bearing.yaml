@@ -13,7 +13,6 @@ geometry:
     U: 0.1
     V: 0.
 numerics:
-    Fluctuating: 0
     Rey: 1
     adaptive: 1
     C: 0.02

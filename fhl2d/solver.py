@@ -33,7 +33,6 @@ class Solver:
 
         self.height.getGradients()
 
-        # P0 = float(material['P0'])
         rho0 = float(material['rho0'])
 
         self.q = VectorField(disc)
@@ -62,23 +61,11 @@ class Solver:
             else:
                 self.dt = self.C * min(self.q.dx, self.q.dy) / self.vmax
 
-        if self.fluct is True:
-            W_A = np.random.normal(size=(3, 3, self.q.Nx, self.q.Ny))
-            W_B = np.random.normal(size=(3, 3, self.q.Nx, self.q.Ny))
-        else:
-            W_A = W_B = np.zeros([3, 3, self.q.Nx, self.q.Ny])
-
         if self.numFlux == 'LW':
             self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
 
-        elif self.numFlux == 'MC_old':
-            self.q = self.Flux.MacCormack_total(self.q, self.height, self.dt)
-
         elif self.numFlux == 'MC':
-            self.q = self.Flux.MacCormack(self.q, self.height, self.dt, W_A, W_B)
-
-        elif self.numFlux == 'RK3':
-            self.q = self.Flux.RungeKutta3(self.q, self.height, self.dt, W_A, W_B)
+            self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
 
         # some scalar output
         self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
