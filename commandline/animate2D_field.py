@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from fhl2d.helper.data_parser import getData
 
 
@@ -34,15 +35,15 @@ def plot_update(i, A, t):
 
 if __name__ == "__main__":
 
-    plt.style.use('presentation')
+    # plt.style.use('presentation')
 
     for filename, file in getData(".", mode="single").items():
 
         # User input
-        toPlot = {0: ['rho', r'mass density (kg/m$^3$)', 1.],
-                  1: ['jx', r'mass flux $x$ [kg/(m$^2$s)]', 1.],
-                  2: ['jy', r'mass flux $y$ [kg/(m$^2$s)]', 1.],
-                  3: ['p', r'pressure (MPa)', 1e-6]}
+        toPlot = {0: ['rho', r'mass density $\rho$ (kg/m$^3$)', 1.],
+                  1: ['jx', r'mass flux $j_x$ (kg/(m$^2$s))', 1.],
+                  2: ['jy', r'mass flux $j_y$ (kg/(m$^2$s))', 1.],
+                  3: ['p', r'pressure $p$ (MPa)', 1e-6]}
 
         reduced = not('p' in file.variables)
 
@@ -64,16 +65,18 @@ if __name__ == "__main__":
         name = file.options_name
 
         ratio = Nx / Ny
-        fig, ax = plt.subplots(figsize=(ratio * 5, 5))
+        fig, ax = plt.subplots(figsize=(ratio * 10, 10), tight_layout=True)
 
         # Global colorbar limits
         glob_min = np.amin(A[0])
         glob_max = np.amax(A[0])
 
         # Initial plotting
-        im = ax.imshow(np.empty((Ny,Nx)), interpolation='gaussian', aspect='equal', cmap='viridis')
-        cbar = plt.colorbar(im, ax=ax, label=toPlot[choice][1])
+        im = ax.imshow(np.empty((Ny, Nx)), interpolation='none', aspect='equal', cmap='viridis')
 
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.3)
+        cbar = plt.colorbar(im, cax=cax, label=toPlot[choice][1])
         ax.invert_yaxis()
 
         # Adjust ticks
