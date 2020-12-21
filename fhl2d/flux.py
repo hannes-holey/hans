@@ -42,25 +42,25 @@ class Flux:
 
         if self.periodicX is False:
             if d == -1:
-                flux.field[0][-1,:] = flux.field[0][-2,:]  # Dirichlet
-                flux.field[1][-1,:] = f2[-1,:]  # Neumann
-                flux.field[2][-1,:] = f3[-1,:]  # Neumann
+                flux.field[0][-1, :] = flux.field[0][-2, :]  # Dirichlet
+                flux.field[1][-1, :] = f2[-1, :]  # Neumann
+                flux.field[2][-1, :] = f3[-1, :]  # Neumann
 
             elif d == 1:
-                flux.field[0][0,:] = flux.field[0][1,:]
-                flux.field[1][0,:] = f2[0,:]
-                flux.field[2][0,:] = f3[0,:]
+                flux.field[0][0, :] = flux.field[0][1, :]
+                flux.field[1][0, :] = f2[0, :]
+                flux.field[2][0, :] = f3[0, :]
 
         if self.periodicY is False:
             if d == -1:
-                flux.field[0][:,-1] = flux.field[0][:,-2]
-                flux.field[1][:,-1] = f2[:,-1]
-                flux.field[2][:,-1] = f3[:,-1]
+                flux.field[0][:, -1] = flux.field[0][:, -2]
+                flux.field[1][:, -1] = f2[:, -1]
+                flux.field[2][:, -1] = f3[:, -1]
 
             elif d == 1:
-                flux.field[0][:,0] = flux.field[0][:,1]
-                flux.field[1][:,0] = f2[:,0]
-                flux.field[2][:,0] = f3[:,0]
+                flux.field[0][:, 0] = flux.field[0][:, 1]
+                flux.field[1][:, 0] = f2[:, 0]
+                flux.field[2][:, 0] = f3[:, 0]
 
         return flux
 
@@ -185,13 +185,21 @@ class Flux:
 
         out[0] = -j_x * hx / h0 - j_y * hy / h0
 
-        out[1] = ((j_x * j_x / rho + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * hx + (j_x * j_y / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        out[1] = ((j_x * j_x / rho + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * hx
+                  + (j_x * j_y / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hy
+                  + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
 
-        out[2] = ((j_y * j_x / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hx + (j_y * j_y / rho + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
+        out[2] = ((j_y * j_x / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hx
+                  + (j_y * j_y / rho + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * hy
+                  + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
-        # out[1] = ((j_x * j_x / rho + stress.field[0] - stress_wall_top.field[0]) * hx + (j_x * j_y / rho + stress.field[2] - stress_wall_top.field[5]) * hy + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        # out[1] = ((j_x * j_x / rho + stress.field[0] - stress_wall_top.field[0]) * hx
+        #           + (j_x * j_y / rho + stress.field[2] - stress_wall_top.field[5]) * hy
+        #           + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
 
-        # out[2] = ((j_y * j_x / rho + stress.field[2] - stress_wall_top.field[5]) * hx + (j_y * j_y / rho + stress.field[1] - stress_wall_top.field[1]) * hy + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
+        # out[2] = ((j_y * j_x / rho + stress.field[2] - stress_wall_top.field[5]) * hx
+        #           + (j_y * j_y / rho + stress.field[1] - stress_wall_top.field[1]) * hy
+        #           + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
         return out * dt
 
@@ -369,7 +377,7 @@ class Flux:
 
     def RungeKutta3(self, q, h, dt, W_A, W_B, stage=3):
 
-        assert stage in np.arange(1,4)
+        assert stage in np.arange(1, 4)
 
         if stage == 3:
             Q = self.RungeKutta3(q, h, dt, W_A, W_B, stage=2)
