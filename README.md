@@ -1,15 +1,23 @@
-# MD-FVM
-Solver for the MD-Continuum Coupling.
+# pylub
+A 2D Fluid Mechanics Solver for Lubrication
 
 ## Installation
-You need Python3. Required packages can be installed via
 ```
-pip3 install -r requirements.txt
+pip install .
 ```
 
-## Running
-Run the program from the command line using
+## Tests
 ```
-python3 -m fhl2d -i <path to your configuration file>
+python -m unittest discover tests
 ```
-Example input files are given in the *examples/* directory.
+
+## Examples
+Run and analyze from command line, e.g.
+```
+python3 -m pylub -i examples/journal_bearing.yaml
+```
+and
+```
+plot1D_last.py
+```
+or do both within a *jupyter-notebook* as shown in the examples directory.
