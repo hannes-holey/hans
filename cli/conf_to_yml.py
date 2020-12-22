@@ -2,7 +2,7 @@
 
 import sys
 from ruamel.yaml import YAML
-from fhl2d.helper.data_parser import getData
+from pylub.helper.data_parser import getData
 
 config_file = sys.argv[1]
 readme_template = "/home/hannes/.dtool_readme_FVM.yml"
