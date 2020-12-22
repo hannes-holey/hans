@@ -15,7 +15,7 @@ class Input:
         filename of the .nc data file
     """
 
-    def __init__(self, inputFile, restartFile):
+    def __init__(self, inputFile, restartFile=None):
         """ Constructor
 
         Parameters
@@ -147,17 +147,15 @@ class Problem:
         self.material = material
         self.q_init = q_init
 
-    def run(self, plot=False, reducedOut=False, out_dir="data"):
+    def run(self, plot=False, out_dir="data"):
         """Starts the simulation.
 
         Parameters
         ----------
         plot : bool
             Flag for live plotting (the default is False).
-        reducedOut : bool
-            if True, no pressure output is written (default: False).
         out_dir : str
             relative file path of output directory (default: "data").
         """
         from .run import Run
-        Run(self.options, self.disc, self.geometry, self.numerics, self.material, plot, reducedOut, out_dir, self.q_init)
+        Run(self.options, self.disc, self.geometry, self.numerics, self.material, plot, out_dir, self.q_init)

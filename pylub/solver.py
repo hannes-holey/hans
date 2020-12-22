@@ -15,7 +15,6 @@ class Solver:
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
         self.C = numerics['C']
-        self.fluct = bool(numerics['Fluctuating'])
 
         self.material = material
 

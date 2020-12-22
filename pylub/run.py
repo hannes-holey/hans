@@ -15,7 +15,7 @@ from .solver import Solver
 
 class Run:
 
-    def __init__(self, options, disc, geometry, numerics, material, plot, reducedOut, out_dir, q_init):
+    def __init__(self, options, disc, geometry, numerics, material, plot, out_dir, q_init):
 
         self.options = options
         self.disc = disc
@@ -44,7 +44,7 @@ class Run:
 
         self.sol = Solver(disc, geometry, numerics, material, q_init)
 
-        self.run(plot, reducedOut, out_dir, tol, maxT)
+        self.run(plot, out_dir, tol, maxT)
 
     def receive_signal(self, signum, stack):
         total_time = time.time() - self.tStart
@@ -62,7 +62,7 @@ class Run:
             # print("python: finishing properly")
             sys.exit()
 
-    def run(self, plot, reducedOut, out_dir, tol, maxT):
+    def run(self, plot, out_dir, tol, maxT):
 
         if plot is False:
             self.file_tag = 1
@@ -88,8 +88,6 @@ class Run:
             self.rho = self.nc.createVariable('rho', 'f8', ('step', 'x', 'y'))
             self.jx = self.nc.createVariable('jx', 'f8', ('step', 'x', 'y'))
             self.jy = self.nc.createVariable('jy', 'f8', ('step', 'x', 'y'))
-            if reducedOut is False:
-                self.p = self.nc.createVariable('p', 'f8', ('step', 'x', 'y'))
 
             # create scalar variables
             self.time = self.nc.createVariable('time', 'f8', ('step'))
@@ -103,7 +101,7 @@ class Run:
             while self.sol.time < maxT:
 
                 self.sol.solve(i)
-                self.write(i, 0, reducedOut)
+                self.write(i, 0)
                 if i % self.writeInterval == 0:
                     print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
                     sys.stdout.flush()
@@ -117,7 +115,7 @@ class Run:
                 tDiff = maxT - self.sol.time
 
                 if self.sol.eps < tol:
-                    self.write(i, 1, reducedOut)
+                    self.write(i, 1)
                     print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
                     print(f"\nSolution has converged after {i:d} steps, Output written to: {os.path.join(out_dir, outfile):s}")
                     timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -125,7 +123,7 @@ class Run:
                     break
                 elif tDiff < self.sol.dt:
                     self.sol.solve(i)
-                    self.write(i, 1, reducedOut)
+                    self.write(i, 1)
                     print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
                     print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {maxT:.1e} s reached.")
                     print(f"Output written to: {os.path.join(out_dir, outfile):s}")
@@ -150,18 +148,16 @@ class Run:
 
         return HH, MM, SS
 
-    def write(self, i, last, reduced):
+    def write(self, i, last):
 
-        # HDF5 output file
+        # netCDF4 output file
         if i % self.writeInterval == 0 or last == 1:
 
             if self.j == 0:
                 now = datetime.now()
                 timeString = now.strftime("%d/%m/%Y %H:%M:%S")
-                if os.getcwd().split(os.sep)[-1] == "MD-FVM":
-                    repo_path = "."
-                else:
-                    repo_path = os.environ["PYTHONPATH"]
+
+                repo_path = [path for path in sys.path if path.endswith("pylub")][0]
                 git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
                 self.nc.tStart = timeString
                 self.nc.commit = git_commit
@@ -180,9 +176,6 @@ class Run:
             self.rho[self.j] = self.sol.q.field[0]
             self.jx[self.j] = self.sol.q.field[1]
             self.jy[self.j] = self.sol.q.field[2]
-
-            if reduced is False:
-                self.p[self.j] = EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])
 
             self.time[self.j] = self.sol.time
             self.mass[self.j] = self.sol.mass

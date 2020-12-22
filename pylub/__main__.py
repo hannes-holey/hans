@@ -1,12 +1,11 @@
 import os
 from argparse import ArgumentParser
-from fhl2d.problem import Input
+from pylub.problem import Input
 
 
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('--plot', dest='plot', default=False, help="on-the-fly plot option", action='store_true')
-    parser.add_argument('--reduced-output', dest='reducedOut', default=False, help="don't write pressure field", action='store_true')
     parser.add_argument('--restart', dest="restart_file", default=None, help="restart simulation from last step of specified file")
     parser.add_argument('-o', dest="out_dir", default="data", help="output directory (default: ./data)")
     required = parser.add_argument_group('required arguments')
@@ -26,4 +25,4 @@ if __name__ == "__main__":
     else:
         restartFile = None
     myProblem = Input(inputFile, restartFile).getProblem()
-    myProblem.run(args.plot, args.reducedOut, args.out_dir)
+    myProblem.run(args.plot, args.out_dir)
