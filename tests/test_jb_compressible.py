@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest
 import netCDF4
 import numpy as np
@@ -25,8 +26,8 @@ class TestCompressibleJournalBearing(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        os.remove(os.path.join(cls.tmp_dir, "journal-bearing_0001.nc"))
-        os.removedirs(cls.tmp_dir)
+        # os.remove(os.path.join(cls.tmp_dir, "journal-bearing_0001.nc"))
+        shutil.rmtree(cls.tmp_dir)
 
     def test_pressure(self):
 
