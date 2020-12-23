@@ -27,7 +27,7 @@ class TestCompressibleJournalBearing(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # os.remove(os.path.join(cls.tmp_dir, "journal-bearing_0001.nc"))
-        shutil.rmtree(cls.tmp_dir)
+        shutil.rmtree(cls.tmp_dir, ignore_errors=True)
 
     def test_pressure(self):
 

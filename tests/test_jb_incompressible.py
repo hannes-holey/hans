@@ -33,7 +33,7 @@ class TestIncompressibleJournalBearing(unittest.TestCase):
         np.testing.assert_almost_equal(p, p_ref, decimal=1)
 
     def tearDown(self):
-        shutil.rmtree(self.tmp_dir)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
         # os.remove(os.path.join(self.tmp_dir, "journal-bearing_incomp_0001.nc"))
         # os.removedirs(self.tmp_dir)
 
