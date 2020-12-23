@@ -14,7 +14,8 @@ class TestCompressibleJournalBearing(unittest.TestCase):
     def setUpClass(cls):
         config_file = os.path.join("examples", "journal-bearing.yaml")
         cls.tmp_dir = os.path.join("tests", "tmp")
-        os.makedirs(cls.tmp_dir)
+        if not(os.path.exists(cls.tmp_dir)):
+            os.makedirs(cls.tmp_dir)
 
         myTestProblem = Input(config_file).getProblem()
         myTestProblem.disc["Ny"] = 3

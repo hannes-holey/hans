@@ -13,7 +13,8 @@ class TestIncompressibleJournalBearing(unittest.TestCase):
     def setUp(self):
         config_file = os.path.join("examples", "journal-bearing_incomp.yaml")
         self.tmp_dir = os.path.join("tests", "tmp")
-        os.makedirs(self.tmp_dir)
+        if not(os.path.exists(self.tmp_dir)):
+            os.makedirs(self.tmp_dir)
 
         myTestProblem = Input(config_file).getProblem()
         myTestProblem.disc["Ny"] = 3
@@ -34,8 +35,6 @@ class TestIncompressibleJournalBearing(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
-        # os.remove(os.path.join(self.tmp_dir, "journal-bearing_incomp_0001.nc"))
-        # os.removedirs(self.tmp_dir)
 
 
 if __name__ == "__main__":
