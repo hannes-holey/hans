@@ -93,17 +93,6 @@ class Flux:
                   + (j_y * j_y / rho + stress.field[1] - stress_wall_top.field[1]) * hy
                   + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
-        # origin center
-        # out[0] = -j_x * hx / h0 - j_y * hy / h0
-        #
-        # out[1] = ((j_x * j_x / rho + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * hx
-        #           + (j_x * j_y / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hy
-        #           + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
-        #
-        # out[2] = ((j_y * j_x / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hx
-        #           + (j_y * j_y / rho + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * hy
-        #           + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
-
         return out * dt
 
     def hyperbolicFlux(self, q, p, ax):
