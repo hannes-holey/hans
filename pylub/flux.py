@@ -82,22 +82,26 @@ class Flux:
         j_x = q.field[1]
         j_y = q.field[2]
 
+        # origin bottom, U_top = 0, U_bottom = U
         out[0] = -j_x * hx / h0 - j_y * hy / h0
 
-        out[1] = ((j_x * j_x / rho + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * hx
-                  + (j_x * j_y / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hy
+        out[1] = ((j_x * j_x / rho + stress.field[0] - stress_wall_top.field[0]) * hx
+                  + (j_x * j_y / rho + stress.field[2] - stress_wall_top.field[5]) * hy
                   + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
 
-        out[2] = ((j_y * j_x / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hx
-                  + (j_y * j_y / rho + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * hy
+        out[2] = ((j_y * j_x / rho + stress.field[2] - stress_wall_top.field[5]) * hx
+                  + (j_y * j_y / rho + stress.field[1] - stress_wall_top.field[1]) * hy
                   + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
-        # out[1] = ((j_x * j_x / rho + stress.field[0] - stress_wall_top.field[0]) * hx
-        #           + (j_x * j_y / rho + stress.field[2] - stress_wall_top.field[5]) * hy
+        # origin center
+        # out[0] = -j_x * hx / h0 - j_y * hy / h0
+        #
+        # out[1] = ((j_x * j_x / rho + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * hx
+        #           + (j_x * j_y / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hy
         #           + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
-
-        # out[2] = ((j_y * j_x / rho + stress.field[2] - stress_wall_top.field[5]) * hx
-        #           + (j_y * j_y / rho + stress.field[1] - stress_wall_top.field[1]) * hy
+        #
+        # out[2] = ((j_y * j_x / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hx
+        #           + (j_y * j_y / rho + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * hy
         #           + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
 
         return out * dt
@@ -164,13 +168,6 @@ class Flux:
         p = self.detStress.pressure(Q.field)
 
         fX, fY = self.hyperbolicFW_BW(Q, p, dt, dir)
-
-        # if bool(self.numerics['Fluctuating']) is True:
-        #     stochastic_stress = self.stochStress.full_tensor(W_A, W_B, h, dt, int(corrector) + 1)
-        #     sX, sY = self.stochasticFlux(stochastic_stress, h, dt)
-        # else:
-        #     stochastic_stress = np.zeros([6, q.Nx, q.Ny])
-        #     sX = sY = np.zeros_like(fX)
 
         if bool(self.numerics['Rey']) is False:
             dX, dY = self.diffusiveCD(Q, viscousStress, dt)
