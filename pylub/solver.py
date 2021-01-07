@@ -15,7 +15,7 @@ class Solver:
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
-        self.C = numerics['C']
+        self.C = float(numerics['C'])
 
         self.material = material
 
