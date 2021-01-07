@@ -4,6 +4,7 @@ from .eos import EquationOfState
 from .geometry import Analytic
 from .field import VectorField
 from .flux import Flux
+from .BoundaryCondition import BoundaryCondition
 
 
 class Solver:
@@ -47,6 +48,7 @@ class Solver:
             self.q.fill_line(1.05 * rho0, 0, 0)
 
         self.Flux = Flux(disc, geometry, numerics, material)
+        self.BC = BoundaryCondition(disc, material)
 
         self.vSound = EquationOfState(self.material).soundSpeed(rho0)
 
@@ -65,6 +67,9 @@ class Solver:
 
         elif self.numFlux == 'MC':
             self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
+
+        if self.type == "journal":
+            self.q = self.BC.set_inletDensity(self.q)
 
         # some scalar output
         self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
