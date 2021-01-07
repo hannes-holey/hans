@@ -24,7 +24,7 @@ class Solver:
         # Gap height
         self.height = VectorField(disc)
 
-        if self.type == 'journal':
+        if self.type == 'journal' or self.type == "journal_inlet":
             self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
         elif self.type == 'inclined':
             self.height.field[0] = Analytic(disc, geometry).linearSlider(self.height.xx, self.height.yy)
@@ -68,7 +68,7 @@ class Solver:
         elif self.numFlux == 'MC':
             self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
 
-        if self.type == "journal":
+        if self.type == "journal_inlet":
             self.q = self.BC.set_inletDensity(self.q)
 
         # some scalar output
