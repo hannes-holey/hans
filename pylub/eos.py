@@ -149,16 +149,23 @@ class EquationOfState:
         return np.sqrt(np.amax(abs(c_squared)))
 
     def viscosity(self, rho):
-        alpha = self.alphaOfRho(rho)
-
         eta_l = float(self.material["shear"])
-        eta_v = 0.017 * eta_l
-        rho_v = float(self.material["rhov"])
-        M = alpha * rho_v / rho
 
-        if str(self.material["visc"]) == "Dukler":
+        if str(self.material["EOS"]) == "Bayada":
+            visc_model = str(self.material["visc"])
+        else:
+            visc_model = None
+
+        if visc_model == "Dukler":
+            eta_v = 0.017 * eta_l
+            rho_v = float(self.material["rhov"])
+            alpha = self.alphaOfRho(rho)
             return alpha * eta_v + (1 - alpha) * eta_l
-        elif str(self.material["visc"]) == "McAdams":
+        elif visc_model == "McAdams":
+            eta_v = 0.017 * eta_l
+            rho_v = float(self.material["rhov"])
+            alpha = self.alphaOfRho(rho)
+            M = alpha * rho_v / rho
             return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
         else:
             return eta_l
