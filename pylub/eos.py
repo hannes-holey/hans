@@ -121,61 +121,17 @@ class EquationOfState:
 
         return np.sqrt(np.amax(abs(c_squared)))
 
-
-class Cavitation:
-
-    def __init__(self, material):
-        self.c_l = float(material["cl"])
-        self.c_v = float(material["cv"])
-        self.rho_l = float(material["rhol"])
-        self.rho_v = float(material["rhov"])
-
-        self.N = self.rho_v * self.c_v**2 * self.rho_l * self.c_l**2 * \
-            (self.rho_v - self.rho_l) / (self.rho_v**2 * self.c_v**2 - self.rho_l**2 * self.c_l**2)
-        self.Pcav = self.rho_v * self.c_v**2 - self.N * np.log10(self.rho_v**2 * self.c_v**2 / (self.rho_l**2 * self.c_l**2))
-
-    def pressureBayada(self, rho):
+    def viscosity(self, rho):
         alpha = self.alphaOfRho(rho)
 
-        p = self.pressureVapor(rho)
-        p[alpha < 0] = self.pressureLiquid(rho[alpha < 0])
-        p[np.logical_and(alpha <= 1, alpha >= 0)] = self.pressureMixture(rho[np.logical_and(alpha <= 1, alpha >= 0)])
+        eta_l = float(self.material["shear"])
+        eta_v = 0.017 * eta_l
+        rho_v = float(self.material["rhov"])
+        M = alpha * rho_v / rho
 
-        return p
-
-    def csquaredBayada(self, rho):
-        alpha = self.alphaOfRho(rho)
-
-        if np.isscalar(rho):
-            if alpha > 1:
-                csquared = self.c_v**2
-            elif alpha < 0:
-                csquared = self.c_l**2
-            else:
-                csquared = self.csquaredMixture(rho)
+        if str(self.material["visc"]) == "Dukler":
+            return alpha * eta_v + (1 - alpha) * eta_l
+        elif str(self.material["visc"]) == "McAdams":
+            return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
         else:
-            csquared = np.ones_like(rho) * self.c_v**2
-            csquared[alpha < 0] = self.c_l**2
-            csquared[np.logical_and(alpha <= 1, alpha >= 0)] = self.csquaredMixture(rho[np.logical_and(alpha <= 1, alpha >= 0)])
-
-        return csquared
-
-    def alphaOfRho(self, rho):
-        return (rho - self.rho_l) / (self.rho_v - self.rho_l)
-
-    def pressureLiquid(self, rho):
-        return self.Pcav + (rho - self.rho_l) * self.c_l**2
-
-    def pressureVapor(self, rho):
-        return self.c_v**2 * rho
-
-    def pressureMixture(self, rho):
-        alpha = self.alphaOfRho(rho)
-
-        return self.Pcav + self.N * np.log10(self.rho_v * self.c_v**2 * rho /
-                                             (self.rho_l * (self.rho_v * self.c_v**2 * (1 - alpha) + self.rho_l * self.c_l**2 * alpha)))
-
-    def csquaredMixture(self, rho):
-        alpha = self.alphaOfRho(rho)
-        return self.c_v**2 * self.rho_v * self.c_l**2 * self.rho_l / (rho * (alpha * self.c_l**2 * self.rho_l
-                                                                             + (1 - alpha) * self.c_v**2 * self.rho_v))
+            return eta_l

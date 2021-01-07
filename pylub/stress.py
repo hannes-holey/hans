@@ -17,7 +17,7 @@ class Deterministic:
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = float(self.mat['shear'])
+        eta = EquationOfState(self.mat).viscosity(q.field[0])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 
@@ -70,7 +70,7 @@ class Deterministic:
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = float(self.mat['shear'])
+        eta = EquationOfState(self.mat).viscosity(q.field[0])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 
