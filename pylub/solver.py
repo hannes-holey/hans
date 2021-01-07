@@ -50,7 +50,7 @@ class Solver:
         self.Flux = Flux(disc, geometry, material)
         self.BC = BoundaryCondition(disc, material)
 
-        self.vSound = EquationOfState(self.material).soundSpeed(rho0)
+        self.vSound = EquationOfState(material).soundSpeed(rho0)
 
     def solve(self, i):
 
@@ -78,4 +78,3 @@ class Solver:
         self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
         vmax_new = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
         self.eps = abs(vmax_new - self.vmax) / self.vmax / self.C
-        # self.eps = 1.
