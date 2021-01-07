@@ -25,32 +25,36 @@ class Plot:
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            L = data.disc_Lx
-            N = data.disc_Nx
-            center = data.disc_Ny // 2
+            Lx = data.disc_Lx
+            Ly = data.disc_Ly
+            Nx = data.disc_Nx
+            Ny = data.disc_Ny
 
             rho = np.array(data.variables["rho"])[-1]
             p = EquationOfState(material).isoT_pressure(rho)
             jx = np.array(data.variables["jx"])[-1]
             jy = np.array(data.variables["jy"])[-1]
 
-            if dir == "y":
-                rho = rho.T
-                p = p.T
-                jx = jx.T
-                jy = jy.T
-                L = data.disc_Ly
-                N = data.disc_Ny
-                center = data.disc_Nx // 2
+            if dir == "x":
+                x = (np.arange(Nx) + 0.5) * Lx / Nx
+            elif dir == "y":
+                x = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            x = (np.arange(N) + 0.5) * L / N
             unknowns = [rho, p, jx, jy]
 
             if choice is None:
                 for i, a in enumerate(ax.flat):
-                    a.plot(x, unknowns[i][:, center])
+                    if dir == "x":
+                        var = unknowns[i][:, Ny // 2]
+                    elif dir == "y":
+                        var = unknowns[i][Nx // 2, :]
+                    a.plot(x, var)
             else:
-                ax.plot(x, unknowns[choice][:, center])
+                if dir == "x":
+                    var = unknowns[i][:, Ny // 2]
+                elif dir == "y":
+                    var = unknowns[i][Nx // 2, :]
+                a.plot(x, var)
 
         return fig, ax
 
@@ -60,8 +64,10 @@ class Plot:
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            L = data.disc_Lx
-            N = data.disc_Nx
+            Lx = data.disc_Lx
+            Ly = data.disc_Ly
+            Nx = data.disc_Nx
+            Ny = data.disc_Ny
 
             time = np.array(data.variables["time"])
             maxT = time[-1]
@@ -71,15 +77,11 @@ class Plot:
             jx = np.array(data.variables["jx"])
             jy = np.array(data.variables["jy"])
 
-            if dir == "y":
-                rho = rho.T
-                p = p.T
-                jx = jx.T
-                jy = jy.T
-                L = data.disc_Ly
-                N = data.disc_Ny
+            if dir == "x":
+                x = (np.arange(Nx) + 0.5) * Lx / Nx
+            elif dir == "y":
+                x = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            x = (np.arange(N) + 0.5) * L / N
             unknowns = [rho, p, jx, jy]
 
             cmap = plt.cm.coolwarm
@@ -89,14 +91,22 @@ class Plot:
                 fig, ax = plt.subplots(2, 2)
                 for i, a in enumerate(ax.flat):
                     for it, t in enumerate(time[::every]):
-                        a.plot(x, unknowns[i][it, :, N // 2], '-', color=cmap(t / maxT))
+                        if dir == "x":
+                            var = unknowns[i][it, :, Ny // 2]
+                        elif dir == "y":
+                            var = unknowns[i][it, Nx // 2, :]
+                        a.plot(x, var, '-', color=cmap(t / maxT))
 
                 fig.colorbar(sm, ax=ax.ravel().tolist(), label='time (s)', extend='max')
 
             else:
                 fig, ax = plt.subplots(1)
                 for it, t in enumerate(time[::every]):
-                    ax.plot(x, unknowns[choice][it, :, N // 2], '-', color=cmap(t / maxT))
+                    if dir == "x":
+                        var = unknowns[i][it, :, Ny // 2]
+                    elif dir == "y":
+                        var = unknowns[i][it, Nx // 2, :]
+                    ax.plot(x, var, '-', color=cmap(t / maxT))
 
                 fig.colorbar(sm, ax=ax, label='time (s)', extend='max')
 
