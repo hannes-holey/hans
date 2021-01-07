@@ -4,12 +4,11 @@ from .field import VectorField, TensorField
 
 class Deterministic:
 
-    def __init__(self, disc, geometry, numerics, material):
+    def __init__(self, disc, geometry, material):
 
         self.disc = disc
         self.geo = geometry
         self.mat = material
-        self.num = numerics
 
     def viscousStress_avg(self, q, h, dt):
 
@@ -29,22 +28,20 @@ class Deterministic:
         hx = h.field[1]
         hy = h.field[2]
 
-        if bool(self.num['Rey']) is False:
+        # origin bottom, U_top = 0, U_bottom = U
+        out.field[0] = -((U * rho - 3 * j_x) * (lam + 2 * eta) * hx + (V * rho - 3 * j_y) * lam * hy) / (h0 * rho)
+        out.field[1] = -((V * rho - 3 * j_y) * (lam + 2 * eta) * hy + (U * rho - 3 * j_x) * lam * hx) / (h0 * rho)
+        out.field[2] = -eta * ((V * rho - 3 * j_y) * hx + (U * rho - 3 * j_x) * hy) / (h0 * rho)
 
-            # origin bottom, U_top = 0, U_bottom = U
-            out.field[0] = -((U * rho - 3 * j_x) * (lam + 2 * eta) * hx + (V * rho - 3 * j_y) * lam * hy) / (h0 * rho)
-            out.field[1] = -((V * rho - 3 * j_y) * (lam + 2 * eta) * hy + (U * rho - 3 * j_x) * lam * hx) / (h0 * rho)
-            out.field[2] = -eta * ((V * rho - 3 * j_y) * hx + (U * rho - 3 * j_x) * hy) / (h0 * rho)
+        # origin center, U_top = U, U_bottom = 0
+        # out.field[0] = (-3 * (lam + 2 * eta) * (U * rho - 2 * j_x) * hx - 3 * lam * (V * rho - 2 * j_y) * hy) / (2 * h0 * rho)
+        # out.field[1] = (-3 * (V * rho - 2 * j_y) * (lam + 2 * eta) * hy - 3 * lam * (U * rho - 2 * j_x) * hx) / (2 * h0 * rho)
+        # out.field[2] = -(3 * eta * ((V * rho - 2 * j_y) * hx + hy * (U * rho - 2 * j_x))) / (2 * h0 * rho)
 
-            # origin center, U_top = U, U_bottom = 0
-            # out.field[0] = (-3 * (lam + 2 * eta) * (U * rho - 2 * j_x) * hx - 3 * lam * (V * rho - 2 * j_y) * hy) / (2 * h0 * rho)
-            # out.field[1] = (-3 * (V * rho - 2 * j_y) * (lam + 2 * eta) * hy - 3 * lam * (U * rho - 2 * j_x) * hx) / (2 * h0 * rho)
-            # out.field[2] = -(3 * eta * ((V * rho - 2 * j_y) * hx + hy * (U * rho - 2 * j_x))) / (2 * h0 * rho)
-
-            # origin center, U_top = U/2, U_bottom = - U/2
-            # out.field[0] = (6 * j_x * (eta + lam / 2) * hx + 3 * lam * j_y * hy) / (h0 * rho)
-            # out.field[1] = (6 * j_y * (eta + lam / 2) * hy + 3 * lam * j_x * hx) / (h0 * rho)
-            # out.field[2] = 3 * eta * (j_x * hy + j_y * hx) / (h0 * rho)
+        # origin center, U_top = U/2, U_bottom = - U/2
+        # out.field[0] = (6 * j_x * (eta + lam / 2) * hx + 3 * lam * j_y * hy) / (h0 * rho)
+        # out.field[1] = (6 * j_y * (eta + lam / 2) * hy + 3 * lam * j_x * hx) / (h0 * rho)
+        # out.field[2] = 3 * eta * (j_x * hy + j_y * hx) / (h0 * rho)
 
         return out
 

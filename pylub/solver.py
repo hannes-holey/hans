@@ -47,7 +47,7 @@ class Solver:
         elif self.type == 'wavefront':
             self.q.fill_line(1.05 * rho0, 0, 0)
 
-        self.Flux = Flux(disc, geometry, numerics, material)
+        self.Flux = Flux(disc, geometry, material)
         self.BC = BoundaryCondition(disc, material)
 
         self.vSound = EquationOfState(self.material).soundSpeed(rho0)
