@@ -13,7 +13,6 @@ geometry:
     U: 0.1
     V: 0.
 numerics:
-    Rey: 1
     adaptive: 1
     C: 0.02
     tol: 1e-10

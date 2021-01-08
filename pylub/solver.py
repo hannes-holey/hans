@@ -4,14 +4,12 @@ from .eos import EquationOfState
 from .geometry import Analytic
 from .field import VectorField
 from .flux import Flux
-from .BoundaryCondition import BoundaryCondition
 
 
 class Solver:
 
     def __init__(self, disc, geometry, numerics, material, q_init):
 
-        self.type = str(geometry['type'])
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
@@ -21,18 +19,9 @@ class Solver:
 
         self.time = 0
 
-        # Gap height
+        # Gap height: journal bearing geometry
         self.height = VectorField(disc)
-
-        if self.type == 'journal' or self.type == "journal_inlet":
-            self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
-        elif self.type == 'inclined':
-            self.height.field[0] = Analytic(disc, geometry).linearSlider(self.height.xx, self.height.yy)
-        elif self.type == 'parabolic':
-            self.height.field[0] = Analytic(disc, geometry).parabolicSlider(self.height.xx, self.height.yy)
-        elif self.type == 'step':
-            self.height.field[0] = Analytic(disc, geometry).doubleStep(self.height.xx, self.height.yy, axis=0)
-
+        self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
         self.height.getGradients()
 
         rho0 = float(material['rho0'])
@@ -44,13 +33,7 @@ class Solver:
         else:
             self.q.field[0] = rho0
 
-        if self.type == 'droplet':
-            self.q.fill_circle(1.05 * rho0, 0, radius=1e-7)
-        elif self.type == 'wavefront':
-            self.q.fill_line(1.05 * rho0, 0, 0)
-
         self.Flux = Flux(disc, geometry, material)
-        self.BC = BoundaryCondition(disc, material)
 
         self.vSound = EquationOfState(material).soundSpeed(rho0)
 
@@ -69,9 +52,6 @@ class Solver:
 
         elif self.numFlux == 'MC':
             self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
-
-        if self.type == "journal_inlet" or "inclined" or "parabolic":
-            self.q = self.BC.set_inletDensity(self.q)
 
         # some scalar output
         self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
