@@ -13,13 +13,7 @@ class Plot:
 
         self.ds = getData(path, mode=mode)
 
-    def plot_cut(self, choice=None, dir='x'):
-
-        if choice is None:
-            fig, ax = plt.subplots(2, 2)
-        else:
-            fig, ax = plt.subplots(1)
-
+    def plot_cut(self, choice="all", dir='x'):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -35,30 +29,32 @@ class Plot:
             jx = np.array(data.variables["jx"])[-1]
             jy = np.array(data.variables["jy"])[-1]
 
+            unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
+
             if dir == "x":
                 x = (np.arange(Nx) + 0.5) * Lx / Nx
             elif dir == "y":
                 x = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            unknowns = [rho, p, jx, jy]
-
-            if choice is None:
-                for i, a in enumerate(ax.flat):
+            if choice == "all":
+                fig, ax = plt.subplots(2, 2)
+                for key, a in zip(unknowns.keys(), ax.flat):
                     if dir == "x":
-                        var = unknowns[i][:, Ny // 2]
+                        var = unknowns[key][:, Ny // 2]
                     elif dir == "y":
-                        var = unknowns[i][Nx // 2, :]
+                        var = unknowns[key][Nx // 2, :]
                     a.plot(x, var)
             else:
+                fig, ax = plt.subplots(1)
                 if dir == "x":
-                    var = unknowns[i][:, Ny // 2]
+                    var = unknowns[choice][:, Ny // 2]
                 elif dir == "y":
-                    var = unknowns[i][Nx // 2, :]
-                a.plot(x, var)
+                    var = unknowns[choice][Nx // 2, :]
+                ax.plot(x, var)
 
         return fig, ax
 
-    def plot_cut_evolution(self, choice=None, dir="x", every=1,):
+    def plot_cut_evolution(self, choice="all", dir="x", freq=1,):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -82,30 +78,30 @@ class Plot:
             elif dir == "y":
                 x = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            unknowns = [rho, p, jx, jy]
+            unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
             cmap = plt.cm.coolwarm
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
 
-            if choice is None:
+            if choice == "all":
                 fig, ax = plt.subplots(2, 2)
-                for i, a in enumerate(ax.flat):
-                    for it, t in enumerate(time[::every]):
+                for key, a in zip(unknowns.keys(), ax.flat):
+                    for it, t in enumerate(time[::freq]):
                         if dir == "x":
-                            var = unknowns[i][it, :, Ny // 2]
+                            var = unknowns[key][it, :, Ny // 2]
                         elif dir == "y":
-                            var = unknowns[i][it, Nx // 2, :]
+                            var = unknowns[key][it, Nx // 2, :]
                         a.plot(x, var, '-', color=cmap(t / maxT))
 
                 fig.colorbar(sm, ax=ax.ravel().tolist(), label='time (s)', extend='max')
 
             else:
                 fig, ax = plt.subplots(1)
-                for it, t in enumerate(time[::every]):
+                for it, t in enumerate(time[::freq]):
                     if dir == "x":
-                        var = unknowns[i][it, :, Ny // 2]
+                        var = unknowns[choice][it, :, Ny // 2]
                     elif dir == "y":
-                        var = unknowns[i][it, Nx // 2, :]
+                        var = unknowns[choice][it, Nx // 2, :]
                     ax.plot(x, var, '-', color=cmap(t / maxT))
 
                 fig.colorbar(sm, ax=ax, label='time (s)', extend='max')
@@ -113,8 +109,6 @@ class Plot:
         return fig, ax
 
     def plot_timeseries(self, attr):
-
-        assert attr in ["mass", "vmax", "vSound", "dt", "eps"]
 
         fig, ax = plt.subplots(1)
 
@@ -127,7 +121,7 @@ class Plot:
 
         return fig, ax
 
-    def animate2D(self, choice=1):
+    def animate2D(self, choice="rho"):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -138,7 +132,7 @@ class Plot:
             jx = np.array(data.variables["jx"])
             jy = np.array(data.variables["jy"])
 
-            unknowns = [rho, p, jx, jy]
+            unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
             A = unknowns[choice]
             t = np.array(data.variables['time'])
