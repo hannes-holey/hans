@@ -13,6 +13,11 @@ class Plot:
 
         self.ds = getData(path, mode=mode)
 
+        self.ylabels = {"rho": r"Density $\rho$",
+                        "p": r"Pressure $p$",
+                        "jx": r"Momentum density $j_x$",
+                        "jy": r"Momentum denisty $j_y$"}
+
     def plot_cut(self, choice="all", dir='x'):
         for filename, data in self.ds.items():
 
@@ -37,20 +42,25 @@ class Plot:
                 x = (np.arange(Ny) + 0.5) * Ly / Ny
 
             if choice == "all":
-                fig, ax = plt.subplots(2, 2)
-                for key, a in zip(unknowns.keys(), ax.flat):
+                fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
+                for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     if dir == "x":
                         var = unknowns[key][:, Ny // 2]
                     elif dir == "y":
                         var = unknowns[key][Nx // 2, :]
                     a.plot(x, var)
+                    a.set_ylabel(self.ylabels[key])
+                    if count > 1:
+                        a.set_xlabel(rf"Distance ${dir}$")
             else:
-                fig, ax = plt.subplots(1)
+                fig, ax = plt.subplots(1, tight_layout=True)
                 if dir == "x":
                     var = unknowns[choice][:, Ny // 2]
                 elif dir == "y":
                     var = unknowns[choice][Nx // 2, :]
                 ax.plot(x, var)
+                ax.set_ylabel(self.ylabels[choice])
+                ax.set_xlabel(rf"Distance ${dir}$")
 
         return fig, ax
 
@@ -84,17 +94,19 @@ class Plot:
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
 
             if choice == "all":
-                fig, ax = plt.subplots(2, 2)
-                for key, a in zip(unknowns.keys(), ax.flat):
+                fig, ax = plt.subplots(2, 2, sharex=True)
+                for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     for it, t in enumerate(time[::freq]):
                         if dir == "x":
                             var = unknowns[key][it, :, Ny // 2]
                         elif dir == "y":
                             var = unknowns[key][it, Nx // 2, :]
                         a.plot(x, var, '-', color=cmap(t / maxT))
+                        a.set_ylabel(self.ylabels[key])
+                        if count > 1:
+                            a.set_xlabel(rf"Distance ${dir}$")
 
                 fig.colorbar(sm, ax=ax.ravel().tolist(), label='time (s)', extend='max')
-
             else:
                 fig, ax = plt.subplots(1)
                 for it, t in enumerate(time[::freq]):
@@ -103,6 +115,8 @@ class Plot:
                     elif dir == "y":
                         var = unknowns[choice][it, Nx // 2, :]
                     ax.plot(x, var, '-', color=cmap(t / maxT))
+                    ax.set_ylabel(self.ylabels[choice])
+                    ax.set_xlabel(rf"Distance ${dir}$")
 
                 fig.colorbar(sm, ax=ax, label='time (s)', extend='max')
 
@@ -114,10 +128,18 @@ class Plot:
 
         for filename, data in self.ds.items():
 
-            time = np.array(data.variables['time']) * 1e9
+            time = np.array(data.variables['time'])
             val = np.array(data.variables[attr])
 
+            ylabels = {"mass": r"Mass $m$",
+                       "vmax": r"Max. velocity $v_\mathrm{max}$",
+                       "vSound": r"Velocity of sound $c$",
+                       "dt": r"Time step $\Delta t$",
+                       "eps": r"Residual $\epsilon$"}
+
             ax.plot(time, val, '-')
+            ax.set_xlabel(r"Time $t$")
+            ax.set_ylabel(ylabels[attr])
 
         return fig, ax
 
