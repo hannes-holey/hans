@@ -13,7 +13,7 @@ class Solver:
         self.numFlux = str(numerics['numFlux'])
         self.adaptive = bool(numerics['adaptive'])
         self.dt = float(numerics['dt'])
-        self.C = numerics['C']
+        self.C = float(numerics['C'])
 
         self.material = material
 
@@ -33,9 +33,9 @@ class Solver:
         else:
             self.q.field[0] = rho0
 
-        self.Flux = Flux(disc, geometry, numerics, material)
+        self.Flux = Flux(disc, geometry, material)
 
-        self.vSound = EquationOfState(self.material).soundSpeed(rho0)
+        self.vSound = EquationOfState(material).soundSpeed(rho0)
 
     def solve(self, i):
 

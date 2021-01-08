@@ -4,12 +4,11 @@ from .field import VectorField, TensorField
 
 class Deterministic:
 
-    def __init__(self, disc, geometry, numerics, material):
+    def __init__(self, disc, geometry, material):
 
         self.disc = disc
         self.geo = geometry
         self.mat = material
-        self.num = numerics
 
     def viscousStress_avg(self, q, h, dt):
 
@@ -17,7 +16,7 @@ class Deterministic:
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = float(self.mat['shear'])
+        eta = float(self.mat["shear"])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 
@@ -29,12 +28,10 @@ class Deterministic:
         hx = h.field[1]
         hy = h.field[2]
 
-        if bool(self.num['Rey']) is False:
-
-            # origin bottom, U_top = 0, U_bottom = U
-            out.field[0] = -((U * rho - 3 * j_x) * (lam + 2 * eta) * hx + (V * rho - 3 * j_y) * lam * hy) / (h0 * rho)
-            out.field[1] = -((V * rho - 3 * j_y) * (lam + 2 * eta) * hy + (U * rho - 3 * j_x) * lam * hx) / (h0 * rho)
-            out.field[2] = -eta * ((V * rho - 3 * j_y) * hx + (U * rho - 3 * j_x) * hy) / (h0 * rho)
+        # origin bottom, U_top = 0, U_bottom = U
+        out.field[0] = -((U * rho - 3 * j_x) * (lam + 2 * eta) * hx + (V * rho - 3 * j_y) * lam * hy) / (h0 * rho)
+        out.field[1] = -((V * rho - 3 * j_y) * (lam + 2 * eta) * hy + (U * rho - 3 * j_x) * lam * hx) / (h0 * rho)
+        out.field[2] = -eta * ((V * rho - 3 * j_y) * hx + (U * rho - 3 * j_x) * hy) / (h0 * rho)
 
         return out
 
@@ -60,7 +57,7 @@ class Deterministic:
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = float(self.mat['shear'])
+        eta = float(self.mat["shear"])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 

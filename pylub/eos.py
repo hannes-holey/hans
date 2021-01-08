@@ -43,31 +43,44 @@ class EquationOfState:
 
             return a * rho**3 + b * rho**2 + c * rho + d
 
-    def isoT_density(self, p):
+        # Cavitation model Bayada and Chupin, J. Trib. 135, 2013
+        elif self.material['EOS'] == "Bayada":
+            c_l = float(self.material["cl"])
+            c_v = float(self.material["cv"])
+            rho_l = float(self.material["rhol"])
+            rho_v = float(self.material["rhov"])
+            N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
+            Pcav = rho_v * c_v**2 - N * np.log10(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
-        # Dowson-Higginson
-        if self.material['EOS'] == "DH":
-            rho0 = float(self.material['rho0'])
-            p0 = float(self.material['P0'])
-            C1 = float(self.material['C1'])
-            C2 = float(self.material['C2'])
-            return rho0 * (C1 + C2 * (p - p0)) / (C1 + p - p0)
+            alpha = self.alphaOfRho(rho)
 
-        # Power law, (alpha = 0: ideal gas)
-        elif self.material['EOS'] == "PL":
-            rho0 = float(self.material['rho0'])
-            p0 = float(self.material['P0'])
-            alpha = float(self.material['alpha'])
-            return rho0 * (p / p0)**(1. - 0.5 * alpha)
+            rho_mix = rho[np.logical_and(alpha <= 1, alpha >= 0)]
+            alpha_mix = alpha[np.logical_and(alpha <= 1, alpha >= 0)]
 
-        # Tait equation (Murnaghan)
-        elif self.material['EOS'] == "Tait":
-            rho0 = float(self.material['rho0'])
-            p0 = float(self.material['P0'])
-            K = float(self.material['K'])
-            n = float(self.material['n'])
+            p = c_v**2 * rho
+            p[alpha < 0] = Pcav + (rho[alpha < 0] - rho_l) * c_l**2
+            p[np.logical_and(alpha <= 1, alpha >= 0)] = Pcav + \
+                N * np.log10(rho_v * c_v**2 * rho_mix / (rho_l * (rho_v * c_v**2 * (1 - alpha_mix) + rho_l * c_l**2 * alpha_mix)))
 
-            return rho0 * ((p - p0) * n / K + 1.)**(1 / n)
+            return p
+
+        elif self.material['EOS'] == "Bayada_nocav":
+            c_l = float(self.material["cl"])
+            c_v = float(self.material["cv"])
+            rho_l = float(self.material["rhol"])
+            rho_v = float(self.material["rhov"])
+            N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
+            Pcav = rho_v * c_v**2 - N * np.log10(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+
+            return Pcav + (rho - rho_l) * c_l**2
+
+        return p
+
+    def alphaOfRho(self, rho):
+        rho_l = float(self.material["rhol"])
+        rho_v = float(self.material["rhov"])
+
+        return (rho - rho_l) / (rho_v - rho_l)
 
     def soundSpeed(self, rho):
 

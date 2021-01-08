@@ -5,14 +5,13 @@ from .stress import Deterministic
 
 class Flux:
 
-    def __init__(self, disc, geometry, numerics, material):
+    def __init__(self, disc, geometry, material):
 
         self.disc = disc
         self.geometry = geometry
         self.material = material
-        self.numerics = numerics
 
-        self.detStress = Deterministic(self.disc, self.geometry, self.numerics, self.material)
+        self.detStress = Deterministic(self.disc, self.geometry, self.material)
 
     def LaxStep(self, q, h, stress, dt, dir, ax):
 
@@ -157,11 +156,7 @@ class Flux:
         p = self.detStress.pressure(Q.field)
 
         fX, fY = self.hyperbolicFW_BW(Q, p, dt, dir)
-
-        if bool(self.numerics['Rey']) is False:
-            dX, dY = self.diffusiveCD(Q, viscousStress, dt)
-        else:
-            dX = dY = np.zeros_like(fX)
+        dX, dY = self.diffusiveCD(Q, viscousStress, dt)
 
         src = self.getSource(viscousStress, Q, h, dt)
         Q.field = Q.field - fX - fY + dX + dY + src

@@ -7,5 +7,5 @@ if __name__ == "__main__":
 
     # TODO: ArgumentParser
     files = Plot(".")
-    fig, ax = files.plot_timeseries(files, "dt")
+    fig, ax = files.plot_timeseries("mass")
     plt.show()
