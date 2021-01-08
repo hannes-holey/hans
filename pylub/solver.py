@@ -28,6 +28,8 @@ class Solver:
             self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
         elif self.type == 'inclined':
             self.height.field[0] = Analytic(disc, geometry).linearSlider(self.height.xx, self.height.yy)
+        elif self.type == 'parabolic':
+            self.height.field[0] = Analytic(disc, geometry).parabolicSlider(self.height.xx, self.height.yy)
         elif self.type == 'step':
             self.height.field[0] = Analytic(disc, geometry).doubleStep(self.height.xx, self.height.yy, axis=0)
 
@@ -68,7 +70,7 @@ class Solver:
         elif self.numFlux == 'MC':
             self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
 
-        if self.type == "journal_inlet":
+        if self.type == "journal_inlet" or "inclined" or "parabolic":
             self.q = self.BC.set_inletDensity(self.q)
 
         # some scalar output

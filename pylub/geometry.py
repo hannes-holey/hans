@@ -22,6 +22,20 @@ class Analytic:
         sy = 0.
         return h1 + sx * x + sy * y
 
+    def parabolicSlider(self, x, y, axis=0):
+
+        hmin = float(self.geometry['hmin'])
+        hmax = float(self.geometry['hmax'])
+
+        if axis == 0:
+            L = self.Lx
+            dir = x
+        elif axis == 1:
+            L = self.Ly
+            dir = y
+
+        return 4. * (hmax - hmin) / L**2 * (dir - L / 2)**2 + hmin
+
     def journalBearing(self, x, y, axis=0):
 
         CR = float(self.geometry['CR'])
