@@ -19,14 +19,14 @@ class Field:
         # self.dx = self.Lx / self.Nx
         # self.dy = self.Ly / self.Ny
 
-        x = np.linspace(self.dx / 2, self.Lx - self.dx / 2, self.Nx)
-        y = np.linspace(self.dy / 2, self.Ly - self.dy / 2, self.Ny)
+        x = np.linspace(-self.dx / 2, self.Lx + self.dx / 2, self.Nx + 2)
+        y = np.linspace(-self.dy / 2, self.Ly + self.dy / 2, self.Ny + 2)
         xx, yy = np.meshgrid(x, y)
 
         self.xx = xx.T
         self.yy = yy.T
 
-        self.field = np.zeros(shape=(self.ndim, self.Nx, self.Ny), dtype=np.float64)
+        self.field = np.zeros(shape=(self.ndim, self.Nx + 2, self.Ny + 2), dtype=np.float64)
 
     def fill_circle(self, value, comp, center=None, radius=None):
 

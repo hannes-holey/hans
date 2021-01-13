@@ -1,15 +1,17 @@
 import numpy as np
 from .field import VectorField
 from .stress import Deterministic
+from .BoundaryCondition import BoundaryCondition
 
 
 class Flux:
 
-    def __init__(self, disc, geometry, material):
+    def __init__(self, disc, BC, geometry, material):
 
         self.disc = disc
         self.geometry = geometry
         self.material = material
+        self.BC = BC
 
         self.detStress = Deterministic(self.disc, self.geometry, self.material)
 
@@ -174,5 +176,7 @@ class Flux:
 
         if corrector:
             Q.field = 0.5 * (Q.field + q.field)
+
+        Q = BoundaryCondition(self.disc, self.BC, self.material).fill_ghost_cell(Q)
 
         return Q

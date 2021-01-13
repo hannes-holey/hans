@@ -4,12 +4,11 @@ from .eos import EquationOfState
 from .geometry import Analytic
 from .field import VectorField
 from .flux import Flux
-from .BoundaryCondition import BoundaryCondition
 
 
 class Solver:
 
-    def __init__(self, disc, geometry, numerics, material, q_init):
+    def __init__(self, disc, BC, geometry, numerics, material, q_init):
 
         self.type = str(geometry['type'])
         self.numFlux = str(numerics['numFlux'])
@@ -24,7 +23,7 @@ class Solver:
         # Gap height
         self.height = VectorField(disc)
 
-        if self.type == 'journal' or self.type == "journal_inlet":
+        if self.type == 'journal':
             self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
         elif self.type == 'inclined':
             self.height.field[0] = Analytic(disc, geometry).linearSlider(self.height.xx, self.height.yy)
@@ -49,9 +48,7 @@ class Solver:
         elif self.type == 'wavefront':
             self.q.fill_line(1.05 * rho0, 0, 0)
 
-        self.Flux = Flux(disc, geometry, material)
-        self.BC = BoundaryCondition(disc, material)
-
+        self.Flux = Flux(disc, BC, geometry, material)
         self.vSound = EquationOfState(material).soundSpeed(rho0)
 
     def solve(self, i):
@@ -69,9 +66,6 @@ class Solver:
 
         elif self.numFlux == 'MC':
             self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
-
-        if self.type == "journal_inlet" or "inclined" or "parabolic":
-            self.q = self.BC.set_inletDensity(self.q)
 
         # some scalar output
         self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)

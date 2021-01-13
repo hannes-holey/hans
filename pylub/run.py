@@ -15,10 +15,11 @@ from .solver import Solver
 
 class Run:
 
-    def __init__(self, options, disc, geometry, numerics, material, plot, out_dir, q_init):
+    def __init__(self, options, disc, BC, geometry, numerics, material, plot, out_dir, q_init):
 
         self.options = options
         self.disc = disc
+        self.BC = BC
         self.geometry = geometry
         self.numerics = numerics
         self.material = material
@@ -42,7 +43,7 @@ class Run:
 
         self.tStart = time.time()
 
-        self.sol = Solver(disc, geometry, numerics, material, q_init)
+        self.sol = Solver(disc, BC, geometry, numerics, material, q_init)
 
         self.run(plot, out_dir, tol, maxT)
 
@@ -173,9 +174,9 @@ class Run:
                         name = cat_name + "_" + key
                         self.nc.setncattr(name, value)
 
-            self.rho[self.j] = self.sol.q.field[0]
-            self.jx[self.j] = self.sol.q.field[1]
-            self.jy[self.j] = self.sol.q.field[2]
+            self.rho[self.j] = self.sol.q.field[0, 1:-1, 1:-1]
+            self.jx[self.j] = self.sol.q.field[1, 1:-1, 1:-1]
+            self.jy[self.j] = self.sol.q.field[2, 1:-1, 1:-1]
 
             self.time[self.j] = self.sol.time
             self.mass[self.j] = self.sol.mass
@@ -191,10 +192,10 @@ class Run:
         fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
         x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
 
-        line0, = ax[0, 0].plot(x, self.sol.q.field[1][:, int(self.Ny / 2)])
-        line1, = ax[0, 1].plot(x, self.sol.q.field[2][:, int(self.Ny / 2)])
-        line2, = ax[1, 0].plot(x, self.sol.q.field[0][:, int(self.Ny / 2)])
-        line3, = ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
+        line0, = ax[0, 0].plot(x, self.sol.q.field[1, 1:-1, self.Ny // 2])
+        line1, = ax[0, 1].plot(x, self.sol.q.field[2, 1:-1, self.Ny // 2])
+        line2, = ax[1, 0].plot(x, self.sol.q.field[0, 1:-1, self.Ny // 2])
+        line3, = ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
 
         ax[0, 0].set_title(r'$j_x$')
         ax[0, 1].set_title(r'$j_y$')
@@ -207,11 +208,11 @@ class Run:
         limits = np.zeros((4, 3))
 
         for j in range(3):
-            limits[j, 0] = np.amin(self.sol.q.field[j][:, int(self.Ny / 2)])
-            limits[j, 1] = np.amax(self.sol.q.field[j][:, int(self.Ny / 2)])
+            limits[j, 0] = np.amin(self.sol.q.field[j, 1:-1, self.Ny // 2])
+            limits[j, 1] = np.amax(self.sol.q.field[j, 1:-1, self.Ny // 2])
 
-        limits[3, 0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
-        limits[3, 1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
+        limits[3, 0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
+        limits[3, 1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
 
         _ = animation.FuncAnimation(fig, self.animate1D, 100000, fargs=(fig, ax,
                                                                         line0, line1, line2, line3, limits,), interval=1, repeat=False)
@@ -229,10 +230,10 @@ class Run:
         ax[1, 0].set_ylim(limits[0, 0] - limits[0, 2], limits[0, 1] + limits[0, 2])
         ax[1, 1].set_ylim(limits[3, 0] - limits[3, 2], limits[3, 1] + limits[3, 2])
 
-        line0.set_ydata(self.sol.q.field[1][:, int(self.Ny / 2)])
-        line1.set_ydata(self.sol.q.field[2][:, int(self.Ny / 2)])
-        line2.set_ydata(self.sol.q.field[0][:, int(self.Ny / 2)])
-        line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0][:, int(self.Ny / 2)]))
+        line0.set_ydata(self.sol.q.field[1, 1:-1, self.Ny // 2])
+        line1.set_ydata(self.sol.q.field[2, 1:-1, self.Ny // 2])
+        line2.set_ydata(self.sol.q.field[0, 1:-1, self.Ny // 2])
+        line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
 
         self.sol.solve(i)
         if i % self.writeInterval == 0:

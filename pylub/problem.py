@@ -43,6 +43,7 @@ class Input:
 
             self.options = inp['options']
             self.disc = inp['disc']
+            self.BC = inp['BC']
             self.geometry = inp['geometry']
             self.numerics = inp['numerics']
             self.material = inp['material']
@@ -52,7 +53,13 @@ class Input:
             self.checkDisc()
             q_init = self.getInitialField()
 
-        thisProblem = Problem(self.options, self.disc, self.geometry, self.numerics, self.material, q_init)
+        thisProblem = Problem(self.options,
+                              self.disc,
+                              self.BC,
+                              self.geometry,
+                              self.numerics,
+                              self.material,
+                              q_init)
 
         return thisProblem
 
@@ -123,7 +130,7 @@ class Problem:
 
     """
 
-    def __init__(self, options, disc, geometry, numerics, material, q_init):
+    def __init__(self, options, disc, BC, geometry, numerics, material, q_init):
         """Constructor
 
         Parameters
@@ -142,6 +149,7 @@ class Problem:
 
         self.options = options
         self.disc = disc
+        self.BC = BC
         self.geometry = geometry
         self.numerics = numerics
         self.material = material
@@ -158,4 +166,4 @@ class Problem:
             relative file path of output directory (default: "data").
         """
         from .run import Run
-        Run(self.options, self.disc, self.geometry, self.numerics, self.material, plot, out_dir, self.q_init)
+        Run(self.options, self.disc, self.BC, self.geometry, self.numerics, self.material, plot, out_dir, self.q_init)
