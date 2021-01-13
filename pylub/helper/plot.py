@@ -19,6 +19,11 @@ class Plot:
                         "jy": r"Momentum denisty $j_y$"}
 
     def plot_cut(self, choice="all", dir='x'):
+        if choice == "all":
+            fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
+        else:
+            fig, ax = plt.subplots(1, tight_layout=True)
+
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -42,7 +47,6 @@ class Plot:
                 x = (np.arange(Ny) + 0.5) * Ly / Ny
 
             if choice == "all":
-                fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     if dir == "x":
                         var = unknowns[key][:, Ny // 2]
@@ -53,7 +57,6 @@ class Plot:
                     if count > 1:
                         a.set_xlabel(rf"Distance ${dir}$")
             else:
-                fig, ax = plt.subplots(1, tight_layout=True)
                 if dir == "x":
                     var = unknowns[choice][:, Ny // 2]
                 elif dir == "y":
