@@ -161,6 +161,7 @@ class EquationOfState:
 
     def viscosity(self, rho):
         eta_l = float(self.material["shear"])
+        eta_v = float(self.material["shearv"])
 
         if str(self.material["EOS"]) == "Bayada":
             visc_model = str(self.material["visc"])
@@ -168,12 +169,10 @@ class EquationOfState:
             visc_model = None
 
         if visc_model == "Dukler":
-            eta_v = 0.017 * eta_l
             rho_v = float(self.material["rhov"])
             alpha = self.alphaOfRho(rho)
             return alpha * eta_v + (1 - alpha) * eta_l
         elif visc_model == "McAdams":
-            eta_v = 0.017 * eta_l
             rho_v = float(self.material["rhov"])
             alpha = self.alphaOfRho(rho)
             M = alpha * rho_v / rho
