@@ -50,7 +50,7 @@ class EquationOfState:
             rho_l = float(self.material["rhol"])
             rho_v = float(self.material["rhov"])
             N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-            Pcav = rho_v * c_v**2 - N * np.log10(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
             alpha = self.alphaOfRho(rho)
 
@@ -60,7 +60,7 @@ class EquationOfState:
             p = c_v**2 * rho
             p[alpha < 0] = Pcav + (rho[alpha < 0] - rho_l) * c_l**2
             p[np.logical_and(alpha <= 1, alpha >= 0)] = Pcav + \
-                N * np.log10(rho_v * c_v**2 * rho_mix / (rho_l * (rho_v * c_v**2 * (1 - alpha_mix) + rho_l * c_l**2 * alpha_mix)))
+                N * np.log(rho_v * c_v**2 * rho_mix / (rho_l * (rho_v * c_v**2 * (1 - alpha_mix) + rho_l * c_l**2 * alpha_mix)))
 
             return p
 
@@ -70,7 +70,7 @@ class EquationOfState:
             rho_l = float(self.material["rhol"])
             rho_v = float(self.material["rhov"])
             N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-            Pcav = rho_v * c_v**2 - N * np.log10(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
             return Pcav + (rho - rho_l) * c_l**2
 
