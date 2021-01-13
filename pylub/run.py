@@ -30,16 +30,24 @@ class Run:
         tol = float(numerics['tol'])
         maxT = float(numerics['maxT'])
 
-        dx = float(disc['dx'])
-        dy = float(disc['dy'])
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
 
-        self.Lx = dx * self.Nx
-        self.Ly = dy * self.Ny
+        if "dx" in disc.keys():
+            dx = float(disc['dx'])
+            self.Lx = dx * self.Nx
+            disc['Lx'] = self.Lx
+        else:
+            self.Lx = float(disc["Lx"])
+            disc["dx"] = self.Lx / self.Nx
 
-        disc['Lx'] = self.Lx
-        disc['Ly'] = self.Ly
+        if "dy" in disc.keys():
+            dy = float(disc['dy'])
+            self.Ly = dy * self.Ny
+            disc['Ly'] = self.Ly
+        else:
+            self.Ly = float(disc["Ly"])
+            disc["dy"] = self.Ly / self.Ny
 
         self.tStart = time.time()
 
