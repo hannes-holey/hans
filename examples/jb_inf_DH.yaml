@@ -1,11 +1,16 @@
 options:
-    name: journal-bearing
-    writeInterval: 1000
+    name: jb_inf_DH
+    writeInterval: 10000
 disc:
-    dx: 2.e-5
-    dy: 2.e-5
-    Nx: 50
-    Ny: 50
+    dx: 1.e-5
+    dy: 1.e-5
+    Nx: 100
+    Ny: 3
+BC:
+    x0: PPP
+    x1: PPP
+    y0: PPP
+    y1: PPP
 geometry:
     type: journal
     CR: 1.e-2
@@ -13,12 +18,11 @@ geometry:
     U: 0.1
     V: 0.
 numerics:
-    Rey: 1
     adaptive: 1
-    C: 0.02
-    tol: 1e-10
+    C: 0.05
+    tol: 1e-8
     dt: 1.e-10
-    maxT: 3.e-5
+    maxT: 5.e-5
     numFlux: MC
 material:
     EOS: DH
