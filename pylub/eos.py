@@ -76,6 +76,17 @@ class EquationOfState:
 
         return p
 
+    def isoT_density(self, p):
+
+        # Dowson-Higginson
+        if self.material['EOS'] == "DH":
+            rho0 = float(self.material['rho0'])
+            P0 = float(self.material['P0'])
+            C1 = float(self.material['C1'])
+            C2 = float(self.material['C2'])
+
+            return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
+
     def alphaOfRho(self, rho):
         rho_l = float(self.material["rhol"])
         rho_v = float(self.material["rhov"])
