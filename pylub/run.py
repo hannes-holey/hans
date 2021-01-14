@@ -200,10 +200,10 @@ class Run:
         fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
         x = np.linspace(0, self.Lx, self.Nx, endpoint=True)
 
-        line0, = ax[0, 0].plot(x, self.sol.q.field[1, 1:-1, self.Ny // 2])
-        line1, = ax[0, 1].plot(x, self.sol.q.field[2, 1:-1, self.Ny // 2])
-        line2, = ax[1, 0].plot(x, self.sol.q.field[0, 1:-1, self.Ny // 2])
-        line3, = ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
+        ax[0, 0].plot(x, self.sol.q.field[1, 1:-1, self.Ny // 2])
+        ax[0, 1].plot(x, self.sol.q.field[2, 1:-1, self.Ny // 2])
+        ax[1, 0].plot(x, self.sol.q.field[0, 1:-1, self.Ny // 2])
+        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
 
         ax[0, 0].set_title(r'$j_x$')
         ax[0, 1].set_title(r'$j_y$')
@@ -213,59 +213,50 @@ class Run:
         ax[1, 0].set_xlabel('distance x (m)')
         ax[1, 1].set_xlabel('distance x (m)')
 
-        limits = np.zeros((4, 3))
+        def init():
+            pass
 
-        for j in range(3):
-            limits[j, 0] = np.amin(self.sol.q.field[j, 1:-1, self.Ny // 2])
-            limits[j, 1] = np.amax(self.sol.q.field[j, 1:-1, self.Ny // 2])
-
-        limits[3, 0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
-        limits[3, 1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
-
-        _ = animation.FuncAnimation(fig, self.animate1D, 100000, fargs=(fig, ax,
-                                                                        line0, line1, line2, line3, limits,), interval=1, repeat=False)
+        _ = animation.FuncAnimation(fig,
+                                    self.animate1D,
+                                    100000,
+                                    fargs=(fig, ax),
+                                    interval=1,
+                                    init_func=init,
+                                    repeat=False)
 
         plt.show()
 
-    def animate1D(self, i, fig, ax, line0, line1, line2, line3, limits):
-
-        limits = self.adaptiveLimits(limits)
+    def animate1D(self, i, fig, ax):
 
         fig.suptitle('time = {:.2f} ns'.format(self.sol.time * 1e9))
 
-        ax[0, 0].set_ylim(limits[1, 0] - limits[1, 2], limits[1, 1] + limits[1, 2])
-        ax[0, 1].set_ylim(limits[2, 0] - limits[2, 2], limits[2, 1] + limits[2, 2])
-        ax[1, 0].set_ylim(limits[0, 0] - limits[0, 2], limits[0, 1] + limits[0, 2])
-        ax[1, 1].set_ylim(limits[3, 0] - limits[3, 2], limits[3, 1] + limits[3, 2])
+        ax[0, 0].lines[0].set_ydata(self.sol.q.field[1, 1:-1, self.Ny // 2])
+        ax[0, 1].lines[0].set_ydata(self.sol.q.field[2, 1:-1, self.Ny // 2])
+        ax[1, 0].lines[0].set_ydata(self.sol.q.field[0, 1:-1, self.Ny // 2])
+        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
 
-        line0.set_ydata(self.sol.q.field[1, 1:-1, self.Ny // 2])
-        line1.set_ydata(self.sol.q.field[2, 1:-1, self.Ny // 2])
-        line2.set_ydata(self.sol.q.field[0, 1:-1, self.Ny // 2])
-        line3.set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
+        ax = self.adaptiveLimits(ax)
 
         self.sol.solve(i)
         if i % self.writeInterval == 0:
             print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
 
-    def adaptiveLimits(self, limits):
+    def adaptiveLimits(self, ax):
 
-        for j in range(3):
-            if np.amin(self.sol.q.field[j]) < limits[j, 0]:
-                limits[j, 0] = np.amin(self.sol.q.field[j])
-            if np.amax(self.sol.q.field[j]) > limits[j, 1]:
-                limits[j, 1] = np.amax(self.sol.q.field[j])
+        a0y_min = np.amin(ax[0, 0].lines[0].get_ydata())
+        a0y_max = np.amax(ax[0, 0].lines[0].get_ydata())
+        a1y_min = np.amin(ax[0, 1].lines[0].get_ydata())
+        a1y_max = np.amax(ax[0, 1].lines[0].get_ydata())
+        a2y_min = np.amin(ax[1, 0].lines[0].get_ydata())
+        a2y_max = np.amax(ax[1, 0].lines[0].get_ydata())
+        a3y_min = np.amin(ax[1, 1].lines[0].get_ydata())
+        a3y_max = np.amax(ax[1, 1].lines[0].get_ydata())
 
-        if np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])) < limits[3, 0]:
-            limits[3, 0] = np.amin(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0]))
-        if np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0])) > limits[3, 1]:
-            limits[3, 1] = np.amax(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0]))
+        def offset(x, y): return 0.05 * (x - y) if (x - y) != 0 else 1.
 
-        for j in range(4):
-            if limits[j, 1] == limits[j, 0] and limits[j, 0] != 0.:
-                limits[j, 2] = 0.5 * limits[j, 1]
-            elif limits[j, 1] == limits[j, 0] and limits[j, 0] == 0.:
-                limits[j, 2] = 1.
-            else:
-                limits[j, 2] = 0.1 * (limits[j, 1] - limits[j, 0])
+        ax[0, 0].set_ylim(a0y_min - offset(a0y_max, a0y_min), a0y_max + offset(a0y_max, a0y_min))
+        ax[0, 1].set_ylim(a1y_min - offset(a1y_max, a1y_min), a1y_max + offset(a1y_max, a1y_min))
+        ax[1, 0].set_ylim(a2y_min - offset(a2y_max, a2y_min), a2y_max + offset(a2y_max, a2y_min))
+        ax[1, 1].set_ylim(a3y_min - offset(a3y_max, a3y_min), a3y_max + offset(a3y_max, a3y_min))
 
-        return limits
+        return ax
