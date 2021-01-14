@@ -49,7 +49,6 @@ class Solver:
             self.q.fill_line(1.05 * rho0, 0, 0)
 
         self.Flux = Flux(disc, BC, geometry, material)
-        # self.vSound = EquationOfState(material).soundSpeed(rho0)
 
     def solve(self, i):
 
@@ -72,7 +71,6 @@ class Solver:
         self.time += self.dt
         self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
         self.vmax = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
-        #max(np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0]), 1e-3)
 
         # Residual
         p1 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
