@@ -144,6 +144,9 @@ class Plot:
             ax.set_xlabel(r"Time $t$")
             ax.set_ylabel(ylabels[attr])
 
+            if attr == "eps":
+                ax.set_yscale("log")
+
         return fig, ax
 
     def animate2D(self, choice="rho"):
