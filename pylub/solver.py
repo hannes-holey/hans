@@ -49,11 +49,11 @@ class Solver:
             self.q.fill_line(1.05 * rho0, 0, 0)
 
         self.Flux = Flux(disc, BC, geometry, material)
-        self.vSound = EquationOfState(material).soundSpeed(rho0)
+        # self.vSound = EquationOfState(material).soundSpeed(rho0)
 
     def solve(self, i):
 
-        self.vmax = self.vSound + max(np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0]), 1e-3)
+        p0 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
 
         if self.adaptive is True:
             if i == 0:
@@ -70,7 +70,10 @@ class Solver:
         # some scalar output
         self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
         self.time += self.dt
-
         self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
-        vmax_new = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
-        self.eps = abs(vmax_new - self.vmax) / self.vmax / self.C
+        self.vmax = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
+        #max(np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0]), 1e-3)
+
+        # Residual
+        p1 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
+        self.eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
