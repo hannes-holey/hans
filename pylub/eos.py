@@ -186,10 +186,10 @@ class EquationOfState:
 
     def viscosity(self, rho):
         eta_l = float(self.material["shear"])
-        eta_v = float(self.material["shearv"])
 
         if str(self.material["EOS"]) == "Bayada":
             visc_model = str(self.material["visc"])
+            eta_v = float(self.material["shearv"])
         else:
             visc_model = None
 
