@@ -18,7 +18,8 @@ class Solver:
 
         self.material = material
 
-        self.time = 0
+        self.time = 0.
+        self.eps = 1.
 
         # Gap height
         self.height = VectorField(disc)
@@ -52,13 +53,10 @@ class Solver:
 
     def solve(self, i):
 
-        p0 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
+        if self.adaptive and i > 0:
+            self.dt = self.C * min(self.q.dx, self.q.dy) / self.vmax
 
-        if self.adaptive is True:
-            if i == 0:
-                self.dt = self.dt
-            else:
-                self.dt = self.C * min(self.q.dx, self.q.dy) / self.vmax
+        p0 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
 
         if self.numFlux == 'LW':
             self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
@@ -72,6 +70,7 @@ class Solver:
         self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
         self.vmax = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
 
-        # Residual
         p1 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
-        self.eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
+
+        if i > 0:
+            self.eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
