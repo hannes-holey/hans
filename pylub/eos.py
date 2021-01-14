@@ -87,6 +87,31 @@ class EquationOfState:
 
             return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
 
+        if self.material['EOS'] == "Bayada":
+            c_l = float(self.material["cl"])
+            c_v = float(self.material["cv"])
+            rho_l = float(self.material["rhol"])
+            rho_v = float(self.material["rhov"])
+            N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
+            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+
+            if np.isscalar(p):
+                if p > Pcav:
+                    rho = (p - Pcav) / c_l**2 + rho_l
+                elif p < c_v**2 * rho_v:
+                    rho = p / c_v**2
+                else:
+                    rho = (c_l**2 * rho_l**3 - c_v**2 * rho_l * rho_v**2) * np.exp((p - Pcav) / N) \
+                        / ((c_l**2 * rho_l**2 - c_v**2 * rho_l * rho_v) * np.exp((p - Pcav) / N) + c_v**2 * rho_v * (-rho_v + rho_l))
+            else:
+                p_mix = np.logical_and(p <= Pcav, p >= c_v**2 * rho_v)
+                rho = p / c_v**2
+                rho[p > Pcav] = (p[p > Pcav] - Pcav) / c_l**2 + rho_l
+                rho[p_mix] = (c_l**2 * rho_l**3 - c_v**2 * rho_l * rho_v**2) * np.exp((p[p_mix] - Pcav) / N) \
+                    / ((c_l**2 * rho_l**2 - c_v**2 * rho_l * rho_v) * np.exp((p[p_mix] - Pcav) / N) + c_v**2 * rho_v * (-rho_v + rho_l))
+
+            return rho
+
     def alphaOfRho(self, rho):
         rho_l = float(self.material["rhol"])
         rho_v = float(self.material["rhov"])
