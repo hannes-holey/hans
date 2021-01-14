@@ -67,7 +67,7 @@ class Run:
             timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             self.nc.tEnd = timeString
             HH, MM, SS = self.time_to_HHMMSS(total_time)
-            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e12 / total_time:.2f} ps/s)")
+            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / total_time:.2f} ns/s)")
             # print("python: finishing properly")
             sys.exit()
 
@@ -146,7 +146,7 @@ class Run:
         tDiff = time.time() - self.tStart
         HH, MM, SS = self.time_to_HHMMSS(tDiff)
 
-        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e12 / tDiff:.2f} ps/s)")
+        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / tDiff:.2f} ns/s)")
 
     def time_to_HHMMSS(self, t):
 
