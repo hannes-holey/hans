@@ -68,27 +68,23 @@ class Run:
             self.nc.tEnd = timeString
             HH, MM, SS = self.time_to_HHMMSS(total_time)
             print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / total_time:.2f} ns/s)")
-            # print("python: finishing properly")
             sys.exit()
 
     def run(self, plot, out_dir, tol, maxT):
 
-        if plot is False:
-            self.file_tag = 1
-            self.j = 0
-
+        if plot:
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Time step", "Time", "Epsilon"))
+            self.plot()
+        else:
             if not(os.path.exists(out_dir)):
                 os.makedirs(out_dir)
 
-            while str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc' in os.listdir(out_dir):
-                self.file_tag += 1
-
-            outfile = str(self.name) + '_' + str(self.file_tag).zfill(4) + '.nc'
-
-            i = 0
+            file_tag = len([f for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")]) + 1
+            outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
+            self.relpath = os.path.join(out_dir, outfile)
 
             # initialize NetCDF file
-            self.nc = netCDF4.Dataset(os.path.join(out_dir, outfile), 'w', format='NETCDF3_64BIT_OFFSET')
+            self.nc = netCDF4.Dataset(self.relpath, 'w', format='NETCDF3_64BIT_OFFSET')
             self.nc.createDimension('x', self.Nx)
             self.nc.createDimension('y', self.Ny)
             self.nc.createDimension('step', None)
@@ -106,47 +102,28 @@ class Run:
             self.dt = self.nc.createVariable('dt', 'f8', ('step'))
             self.eps = self.nc.createVariable('eps', 'f8', ('step'))
 
-            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
+            i = 0
             while self.sol.time < maxT:
 
                 self.sol.solve(i)
-                self.write(i, 0)
-                if i % self.writeInterval == 0:
-                    print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
-                    sys.stdout.flush()
-                i += 1
+                tDiff = maxT - self.sol.time
 
                 signal.signal(signal.SIGTERM, self.receive_signal)
                 signal.signal(signal.SIGHUP, self.receive_signal)
                 signal.signal(signal.SIGUSR1, self.receive_signal)
                 signal.signal(signal.SIGUSR2, self.receive_signal)
 
-                tDiff = maxT - self.sol.time
-
-                if self.sol.eps < tol:
-                    self.write(i, 1)
-                    print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
-                    print(f"\nSolution has converged after {i:d} steps, Output written to: {os.path.join(out_dir, outfile):s}")
-                    timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                    self.nc.tEnd = timeString
+                if i % self.writeInterval == 0:
+                    self.write(i)
+                elif self.sol.eps < tol:
+                    self.write(i, mode="converged")
                     break
                 elif tDiff < self.sol.dt:
+                    i += 1
                     self.sol.solve(i)
-                    self.write(i, 1)
-                    print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
-                    print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {maxT:.1e} s reached.")
-                    print(f"Output written to: {os.path.join(out_dir, outfile):s}")
-                    timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                    self.nc.tEnd = timeString
+                    self.write(i, mode="maxtime")
 
-        else:
-            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Time step", "Time", "Epsilon"))
-            self.plot()
-
-        tDiff = time.time() - self.tStart
-        HH, MM, SS = self.time_to_HHMMSS(tDiff)
-
-        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / tDiff:.2f} ns/s)")
+                i += 1
 
     def time_to_HHMMSS(self, t):
 
@@ -157,43 +134,58 @@ class Run:
 
         return HH, MM, SS
 
-    def write(self, i, last):
+    def write(self, i, mode="normal"):
 
         # netCDF4 output file
-        if i % self.writeInterval == 0 or last == 1:
+        if i == 0:
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
 
-            if self.j == 0:
-                now = datetime.now()
-                timeString = now.strftime("%d/%m/%Y %H:%M:%S")
+            timeString = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-                repo_path = [path for path in sys.path if path.endswith("pylub")][0]
-                git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
-                self.nc.tStart = timeString
-                self.nc.commit = git_commit
+            repo_path = [path for path in sys.path if path.endswith("pylub")][0]
+            git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
+            self.nc.tStart = timeString
+            self.nc.commit = git_commit
 
-                categories = {"options": self.options,
-                              "disc": self.disc,
-                              "geometry": self.geometry,
-                              "numerics": self.numerics,
-                              "material": self.material}
+            categories = {"options": self.options,
+                          "disc": self.disc,
+                          "geometry": self.geometry,
+                          "numerics": self.numerics,
+                          "material": self.material}
 
-                for cat_name, cat in categories.items():
-                    for key, value in cat.items():
-                        name = cat_name + "_" + key
-                        self.nc.setncattr(name, value)
+            for cat_name, cat in categories.items():
+                for key, value in cat.items():
+                    name = cat_name + "_" + key
+                    self.nc.setncattr(name, value)
 
-            self.rho[self.j] = self.sol.q.field[0, 1:-1, 1:-1]
-            self.jx[self.j] = self.sol.q.field[1, 1:-1, 1:-1]
-            self.jy[self.j] = self.sol.q.field[2, 1:-1, 1:-1]
+        print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
+        sys.stdout.flush()
 
-            self.time[self.j] = self.sol.time
-            self.mass[self.j] = self.sol.mass
-            self.vmax[self.j] = self.sol.vmax
-            self.vSound[self.j] = self.sol.vSound
-            self.dt[self.j] = self.sol.dt
-            self.eps[self.j] = self.sol.eps
+        k = self.rho.shape[0]
 
-            self.j += 1
+        self.rho[k] = self.sol.q.field[0, 1:-1, 1:-1]
+        self.jx[k] = self.sol.q.field[1, 1:-1, 1:-1]
+        self.jy[k] = self.sol.q.field[2, 1:-1, 1:-1]
+
+        self.time[k] = self.sol.time
+        self.mass[k] = self.sol.mass
+        self.vmax[k] = self.sol.vmax
+        self.vSound[k] = self.sol.vSound
+        self.dt[k] = self.sol.dt
+        self.eps[k] = self.sol.eps
+
+        if mode == "converged":
+            print(f"\nSolution has converged after {i:d} steps, Output written to: {self.relpath}")
+        elif mode == "maxtime":
+            print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
+            print(f"Output written to: {self.relpath}")
+
+        if mode != "normal":
+            self.nc.tEnd = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            walltime = time.time() - self.tStart
+            HH, MM, SS = self.time_to_HHMMSS(walltime)
+
+            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / walltime:.2f} ns/s)")
 
     def plot(self):
 
