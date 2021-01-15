@@ -2,7 +2,8 @@
 
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
-from pylub.helper.plot import Plot
+
+from pylub.plottools import Plot
 
 
 def get_parser():

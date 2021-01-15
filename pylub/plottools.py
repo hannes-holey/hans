@@ -1,22 +1,81 @@
+import os
+import time
+import netCDF4
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from pylub.eos import EquationOfState
-from pylub.helper.data_parser import getData
 
 
 class Plot:
 
     def __init__(self, path, mode="select"):
 
-        self.ds = getData(path, mode=mode)
+        self.ds = self.select_nc_files(path, mode=mode)
 
         self.ylabels = {"rho": r"Density $\rho$",
                         "p": r"Pressure $p$",
                         "jx": r"Momentum density $j_x$",
                         "jy": r"Momentum denisty $j_y$"}
+
+    def select_nc_files(self, path, prefix="", mode="select"):
+        """
+        Function to interactively select data files for further processing, e.g. for plotting.
+
+        Parameters
+        ----------
+        path : str
+            relative path below which is searched for files
+        prefix : str
+            filter files that start with prefix, default=""
+        mode : str
+            can be one of the following, default="select"
+            - select: manually select files
+            - single: manually select a single file
+            - all: select all files found below path with prefix and suffix
+
+        Returns
+        ----------
+        out : dict
+            dictionary where keys are filenames and values are corresponding datasets.
+            Datasets currently only implemented for suffices "nc" (netCDF4.Dataset) and "dat" (numpy.ndarray).
+            Else, values are None.
+        """
+
+        assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
+
+        fileList = []
+
+        for root, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                if name.startswith(prefix) and name.endswith(".nc"):
+                    fileList.append(os.path.join(root, name))
+
+        fileList = sorted(fileList)
+
+        print("Available files:")
+        for i, file in enumerate(fileList):
+            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
+            print(f"{i:3d}: {file:<50} {date}")
+
+        if mode == "single":
+            mask = [int(input("Enter file key: "))]
+        elif mode == "all":
+            mask = list(range(len(fileList)))
+        elif mode == "select":
+            inp = input("Enter file keys (space separated or range [start]-[end] or combination of both): ")
+
+            mask = [int(i) for i in inp.split() if len(i.split("-")) < 2]
+            mask_range = [i for i in inp.split() if len(i.split("-")) == 2]
+
+            for j in mask_range:
+                mask += list(range(int(j.split("-")[0]), int(j.split("-")[1]) + 1))
+
+        out = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
+
+        return out
 
     def plot_cut(self, choice="all", dir='x'):
         if choice == "all":
