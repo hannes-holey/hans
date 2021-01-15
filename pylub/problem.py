@@ -118,7 +118,7 @@ class Problem:
         walltime = time.time() - self.tStart
         HH, MM, SS = seconds_to_HHMMSS(walltime)
 
-        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / walltime:.2f} ns/s)")
+        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {i / walltime:.2f} steps/s)")
 
     def init_netcdf(self, out_dir):
         if not(os.path.exists(out_dir)):
@@ -210,7 +210,7 @@ class Problem:
             self.write(i, mode="abort")
 
             HH, MM, SS = seconds_to_HHMMSS(walltime)
-            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / walltime:.2f} ns/s)")
+            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {i / walltime:.2f} steps/s)")
             sys.exit()
 
     def plot(self):
