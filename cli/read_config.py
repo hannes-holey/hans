@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pylub.helper.data_parser import getData
+from pylub.tools import getData
 
 if __name__ == "__main__":
 

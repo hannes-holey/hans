@@ -3,7 +3,7 @@ import numpy as np
 
 class Field:
 
-    def __init__(self, disc, ndim):
+    def __init__(self, disc, ndim, grid=True):
 
         self.ndim = ndim
         self.disc = disc
@@ -16,17 +16,15 @@ class Field:
         self.Lx = self.dx * self.Nx
         self.Ly = self.dy * self.Ny
 
-        # self.dx = self.Lx / self.Nx
-        # self.dy = self.Ly / self.Ny
+        if grid:
+            x = np.arange(self.Nx + 2) * (self.Lx + 2. * self.dx) / (self.Nx + 2) - self.dx / 2
+            y = np.arange(self.Ny + 2) * (self.Ly + 2. * self.dy) / (self.Ny + 2) - self.dy / 2
+            xx, yy = np.meshgrid(x, y)
 
-        x = np.linspace(self.dx / 2, self.Lx - self.dx / 2, self.Nx)
-        y = np.linspace(self.dy / 2, self.Ly - self.dy / 2, self.Ny)
-        xx, yy = np.meshgrid(x, y)
+            self.xx = xx.T
+            self.yy = yy.T
 
-        self.xx = xx.T
-        self.yy = yy.T
-
-        self.field = np.zeros(shape=(self.ndim, self.Nx, self.Ny), dtype=np.float64)
+        self.field = np.zeros(shape=(self.ndim, self.Nx + 2, self.Ny + 2), dtype=np.float64)
 
     def fill_circle(self, value, comp, center=None, radius=None):
 
@@ -85,36 +83,23 @@ class Field:
 
         return out
 
-    def addNoise_FH(self, cov, seed):
-
-        np.random.seed(seed)
-
-        mean = np.zeros(self.ndim)
-        noise = np.random.multivariate_normal(mean, cov, size=(self.Nx, self.Ny))
-
-        self.field += noise.transpose(2, 0, 1)
-
 
 class ScalarField(Field):
 
-    def __init__(self, disc):
+    def __init__(self, disc, grid=True):
         self.ndim = 1
-        super().__init__(disc, self.ndim)
+        super().__init__(disc, self.ndim, grid)
 
 
 class VectorField(Field):
 
-    def __init__(self, disc):
+    def __init__(self, disc, grid=True):
         self.ndim = 3
-        super().__init__(disc, self.ndim)
-
-    def getGradients(self):
-        "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
-        self.field[1:] = np.gradient(self.field[0], self.dx, self.dy, edge_order=2)
+        super().__init__(disc, self.ndim, grid)
 
 
 class TensorField(Field):
 
-    def __init__(self, disc):
+    def __init__(self, disc, grid=True):
         self.ndim = 6
-        super().__init__(disc, self.ndim)
+        super().__init__(disc, self.ndim, grid)

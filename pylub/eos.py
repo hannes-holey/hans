@@ -50,7 +50,7 @@ class EquationOfState:
             rho_l = float(self.material["rhol"])
             rho_v = float(self.material["rhov"])
             N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-            Pcav = rho_v * c_v**2 - N * np.log10(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
             alpha = self.alphaOfRho(rho)
 
@@ -60,7 +60,7 @@ class EquationOfState:
             p = c_v**2 * rho
             p[alpha < 0] = Pcav + (rho[alpha < 0] - rho_l) * c_l**2
             p[np.logical_and(alpha <= 1, alpha >= 0)] = Pcav + \
-                N * np.log10(rho_v * c_v**2 * rho_mix / (rho_l * (rho_v * c_v**2 * (1 - alpha_mix) + rho_l * c_l**2 * alpha_mix)))
+                N * np.log(rho_v * c_v**2 * rho_mix / (rho_l * (rho_v * c_v**2 * (1 - alpha_mix) + rho_l * c_l**2 * alpha_mix)))
 
             return p
 
@@ -70,11 +70,47 @@ class EquationOfState:
             rho_l = float(self.material["rhol"])
             rho_v = float(self.material["rhov"])
             N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-            Pcav = rho_v * c_v**2 - N * np.log10(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
             return Pcav + (rho - rho_l) * c_l**2
 
         return p
+
+    def isoT_density(self, p):
+
+        # Dowson-Higginson
+        if self.material['EOS'] == "DH":
+            rho0 = float(self.material['rho0'])
+            P0 = float(self.material['P0'])
+            C1 = float(self.material['C1'])
+            C2 = float(self.material['C2'])
+
+            return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
+
+        if self.material['EOS'] == "Bayada":
+            c_l = float(self.material["cl"])
+            c_v = float(self.material["cv"])
+            rho_l = float(self.material["rhol"])
+            rho_v = float(self.material["rhov"])
+            N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
+            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+
+            if np.isscalar(p):
+                if p > Pcav:
+                    rho = (p - Pcav) / c_l**2 + rho_l
+                elif p < c_v**2 * rho_v:
+                    rho = p / c_v**2
+                else:
+                    rho = (c_l**2 * rho_l**3 - c_v**2 * rho_l * rho_v**2) * np.exp((p - Pcav) / N) \
+                        / ((c_l**2 * rho_l**2 - c_v**2 * rho_l * rho_v) * np.exp((p - Pcav) / N) + c_v**2 * rho_v * (-rho_v + rho_l))
+            else:
+                p_mix = np.logical_and(p <= Pcav, p >= c_v**2 * rho_v)
+                rho = p / c_v**2
+                rho[p > Pcav] = (p[p > Pcav] - Pcav) / c_l**2 + rho_l
+                rho[p_mix] = (c_l**2 * rho_l**3 - c_v**2 * rho_l * rho_v**2) * np.exp((p[p_mix] - Pcav) / N) \
+                    / ((c_l**2 * rho_l**2 - c_v**2 * rho_l * rho_v) * np.exp((p[p_mix] - Pcav) / N) + c_v**2 * rho_v * (-rho_v + rho_l))
+
+            return rho
 
     def alphaOfRho(self, rho):
         rho_l = float(self.material["rhol"])
@@ -116,3 +152,24 @@ class EquationOfState:
             c_squared = 3 * a * rho**2 + 2 * b * rho + c
 
         return np.sqrt(np.amax(abs(c_squared)))
+
+    def viscosity(self, rho):
+        eta_l = float(self.material["shear"])
+
+        if str(self.material["EOS"]) == "Bayada":
+            visc_model = str(self.material["visc"])
+            eta_v = float(self.material["shearv"])
+        else:
+            visc_model = None
+
+        if visc_model == "Dukler":
+            rho_v = float(self.material["rhov"])
+            alpha = self.alphaOfRho(rho)
+            return alpha * eta_v + (1 - alpha) * eta_l
+        elif visc_model == "McAdams":
+            rho_v = float(self.material["rhov"])
+            alpha = self.alphaOfRho(rho)
+            M = alpha * rho_v / rho
+            return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
+        else:
+            return eta_l

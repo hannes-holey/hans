@@ -1,5 +1,5 @@
-from .eos import EquationOfState
-from .field import VectorField, TensorField
+from pylub.eos import EquationOfState
+from pylub.field import VectorField, TensorField
 
 
 class Deterministic:
@@ -10,9 +10,9 @@ class Deterministic:
         self.geo = geometry
         self.mat = material
 
-    def viscousStress_avg(self, q, h, dt):
+    def viscousStress_avg(self, q, h):
 
-        out = VectorField(self.disc)
+        out = VectorField(self.disc, grid=False)
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
@@ -35,10 +35,10 @@ class Deterministic:
 
         return out
 
-    def stress_avg(self, q, h, dt):
+    def stress_avg(self, q, h):
 
-        viscStress = self.viscousStress_avg(q, h, dt)
-        stress = VectorField(self.disc)
+        viscStress = self.viscousStress_avg(q, h)
+        stress = VectorField(self.disc, grid=False)
 
         pressure = EquationOfState(self.mat).isoT_pressure(q.field[0])
 
@@ -51,9 +51,9 @@ class Deterministic:
 
         return EquationOfState(self.mat).isoT_pressure(q[0])
 
-    def viscousStress_wall(self, q, h, dt, bound):
+    def viscousStress_wall(self, q, h, bound):
 
-        out = TensorField(self.disc)
+        out = TensorField(self.disc, grid=False)
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
