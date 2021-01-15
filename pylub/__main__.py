@@ -1,6 +1,6 @@
 import os
 from argparse import ArgumentParser
-from pylub.problem import Input
+from pylub.input import Input
 
 
 def get_parser():
@@ -24,5 +24,6 @@ if __name__ == "__main__":
         restartFile = os.path.join(os.getcwd(), args.restart_file)
     else:
         restartFile = None
+
     myProblem = Input(inputFile, restartFile).getProblem()
     myProblem.run(args.plot, args.out_dir)
