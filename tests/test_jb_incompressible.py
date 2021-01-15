@@ -4,7 +4,7 @@ import unittest
 import netCDF4
 import numpy as np
 
-from pylub.problem import Input
+from pylub.input import Input
 from pylub.eos import EquationOfState
 
 
