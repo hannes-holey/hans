@@ -16,7 +16,7 @@ def adaptiveLimits(ax):
     return ax
 
 
-def time_to_HHMMSS(t):
+def seconds_to_HHMMSS(t):
 
     MM = t // 60
     HH = int(MM // 60)

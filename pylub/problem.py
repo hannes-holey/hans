@@ -10,7 +10,7 @@ from git import Repo
 
 from pylub.eos import EquationOfState
 from pylub.solver import Solver
-from pylub.tools import adaptiveLimits, time_to_HHMMSS
+from pylub.tools import adaptiveLimits, seconds_to_HHMMSS
 
 
 class Problem:
@@ -116,7 +116,7 @@ class Problem:
                 i += 1
 
         walltime = time.time() - self.tStart
-        HH, MM, SS = time_to_HHMMSS(walltime)
+        HH, MM, SS = seconds_to_HHMMSS(walltime)
 
         print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / walltime:.2f} ns/s)")
 
@@ -209,7 +209,7 @@ class Problem:
         if signum == signal.SIGUSR1:
             self.write(i, mode="abort")
 
-            HH, MM, SS = time_to_HHMMSS(walltime)
+            HH, MM, SS = seconds_to_HHMMSS(walltime)
             print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {self.sol.time * 1e9 / walltime:.2f} ns/s)")
             sys.exit()
 
