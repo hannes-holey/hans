@@ -21,7 +21,7 @@ class Flux:
         p = self.detStress.pressure(q.field)
         F = self.hyperbolicFlux(q.field, p, ax) + self.diffusiveFlux(visc_stress.field, ax)
 
-        Q = VectorField(self.disc)
+        Q = VectorField(self.disc, grid=False)
         Q.field = 0.5 * (q.field + np.roll(q.field, dir, axis=ax)) - dt / (2. * delta[ax]) * dir * (F - np.roll(F, dir, axis=ax))
 
         return Q
@@ -136,7 +136,7 @@ class Flux:
 
         src = self.getSource(viscous_stress, q, h)
 
-        Q = VectorField(self.disc)
+        Q = VectorField(self.disc, grid=False)
 
         Q.field = q.field - dt * ((fXE - fXW) / q.dy + (fYN - fYS) / q.dy - src)
 

@@ -12,7 +12,7 @@ class Deterministic:
 
     def viscousStress_avg(self, q, h):
 
-        out = VectorField(self.disc)
+        out = VectorField(self.disc, grid=False)
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
@@ -48,7 +48,7 @@ class Deterministic:
     def stress_avg(self, q, h):
 
         viscStress = self.viscousStress_avg(q, h)
-        stress = VectorField(self.disc)
+        stress = VectorField(self.disc, grid=False)
 
         pressure = EquationOfState(self.mat).isoT_pressure(q.field[0])
 
@@ -63,7 +63,7 @@ class Deterministic:
 
     def viscousStress_wall(self, q, h, bound):
 
-        out = TensorField(self.disc)
+        out = TensorField(self.disc, grid=False)
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
