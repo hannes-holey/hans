@@ -1,7 +1,7 @@
 import numpy as np
-from .field import VectorField
-from .stress import Deterministic
-from .BoundaryCondition import BoundaryCondition
+from pylub.field import VectorField
+from pylub.stress import Deterministic
+from pylub.bc import BoundaryCondition
 
 
 class Flux:

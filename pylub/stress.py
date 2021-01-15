@@ -1,5 +1,5 @@
-from .eos import EquationOfState
-from .field import VectorField, TensorField
+from pylub.eos import EquationOfState
+from pylub.field import VectorField, TensorField
 
 
 class Deterministic:

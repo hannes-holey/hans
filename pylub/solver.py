@@ -1,9 +1,9 @@
 import numpy as np
 
-from .eos import EquationOfState
-from .geometry import Analytic
-from .field import VectorField
-from .flux import Flux
+from pylub.eos import EquationOfState
+from pylub.geometry import Analytic
+from pylub.field import VectorField
+from pylub.flux import Flux
 
 
 class Solver:
