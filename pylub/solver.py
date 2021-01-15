@@ -1,7 +1,7 @@
 import numpy as np
 
 from pylub.eos import EquationOfState
-from pylub.geometry import Analytic
+from pylub.geometry import GapHeight
 from pylub.field import VectorField
 from pylub.flux import Flux
 
@@ -21,33 +21,13 @@ class Solver:
         self.time = 0.
         self.eps = 1.
 
-        # Gap height
-        self.height = VectorField(disc)
-
-        if self.type == 'journal':
-            self.height.field[0] = Analytic(disc, geometry).journalBearing(self.height.xx, self.height.yy, axis=0)
-        elif self.type == 'inclined':
-            self.height.field[0] = Analytic(disc, geometry).linearSlider(self.height.xx, self.height.yy)
-        elif self.type == 'parabolic':
-            self.height.field[0] = Analytic(disc, geometry).parabolicSlider(self.height.xx, self.height.yy)
-        elif self.type == 'step':
-            self.height.field[0] = Analytic(disc, geometry).doubleStep(self.height.xx, self.height.yy, axis=0)
-
-        self.height.getGradients()
-
-        rho0 = float(material['rho0'])
-
         self.q = VectorField(disc)
+        self.height = GapHeight(disc, geometry)
 
         if q_init is not None:
             self.q.field = q_init
         else:
-            self.q.field[0] = rho0
-
-        if self.type == 'droplet':
-            self.q.fill_circle(1.05 * rho0, 0, radius=1e-7)
-        elif self.type == 'wavefront':
-            self.q.fill_line(1.05 * rho0, 0, 0)
+            self.q.field[0] = float(material['rho0'])
 
         self.Flux = Flux(disc, BC, geometry, material)
 

@@ -83,15 +83,6 @@ class Field:
 
         return out
 
-    def addNoise_FH(self, cov, seed):
-
-        np.random.seed(seed)
-
-        mean = np.zeros(self.ndim)
-        noise = np.random.multivariate_normal(mean, cov, size=(self.Nx, self.Ny))
-
-        self.field += noise.transpose(2, 0, 1)
-
 
 class ScalarField(Field):
 
@@ -105,10 +96,6 @@ class VectorField(Field):
     def __init__(self, disc, grid=True):
         self.ndim = 3
         super().__init__(disc, self.ndim, grid)
-
-    def getGradients(self):
-        "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
-        self.field[1:] = np.gradient(self.field[0], self.dx, self.dy, edge_order=2)
 
 
 class TensorField(Field):
