@@ -10,7 +10,7 @@ from git import Repo
 
 from pylub.eos import EquationOfState
 from pylub.solver import Solver
-from pylub.tools import adaptiveLimits, seconds_to_HHMMSS
+from pylub.plottools import adaptiveLimits
 
 
 class Problem:
@@ -115,11 +115,6 @@ class Problem:
 
                 i += 1
 
-        walltime = time.time() - self.tStart
-        HH, MM, SS = seconds_to_HHMMSS(walltime)
-
-        print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {i / walltime:.2f} steps/s)")
-
     def init_netcdf(self, out_dir):
         if not(os.path.exists(out_dir)):
             os.makedirs(out_dir)
@@ -147,7 +142,7 @@ class Problem:
         self.dt = self.nc.createVariable('dt', 'f8', ('step'))
         self.eps = self.nc.createVariable('eps', 'f8', ('step'))
 
-    def write(self, i, mode="normal"):
+    def write(self, i, mode=None):
 
         # netCDF4 output file
         if i == 0:
@@ -198,6 +193,10 @@ class Problem:
             self.nc.tEnd = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             print("Walltime exceeded")
 
+        if mode is not None:
+            walltime = time.time() - self.tStart
+            print(f"Total wall clock time: {time.strftime('%H:%M:%S', time.gmtime(walltime))} (Performance: {i / walltime:.2f} steps/s)")
+
     def receive_signal(self, i, signum, stack):
         walltime = time.time() - self.tStart
         print(f"python: PID: {os.getpid()} recieved {signum} at time {walltime}")
@@ -208,9 +207,6 @@ class Problem:
 
         if signum == signal.SIGUSR1:
             self.write(i, mode="abort")
-
-            HH, MM, SS = seconds_to_HHMMSS(walltime)
-            print(f"Total wall clock time: {HH:02d}:{MM:02d}:{SS:02d} (Performance: {i / walltime:.2f} steps/s)")
             sys.exit()
 
     def plot(self):

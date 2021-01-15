@@ -265,3 +265,17 @@ class Plot:
         if i > 0:
             self.im.set_clim(vmin=np.amin(A[:i]), vmax=np.amax(A[:i]))
         fig.suptitle("Time: {:.1f} s".format(t[i]))
+
+
+def adaptiveLimits(ax):
+
+    def offset(x, y): return 0.05 * (x - y) if (x - y) != 0 else 1.
+
+    for a in ax.flat:
+
+        y_min = np.amin(a.lines[0].get_ydata())
+        y_max = np.amax(a.lines[0].get_ydata())
+
+        a.set_ylim(y_min - offset(y_max, y_min), y_max + offset(y_max, y_min))
+
+    return ax
