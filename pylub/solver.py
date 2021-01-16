@@ -2,8 +2,7 @@ import numpy as np
 
 from pylub.eos import EquationOfState
 from pylub.geometry import GapHeight
-from pylub.field import VectorField
-from pylub.flux import Flux
+from pylub.flux import ConservedField
 
 
 class Solver:
@@ -21,15 +20,15 @@ class Solver:
         self.time = 0.
         self.eps = 1.
 
-        self.q = VectorField(disc)
-        self.height = GapHeight(disc, geometry)
+        self.q = ConservedField(disc, BC, geometry, material)
+        self.h = GapHeight(disc, geometry)
 
         if q_init is not None:
             self.q.field = q_init
         else:
             self.q.field[0] = float(material['rho0'])
 
-        self.Flux = Flux(disc, BC, geometry, material)
+        # self.Flux = Flux(disc, BC, geometry, material)
 
     def solve(self, i):
 
@@ -38,19 +37,15 @@ class Solver:
 
         p0 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
 
-        if self.numFlux == 'LW':
-            self.q = self.Flux.Richtmyer(self.q, self.height, self.dt)
-
-        elif self.numFlux == 'MC':
-            self.q = self.Flux.MacCormack(self.q, self.height, self.dt)
-
-        # some scalar output
-        self.mass = np.sum(self.q.field[0] * self.height.field[0] * self.q.dx * self.q.dy)
-        self.time += self.dt
-        self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
-        self.vmax = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])
+        self.q.update(self.h.field, self.dt)
 
         p1 = EquationOfState(self.material).isoT_pressure(self.q.field[0])
 
         if i > 0:
             self.eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
+
+        # some scalar output
+        self.mass = np.sum(self.q.field[0] * self.h.field[0] * self.q.dx * self.q.dy)
+        self.time += self.dt
+        self.vSound = EquationOfState(self.material).soundSpeed(self.q.field[0])
+        self.vmax = self.vSound + np.amax(np.sqrt(self.q.field[1]**2 + self.q.field[2]**2) / self.q.field[0])

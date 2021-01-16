@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from datetime import datetime
 from git import Repo
+import numpy as np
 
 from pylub.eos import EquationOfState
 from pylub.solver import Solver
@@ -78,6 +79,8 @@ class Problem:
             self.Ly = float(disc["Ly"])
             disc["dy"] = self.Ly / self.Ny
 
+        self.check_bc()
+
         self.sol = Solver(disc, BC, geometry, numerics, material, q_init)
 
     def run(self, plot=False, out_dir="data"):
@@ -114,6 +117,20 @@ class Problem:
                     self.write(i, mode="maxtime")
 
                 i += 1
+
+    def check_bc(self):
+        x0 = np.array(list(self.BC["x0"]))
+        x1 = np.array(list(self.BC["x1"]))
+        y0 = np.array(list(self.BC["y0"]))
+        y1 = np.array(list(self.BC["y1"]))
+
+        assert len(x0) == 3
+        assert len(x1) == 3
+        assert len(y0) == 3
+        assert len(y1) == 3
+
+        assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
+        assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
 
     def init_netcdf(self, out_dir):
         if not(os.path.exists(out_dir)):
