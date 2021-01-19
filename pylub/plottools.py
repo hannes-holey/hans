@@ -4,6 +4,7 @@ import netCDF4
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.ticker as tk
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from pylub.eos import EquationOfState
@@ -123,6 +124,75 @@ class Plot:
                 ax.plot(x, var)
                 ax.set_ylabel(self.ylabels[choice])
                 ax.set_xlabel(rf"Distance ${dir}$")
+
+        return fig, ax
+
+    def plot_2D(self, choice="all"):
+
+        if choice == "all":
+            fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
+        else:
+            fig, ax = plt.subplots(1, tight_layout=True)
+
+        for filename, data in self.ds.items():
+
+            # reconstruct input dicts
+            material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
+
+            Nx = data.disc_Nx
+            Ny = data.disc_Ny
+
+            try:
+                Lx = data.disc_Lx
+            except AttributeError:
+                dx = data.disc_dx
+                Lx = dx * Nx
+
+            try:
+                Ly = data.disc_Ly
+            except AttributeError:
+                dy = data.disc_dy
+                Ly = dy * Ny
+
+            rho = np.array(data.variables["rho"])[-1]
+            p = EquationOfState(material).isoT_pressure(rho)
+            jx = np.array(data.variables["jx"])[-1]
+            jy = np.array(data.variables["jy"])[-1]
+
+            unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
+
+            if choice == "all":
+                for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
+                    im = a.imshow(unknowns[key].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect='equal', cmap='viridis')
+
+                    divider = make_axes_locatable(a)
+                    cax = divider.append_axes("right", size="5%", pad=0.3)
+
+                    fmt = tk.ScalarFormatter(useMathText=True)
+                    fmt.set_powerlimits((0, 0))
+
+                    cbar = plt.colorbar(im, cax=cax, format=fmt)
+                    cbar.set_label(self.ylabels[key])
+
+                    # Adjust ticks
+                    a.set_xlabel(r'$L_x$ (mm)')
+                    a.set_ylabel(r'$L_y$ (mm)')
+            else:
+                im = ax.imshow(unknowns[choice].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect='equal', cmap='viridis')
+
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.3)
+
+                fmt = tk.ScalarFormatter(useMathText=True)
+                fmt.set_powerlimits((0, 0))
+
+                cbar = plt.colorbar(im, cax=cax, format=fmt)
+                cbar.set_label(self.ylabels[choice])
+
+                # Adjust ticks
+                ax.set_xlabel(r'$L_x$ (mm)')
+                ax.set_ylabel(r'$L_y$ (mm)')
+                # ax.invert_yaxis()
 
         return fig, ax
 
