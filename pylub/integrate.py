@@ -3,49 +3,80 @@ import numpy as np
 from pylub.field import VectorField
 from pylub.stress import SymmetricStressField, StressField
 from pylub.eos import EquationOfState
+from pylub.geometry import GapHeight
 
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, BC, geometry, material, grid=True):
+    def __init__(self, disc, BC, geometry, material, numerics, q_init=None, grid=True):
 
         super().__init__(disc, grid)
 
-        self.disc = disc
         self.BC = BC
-        self.geometry = geometry
         self.material = material
+        self.numerics = numerics
+
+        if q_init is not None:
+            self.field = q_init
+        else:
+            self.field[0] = float(material['rho0'])
+
+        self.height = GapHeight(disc, geometry)
+
+        self.time = 0.
+        self.eps = 1.
+
+        if bool(self.numerics["adaptive"]):
+            self.C = float(self.numerics["C"])
+
+        self.dt = float(self.numerics["dt"])
 
         self.viscous_stress = SymmetricStressField(disc, geometry, material, grid=False)
         self.upper_stress = StressField(disc, geometry, material, grid=False)
         self.lower_stress = StressField(disc, geometry, material, grid=False)
 
-    def update(self, h, dt, corrector=True):
+    def update(self, i):
 
-        if corrector:
-            q = self.field.copy()
-            self.update(h, dt, corrector=False)
-            dir = 1                # backwards difference
-        else:
-            dir = -1                 # forwards difference
+        if str(self.numerics["numFlux"]) == "MC":
+            self.mac_cormack()
 
-        self.viscous_stress.set(self.field, h)
-        self.upper_stress.set(self.field, h, "top")
-        self.lower_stress.set(self.field, h, "bottom")
+    def mac_cormack(self):
 
-        p = EquationOfState(self.material).isoT_pressure(self.field[0])
+        q0 = self.field.copy()
 
-        fX, fY = self.hyperbolicFW_BW(p, dt, dir)
-        dX, dY = self.diffusiveCD(dt)
+        for dir in [-1, 1]:
+            self.viscous_stress.set(self.field, self.height.field)
+            self.upper_stress.set(self.field, self.height.field, "top")
+            self.lower_stress.set(self.field, self.height.field, "bottom")
 
-        src = self.getSource(h)
+            p = EquationOfState(self.material).isoT_pressure(self.field[0])
 
-        self.field = self.field - fX - fY + dX + dY + dt * src
+            fX, fY = self.hyperbolicFW_BW(p, dir)
+            dX, dY = self.diffusiveCD()
+            src = self.getSource()
 
-        if corrector:
-            self.field = 0.5 * (self.field + q)
+            self.field = self.field - fX - fY + dX + dY + self.dt * src
+            self.fill_ghost_cell()
 
-        self.fill_ghost_cell()
+        self.field = 0.5 * (self.field + q0)
+
+        self.time += self.dt
+        self.vSound, self.vmax = self.get_velocities()
+        self.dt = self.C * min(self.dx, self.dy) / self.vmax
+
+        p0 = EquationOfState(self.material).isoT_pressure(q0[0])
+        p1 = EquationOfState(self.material).isoT_pressure(self.field[0])
+        self.eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
+        self.mass = self.get_mass()
+
+    def get_mass(self):
+        return np.sum(self.field[0] * self.height.field[0] * self.dx * self.dy)
+
+    def get_velocities(self):
+        vSound = EquationOfState(self.material).soundSpeed(self.field[0])
+        vMax = vSound + np.amax(np.sqrt(self.field[1]**2 + self.field[2]**2) / self.field[0])
+
+        return vSound, vMax
 
     def fill_ghost_cell(self):
         self.periodic()
@@ -102,7 +133,7 @@ class ConservedField(VectorField):
         self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
         self.field[y1 == "N", :, -1] = self.field[y0 == "N", :, -2]
 
-    def getSource(self, h):
+    def getSource(self):
 
         out = np.zeros_like(self.field)
 
@@ -111,15 +142,15 @@ class ConservedField(VectorField):
         stress_bot = self.lower_stress.field
 
         # origin bottom, U_top = 0, U_bottom = U
-        out[0] = -self.field[1] * h[1] / h[0] - self.field[2] * h[2] / h[0]
+        out[0] = -self.field[1] * self.height.field[1] / self.height.field[0] - self.field[2] * self.height.field[2] / self.height.field[0]
 
-        out[1] = ((self.field[1] * self.field[1] / self.field[0] + stress[0] - stress_top[0]) * h[1]
-                  + (self.field[1] * self.field[2] / self.field[0] + stress[2] - stress_top[5]) * h[2]
-                  + stress_top[4] - stress_bot[4]) / h[0]
+        out[1] = ((self.field[1] * self.field[1] / self.field[0] + stress[0] - stress_top[0]) * self.height.field[1]
+                  + (self.field[1] * self.field[2] / self.field[0] + stress[2] - stress_top[5]) * self.height.field[2]
+                  + stress_top[4] - stress_bot[4]) / self.height.field[0]
 
-        out[2] = ((self.field[2] * self.field[1] / self.field[0] + stress[2] - stress_top[5]) * h[1]
-                  + (self.field[2] * self.field[2] / self.field[0] + stress[1] - stress_top[1]) * h[2]
-                  + stress_top[3] - stress_bot[3]) / h[0]
+        out[2] = ((self.field[2] * self.field[1] / self.field[0] + stress[2] - stress_top[5]) * self.height.field[1]
+                  + (self.field[2] * self.field[2] / self.field[0] + stress[1] - stress_top[1]) * self.height.field[2]
+                  + stress_top[3] - stress_bot[3]) / self.height.field[0]
 
         # origin center
         # out[0] = -self.field[1] * h[1] / h[0] - self.field[2] * h[2] / h[0]
@@ -150,7 +181,7 @@ class ConservedField(VectorField):
 
         return F
 
-    def hyperbolicFW_BW(self, p, dt, dir):
+    def hyperbolicFW_BW(self, p, dir):
 
         Fx = self.hyperbolicFlux(p, 1)
         Fy = self.hyperbolicFlux(p, 2)
@@ -158,7 +189,7 @@ class ConservedField(VectorField):
         flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx)
         flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy)
 
-        return dt / self.dx * flux_x, dt / self.dy * flux_y
+        return self.dt / self.dx * flux_x, self.dt / self.dy * flux_y
 
     def diffusiveFlux(self, ax):
 
@@ -173,7 +204,7 @@ class ConservedField(VectorField):
 
         return D
 
-    def diffusiveCD(self, dt):
+    def diffusiveCD(self):
 
         Dx = self.diffusiveFlux(1)
         Dy = self.diffusiveFlux(2)
@@ -181,7 +212,7 @@ class ConservedField(VectorField):
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
-        return dt / (2 * self.dx) * flux_x, dt / (2 * self.dy) * flux_y
+        return self.dt / (2 * self.dx) * flux_x, self.dt / (2 * self.dy) * flux_y
 
     # def LaxStep(self, q, h, visc_stress, dt, dir, ax):
     #
