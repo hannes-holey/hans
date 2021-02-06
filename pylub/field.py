@@ -24,7 +24,11 @@ class Field:
             self.xx = xx.T
             self.yy = yy.T
 
-        self.field = np.zeros(shape=(self.ndim, self.Nx + 2, self.Ny + 2), dtype=np.float64)
+        self._field = np.zeros(shape=(self.ndim, self.Nx + 2, self.Ny + 2), dtype=np.float64)
+
+    @property
+    def field(self):
+        return self._field
 
     def fill_circle(self, value, comp, center=None, radius=None):
 
@@ -63,7 +67,7 @@ class Field:
     def stagArray(self, dir, ax):
 
         out = Field(self.disc, self.ndim)
-        out.field = 0.5 * (self.field + np.roll(self.field, dir, axis=ax))
+        out._field = 0.5 * (self.field + np.roll(self.field, dir, axis=ax))
 
         return out
 

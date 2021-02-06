@@ -14,69 +14,89 @@ class ConservedField(VectorField):
 
         self.BC = BC
         self.material = material
-        self.numerics = numerics
+
+        self.numFlux = str(numerics["numFlux"])
+        self.adaptive = bool(numerics["adaptive"])
 
         if q_init is not None:
-            self.field = q_init
+            self._field = q_init
         else:
-            self.field[0] = float(material['rho0'])
+            self._field[0] = float(material['rho0'])
 
         self.height = GapHeight(disc, geometry)
 
-        self.time = 0.
-        self.eps = 1.
+        self._time = 0.
+        self._eps = 1.
+        self._dt = float(numerics["dt"])
 
-        if bool(self.numerics["adaptive"]):
-            self.C = float(self.numerics["C"])
-
-        self.dt = float(self.numerics["dt"])
+        if self.adaptive:
+            self.C = float(numerics["C"])
 
         self.viscous_stress = SymmetricStressField(disc, geometry, material, grid=False)
         self.upper_stress = StressField(disc, geometry, material, grid=False)
         self.lower_stress = StressField(disc, geometry, material, grid=False)
 
-    def update(self, i):
+    @property
+    def mass(self):
+        return np.sum(self._field[0] * self.height.field[0] * self.dx * self.dy)
 
-        if str(self.numerics["numFlux"]) == "MC":
+    @property
+    def vSound(self):
+        return EquationOfState(self.material).soundSpeed(self._field[0])
+
+    @property
+    def vmax(self):
+        return self.vSound + np.amax(np.sqrt(self._field[1]**2 + self._field[2]**2) / self._field[0])
+
+    @property
+    def time(self):
+        return self._time
+
+    @property
+    def dt(self):
+        return self._dt
+
+    @property
+    def eps(self):
+        return self._eps
+
+    def update(self, i):
+        if self.numFlux == "MC":
             self.mac_cormack()
+        if self.numFlux == "LW":
+            self.richtmyer()
 
     def mac_cormack(self):
 
-        q0 = self.field.copy()
+        q0 = self._field.copy()
 
         for dir in [-1, 1]:
-            self.viscous_stress.set(self.field, self.height.field)
-            self.upper_stress.set(self.field, self.height.field, "top")
-            self.lower_stress.set(self.field, self.height.field, "bottom")
+            self.viscous_stress.set(self._field, self.height.field)
+            self.upper_stress.set(self._field, self.height.field, "top")
+            self.lower_stress.set(self._field, self.height.field, "bottom")
 
-            p = EquationOfState(self.material).isoT_pressure(self.field[0])
+            p = EquationOfState(self.material).isoT_pressure(self._field[0])
 
             fX, fY = self.hyperbolicFW_BW(p, dir)
             dX, dY = self.diffusiveCD()
-            src = self.getSource()
+            src = self.getSource(self._field, self.height.field)
 
-            self.field = self.field - fX - fY + dX + dY + self.dt * src
+            self._field = self._field - fX - fY + dX + dY + self._dt * src
             self.fill_ghost_cell()
 
-        self.field = 0.5 * (self.field + q0)
+        self._field = 0.5 * (self._field + q0)
 
-        self.time += self.dt
-        self.vSound, self.vmax = self.get_velocities()
-        self.dt = self.C * min(self.dx, self.dy) / self.vmax
+        self.post_integrate(q0)
+
+    def post_integrate(self, q0):
+        self._time += self._dt
+
+        if self.adaptive:
+            self._dt = self.C * min(self.dx, self.dy) / self.vmax
 
         p0 = EquationOfState(self.material).isoT_pressure(q0[0])
-        p1 = EquationOfState(self.material).isoT_pressure(self.field[0])
-        self.eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
-        self.mass = self.get_mass()
-
-    def get_mass(self):
-        return np.sum(self.field[0] * self.height.field[0] * self.dx * self.dy)
-
-    def get_velocities(self):
-        vSound = EquationOfState(self.material).soundSpeed(self.field[0])
-        vMax = vSound + np.amax(np.sqrt(self.field[1]**2 + self.field[2]**2) / self.field[0])
-
-        return vSound, vMax
+        p1 = EquationOfState(self.material).isoT_pressure(self._field[0])
+        self._eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
 
     def fill_ghost_cell(self):
         self.periodic()
@@ -87,10 +107,10 @@ class ConservedField(VectorField):
         x0 = np.array(list(self.BC["x0"]))
         y0 = np.array(list(self.BC["y0"]))
 
-        self.field[x0 == "P", 0, :] = self.field[x0 == "P", -2, :]
-        self.field[x0 == "P", -1, :] = self.field[x0 == "P", 1, :]
-        self.field[y0 == "P", :, 0] = self.field[y0 == "P", :, -2]
-        self.field[y0 == "P", :, -1] = self.field[y0 == "P", :, 1]
+        self._field[x0 == "P", 0, :] = self._field[x0 == "P", -2, :]
+        self._field[x0 == "P", -1, :] = self._field[x0 == "P", 1, :]
+        self._field[y0 == "P", :, 0] = self._field[y0 == "P", :, -2]
+        self._field[y0 == "P", :, -1] = self._field[y0 == "P", :, 1]
 
     def dirichlet(self):
 
@@ -117,10 +137,10 @@ class ConservedField(VectorField):
             py1 = float(self.BC["py1"])
             rhoy1 = EquationOfState(self.material).isoT_density(py1)
 
-        self.field[x0 == "D", 0, :] = 2. * rhox0 - self.field[x0 == "D", 1, :]
-        self.field[x1 == "D", -1, :] = 2. * rhox1 - self.field[x0 == "D", -2, :]
-        self.field[y0 == "D", :, 0] = 2. * rhoy0 - self.field[y0 == "D", :, 1]
-        self.field[y1 == "D", :, -1] = 2. * rhoy1 - self.field[y0 == "D", :, -2]
+        self._field[x0 == "D", 0, :] = 2. * rhox0 - self._field[x0 == "D", 1, :]
+        self._field[x1 == "D", -1, :] = 2. * rhox1 - self._field[x0 == "D", -2, :]
+        self._field[y0 == "D", :, 0] = 2. * rhoy0 - self._field[y0 == "D", :, 1]
+        self._field[y1 == "D", :, -1] = 2. * rhoy1 - self._field[y0 == "D", :, -2]
 
     def neumann(self):
         x0 = np.array(list(self.BC["x0"]))
@@ -128,72 +148,61 @@ class ConservedField(VectorField):
         y0 = np.array(list(self.BC["y0"]))
         y1 = np.array(list(self.BC["y1"]))
 
-        self.field[x0 == "N", 0, :] = self.field[x0 == "N", 1, :]
-        self.field[x1 == "N", -1, :] = self.field[x0 == "N", -2, :]
-        self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
-        self.field[y1 == "N", :, -1] = self.field[y0 == "N", :, -2]
+        self._field[x0 == "N", 0, :] = self._field[x0 == "N", 1, :]
+        self._field[x1 == "N", -1, :] = self._field[x0 == "N", -2, :]
+        self._field[y0 == "N", :, 0] = self._field[y0 == "N", :, 1]
+        self._field[y1 == "N", :, -1] = self._field[y0 == "N", :, -2]
 
-    def getSource(self):
+    def getSource(self, q, h):
 
-        out = np.zeros_like(self.field)
-
-        stress = self.viscous_stress.field
-        stress_top = self.upper_stress.field
-        stress_bot = self.lower_stress.field
+        out = np.zeros_like(q)
 
         # origin bottom, U_top = 0, U_bottom = U
-        out[0] = -self.field[1] * self.height.field[1] / self.height.field[0] - self.field[2] * self.height.field[2] / self.height.field[0]
+        out[0] = (-q[1] * h[1] - q[2] * h[2]) / h[0]
 
-        out[1] = ((self.field[1] * self.field[1] / self.field[0] + stress[0] - stress_top[0]) * self.height.field[1]
-                  + (self.field[1] * self.field[2] / self.field[0] + stress[2] - stress_top[5]) * self.height.field[2]
-                  + stress_top[4] - stress_bot[4]) / self.height.field[0]
+        out[1] = ((q[1] * q[1] / q[0] +
+                   self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
+                  (q[1] * q[2] / q[0] +
+                   self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
+                  self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
 
-        out[2] = ((self.field[2] * self.field[1] / self.field[0] + stress[2] - stress_top[5]) * self.height.field[1]
-                  + (self.field[2] * self.field[2] / self.field[0] + stress[1] - stress_top[1]) * self.height.field[2]
-                  + stress_top[3] - stress_bot[3]) / self.height.field[0]
-
-        # origin center
-        # out[0] = -self.field[1] * h[1] / h[0] - self.field[2] * h[2] / h[0]
-        #
-        # out[1] = ((self.field[1] * self.field[1] / self.field[0] + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * h[1]
-        #           + (self.field[1] * self.field[2] / self.field[0] + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * h[2]
-        #           + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h[0]
-        #
-        # out[2] = ((self.field[2] * self.field[1] / self.field[0] + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * h[1]
-        #           + (self.field[2] * self.field[2] / self.field[0] + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * h[2]
-        #           + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h[0]
+        out[2] = ((q[2] * q[1] / q[0] +
+                   self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
+                  (q[2] * q[2] / q[0] +
+                   self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
+                  self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
 
         return out
 
-    def hyperbolicFlux(self, p, ax):
+    def hyperbolicFlux(self, f, p, ax):
 
-        F = np.zeros_like(self.field)
+        F = np.zeros_like(f)
 
         if ax == 1:
-            F[0] = self.field[1]
-            F[1] = self.field[1] * self.field[1] / self.field[0] + p
-            F[2] = self.field[2] * self.field[1] / self.field[0]
+            F[0] = f[1]
+            F[1] = f[1] * f[1] / f[0] + p
+            F[2] = f[2] * f[1] / f[0]
 
         elif ax == 2:
-            F[0] = self.field[2]
-            F[1] = self.field[1] * self.field[2] / self.field[0]
-            F[2] = self.field[2] * self.field[2] / self.field[0] + p
+            F[0] = f[2]
+            F[1] = f[1] * f[2] / f[0]
+            F[2] = f[2] * f[2] / f[0] + p
 
         return F
 
     def hyperbolicFW_BW(self, p, dir):
 
-        Fx = self.hyperbolicFlux(p, 1)
-        Fy = self.hyperbolicFlux(p, 2)
+        Fx = self.hyperbolicFlux(self._field, p, 1)
+        Fy = self.hyperbolicFlux(self._field, p, 2)
 
         flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx)
         flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy)
 
-        return self.dt / self.dx * flux_x, self.dt / self.dy * flux_y
+        return self._dt / self.dx * flux_x, self._dt / self.dy * flux_y
 
     def diffusiveFlux(self, ax):
 
-        D = np.zeros_like(self.field)
+        D = np.zeros_like(self._field)
         if ax == 1:
             D[1] = self.viscous_stress.field[0]
             D[2] = self.viscous_stress.field[2]
@@ -212,45 +221,46 @@ class ConservedField(VectorField):
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
-        return self.dt / (2 * self.dx) * flux_x, self.dt / (2 * self.dy) * flux_y
+        return self._dt / (2 * self.dx) * flux_x, self._dt / (2 * self.dy) * flux_y
 
-    # def LaxStep(self, q, h, visc_stress, dt, dir, ax):
-    #
-    #     delta = {1: q.dx, 2: q.dy}
-    #     p = self.detStress.pressure(q.field)
-    #     F = self.hyperbolicFlux(q.field, p, ax) + self.diffusiveFlux(visc_stress.field, ax)
-    #
-    #     Q = VectorField(self.disc, grid=False)
-    #     Q.field = 0.5 * (q.field + np.roll(q.field, dir, axis=ax)) - dt / (2. * delta[ax]) * dir * (F - np.roll(F, dir, axis=ax))
-    #
-    #     return Q
-    #
-    # def fluxLW(self, q, h, visc_stress, dt, dir, ax):
-    #
-    #     Q = self.LaxStep(q, h, visc_stress, dt, dir, ax)
-    #
-    #     H = h.stagArray(dir, ax)
-    #     _, viscous_stress = self.detStress.stress_avg(Q, H)
-    #     p = self.detStress.pressure(Q.field)
-    #     flux = self.hyperbolicFlux(Q.field, p, ax) + self.diffusiveFlux(viscous_stress.field, ax)
-    #
-    #     return flux
+    def LaxStep(self, dir, ax):
 
-    # def Richtmyer(self, q, h, dt):
-    #
-    #     stress, viscous_stress = self.detStress.stress_avg(q, h)
-    #
-    #     fXE = self.fluxLW(q, h, viscous_stress, dt, -1, 1)
-    #     fXW = self.fluxLW(q, h, viscous_stress, dt, 1, 1)
-    #     fYN = self.fluxLW(q, h, viscous_stress, dt, -1, 2)
-    #     fYS = self.fluxLW(q, h, viscous_stress, dt, 1, 2)
-    #
-    #     src = self.getSource(viscous_stress, q, h)
-    #
-    #     Q = VectorField(self.disc, grid=False)
-    #
-    #     Q.field = q.field - dt * ((fXE - fXW) / q.dy + (fYN - fYS) / q.dy - src)
-    #
-    #     Q = BoundaryCondition(self.disc, self.BC, self.material).fill_ghost_cell(Q)
-    #
-    #     return Q
+        delta = {1: self.dx, 2: self.dy}
+
+        self.viscous_stress.set(self._field, self.height.field)
+        p = EquationOfState(self.material).isoT_pressure(self._field[0])
+
+        F = self.hyperbolicFlux(self._field, p, ax) + self.diffusiveFlux(ax)
+
+        Q = 0.5 * (self._field + np.roll(self._field, dir, axis=ax)) - self._dt / (2. * delta[ax]) * dir * (F - np.roll(F, dir, axis=ax))
+
+        return Q
+
+    def fluxLW(self, dir, ax):
+
+        Q = self.LaxStep(dir, ax)
+        H = self.height.stagArray(dir, ax)
+
+        self.viscous_stress.set(Q, H.field)
+        p = EquationOfState(self.material).isoT_pressure(Q[0])
+        flux = self.hyperbolicFlux(Q, p, ax) + self.diffusiveFlux(ax)
+
+        return flux
+
+    def richtmyer(self):
+
+        q0 = self._field.copy()
+
+        self.upper_stress.set(self._field, self.height.field, "top")
+        self.lower_stress.set(self._field, self.height.field, "bottom")
+
+        fXE = self.fluxLW(-1, 1)
+        fXW = self.fluxLW(1, 1)
+        fYN = self.fluxLW(-1, 2)
+        fYS = self.fluxLW(1, 2)
+        src = self.getSource(self._field, self.height.field)
+
+        self._field = q0 - self._dt * ((fXE - fXW) / self.dy + (fYN - fYS) / self.dy - src)
+
+        self.fill_ghost_cell()
+        self.post_integrate(q0)
