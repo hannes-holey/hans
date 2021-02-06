@@ -1,7 +1,7 @@
 import numpy as np
 
 from pylub.field import VectorField
-from pylub.stress import SymmetricStressField, StressField
+from pylub.stress import SymStressField2D, SymStressField3D
 from pylub.eos import EquationOfState
 from pylub.geometry import GapHeight
 
@@ -32,9 +32,9 @@ class ConservedField(VectorField):
         if self.adaptive:
             self.C = float(numerics["C"])
 
-        self.viscous_stress = SymmetricStressField(disc, geometry, material, grid=False)
-        self.upper_stress = StressField(disc, geometry, material, grid=False)
-        self.lower_stress = StressField(disc, geometry, material, grid=False)
+        self.viscous_stress = SymStressField2D(disc, geometry, material, grid=False)
+        self.upper_stress = SymStressField3D(disc, geometry, material, grid=False)
+        self.lower_stress = SymStressField3D(disc, geometry, material, grid=False)
 
     @property
     def mass(self):
@@ -222,45 +222,3 @@ class ConservedField(VectorField):
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
         return self._dt / (2 * self.dx) * flux_x, self._dt / (2 * self.dy) * flux_y
-
-    def LaxStep(self, dir, ax):
-
-        delta = {1: self.dx, 2: self.dy}
-
-        self.viscous_stress.set(self._field, self.height.field)
-        p = EquationOfState(self.material).isoT_pressure(self._field[0])
-
-        F = self.hyperbolicFlux(self._field, p, ax) + self.diffusiveFlux(ax)
-
-        Q = 0.5 * (self._field + np.roll(self._field, dir, axis=ax)) - self._dt / (2. * delta[ax]) * dir * (F - np.roll(F, dir, axis=ax))
-
-        return Q
-
-    def fluxLW(self, dir, ax):
-
-        Q = self.LaxStep(dir, ax)
-        H = self.height.stagArray(dir, ax)
-
-        self.viscous_stress.set(Q, H.field)
-        p = EquationOfState(self.material).isoT_pressure(Q[0])
-        flux = self.hyperbolicFlux(Q, p, ax) + self.diffusiveFlux(ax)
-
-        return flux
-
-    def richtmyer(self):
-
-        q0 = self._field.copy()
-
-        self.upper_stress.set(self._field, self.height.field, "top")
-        self.lower_stress.set(self._field, self.height.field, "bottom")
-
-        fXE = self.fluxLW(-1, 1)
-        fXW = self.fluxLW(1, 1)
-        fYN = self.fluxLW(-1, 2)
-        fYS = self.fluxLW(1, 2)
-        src = self.getSource(self._field, self.height.field)
-
-        self._field = q0 - self._dt * ((fXE - fXW) / self.dy + (fYN - fYS) / self.dy - src)
-
-        self.fill_ghost_cell()
-        self.post_integrate(q0)

@@ -2,7 +2,7 @@ from pylub.field import VectorField, TensorField
 from pylub.eos import EquationOfState
 
 
-class SymmetricStressField(VectorField):
+class SymStressField2D(VectorField):
 
     def __init__(self, disc, geometry, material, grid=False):
 
@@ -26,7 +26,7 @@ class SymmetricStressField(VectorField):
         self._field[2] = -eta * ((V * q[0] - 3 * q[2]) * h[1] + (U * q[0] - 3 * q[1]) * h[2]) / (h[0] * q[0])
 
 
-class StressField(TensorField):
+class SymStressField3D(TensorField):
 
     def __init__(self, disc, geometry, material, grid=False):
 
@@ -37,8 +37,6 @@ class StressField(TensorField):
         self.mat = material
 
     def set(self, q, h, bound):
-
-        # out = np.zeros((6, *q.shape[1:]))
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
