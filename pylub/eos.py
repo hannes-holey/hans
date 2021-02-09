@@ -151,37 +151,6 @@ class EquationOfState:
 
             c_squared = 3 * a * rho**2 + 2 * b * rho + c
 
-        elif self.material['EOS'] == "Bayada":
-            rho_l = float(self.material["rhol"])
-            rho_v = float(self.material["rhov"])
-            c_l = float(self.material["cl"])
-            c_v = float(self.material["cv"])
-
-            alpha = self.alphaOfRho(rho)
-            if np.isscalar(rho):
-                if alpha > 1:
-                    c_squared = c_v**2
-                elif alpha < 0:
-                    c_squared = c_l**2
-                else:
-                    c_squared = c_v**2 * rho_v * c_l**2 * rho_l / (rho * (alpha * c_l**2 * rho_l + (1 - alpha) * c_v**2 * rho_v))
-            else:
-                rho_mix = rho[np.logical_and(alpha <= 1, alpha >= 0)]
-                alpha_mix = alpha[np.logical_and(alpha <= 1, alpha >= 0)]
-
-                c_squared = np.ones_like(rho) * c_v**2
-                c_squared[alpha < 0] = c_l**2
-                c_squared[np.logical_and(alpha <= 1, alpha >= 0)] = c_v**2 * rho_v * c_l**2 * rho_l / \
-                    (rho_mix * (alpha_mix * c_l**2 * rho_l + (1 - alpha_mix) * c_v**2 * rho_v))
-
-        elif self.material['EOS'] == "Bayada_nocav":
-            c_l = float(self.material["cl"])
-
-            if np.isscalar(rho):
-                c_squared = c_l**2
-            else:
-                c_squared = np.ones_like(rho) * c_l**2
-
         return np.sqrt(np.amax(abs(c_squared)))
 
     def viscosity(self, rho):

@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from datetime import datetime
 from git import Repo
+import numpy as np
 
 from pylub.eos import EquationOfState
-from pylub.solver import Solver
 from pylub.plottools import adaptiveLimits
+from pylub.integrate import ConservedField
 
 
 class Problem:
@@ -78,7 +79,8 @@ class Problem:
             self.Ly = float(disc["Ly"])
             disc["dy"] = self.Ly / self.Ny
 
-        self.sol = Solver(disc, BC, geometry, numerics, material, q_init)
+        self.check_bc()
+        self.q = ConservedField(disc, BC, geometry, material, numerics)
 
     def run(self, plot=False, out_dir="data"):
         self.tStart = time.time()
@@ -93,10 +95,10 @@ class Problem:
             tol = float(self.numerics["tol"])
 
             i = 0
-            while self.sol.time < maxT:
+            while self.q.time < maxT:
 
-                self.sol.solve(i)
-                tDiff = maxT - self.sol.time
+                self.q.update(i)
+                tDiff = maxT - self.q.time
 
                 signal.signal(signal.SIGTERM, self.receive_signal)
                 signal.signal(signal.SIGHUP, self.receive_signal)
@@ -105,15 +107,29 @@ class Problem:
 
                 if i % self.writeInterval == 0:
                     self.write(i)
-                elif self.sol.eps < tol:
+                elif self.q.eps < tol:
                     self.write(i, mode="converged")
                     break
-                elif tDiff < self.sol.dt:
+                elif tDiff < self.q.dt:
                     i += 1
-                    self.sol.solve(i)
+                    self.q.update(i)
                     self.write(i, mode="maxtime")
 
                 i += 1
+
+    def check_bc(self):
+        x0 = np.array(list(self.BC["x0"]))
+        x1 = np.array(list(self.BC["x1"]))
+        y0 = np.array(list(self.BC["y0"]))
+        y1 = np.array(list(self.BC["y1"]))
+
+        assert len(x0) == 3
+        assert len(x1) == 3
+        assert len(y0) == 3
+        assert len(y1) == 3
+
+        assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
+        assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
 
     def init_netcdf(self, out_dir):
         if not(os.path.exists(out_dir)):
@@ -166,21 +182,21 @@ class Problem:
                     name = cat_name + "_" + key
                     self.nc.setncattr(name, value)
 
-        print(f"{i:10d}\t{self.sol.dt:.6e}\t{self.sol.time:.6e}\t{self.sol.eps:.6e}")
+        print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}")
         sys.stdout.flush()
 
         k = self.rho.shape[0]
 
-        self.rho[k] = self.sol.q.field[0, 1:-1, 1:-1]
-        self.jx[k] = self.sol.q.field[1, 1:-1, 1:-1]
-        self.jy[k] = self.sol.q.field[2, 1:-1, 1:-1]
+        self.rho[k] = self.q.field[0, 1:-1, 1:-1]
+        self.jx[k] = self.q.field[1, 1:-1, 1:-1]
+        self.jy[k] = self.q.field[2, 1:-1, 1:-1]
 
-        self.time[k] = self.sol.time
-        self.mass[k] = self.sol.mass
-        self.vmax[k] = self.sol.vmax
-        self.vSound[k] = self.sol.vSound
-        self.dt[k] = self.sol.dt
-        self.eps[k] = self.sol.eps
+        self.time[k] = self.q.time
+        self.mass[k] = self.q.mass
+        self.vmax[k] = self.q.vmax
+        self.vSound[k] = self.q.vSound
+        self.dt[k] = self.q.dt
+        self.eps[k] = self.q.eps
 
         if mode == "converged":
             self.nc.tEnd = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -213,11 +229,11 @@ class Problem:
 
         fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
 
-        x = self.sol.q.xx[1:-1, self.Ny // 2]
-        ax[0, 0].plot(x, self.sol.q.field[1, 1:-1, self.Ny // 2])
-        ax[0, 1].plot(x, self.sol.q.field[2, 1:-1, self.Ny // 2])
-        ax[1, 0].plot(x, self.sol.q.field[0, 1:-1, self.Ny // 2])
-        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
+        x = self.q.xx[1:-1, self.Ny // 2]
+        ax[0, 0].plot(x, self.q.field[1, 1:-1, self.Ny // 2])
+        ax[0, 1].plot(x, self.q.field[2, 1:-1, self.Ny // 2])
+        ax[1, 0].plot(x, self.q.field[0, 1:-1, self.Ny // 2])
+        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.Ny // 2]))
 
         ax[0, 0].set_title(r'$j_x$')
         ax[0, 1].set_title(r'$j_y$')
@@ -242,15 +258,15 @@ class Problem:
 
     def animate1D(self, i, fig, ax):
 
-        fig.suptitle('time = {:.2f} ns'.format(self.sol.time * 1e9))
+        fig.suptitle('time = {:.2f} ns'.format(self.q.time * 1e9))
 
-        ax[0, 0].lines[0].set_ydata(self.sol.q.field[1, 1:-1, self.Ny // 2])
-        ax[0, 1].lines[0].set_ydata(self.sol.q.field[2, 1:-1, self.Ny // 2])
-        ax[1, 0].lines[0].set_ydata(self.sol.q.field[0, 1:-1, self.Ny // 2])
-        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.sol.q.field[0, 1:-1, self.Ny // 2]))
+        ax[0, 0].lines[0].set_ydata(self.q.field[1, 1:-1, self.Ny // 2])
+        ax[0, 1].lines[0].set_ydata(self.q.field[2, 1:-1, self.Ny // 2])
+        ax[1, 0].lines[0].set_ydata(self.q.field[0, 1:-1, self.Ny // 2])
+        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.Ny // 2]))
 
         ax = adaptiveLimits(ax)
 
-        self.sol.solve(i)
+        self.q.update(i)
         if i % self.writeInterval == 0:
-            print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.sol.dt, self.sol.time, self.sol.eps))
+            print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.q.dt, self.q.time, self.q.eps))

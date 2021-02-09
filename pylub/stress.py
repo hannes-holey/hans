@@ -1,37 +1,29 @@
-from pylub.eos import EquationOfState
 from pylub.field import VectorField, TensorField
+from pylub.eos import EquationOfState
 
 
-class Deterministic:
+class SymStressField2D(VectorField):
 
-    def __init__(self, disc, geometry, material):
+    def __init__(self, disc, geometry, material, grid=False):
+
+        super().__init__(disc, grid)
 
         self.disc = disc
         self.geo = geometry
         self.mat = material
 
-    def viscousStress_avg(self, q, h):
-
-        out = VectorField(self.disc, grid=False)
+    def set(self, q, h):
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = EquationOfState(self.mat).viscosity(q.field[0])
+        eta = EquationOfState(self.mat).viscosity(q[0])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 
-        rho = q.field[0]
-        j_x = q.field[1]
-        j_y = q.field[2]
-
-        h0 = h.field[0]
-        hx = h.field[1]
-        hy = h.field[2]
-
         # origin bottom, U_top = 0, U_bottom = U
-        out.field[0] = -((U * rho - 3 * j_x) * (lam + 2 * eta) * hx + (V * rho - 3 * j_y) * lam * hy) / (h0 * rho)
-        out.field[1] = -((V * rho - 3 * j_y) * (lam + 2 * eta) * hy + (U * rho - 3 * j_x) * lam * hx) / (h0 * rho)
-        out.field[2] = -eta * ((V * rho - 3 * j_y) * hx + (U * rho - 3 * j_x) * hy) / (h0 * rho)
+        self._field[0] = -((U * q[0] - 3 * q[1]) * (lam + 2 * eta) * h[1] + (V * q[0] - 3 * q[2]) * lam * h[2]) / (h[0] * q[0])
+        self._field[1] = -((V * q[0] - 3 * q[2]) * (lam + 2 * eta) * h[2] + (U * q[0] - 3 * q[1]) * lam * h[1]) / (h[0] * q[0])
+        self._field[2] = -eta * ((V * q[0] - 3 * q[2]) * h[1] + (U * q[0] - 3 * q[1]) * h[2]) / (h[0] * q[0])
 
         # origin center, U_top = U, U_bottom = 0
         # out.field[0] = (-3 * (lam + 2 * eta) * (U * rho - 2 * j_x) * hx - 3 * lam * (V * rho - 2 * j_y) * hy) / (2 * h0 * rho)
@@ -43,51 +35,34 @@ class Deterministic:
         # out.field[1] = (6 * j_y * (eta + lam / 2) * hy + 3 * lam * j_x * hx) / (h0 * rho)
         # out.field[2] = 3 * eta * (j_x * hy + j_y * hx) / (h0 * rho)
 
-        return out
 
-    def stress_avg(self, q, h):
+class SymStressField3D(TensorField):
 
-        viscStress = self.viscousStress_avg(q, h)
-        stress = VectorField(self.disc, grid=False)
+    def __init__(self, disc, geometry, material, grid=False):
 
-        pressure = EquationOfState(self.mat).isoT_pressure(q.field[0])
+        super().__init__(disc, grid)
 
-        stress.field[0] = viscStress.field[0] - pressure
-        stress.field[1] = viscStress.field[1] - pressure
+        self.disc = disc
+        self.geo = geometry
+        self.mat = material
 
-        return stress, viscStress
-
-    def pressure(self, q):
-
-        return EquationOfState(self.mat).isoT_pressure(q[0])
-
-    def viscousStress_wall(self, q, h, bound):
-
-        out = TensorField(self.disc, grid=False)
+    def set(self, q, h, bound):
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = EquationOfState(self.mat).viscosity(q.field[0])
+        eta = EquationOfState(self.mat).viscosity(q[0])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
-
-        rho = q.field[0]
-        j_x = q.field[1]
-        j_y = q.field[2]
-
-        h0 = h.field[0]
-        hx = h.field[1]
-        hy = h.field[2]
 
         if bound == "top":
 
             # origin bottom, U_top = 0, U_bottom = U
-            out.field[0] = (-2 * (U * rho - 3 * j_x) * (2 * eta + lam) * hx - 2 * (V * rho - 3 * j_y) * lam * hy) / (h0 * rho)
-            out.field[1] = (-2 * (V * rho - 3 * j_y) * (2 * eta + lam) * hy - 2 * (U * rho - 3 * j_x) * lam * hx) / (h0 * rho)
-            out.field[2] = -2 * lam * ((U * rho - 3 * j_x) * hx + (V * rho - 3 * j_y) * hy) / (rho * h0)
-            out.field[3] = 2 * eta * (V * rho - 3 * j_y) / (rho * h0)
-            out.field[4] = 2 * eta * (U * rho - 3 * j_x) / (rho * h0)
-            out.field[5] = -2 * eta * ((V * rho - 3 * j_y) * hx + hy * (U * rho - 3 * j_x)) / (rho * h0)
+            self._field[0] = (-2 * (U * q[0] - 3 * q[1]) * (2 * eta + lam) * h[1] - 2 * (V * q[0] - 3 * q[2]) * lam * h[2]) / (h[0] * q[0])
+            self._field[1] = (-2 * (V * q[0] - 3 * q[2]) * (2 * eta + lam) * h[2] - 2 * (U * q[0] - 3 * q[1]) * lam * h[1]) / (h[0] * q[0])
+            self._field[2] = -2 * lam * ((U * q[0] - 3 * q[1]) * h[1] + (V * q[0] - 3 * q[2]) * h[2]) / (q[0] * h[0])
+            self._field[3] = 2 * eta * (V * q[0] - 3 * q[2]) / (q[0] * h[0])
+            self._field[4] = 2 * eta * (U * q[0] - 3 * q[1]) / (q[0] * h[0])
+            self._field[5] = -2 * eta * ((V * q[0] - 3 * q[2]) * h[1] + h[2] * (U * q[0] - 3 * q[1])) / (q[0] * h[0])
 
             # origin center, U_top = U, U_bottom = 0
             # out.field[0] = (-6 * (U * rho - 2 * j_x) * (eta + lam / 2) * hx - 3 * lam * (V * rho - 2 * j_y) * hy) / (2 * h0 * rho)
@@ -108,8 +83,8 @@ class Deterministic:
         elif bound == "bottom":
 
             # origin bottom, U_top = 0, U_bottom = U
-            out.field[3] = -2 * eta * (2 * V * rho - 3 * j_y) / (rho * h0)
-            out.field[4] = -2 * eta * (2 * U * rho - 3 * j_x) / (rho * h0)
+            self._field[3] = -2 * eta * (2 * V * q[0] - 3 * q[2]) / (q[0] * h[0])
+            self._field[4] = -2 * eta * (2 * U * q[0] - 3 * q[1]) / (q[0] * h[0])
 
             # origin center, U_top = U, U_bottom = 0
             # out.field[0] = (-6 * (U * rho - 2 * j_x) * (eta + lam / 2) * hx - 3 * hy * lam * (V * rho - 2 * j_y)) / (2 * h0 * rho)
@@ -126,5 +101,3 @@ class Deterministic:
             # out.field[3] = eta * (V * rho + 6 * j_y) / (rho * h0)
             # out.field[4] = eta * (U * rho + 6 * j_x) / (rho * h0)
             # out.field[5] = eta * ((V * rho + 6 * j_y) * hx + hy * (U * rho + 6 * j_x)) / (2 * rho * h0)
-
-        return out
