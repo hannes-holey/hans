@@ -235,10 +235,10 @@ class Plot:
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     for it, t in enumerate(time[::freq]):
                         if dir == "x":
-                            var = unknowns[key][it, :, Ny // 2]
+                            var = unknowns[key][it * freq, :, Ny // 2]
                         elif dir == "y":
-                            var = unknowns[key][it, Nx // 2, :]
-                        a.plot(x, var, '-', color=cmap(t / maxT))
+                            var = unknowns[key][it * freq, Nx // 2, :]
+                        a.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
                         a.set_ylabel(self.ylabels[key])
                         if count > 1:
                             a.set_xlabel(rf"Distance ${dir}$")
@@ -248,10 +248,10 @@ class Plot:
                 fig, ax = plt.subplots(1)
                 for it, t in enumerate(time[::freq]):
                     if dir == "x":
-                        var = unknowns[choice][it, :, Ny // 2]
+                        var = unknowns[choice][it * freq, :, Ny // 2]
                     elif dir == "y":
-                        var = unknowns[choice][it, Nx // 2, :]
-                    ax.plot(x, var, '-', color=cmap(t / maxT))
+                        var = unknowns[choice][it * freq, Nx // 2, :]
+                    ax.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
                     ax.set_ylabel(self.ylabels[choice])
                     ax.set_xlabel(rf"Distance ${dir}$")
 
