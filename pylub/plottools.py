@@ -12,18 +12,18 @@ from pylub.eos import EquationOfState
 
 class Plot:
 
-    def __init__(self, path, mode="select"):
+    def __init__(self, path, mode="select", fname=[]):
 
-        self.ds = self.select_nc_files(path, mode=mode)
+        self.ds = self.select_nc_files(path, mode=mode, fname=fname)
 
         self.ylabels = {"rho": r"Density $\rho$",
                         "p": r"Pressure $p$",
                         "jx": r"Momentum density $j_x$",
                         "jy": r"Momentum denisty $j_y$"}
 
-    def select_nc_files(self, path, prefix="", mode="select"):
+    def select_nc_files(self, path, prefix="", mode="select", fname=[]):
         """
-        Function to interactively select data files for further processing, e.g. for plotting.
+        Select netCDF data files for plotting.
 
         Parameters
         ----------
@@ -36,7 +36,9 @@ class Plot:
             - select: manually select files
             - single: manually select a single file
             - all: select all files found below path with prefix and suffix
-
+            - name: select files by name through 'fname' keyword argument
+        fname : list
+            list of file names for mode=name, relative to 'path', defaul="[]"
         Returns
         ----------
         out : dict
@@ -45,7 +47,7 @@ class Plot:
             Else, values are None.
         """
 
-        assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
+        assert mode in ["single", "select", "all", "name"], f"mode must be 'single', select, 'all' or 'name'"
 
         fileList = []
 
@@ -56,10 +58,11 @@ class Plot:
 
         fileList = sorted(fileList)
 
-        print("Available files:")
-        for i, file in enumerate(fileList):
-            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
-            print(f"{i:3d}: {file:<50} {date}")
+        if mode != "name":
+            print("Available files:")
+            for i, file in enumerate(fileList):
+                date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
+                print(f"{i:3d}: {file:<50} {date}")
 
         if mode == "single":
             mask = [int(input("Enter file key: "))]
@@ -73,6 +76,8 @@ class Plot:
 
             for j in mask_range:
                 mask += list(range(int(j.split("-")[0]), int(j.split("-")[1]) + 1))
+        elif mode == "name":
+            mask = [i for i, f in enumerate(fileList) if os.path.relpath(f, start=path) in fname]
 
         out = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
 
