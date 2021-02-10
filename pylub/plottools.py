@@ -94,10 +94,10 @@ class Plot:
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            Lx = data.disc_Lx
-            Ly = data.disc_Ly
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
 
             rho = np.array(data.variables["rho"])[-1]
             p = EquationOfState(material).isoT_pressure(rho)
@@ -144,19 +144,19 @@ class Plot:
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
 
             try:
-                Lx = data.disc_Lx
+                Lx = float(data.disc_Lx)
             except AttributeError:
-                dx = data.disc_dx
+                dx = float(data.disc_dx)
                 Lx = dx * Nx
 
             try:
-                Ly = data.disc_Ly
+                Ly = float(data.disc_Ly)
             except AttributeError:
-                dy = data.disc_dy
+                dy = float(data.disc_dy)
                 Ly = dy * Ny
 
             rho = np.array(data.variables["rho"])[-1]
@@ -207,10 +207,10 @@ class Plot:
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            Lx = data.disc_Lx
-            Ly = data.disc_Ly
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
 
             time = np.array(data.variables["time"])
             maxT = time[-1]
@@ -298,10 +298,10 @@ class Plot:
 
             A = unknowns[choice]
             t = np.array(data.variables['time'])
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
-            Lx = data.disc_Lx
-            Ly = data.disc_Ly
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
 
             fig, ax = plt.subplots(figsize=(Nx / Ny * 7, 7))
 
