@@ -83,11 +83,11 @@ class Plot:
 
         return out
 
-    def plot_cut(self, choice="all", dir='x'):
+    def plot_cut(self, choice="all", dir='x', figsize=(6.4, 4.8), xscale=1., yscale=1.):
         if choice == "all":
-            fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
+            fig, ax = plt.subplots(2, 2, sharex=True, figsize=figsize, tight_layout=True)
         else:
-            fig, ax = plt.subplots(1, tight_layout=True)
+            fig, ax = plt.subplots(1, figsize=figsize, tight_layout=True)
 
         for filename, data in self.ds.items():
 
@@ -117,7 +117,7 @@ class Plot:
                         var = unknowns[key][:, Ny // 2]
                     elif dir == "y":
                         var = unknowns[key][Nx // 2, :]
-                    a.plot(x, var)
+                    a.plot(x * xscale, var * yscale)
                     a.set_ylabel(self.ylabels[key])
                     if count > 1:
                         a.set_xlabel(rf"Distance ${dir}$")
@@ -126,18 +126,18 @@ class Plot:
                     var = unknowns[choice][:, Ny // 2]
                 elif dir == "y":
                     var = unknowns[choice][Nx // 2, :]
-                ax.plot(x, var)
+                ax.plot(x * xscale, var * yscale)
                 ax.set_ylabel(self.ylabels[choice])
                 ax.set_xlabel(rf"Distance ${dir}$")
 
         return fig, ax
 
-    def plot_2D(self, choice="all"):
+    def plot_2D(self, choice="all", figsize=(6.4, 4.8), aspect='equal', xyscale=1., zscale=1., contour_levels=[]):
 
         if choice == "all":
-            fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
+            fig, ax = plt.subplots(2, 2, figsize=figsize, sharex=True, tight_layout=True)
         else:
-            fig, ax = plt.subplots(1, tight_layout=True)
+            fig, ax = plt.subplots(1, figsize=figsize, tight_layout=True)
 
         for filename, data in self.ds.items():
 
@@ -168,7 +168,8 @@ class Plot:
 
             if choice == "all":
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
-                    im = a.imshow(unknowns[key].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect='equal', cmap='viridis')
+                    im = a.imshow(unknowns[key].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
+                                  interpolation='none', aspect='equal', cmap='viridis')
 
                     divider = make_axes_locatable(a)
                     cax = divider.append_axes("right", size="5%", pad=0.3)
@@ -180,10 +181,15 @@ class Plot:
                     cbar.set_label(self.ylabels[key])
 
                     # Adjust ticks
-                    a.set_xlabel(r'$L_x$ (mm)')
-                    a.set_ylabel(r'$L_y$ (mm)')
+                    a.set_xlabel(r'$L_x$')
+                    a.set_ylabel(r'$L_y$')
             else:
-                im = ax.imshow(unknowns[choice].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect='equal', cmap='viridis')
+                im = ax.imshow(unknowns[choice].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
+                               interpolation='none', aspect=aspect, cmap='viridis')
+
+                if len(contour_levels) > 0:
+                    ax.contour(unknowns[choice].T * zscale, contour_levels, colors='red',
+                               extent=(0, Lx*xyscale, 0, Ly*xyscale), linewidths=1.)
 
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.3)
@@ -197,11 +203,10 @@ class Plot:
                 # Adjust ticks
                 ax.set_xlabel(r'$L_x$ (mm)')
                 ax.set_ylabel(r'$L_y$ (mm)')
-                # ax.invert_yaxis()
 
-        return fig, ax
+        return fig, ax, cbar
 
-    def plot_cut_evolution(self, choice="all", dir="x", freq=1,):
+    def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1.):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -228,10 +233,10 @@ class Plot:
             unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
             cmap = plt.cm.coolwarm
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT*tscale))
 
             if choice == "all":
-                fig, ax = plt.subplots(2, 2, sharex=True)
+                fig, ax = plt.subplots(2, 2, sharex=True, figsize=figsize)
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     for it, t in enumerate(time[::freq]):
                         if dir == "x":
@@ -243,9 +248,9 @@ class Plot:
                         if count > 1:
                             a.set_xlabel(rf"Distance ${dir}$")
 
-                fig.colorbar(sm, ax=ax.ravel().tolist(), label='time (s)', extend='max')
+                cbar = fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
             else:
-                fig, ax = plt.subplots(1)
+                fig, ax = plt.subplots(1, figsize=figsize)
                 for it, t in enumerate(time[::freq]):
                     if dir == "x":
                         var = unknowns[choice][it * freq, :, Ny // 2]
@@ -255,13 +260,13 @@ class Plot:
                     ax.set_ylabel(self.ylabels[choice])
                     ax.set_xlabel(rf"Distance ${dir}$")
 
-                fig.colorbar(sm, ax=ax, label='time (s)', extend='max')
+                cbar = fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
 
-        return fig, ax
+        return fig, ax, cbar
 
-    def plot_timeseries(self, attr):
+    def plot_timeseries(self, attr, figsize=(6.4, 4.8), xscale=1., yscale=1.):
 
-        fig, ax = plt.subplots(1)
+        fig, ax = plt.subplots(1, figsize=figsize)
 
         for filename, data in self.ds.items():
 
@@ -272,9 +277,9 @@ class Plot:
                        "vmax": r"Max. velocity $v_\mathrm{max}$",
                        "vSound": r"Velocity of sound $c$",
                        "dt": r"Time step $\Delta t$",
-                       "eps": r"Residual $\epsilon$"}
+                       "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert \,\Vert\rho_n\Vert^{-1}CFL^{-1}$"}
 
-            ax.plot(time, val, '-')
+            ax.plot(time * xscale, val * yscale, '-')
             ax.set_xlabel(r"Time $t$")
             ax.set_ylabel(ylabels[attr])
 
@@ -283,7 +288,7 @@ class Plot:
 
         return fig, ax
 
-    def animate2D(self, choice="rho"):
+    def animate2D(self, choice="rho", aspect="equal"):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -306,7 +311,7 @@ class Plot:
             fig, ax = plt.subplots(figsize=(Nx / Ny * 7, 7))
 
             # Initial plotting
-            self.im = ax.imshow(A[0].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect='equal', cmap='viridis')
+            self.im = ax.imshow(A[0].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect=aspect, cmap='viridis')
 
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.3)
