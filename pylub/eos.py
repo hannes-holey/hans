@@ -151,6 +151,9 @@ class EquationOfState:
 
             c_squared = 3 * a * rho**2 + 2 * b * rho + c
 
+        elif self.material['EOS'] == "Bayada":
+            c_squared = float(self.material['cl'])**2
+
         return np.sqrt(np.amax(abs(c_squared)))
 
     def viscosity(self, rho):
