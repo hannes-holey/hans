@@ -15,6 +15,7 @@ class ConservedField(VectorField):
         self.BC = BC
         self.material = material
 
+        self.stokes = bool(numerics["stokes"])
         self.numFlux = str(numerics["numFlux"])
         self.adaptive = bool(numerics["adaptive"])
 
@@ -208,14 +209,22 @@ class ConservedField(VectorField):
         F = np.zeros_like(f)
 
         if ax == 1:
-            F[0] = f[1]
-            F[1] = f[1] * f[1] / f[0] + p
-            F[2] = f[2] * f[1] / f[0]
+            if self.stokes:
+                F[0] = f[1]
+                F[1] = p
+            else:
+                F[0] = f[1]
+                F[1] = f[1] * f[1] / f[0] + p
+                F[2] = f[2] * f[1] / f[0]
 
         elif ax == 2:
-            F[0] = f[2]
-            F[1] = f[1] * f[2] / f[0]
-            F[2] = f[2] * f[2] / f[0] + p
+            if self.stokes:
+                F[0] = f[2]
+                F[2] = p
+            else:
+                F[0] = f[2]
+                F[1] = f[1] * f[2] / f[0]
+                F[2] = f[2] * f[2] / f[0] + p
 
         return F
 
