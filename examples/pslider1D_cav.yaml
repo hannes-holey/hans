@@ -11,6 +11,8 @@ BC:
     x1: DNN
     y0: PPP
     y1: PPP
+    px0: 101325
+    px1: 101325
 geometry:
     type: parabolic
     hmin: 2.54e-5
@@ -20,8 +22,8 @@ geometry:
 numerics:
     stokes: 1
     adaptive: 1
-    C: 0.5
-    tol: 5e-8
+    C: 0.4
+    tol: 1e-7
     dt: 1.e-10
     maxT: 1.e-1
     numFlux: MC
@@ -31,7 +33,7 @@ material:
     shear: 0.039
     shearv: 3.9e-5
     bulk: 0.
-    rho0: 850.016181
+    rho0: 850.
     cl: 1600.
     cv: 352.
     rhol: 850.
