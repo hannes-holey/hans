@@ -1,0 +1,40 @@
+options:
+    name: jb2d_cav
+    writeInterval: 1000
+disc:
+    Lx: 0.31415
+    Ly: 2e-2
+    Nx: 600
+    Ny: 40
+BC:
+    x0: PPP
+    x1: PPP
+    y0: DNN
+    y1: DNN
+    py0: 1e5
+    py1: 2e5
+geometry:
+    type: journal
+    CR: 0.00138
+    eps: 0.735
+    U: 5.
+    V: 0.
+numerics:
+    stokes: 1
+    adaptive: 1
+    C: 0.3
+    tol: 1.e-6
+    dt: 1.e-10
+    maxT: 1.e-1
+    numFlux: MC
+material:
+    EOS: Bayada
+    visc: Dukler
+    shear: 0.03
+    shearv: 0.00003
+    bulk: 0.
+    rho0: 900.
+    cl: 1450.
+    cv: 333.
+    rhol: 900.
+    rhov: 0.018
