@@ -3,7 +3,7 @@ options:
     writeInterval: 100
 disc:
     dx: 1.e-5
-    dy: 1.e-5
+    dy: 1.
     Nx: 50
     Ny: 1
 BC:
