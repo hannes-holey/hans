@@ -62,9 +62,23 @@ class ConservedField(VectorField):
 
     def update(self, i):
         if self.numFlux == "MC":
-            self.mac_cormack()
+            try:
+                self.mac_cormack()
+            except NotImplementedError:
+                print("MacCormack scheme not implemented. Exit!")
+                quit()
         if self.numFlux == "LW":
-            self.richtmyer()
+            try:
+                self.richtmyer()
+            except NotImplementedError:
+                print("Lax-Wendroff scheme not implemented. Exit!")
+                quit()
+        if self.numFlux == "RK3":
+            try:
+                self.runge_kutta3()
+            except NotImplementedError:
+                print("Runge-Kutta 3 scheme not implemented. Exit!")
+                quit()
 
     def mac_cormack(self):
 
@@ -87,6 +101,12 @@ class ConservedField(VectorField):
         self._field = 0.5 * (self._field + q0)
 
         self.post_integrate(q0)
+
+    def richtmyer(self):
+        raise NotImplementedError
+
+    def runge_kutta3(self):
+        raise NotImplementedError
 
     def post_integrate(self, q0):
         self._time += self._dt
