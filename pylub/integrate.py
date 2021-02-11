@@ -114,9 +114,7 @@ class ConservedField(VectorField):
         if self.adaptive:
             self._dt = self.C * min(self.dx, self.dy) / self.vmax
 
-        p0 = EquationOfState(self.material).isoT_pressure(q0[0])
-        p1 = EquationOfState(self.material).isoT_pressure(self._field[0])
-        self._eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
+        self._eps = np.linalg.norm(self._field[0] - q0[0]) / np.linalg.norm(q0[0]) / self.C
 
     def fill_ghost_cell(self):
         self.periodic()
