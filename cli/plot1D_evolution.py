@@ -22,5 +22,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = Plot(args.path, mode="single")
-    fig, ax = files.plot_cut_evolution(choice=args.choice, dir=args.dir, freq=args.freq)
+    fig, ax, cb = files.plot_cut_evolution(choice=args.choice, dir=args.dir, freq=args.freq)
     plt.show()

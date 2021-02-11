@@ -21,5 +21,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = Plot(args.path)
-    fig, ax = files.plot_2D(choice=args.choice)
+    fig, ax, cb = files.plot_2D(choice=args.choice)
     plt.show()
