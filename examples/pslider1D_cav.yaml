@@ -1,9 +1,9 @@
 options:
-    name: jb1d_cav
+    name: pslider1d_cav
     writeInterval: 1000
 disc:
-    dx: 1.e-5
-    dy: 1.e-5
+    Lx: 0.0762
+    Ly: 1.
     Nx: 100
     Ny: 1
 BC:
@@ -12,27 +12,27 @@ BC:
     y0: PPP
     y1: PPP
 geometry:
-    type: journal
-    CR: 1.e-2
-    eps: 0.7
+    type: parabolic
+    hmin: 2.54e-5
+    hmax: 5.08e-5
     U: 4.57
     V: 0.
 numerics:
     stokes: 1
     adaptive: 1
-    C: 0.1
-    tol: 1e-8
+    C: 0.5
+    tol: 5e-8
     dt: 1.e-10
-    maxT: 1.e-4
+    maxT: 1.e-1
     numFlux: MC
 material:
     EOS: Bayada
-    visc: McAdams
+    visc: Dukler
     shear: 0.039
-    shearv: 0.66e-3
+    shearv: 3.9e-5
     bulk: 0.
-    rho0: 998.
-    cl: 1480.
-    cv: 343.
-    rhol: 998.
-    rhov: 1.
+    rho0: 850.016181
+    cl: 1600.
+    cv: 352.
+    rhol: 850.
+    rhov: 0.019
