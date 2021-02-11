@@ -29,7 +29,7 @@ class GapHeight(VectorField):
         elif self.geometry["type"] == "parabolic":
             hmin = float(self.geometry['hmin'])
             hmax = float(self.geometry['hmax'])
-            self._field[0] = (hmax - hmin) / self.Lx**2 * (self.xx - self.Lx / 2)**2 + hmin
+            self._field[0] = 4 * (hmax - hmin) / self.Lx**2 * (self.xx - self.Lx / 2)**2 + hmin
 
         elif self.geometry["type"] == "inclined":
             h1 = float(self.geometry['h1'])

@@ -1,30 +1,29 @@
 options:
-    name: channel_inf_DH
-    writeInterval: 1000
+    name: slider1D_DH
+    writeInterval: 5000
 disc:
     dx: 1.e-5
-    dy: 1.e-5
-    Nx: 50
-    Ny: 3
+    dy: 1.
+    Nx: 100
+    Ny: 1
 BC:
     x0: DNN
     x1: DNN
     y0: PPP
     y1: PPP
-    px0: 101325
-    px1: 202650
 geometry:
     type: inclined
-    h1: 1e-6
-    h2: 1e-6
-    U: 0.
+    h1: 2.5e-6
+    h2: 5e-7
+    U: 0.1
     V: 0.
 numerics:
+    stokes: 1
     adaptive: 1
-    C: 0.2
-    tol: 1e-6
-    dt: 1.e-10
-    maxT: 5.e-5
+    C: 0.05
+    tol: 1e-9
+    dt: 1e-10
+    maxT: 1e-3
     numFlux: MC
 material:
     EOS: DH

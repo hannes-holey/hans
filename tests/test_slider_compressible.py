@@ -12,7 +12,7 @@ class TestCompressibleInclinedSlider(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        config_file = os.path.join("examples", "slider_inf_DH.yaml")
+        config_file = os.path.join("examples", "slider1D_DH.yaml")
         cls.tmp_dir = os.path.join("tests", "tmp")
         if not os.path.exists(cls.tmp_dir):
             os.makedirs(cls.tmp_dir)
@@ -21,7 +21,7 @@ class TestCompressibleInclinedSlider(unittest.TestCase):
         cls.material = myTestProblem.material
         myTestProblem.run(out_dir=cls.tmp_dir)
 
-        ds = netCDF4.Dataset(os.path.join(cls.tmp_dir, "slider_inf_DH_0001.nc"))
+        ds = netCDF4.Dataset(os.path.join(cls.tmp_dir, "slider1D_DH_0001.nc"))
         cls.rho = ds.variables["rho"]
         cls.mass = ds.variables["mass"]
         cls.rho_ref, cls.p_ref = np.loadtxt(os.path.join("tests", "slider_2e-3_inf_DH_ref.dat"), unpack=True)

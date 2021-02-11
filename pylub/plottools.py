@@ -4,6 +4,7 @@ import netCDF4
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.ticker as tk
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from pylub.eos import EquationOfState
@@ -11,18 +12,18 @@ from pylub.eos import EquationOfState
 
 class Plot:
 
-    def __init__(self, path, mode="select"):
+    def __init__(self, path, mode="select", fname=[]):
 
-        self.ds = self.select_nc_files(path, mode=mode)
+        self.ds = self.select_nc_files(path, mode=mode, fname=fname)
 
         self.ylabels = {"rho": r"Density $\rho$",
                         "p": r"Pressure $p$",
                         "jx": r"Momentum density $j_x$",
                         "jy": r"Momentum denisty $j_y$"}
 
-    def select_nc_files(self, path, prefix="", mode="select"):
+    def select_nc_files(self, path, prefix="", mode="select", fname=[]):
         """
-        Function to interactively select data files for further processing, e.g. for plotting.
+        Select netCDF data files for plotting.
 
         Parameters
         ----------
@@ -35,7 +36,9 @@ class Plot:
             - select: manually select files
             - single: manually select a single file
             - all: select all files found below path with prefix and suffix
-
+            - name: select files by name through 'fname' keyword argument
+        fname : list
+            list of file names for mode=name, relative to 'path', defaul="[]"
         Returns
         ----------
         out : dict
@@ -44,7 +47,7 @@ class Plot:
             Else, values are None.
         """
 
-        assert mode in ["single", "select", "all"], f"mode must be 'single', select or 'all'"
+        assert mode in ["single", "select", "all", "name"], f"mode must be 'single', select, 'all' or 'name'"
 
         fileList = []
 
@@ -55,10 +58,11 @@ class Plot:
 
         fileList = sorted(fileList)
 
-        print("Available files:")
-        for i, file in enumerate(fileList):
-            date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
-            print(f"{i:3d}: {file:<50} {date}")
+        if mode != "name":
+            print("Available files:")
+            for i, file in enumerate(fileList):
+                date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
+                print(f"{i:3d}: {file:<50} {date}")
 
         if mode == "single":
             mask = [int(input("Enter file key: "))]
@@ -72,26 +76,28 @@ class Plot:
 
             for j in mask_range:
                 mask += list(range(int(j.split("-")[0]), int(j.split("-")[1]) + 1))
+        elif mode == "name":
+            mask = [i for i, f in enumerate(fileList) if os.path.relpath(f, start=path) in fname]
 
         out = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
 
         return out
 
-    def plot_cut(self, choice="all", dir='x'):
+    def plot_cut(self, choice="all", dir='x', figsize=(6.4, 4.8), xscale=1., yscale=1.):
         if choice == "all":
-            fig, ax = plt.subplots(2, 2, sharex=True, tight_layout=True)
+            fig, ax = plt.subplots(2, 2, sharex=True, figsize=figsize, tight_layout=True)
         else:
-            fig, ax = plt.subplots(1, tight_layout=True)
+            fig, ax = plt.subplots(1, figsize=figsize, tight_layout=True)
 
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            Lx = data.disc_Lx
-            Ly = data.disc_Ly
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
 
             rho = np.array(data.variables["rho"])[-1]
             p = EquationOfState(material).isoT_pressure(rho)
@@ -111,7 +117,7 @@ class Plot:
                         var = unknowns[key][:, Ny // 2]
                     elif dir == "y":
                         var = unknowns[key][Nx // 2, :]
-                    a.plot(x, var)
+                    a.plot(x * xscale, var * yscale)
                     a.set_ylabel(self.ylabels[key])
                     if count > 1:
                         a.set_xlabel(rf"Distance ${dir}$")
@@ -120,22 +126,96 @@ class Plot:
                     var = unknowns[choice][:, Ny // 2]
                 elif dir == "y":
                     var = unknowns[choice][Nx // 2, :]
-                ax.plot(x, var)
+                ax.plot(x * xscale, var * yscale)
                 ax.set_ylabel(self.ylabels[choice])
                 ax.set_xlabel(rf"Distance ${dir}$")
 
         return fig, ax
 
-    def plot_cut_evolution(self, choice="all", dir="x", freq=1,):
+    def plot_2D(self, choice="all", figsize=(6.4, 4.8), aspect='equal', xyscale=1., zscale=1., contour_levels=[]):
+
+        if choice == "all":
+            fig, ax = plt.subplots(2, 2, figsize=figsize, sharex=True, tight_layout=True)
+        else:
+            fig, ax = plt.subplots(1, figsize=figsize, tight_layout=True)
+
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
-            Lx = data.disc_Lx
-            Ly = data.disc_Ly
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
+
+            try:
+                Lx = float(data.disc_Lx)
+            except AttributeError:
+                dx = float(data.disc_dx)
+                Lx = dx * Nx
+
+            try:
+                Ly = float(data.disc_Ly)
+            except AttributeError:
+                dy = float(data.disc_dy)
+                Ly = dy * Ny
+
+            rho = np.array(data.variables["rho"])[-1]
+            p = EquationOfState(material).isoT_pressure(rho)
+            jx = np.array(data.variables["jx"])[-1]
+            jy = np.array(data.variables["jy"])[-1]
+
+            unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
+
+            if choice == "all":
+                for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
+                    im = a.imshow(unknowns[key].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
+                                  interpolation='none', aspect='equal', cmap='viridis')
+
+                    divider = make_axes_locatable(a)
+                    cax = divider.append_axes("right", size="5%", pad=0.3)
+
+                    fmt = tk.ScalarFormatter(useMathText=True)
+                    fmt.set_powerlimits((0, 0))
+
+                    cbar = plt.colorbar(im, cax=cax, format=fmt)
+                    cbar.set_label(self.ylabels[key])
+
+                    # Adjust ticks
+                    a.set_xlabel(r'$L_x$')
+                    a.set_ylabel(r'$L_y$')
+            else:
+                im = ax.imshow(unknowns[choice].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
+                               interpolation='none', aspect=aspect, cmap='viridis')
+
+                if len(contour_levels) > 0:
+                    ax.contour(unknowns[choice].T * zscale, contour_levels, colors='red',
+                               extent=(0, Lx*xyscale, 0, Ly*xyscale), linewidths=1.)
+
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes("right", size="5%", pad=0.3)
+
+                fmt = tk.ScalarFormatter(useMathText=True)
+                fmt.set_powerlimits((0, 0))
+
+                cbar = plt.colorbar(im, cax=cax, format=fmt)
+                cbar.set_label(self.ylabels[choice])
+
+                # Adjust ticks
+                ax.set_xlabel(r'$L_x$ (mm)')
+                ax.set_ylabel(r'$L_y$ (mm)')
+
+        return fig, ax, cbar
+
+    def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1.):
+        for filename, data in self.ds.items():
+
+            # reconstruct input dicts
+            material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
+
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
 
             time = np.array(data.variables["time"])
             maxT = time[-1]
@@ -153,40 +233,40 @@ class Plot:
             unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
             cmap = plt.cm.coolwarm
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT*tscale))
 
             if choice == "all":
-                fig, ax = plt.subplots(2, 2, sharex=True)
+                fig, ax = plt.subplots(2, 2, sharex=True, figsize=figsize)
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     for it, t in enumerate(time[::freq]):
                         if dir == "x":
-                            var = unknowns[key][it, :, Ny // 2]
+                            var = unknowns[key][it * freq, :, Ny // 2]
                         elif dir == "y":
-                            var = unknowns[key][it, Nx // 2, :]
-                        a.plot(x, var, '-', color=cmap(t / maxT))
+                            var = unknowns[key][it * freq, Nx // 2, :]
+                        a.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
                         a.set_ylabel(self.ylabels[key])
                         if count > 1:
                             a.set_xlabel(rf"Distance ${dir}$")
 
-                fig.colorbar(sm, ax=ax.ravel().tolist(), label='time (s)', extend='max')
+                cbar = fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
             else:
-                fig, ax = plt.subplots(1)
+                fig, ax = plt.subplots(1, figsize=figsize)
                 for it, t in enumerate(time[::freq]):
                     if dir == "x":
-                        var = unknowns[choice][it, :, Ny // 2]
+                        var = unknowns[choice][it * freq, :, Ny // 2]
                     elif dir == "y":
-                        var = unknowns[choice][it, Nx // 2, :]
-                    ax.plot(x, var, '-', color=cmap(t / maxT))
+                        var = unknowns[choice][it * freq, Nx // 2, :]
+                    ax.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
                     ax.set_ylabel(self.ylabels[choice])
                     ax.set_xlabel(rf"Distance ${dir}$")
 
-                fig.colorbar(sm, ax=ax, label='time (s)', extend='max')
+                cbar = fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
 
-        return fig, ax
+        return fig, ax, cbar
 
-    def plot_timeseries(self, attr):
+    def plot_timeseries(self, attr, figsize=(6.4, 4.8), xscale=1., yscale=1.):
 
-        fig, ax = plt.subplots(1)
+        fig, ax = plt.subplots(1, figsize=figsize)
 
         for filename, data in self.ds.items():
 
@@ -197,9 +277,9 @@ class Plot:
                        "vmax": r"Max. velocity $v_\mathrm{max}$",
                        "vSound": r"Velocity of sound $c$",
                        "dt": r"Time step $\Delta t$",
-                       "eps": r"Residual $\epsilon$"}
+                       "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert \,\Vert\rho_n\Vert^{-1}CFL^{-1}$"}
 
-            ax.plot(time, val, '-')
+            ax.plot(time * xscale, val * yscale, '-')
             ax.set_xlabel(r"Time $t$")
             ax.set_ylabel(ylabels[attr])
 
@@ -208,7 +288,7 @@ class Plot:
 
         return fig, ax
 
-    def animate2D(self, choice="rho"):
+    def animate2D(self, choice="rho", aspect="equal"):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -223,15 +303,15 @@ class Plot:
 
             A = unknowns[choice]
             t = np.array(data.variables['time'])
-            Nx = data.disc_Nx
-            Ny = data.disc_Ny
-            Lx = data.disc_Lx
-            Ly = data.disc_Ly
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
 
             fig, ax = plt.subplots(figsize=(Nx / Ny * 7, 7))
 
             # Initial plotting
-            self.im = ax.imshow(A[0].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect='equal', cmap='viridis')
+            self.im = ax.imshow(A[0].T, extent=(0, Lx, 0, Ly), interpolation='none', aspect=aspect, cmap='viridis')
 
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.3)

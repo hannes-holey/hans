@@ -15,6 +15,7 @@ class ConservedField(VectorField):
         self.BC = BC
         self.material = material
 
+        self.stokes = bool(numerics["stokes"])
         self.numFlux = str(numerics["numFlux"])
         self.adaptive = bool(numerics["adaptive"])
 
@@ -62,9 +63,23 @@ class ConservedField(VectorField):
 
     def update(self, i):
         if self.numFlux == "MC":
-            self.mac_cormack()
+            try:
+                self.mac_cormack()
+            except NotImplementedError:
+                print("MacCormack scheme not implemented. Exit!")
+                quit()
         if self.numFlux == "LW":
-            self.richtmyer()
+            try:
+                self.richtmyer()
+            except NotImplementedError:
+                print("Lax-Wendroff scheme not implemented. Exit!")
+                quit()
+        if self.numFlux == "RK3":
+            try:
+                self.runge_kutta3()
+            except NotImplementedError:
+                print("Runge-Kutta 3 scheme not implemented. Exit!")
+                quit()
 
     def mac_cormack(self):
 
@@ -88,15 +103,19 @@ class ConservedField(VectorField):
 
         self.post_integrate(q0)
 
+    def richtmyer(self):
+        raise NotImplementedError
+
+    def runge_kutta3(self):
+        raise NotImplementedError
+
     def post_integrate(self, q0):
         self._time += self._dt
 
         if self.adaptive:
             self._dt = self.C * min(self.dx, self.dy) / self.vmax
 
-        p0 = EquationOfState(self.material).isoT_pressure(q0[0])
-        p1 = EquationOfState(self.material).isoT_pressure(self._field[0])
-        self._eps = np.linalg.norm(p1 - p0) / np.linalg.norm(p0) / self.C
+        self._eps = np.linalg.norm(self._field[0] - q0[0]) / np.linalg.norm(q0[0]) / self.C
 
     def fill_ghost_cell(self):
         self.periodic()
@@ -179,14 +198,22 @@ class ConservedField(VectorField):
         F = np.zeros_like(f)
 
         if ax == 1:
-            F[0] = f[1]
-            F[1] = f[1] * f[1] / f[0] + p
-            F[2] = f[2] * f[1] / f[0]
+            if self.stokes:
+                F[0] = f[1]
+                F[1] = p
+            else:
+                F[0] = f[1]
+                F[1] = f[1] * f[1] / f[0] + p
+                F[2] = f[2] * f[1] / f[0]
 
         elif ax == 2:
-            F[0] = f[2]
-            F[1] = f[1] * f[2] / f[0]
-            F[2] = f[2] * f[2] / f[0] + p
+            if self.stokes:
+                F[0] = f[2]
+                F[2] = p
+            else:
+                F[0] = f[2]
+                F[1] = f[1] * f[2] / f[0]
+                F[2] = f[2] * f[2] / f[0] + p
 
         return F
 

@@ -1,26 +1,29 @@
 options:
-    name: jb_inf_DH
-    writeInterval: 10000
+    name: channel1D_DH
+    writeInterval: 1000
 disc:
     dx: 1.e-5
-    dy: 1.e-5
-    Nx: 100
-    Ny: 3
+    dy: 1.
+    Nx: 50
+    Ny: 1
 BC:
-    x0: PPP
-    x1: PPP
+    x0: DNN
+    x1: DNN
     y0: PPP
     y1: PPP
+    px0: 101325
+    px1: 202650
 geometry:
-    type: journal
-    CR: 1.e-2
-    eps: 0.7
-    U: 0.1
+    type: inclined
+    h1: 1e-6
+    h2: 1e-6
+    U: 0.
     V: 0.
 numerics:
+    stokes: 1
     adaptive: 1
-    C: 0.05
-    tol: 1e-6
+    C: 0.2
+    tol: 1e-9
     dt: 1.e-10
     maxT: 5.e-5
     numFlux: MC

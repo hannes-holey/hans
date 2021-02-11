@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
-from pylub.tools import getData
+from pylub.plottools import Plot
 
 if __name__ == "__main__":
 
-    files = getData(".")
+    files = Plot(".")
 
-    for filename, data in files.items():
+    print(files)
+
+    for filename, data in files.ds.items():
 
         print(filename + ": \n" + 40 * "-")
         for name in data.ncattrs():

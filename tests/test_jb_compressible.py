@@ -12,7 +12,7 @@ class TestCompressibleJournalBearing(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        config_file = os.path.join("examples", "jb_inf_DH.yaml")
+        config_file = os.path.join("examples", "journal1D_DH.yaml")
         cls.tmp_dir = os.path.join("tests", "tmp")
         if not os.path.exists(cls.tmp_dir):
             os.makedirs(cls.tmp_dir)
@@ -21,7 +21,7 @@ class TestCompressibleJournalBearing(unittest.TestCase):
         cls.material = myTestProblem.material
         myTestProblem.run(out_dir=cls.tmp_dir)
 
-        ds = netCDF4.Dataset(os.path.join(cls.tmp_dir, "jb_inf_DH_0001.nc"))
+        ds = netCDF4.Dataset(os.path.join(cls.tmp_dir, "jb1d_DH_0001.nc"))
         cls.rho = ds.variables["rho"]
         cls.mass = ds.variables["mass"]
 
