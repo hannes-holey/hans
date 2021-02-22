@@ -80,9 +80,9 @@ class Problem:
             disc["dy"] = self.Ly / self.Ny
 
         self.check_bc()
-        self.q = ConservedField(disc, BC, geometry, material, numerics)
 
     def run(self, plot=False, out_dir="data"):
+        self.q = ConservedField(self.disc, self.BC, self.geometry, self.material, self.numerics)
         self.tStart = time.time()
 
         if plot:
