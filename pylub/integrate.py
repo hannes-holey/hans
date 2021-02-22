@@ -179,28 +179,24 @@ class ConservedField(VectorField):
         # origin bottom, U_top = 0, U_bottom = U
         out[0] = (-q[1] * h[1] - q[2] * h[2]) / h[0]
 
-        out[1] = ((q[1] * q[1] / q[0] +
-                   self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
-                  (q[1] * q[2] / q[0] +
-                   self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
+        out[1] = ((q[1] * q[1] / q[0] + self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
+                  (q[1] * q[2] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
                   self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
 
-        out[2] = ((q[2] * q[1] / q[0] +
-                   self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
-                  (q[2] * q[2] / q[0] +
-                   self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
+        out[2] = ((q[2] * q[1] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
+                  (q[2] * q[2] / q[0] + self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
                   self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
 
         # origin center
-        # out[0] = -j_x * hx / h0 - j_y * hy / h0
+        # out[0] = -q[1] * h[1] / h[0] - q[2] * h[2] / h[0]
         #
-        # out[1] = ((j_x * j_x / rho + stress.field[0] - (stress_wall_top.field[0] + stress_wall_bot.field[0]) / 2) * hx
-        #           + (j_x * j_y / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hy
-        #           + stress_wall_top.field[4] - stress_wall_bot.field[4]) / h0
+        # out[1] = ((q[1] * q[1] / q[0] + self.viscous_stress.field[0] - (self.upper_stress.field[0] + self.lower_stress.field[0]) / 2) * h[1]
+        #           + (q[1] * q[2] / q[0] + self.viscous_stress.field[2] - (self.upper_stress.field[5] + self.lower_stress.field[5]) / 2) * h[2]
+        #           + self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
         #
-        # out[2] = ((j_y * j_x / rho + stress.field[2] - (stress_wall_top.field[5] + stress_wall_bot.field[5]) / 2) * hx
-        #           + (j_y * j_y / rho + stress.field[1] - (stress_wall_top.field[1] + stress_wall_bot.field[1]) / 2) * hy
-        #           + stress_wall_top.field[3] - stress_wall_bot.field[3]) / h0
+        # out[2] = ((q[2] * q[1] / q[0] + self.viscous_stress.field[2] - (self.upper_stress.field[5] + self.lower_stress.field[5]) / 2) * h[1]
+        #           + (q[2] * q[2] / q[0] + self.viscous_stress.field[1] - (self.upper_stress.field[1] + self.lower_stress.field[1]) / 2) * h[2]
+        #           + self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
 
         return out
 
