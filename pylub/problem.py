@@ -206,7 +206,7 @@ class Problem:
             print(f"\nSolution has converged after {i:d} steps, Output written to: {self.relpath}")
         elif mode == "maxtime":
             self.nc.tEnd = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
+            print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {float(self.numerics['maxT']):.1e} s reached.")
             print(f"Output written to: {self.relpath}")
         elif mode == "abort":
             self.nc.tEnd = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
