@@ -49,6 +49,25 @@ class Problem:
             Contains material parameters.
         """
 
+        Nx = int(disc['Nx'])
+        Ny = int(disc['Ny'])
+
+        if "dx" in disc.keys():
+            dx = float(disc['dx'])
+            Lx = dx * Nx
+            disc['Lx'] = Lx
+        else:
+            Lx = float(disc["Lx"])
+            disc["dx"] = Lx / Nx
+
+        if "dy" in disc.keys():
+            dy = float(disc['dy'])
+            Ly = dy * Ny
+            disc['Ly'] = Ly
+        else:
+            Ly = float(disc["Ly"])
+            disc["dy"] = Ly / Ny
+
         self.options = options
         self.disc = disc
         self.BC = BC
@@ -60,24 +79,8 @@ class Problem:
         self.writeInterval = int(options['writeInterval'])
         self.name = str(options['name'])
 
-        self.Nx = int(disc['Nx'])
-        self.Ny = int(disc['Ny'])
-
-        if "dx" in disc.keys():
-            dx = float(disc['dx'])
-            self.Lx = dx * self.Nx
-            disc['Lx'] = self.Lx
-        else:
-            self.Lx = float(disc["Lx"])
-            disc["dx"] = self.Lx / self.Nx
-
-        if "dy" in disc.keys():
-            dy = float(disc['dy'])
-            self.Ly = dy * self.Ny
-            disc['Ly'] = self.Ly
-        else:
-            self.Ly = float(disc["Ly"])
-            disc["dy"] = self.Ly / self.Ny
+        self.Nx = self.disc["Nx"]
+        self.Ny = self.disc["Ny"]
 
         self.check_bc()
 
