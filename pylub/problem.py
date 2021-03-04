@@ -32,7 +32,7 @@ class Problem:
 
     """
 
-    def __init__(self, options, disc, BC, geometry, numerics, material, q_init):
+    def __init__(self, options, disc, BC, geometry, numerics, material, q_init, t_init):
         """Constructor
 
         Parameters
@@ -47,26 +47,11 @@ class Problem:
             Contains parameters for the numeric scheme.
         material : dict
             Contains material parameters.
+        q_init : np.ndarray
+            Solution field at last time step of restart file.
+        t_init : tuple
+            Contains total time and last time step of simulation from restart file.
         """
-
-        Nx = int(disc['Nx'])
-        Ny = int(disc['Ny'])
-
-        if "dx" in disc.keys():
-            dx = float(disc['dx'])
-            Lx = dx * Nx
-            disc['Lx'] = Lx
-        else:
-            Lx = float(disc["Lx"])
-            disc["dx"] = Lx / Nx
-
-        if "dy" in disc.keys():
-            dy = float(disc['dy'])
-            Ly = dy * Ny
-            disc['Ly'] = Ly
-        else:
-            Ly = float(disc["Ly"])
-            disc["dy"] = Ly / Ny
 
         self.options = options
         self.disc = disc
@@ -75,6 +60,7 @@ class Problem:
         self.numerics = numerics
         self.material = material
         self.q_init = q_init
+        self.t_init = t_init
 
         self.writeInterval = int(options['writeInterval'])
         self.name = str(options['name'])
@@ -82,10 +68,15 @@ class Problem:
         self.Nx = self.disc["Nx"]
         self.Ny = self.disc["Ny"]
 
-        self.check_bc()
-
     def run(self, plot=False, out_dir="data"):
-        self.q = ConservedField(self.disc, self.BC, self.geometry, self.material, self.numerics)
+        self.q = ConservedField(self.disc,
+                                self.BC,
+                                self.geometry,
+                                self.material,
+                                self.numerics,
+                                q_init=self.q_init,
+                                t_init=self.t_init)
+
         self.tStart = time.time()
 
         if plot:
@@ -119,20 +110,6 @@ class Problem:
                     self.write(i, mode="maxtime")
 
                 i += 1
-
-    def check_bc(self):
-        x0 = np.array(list(self.BC["x0"]))
-        x1 = np.array(list(self.BC["x1"]))
-        y0 = np.array(list(self.BC["y0"]))
-        y1 = np.array(list(self.BC["y1"]))
-
-        assert len(x0) == 3
-        assert len(x1) == 3
-        assert len(y0) == 3
-        assert len(y1) == 3
-
-        assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
-        assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
 
     def init_netcdf(self, out_dir):
         if not(os.path.exists(out_dir)):
@@ -218,8 +195,7 @@ class Problem:
 
     def receive_signal(self, i, signum, stack):
         walltime = time.time() - self.tStart
-        print(f"python: PID: {os.getpid()} recieved {signum} at time {walltime}")
-        sys.stdout.flush()                             # displays the message right now, othervise it would be buffered
+        print(f"python: PID: {os.getpid()} recieved {signum} at time {walltime}", flush=True)
 
         if signum == signal.SIGTERM:
             sys.exit()
