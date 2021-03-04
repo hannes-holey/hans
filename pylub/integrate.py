@@ -189,29 +189,31 @@ class ConservedField(VectorField):
 
     def getSource(self, q, h):
 
+        self.viscous_stress.set(q, h)
+        self.upper_stress.set(q, h, "top")
+        self.lower_stress.set(q, h, "bottom")
+
         out = np.zeros_like(q)
 
         # origin bottom, U_top = 0, U_bottom = U
         out[0] = (-q[1] * h[1] - q[2] * h[2]) / h[0]
 
-        out[1] = ((q[1] * q[1] / q[0] + self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
-                  (q[1] * q[2] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
-                  self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
+        if self.stokes:
+            out[1] = ((q[1] * q[1] / q[0] + self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
+                      (q[1] * q[2] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
+                      self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
 
-        out[2] = ((q[2] * q[1] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
-                  (q[2] * q[2] / q[0] + self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
-                  self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
+            out[2] = ((q[2] * q[1] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
+                      (q[2] * q[2] / q[0] + self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
+                      self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
+        else:
+            out[1] = ((self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
+                      (self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
+                      self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
 
-        # origin center
-        # out[0] = -q[1] * h[1] / h[0] - q[2] * h[2] / h[0]
-        #
-        # out[1] = ((q[1] * q[1] / q[0] + self.viscous_stress.field[0] - (self.upper_stress.field[0] + self.lower_stress.field[0]) / 2) * h[1]
-        #           + (q[1] * q[2] / q[0] + self.viscous_stress.field[2] - (self.upper_stress.field[5] + self.lower_stress.field[5]) / 2) * h[2]
-        #           + self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
-        #
-        # out[2] = ((q[2] * q[1] / q[0] + self.viscous_stress.field[2] - (self.upper_stress.field[5] + self.lower_stress.field[5]) / 2) * h[1]
-        #           + (q[2] * q[2] / q[0] + self.viscous_stress.field[1] - (self.upper_stress.field[1] + self.lower_stress.field[1]) / 2) * h[2]
-        #           + self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
+            out[2] = ((self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
+                      (self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
+                      self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
 
         return out
 
