@@ -77,7 +77,8 @@ class Plot:
             for j in mask_range:
                 mask += list(range(int(j.split("-")[0]), int(j.split("-")[1]) + 1))
         elif mode == "name":
-            mask = [i for i, f in enumerate(fileList) if os.path.relpath(f, start=path) in fname]
+            fileList = [os.path.join(path, f) for f in fname]
+            mask = np.arange(len(fileList))
 
         out = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
 
