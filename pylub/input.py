@@ -54,7 +54,7 @@ class Input:
 
         if self.restartFile is not None:
             q_init = self.getInitialField()
-            time = self.getInitialTime()
+            t_init = self.getInitialTime()
 
         thisProblem = Problem(options,
                               disc,
