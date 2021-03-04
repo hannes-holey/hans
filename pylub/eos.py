@@ -1,5 +1,8 @@
 import numpy as np
 
+# global constants
+R = 8.314462618
+
 
 class EquationOfState:
 
@@ -24,6 +27,14 @@ class EquationOfState:
             alpha = float(self.material['alpha'])
 
             return P0 * (rho / rho0)**(1. / (1. - 0.5 * alpha))
+
+        # Van der Waals equation
+        elif self.material['EOS'] == "vdW":
+            M = float(self.material['M'])
+            T = float(self.material['T0'])
+            a = float(self.material['a'])
+            b = float(self.material['b'])
+            return R * T * rho / (M - b * rho) - a * rho**2 / M**2
 
         # Tait equation (Murnaghan)
         elif self.material['EOS'] == "Tait":
