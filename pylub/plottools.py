@@ -231,7 +231,7 @@ class Plot:
 
         return out
 
-    def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1.):
+    def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1., colormap=True):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -257,8 +257,9 @@ class Plot:
 
             unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
-            cmap = plt.cm.coolwarm
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT*tscale))
+            if colormap:
+                cmap = plt.cm.coolwarm
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT*tscale))
 
             if choice == "all":
                 fig, ax = plt.subplots(2, 2, sharex=True, figsize=figsize)
@@ -268,12 +269,15 @@ class Plot:
                             var = unknowns[key][it * freq, :, Ny // 2]
                         elif dir == "y":
                             var = unknowns[key][it * freq, Nx // 2, :]
-                        a.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                        if colormap:
+                            a.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                        else:
+                            a.plot(x * xscale, var * yscale, '-', label=f"{t*tscale}")
                         a.set_ylabel(self.ylabels[key])
                         if count > 1:
                             a.set_xlabel(rf"Distance ${dir}$")
-
-                cbar = fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
+                if colormap:
+                    cbar = fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
             else:
                 fig, ax = plt.subplots(1, figsize=figsize)
                 for it, t in enumerate(time[::freq]):
@@ -281,13 +285,20 @@ class Plot:
                         var = unknowns[choice][it * freq, :, Ny // 2]
                     elif dir == "y":
                         var = unknowns[choice][it * freq, Nx // 2, :]
-                    ax.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                    if colormap:
+                        ax.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                    else:
+                        ax.plot(x * xscale, var * yscale, '-', label=f"{t*tscale:.0f}")
                     ax.set_ylabel(self.ylabels[choice])
                     ax.set_xlabel(rf"Distance ${dir}$")
 
-                cbar = fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
+                if colormap:
+                    cbar = fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
 
-        return fig, ax, cbar
+        if colormap:
+            return fig, ax, cbar
+        else:
+            return fig, ax
 
     def plot_timeseries(self, attr, figsize=(6.4, 4.8), xscale=1., yscale=1.):
 
@@ -302,7 +313,7 @@ class Plot:
                        "vmax": r"Max. velocity $v_\mathrm{max}$",
                        "vSound": r"Velocity of sound $c$",
                        "dt": r"Time step $\Delta t$",
-                       "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert \,\Vert\rho_n\Vert^{-1}CFL^{-1}$"}
+                       "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert /(\Vert\rho_n\Vert\,CFL)$"}
 
             ax.plot(time * xscale, val * yscale, '-')
             ax.set_xlabel(r"Time $t$")
