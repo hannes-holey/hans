@@ -97,12 +97,17 @@ class ConservedField(VectorField):
             except NotImplementedError:
                 print("MacCormack scheme not implemented. Exit!")
                 quit()
+
+        # Richtmyer two-step Lax-Wendroff
+        elif self.numFlux == "LW":
             try:
                 self.richtmyer()
             except NotImplementedError:
                 print("Lax-Wendroff scheme not implemented. Exit!")
                 quit()
-        if self.numFlux == "RK3":
+
+        # 3rd order Runge-Kutta
+        elif self.numFlux == "RK3":
             try:
                 self.runge_kutta3()
             except NotImplementedError:
@@ -131,7 +136,17 @@ class ConservedField(VectorField):
         self.post_integrate(q0)
 
     def richtmyer(self):
-        raise NotImplementedError
+
+        q0 = self._field.copy()
+
+        # Step 1
+        self.lax_step()
+        # Step 2
+        self.leap_frog(q0)
+
+        self.fill_ghost_cell()
+
+        self.post_integrate(q0)
 
     def runge_kutta3(self):
         raise NotImplementedError
@@ -226,6 +241,49 @@ class ConservedField(VectorField):
         flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy) * self._dt / self.dy
 
         return flux_x, flux_y
+
+    def lax_step(self):
+
+        QS = self.edgeE
+        QW = self.edgeN
+        QN = np.roll(QS, -1, axis=2)
+        QE = np.roll(QW, -1, axis=1)
+
+        hS = self.height.edgeE
+        hW = self.height.edgeN
+        hN = np.roll(hS, -1, axis=2)
+        hE = np.roll(hW, -1, axis=1)
+
+        FS = self.hyperbolicFlux(QS, 1) - self.diffusiveFlux(QS, hS, 1)
+        FW = self.hyperbolicFlux(QW, 2) - self.diffusiveFlux(QW, hW, 2)
+        FN = self.hyperbolicFlux(QN, 1) - self.diffusiveFlux(QN, hN, 1)
+        FE = self.hyperbolicFlux(QE, 2) - self.diffusiveFlux(QE, hE, 2)
+
+        src = self.getSource(self.verticeNE, self.height.verticeNE)
+
+        self._field = self.verticeNE - self._dt / (2. * self.dx) * (FE - FW) - self._dt / (2. * self.dy) * (FN - FS) + src * self._dt / 2.
+
+    def leap_frog(self, q0):
+
+        QE = self.edgeS
+        QN = self.edgeW
+        QW = np.roll(QE, 1, axis=1)
+        QS = np.roll(QN, 1, axis=2)
+
+        FE = self.hyperbolicFlux(QE, 1) - self.diffusiveFlux(QE, self.height.edgeE, 1)
+        FN = self.hyperbolicFlux(QN, 2) - self.diffusiveFlux(QN, self.height.edgeN, 2)
+        FW = self.hyperbolicFlux(QW, 1) - self.diffusiveFlux(QW, self.height.edgeW, 1)
+        FS = self.hyperbolicFlux(QS, 2) - self.diffusiveFlux(QS, self.height.edgeS, 2)
+
+        src = self.getSource(self.verticeSW, self.height.field)
+
+        self._field = q0 - self._dt / self.dx * (FE - FW) - self._dt / self.dy * (FN - FS) + src * self.dt
+
+    def hyperbolicFlux(self, f, ax):
+
+        p = EquationOfState(self.material).isoT_pressure(f[0])
+
+        F = np.zeros_like(f)
         if ax == 1:
             if self.stokes:
                 F[0] = f[1]
