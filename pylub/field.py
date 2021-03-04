@@ -30,6 +30,36 @@ class Field:
     def field(self):
         return self._field
 
+    @property
+    def edgeE(self):
+        return (self._field + np.roll(self._field, -1, axis=1)) / 2.
+
+    @property
+    def edgeN(self):
+        return (self._field + np.roll(self._field, -1, axis=2)) / 2.
+
+    @property
+    def edgeW(self):
+        return (self._field + np.roll(self._field, 1, axis=1)) / 2.
+
+    @property
+    def edgeS(self):
+        return (self._field + np.roll(self._field, 1, axis=2)) / 2.
+
+    @property
+    def verticeNE(self):
+        return (self._field +
+                np.roll(self._field, -1, axis=1) +
+                np.roll(self._field, -1, axis=2) +
+                np.roll(self._field, (-1, -1), axis=(1, 2))) / 4.
+
+    @property
+    def verticeSW(self):
+        return (self._field +
+                np.roll(self._field, 1, axis=1) +
+                np.roll(self._field, 1, axis=2) +
+                np.roll(self._field, (1, 1), axis=(1, 2))) / 4.
+
 
 class ScalarField(Field):
 

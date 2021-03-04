@@ -1,5 +1,8 @@
 import numpy as np
 
+# global constants
+R = 8.314462618
+
 
 class EquationOfState:
 
@@ -8,14 +11,20 @@ class EquationOfState:
 
     def isoT_pressure(self, rho):
 
-        # Dowson-Higginson
+        # Dowson-Higginson (with cavitation)
         if self.material['EOS'] == "DH":
             rho0 = float(self.material['rho0'])
             P0 = float(self.material['P0'])
             C1 = float(self.material['C1'])
             C2 = float(self.material['C2'])
 
-            return P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
+            p = P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
+            if 'Pcav' in self.material.keys():
+                Pcav = float(self.material['Pcav'])
+                rho_cav = self.isoT_density(Pcav)
+                p[rho < rho_cav] = Pcav
+
+            return p
 
         # Power law, (alpha = 0: ideal gas)
         elif self.material['EOS'] == "PL":
@@ -25,8 +34,16 @@ class EquationOfState:
 
             return P0 * (rho / rho0)**(1. / (1. - 0.5 * alpha))
 
-        # Tait equation (Murnaghan)
-        elif self.material['EOS'] == "Tait":
+        # Van der Waals equation
+        elif self.material['EOS'] == "vdW":
+            M = float(self.material['M'])
+            T = float(self.material['T0'])
+            a = float(self.material['a'])
+            b = float(self.material['b'])
+            return R * T * rho / (M - b * rho) - a * rho**2 / M**2
+
+        # Murnaghan equation (modified Tait eq.)
+        elif self.material['EOS'] == "Murnaghan":
             rho0 = float(self.material['rho0'])
             p0 = float(self.material['P0'])
             K = float(self.material['K'])
@@ -58,7 +75,7 @@ class EquationOfState:
                 if alpha < 0:
                     p = Pcav + (rho - rho_l) * c_l**2
                 elif alpha >= 0 and alpha <= 1:
-                    p = Pcav + N * np.log(rho_v * c_v**2 * rho / (rho_l * (rho_v * c_v**2 * (1 - alph) + rho_l * c_l**2 * alpha)))
+                    p = Pcav + N * np.log(rho_v * c_v**2 * rho / (rho_l * (rho_v * c_v**2 * (1 - alpha) + rho_l * c_l**2 * alpha)))
                 else:
                     p = c_v**2 * rho
 
@@ -73,18 +90,6 @@ class EquationOfState:
 
             return p
 
-        elif self.material['EOS'] == "Bayada_nocav":
-            c_l = float(self.material["cl"])
-            c_v = float(self.material["cv"])
-            rho_l = float(self.material["rhol"])
-            rho_v = float(self.material["rhov"])
-            N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
-
-            return Pcav + (rho - rho_l) * c_l**2
-
-        return p
-
     def isoT_density(self, p):
 
         # Dowson-Higginson
@@ -96,7 +101,7 @@ class EquationOfState:
 
             return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
 
-        if self.material['EOS'] == "Bayada":
+        elif self.material['EOS'] == "Bayada":
             c_l = float(self.material["cl"])
             c_v = float(self.material["cv"])
             rho_l = float(self.material["rhol"])
@@ -120,6 +125,14 @@ class EquationOfState:
                     / ((c_l**2 * rho_l**2 - c_v**2 * rho_l * rho_v) * np.exp((p[p_mix] - Pcav) / N) + c_v**2 * rho_v * (-rho_v + rho_l))
 
             return rho
+
+        elif self.material["EOS"] == "Murnaghan":
+            rho0 = float(self.material['rho0'])
+            p0 = float(self.material['P0'])
+            K = float(self.material['K'])
+            n = float(self.material['n'])
+
+            return rho0 * (1 + n / K * (p - p0))**(1 / n)
 
     def alphaOfRho(self, rho):
         rho_l = float(self.material["rhol"])
@@ -165,23 +178,67 @@ class EquationOfState:
 
         return np.sqrt(np.amax(abs(c_squared)))
 
-    def viscosity(self, rho):
-        eta_l = float(self.material["shear"])
+    def viscosity(self, U, V, rho, height):
 
         if str(self.material["EOS"]) == "Bayada":
+            eta_l = float(self.material["shear"])
             visc_model = str(self.material["visc"])
             eta_v = float(self.material["shearv"])
-        else:
-            visc_model = None
 
-        if visc_model == "Dukler":
-            rho_v = float(self.material["rhov"])
-            alpha = self.alphaOfRho(rho)
-            return alpha * eta_v + (1 - alpha) * eta_l
-        elif visc_model == "McAdams":
-            rho_v = float(self.material["rhov"])
-            alpha = self.alphaOfRho(rho)
-            M = alpha * rho_v / rho
-            return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
+            if visc_model == "Dukler":
+                rho_v = float(self.material["rhov"])
+                alpha = self.alphaOfRho(rho)
+                return alpha * eta_v + (1 - alpha) * eta_l
+
+            elif visc_model == "McAdams":
+                rho_v = float(self.material["rhov"])
+                alpha = self.alphaOfRho(rho)
+                M = alpha * rho_v / rho
+                return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
+
         else:
-            return eta_l
+            if "visc" not in self.material.keys():
+                return float(self.material["shear"])
+
+            else:
+                if str(self.material["visc"]) == "Carreau":
+
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+                    mu0 = float(self.material["shear"])
+                    G = float(self.material["G"])
+                    a = float(self.material["a"])
+                    N = float(self.material["N"])
+
+                    return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
+
+                elif str(self.material["visc"]) == "Habchi":
+
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+
+                    rho0 = float(self.material['rho0'])
+                    g = float(self.material["g"])
+                    mu_inf = float(self.material["mu_inf"])
+                    phi_inf = float(self.material["phi_inf"])
+                    BF = float(self.material["BF"])
+                    G = float(self.material["G"])
+                    a = float(self.material["a"])
+                    N = float(self.material["N"])
+
+                    phi = (rho0 / rho)**g
+                    mu0 = mu_inf * np.exp(BF * phi_inf / (phi - phi_inf))
+
+                    return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
+
+                elif str(self.material["visc"]) == "Vogel":
+
+                    rho0 = float(self.material['rho0'])
+                    g = float(self.material["g"])
+                    mu_inf = float(self.material["mu_inf"])
+                    phi_inf = float(self.material["phi_inf"])
+                    BF = float(self.material["BF"])
+
+                    phi = (rho0 / rho)**g
+                    return mu_inf * np.exp(BF * phi_inf / (phi - phi_inf))
+
+                else:
+                    return float(self.material["shear"])

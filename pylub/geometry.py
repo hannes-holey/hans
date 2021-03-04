@@ -31,6 +31,14 @@ class GapHeight(VectorField):
             hmax = float(self.geometry['hmax'])
             self._field[0] = 4 * (hmax - hmin) / self.Lx**2 * (self.xx - self.Lx / 2)**2 + hmin
 
+        elif self.geometry["type"] == "twin_parabolic":
+            hmin = float(self.geometry['hmin'])
+            hmax = float(self.geometry['hmax'])
+
+            right = np.greater(self.xx, self.Lx / 2)
+            self._field[0] = 16 * (hmax - hmin) / self.Lx**2 * (self.xx - self.Lx / 4)**2 + hmin
+            self._field[0][right] = 16 * (hmax - hmin) / self.Lx**2 * (self.xx[right] - 3 * self.Lx / 4)**2 + hmin
+
         elif self.geometry["type"] == "inclined":
             h1 = float(self.geometry['h1'])
             h2 = float(self.geometry['h2'])
@@ -46,6 +54,24 @@ class GapHeight(VectorField):
             mask = np.logical_and(np.less(self.xx, rstep), np.greater(self.xx, lstep))
             self._field[0] = h1
             self._field[0][mask] = h2
+
+        elif self.geometry["type"] == "half_sine":
+            h0 = float(self.geometry['h0'])
+            amp = float(self.geometry['amp'])
+            num = float(self.geometry['num'])
+
+            self._field[0] = h0 - amp * np.sin(- 4 * np.pi * (self.xx - self.Lx / 2) * num / self.Lx)
+            mask = np.greater(self.xx, self.Lx / 2)
+            self._field[0][mask] = h0
+
+        elif self.geometry["type"] == "half_sine_squared":
+            h0 = float(self.geometry['h0'])
+            amp = float(self.geometry['amp'])
+            num = float(self.geometry['num'])
+
+            self._field[0] = h0 + amp * np.sin(- 4 * np.pi * (self.xx - self.Lx / 2) * num / self.Lx)**2
+            mask = np.greater(self.xx, self.Lx / 2)
+            self._field[0][mask] = h0
 
     def fill_gradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"

@@ -15,7 +15,7 @@ python -m unittest discover tests
 ## Examples
 Run and analyze from command line, e.g.
 ```
-python -m pylub -i examples/journal1D_incomp.yaml
+python3 -m pylub -i examples/journal1D_incomp.yaml
 ```
 and
 ```

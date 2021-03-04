@@ -77,7 +77,8 @@ class Plot:
             for j in mask_range:
                 mask += list(range(int(j.split("-")[0]), int(j.split("-")[1]) + 1))
         elif mode == "name":
-            mask = [i for i, f in enumerate(fileList) if os.path.relpath(f, start=path) in fname]
+            fileList = [os.path.join(path, f) for f in fname]
+            mask = np.arange(len(fileList))
 
         out = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
 
@@ -132,7 +133,24 @@ class Plot:
 
         return fig, ax
 
-    def plot_2D(self, choice="all", figsize=(6.4, 4.8), aspect='equal', xyscale=1., zscale=1., contour_levels=[]):
+    def plot_2D(self, choice="all", figsize=(6.4, 4.8), xyscale=1., zscale=1., contour_levels=[], **kwargs):
+
+        if "aspect" not in kwargs:
+            kwargs["aspect"] = "equal"
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = "viridis"
+        if "interpolation" not in kwargs:
+            kwargs["interpolation"] = "none"
+        if "position" not in kwargs:
+            kwargs["position"] = "right"
+        if "orientation" not in kwargs:
+            kwargs["orientation"] = "vertical"
+        if "ticklocation" not in kwargs:
+            kwargs["ticklocation"] = "right"
+        if "color" not in kwargs:
+            kwargs["color"] = "red"
+        if "linewidth" not in kwargs:
+            kwargs["linewidth"] = 1.
 
         if choice == "all":
             fig, ax = plt.subplots(2, 2, figsize=figsize, sharex=True, tight_layout=True)
@@ -166,18 +184,20 @@ class Plot:
 
             unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
+            out = {}
+
             if choice == "all":
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     im = a.imshow(unknowns[key].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
-                                  interpolation='none', aspect='equal', cmap='viridis')
+                                  interpolation=kwargs["interpolation"], aspect=kwargs["aspect"], cmap=kwargs['cmap'])
 
                     divider = make_axes_locatable(a)
-                    cax = divider.append_axes("right", size="5%", pad=0.3)
+                    cax = divider.append_axes(kwargs["position"], size="5%", pad=0.1)
 
                     fmt = tk.ScalarFormatter(useMathText=True)
                     fmt.set_powerlimits((0, 0))
 
-                    cbar = plt.colorbar(im, cax=cax, format=fmt)
+                    cbar = plt.colorbar(im, cax=cax, format=fmt, orientation=kwargs["orientation"])
                     cbar.set_label(self.ylabels[key])
 
                     # Adjust ticks
@@ -185,28 +205,34 @@ class Plot:
                     a.set_ylabel(r'$L_y$')
             else:
                 im = ax.imshow(unknowns[choice].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
-                               interpolation='none', aspect=aspect, cmap='viridis')
+                               interpolation=kwargs["interpolation"], aspect=kwargs["aspect"], cmap=kwargs['cmap'])
 
                 if len(contour_levels) > 0:
-                    ax.contour(unknowns[choice].T * zscale, contour_levels, colors='red',
-                               extent=(0, Lx*xyscale, 0, Ly*xyscale), linewidths=1.)
+                    CS = ax.contour(unknowns[choice].T * zscale, contour_levels, colors=kwargs["color"],
+                                    extent=(0, Lx*xyscale, 0, Ly*xyscale), linewidths=kwargs["linewidth"])
+
+                    out["contour"] = CS
 
                 divider = make_axes_locatable(ax)
-                cax = divider.append_axes("right", size="5%", pad=0.3)
+                cax = divider.append_axes(kwargs["position"], size="5%", pad=0.1)
 
                 fmt = tk.ScalarFormatter(useMathText=True)
                 fmt.set_powerlimits((0, 0))
 
-                cbar = plt.colorbar(im, cax=cax, format=fmt)
+                cbar = plt.colorbar(im, cax=cax, format=fmt, orientation=kwargs["orientation"], ticklocation=kwargs["ticklocation"])
                 cbar.set_label(self.ylabels[choice])
 
                 # Adjust ticks
-                ax.set_xlabel(r'$L_x$ (mm)')
-                ax.set_ylabel(r'$L_y$ (mm)')
+                ax.set_xlabel(r'$L_x$')
+                ax.set_ylabel(r'$L_y$')
 
-        return fig, ax, cbar
+            out["fig"] = fig
+            out["ax"] = ax
+            out["cbar"] = cbar
 
-    def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1.):
+        return out
+
+    def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1., colormap=True):
         for filename, data in self.ds.items():
 
             # reconstruct input dicts
@@ -232,8 +258,9 @@ class Plot:
 
             unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
-            cmap = plt.cm.coolwarm
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT*tscale))
+            if colormap:
+                cmap = plt.cm.coolwarm
+                sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT*tscale))
 
             if choice == "all":
                 fig, ax = plt.subplots(2, 2, sharex=True, figsize=figsize)
@@ -243,12 +270,15 @@ class Plot:
                             var = unknowns[key][it * freq, :, Ny // 2]
                         elif dir == "y":
                             var = unknowns[key][it * freq, Nx // 2, :]
-                        a.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                        if colormap:
+                            a.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                        else:
+                            a.plot(x * xscale, var * yscale, '-', label=f"{t*tscale}")
                         a.set_ylabel(self.ylabels[key])
                         if count > 1:
                             a.set_xlabel(rf"Distance ${dir}$")
-
-                cbar = fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
+                if colormap:
+                    cbar = fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
             else:
                 fig, ax = plt.subplots(1, figsize=figsize)
                 for it, t in enumerate(time[::freq]):
@@ -256,13 +286,20 @@ class Plot:
                         var = unknowns[choice][it * freq, :, Ny // 2]
                     elif dir == "y":
                         var = unknowns[choice][it * freq, Nx // 2, :]
-                    ax.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                    if colormap:
+                        ax.plot(x * xscale, var * yscale, '-', color=cmap(t / maxT))
+                    else:
+                        ax.plot(x * xscale, var * yscale, '-', label=f"{t*tscale:.0f}")
                     ax.set_ylabel(self.ylabels[choice])
                     ax.set_xlabel(rf"Distance ${dir}$")
 
-                cbar = fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
+                if colormap:
+                    cbar = fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
 
-        return fig, ax, cbar
+        if colormap:
+            return fig, ax, cbar
+        else:
+            return fig, ax
 
     def plot_timeseries(self, attr, figsize=(6.4, 4.8), xscale=1., yscale=1.):
 
@@ -277,7 +314,7 @@ class Plot:
                        "vmax": r"Max. velocity $v_\mathrm{max}$",
                        "vSound": r"Velocity of sound $c$",
                        "dt": r"Time step $\Delta t$",
-                       "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert \,\Vert\rho_n\Vert^{-1}CFL^{-1}$"}
+                       "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert /(\Vert\rho_n\Vert\,CFL)$"}
 
             ax.plot(time * xscale, val * yscale, '-')
             ax.set_xlabel(r"Time $t$")
