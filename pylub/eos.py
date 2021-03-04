@@ -11,14 +11,20 @@ class EquationOfState:
 
     def isoT_pressure(self, rho):
 
-        # Dowson-Higginson
+        # Dowson-Higginson (with cavitation)
         if self.material['EOS'] == "DH":
             rho0 = float(self.material['rho0'])
             P0 = float(self.material['P0'])
             C1 = float(self.material['C1'])
             C2 = float(self.material['C2'])
 
-            return P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
+            p = P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
+            if 'Pcav' in self.material.keys():
+                Pcav = float(self.material['Pcav'])
+                rho_cav = self.isoT_density(Pcav)
+                p[rho < rho_cav] = Pcav
+
+            return p
 
         # Power law, (alpha = 0: ideal gas)
         elif self.material['EOS'] == "PL":
