@@ -19,6 +19,11 @@ class ConservedField(VectorField):
         self.numFlux = str(numerics["numFlux"])
         self.adaptive = bool(numerics["adaptive"])
 
+        self.x0 = np.array(list(self.BC["x0"]))
+        self.x1 = np.array(list(self.BC["x1"]))
+        self.y0 = np.array(list(self.BC["y0"]))
+        self.y1 = np.array(list(self.BC["y1"]))
+
         if q_init is not None:
             self._field[:, 1:-1, 1:-1] = q_init
             self.fill_ghost_cell()
@@ -129,54 +134,42 @@ class ConservedField(VectorField):
         self.neumann()
 
     def periodic(self):
-        x0 = np.array(list(self.BC["x0"]))
-        y0 = np.array(list(self.BC["y0"]))
 
-        self._field[x0 == "P", 0, :] = self._field[x0 == "P", -2, :]
-        self._field[x0 == "P", -1, :] = self._field[x0 == "P", 1, :]
-        self._field[y0 == "P", :, 0] = self._field[y0 == "P", :, -2]
-        self._field[y0 == "P", :, -1] = self._field[y0 == "P", :, 1]
+        self._field[self.x0 == "P", 0, :] = self._field[self.x0 == "P", -2, :]
+        self._field[self.x1 == "P", -1, :] = self._field[self.x1 == "P", 1, :]
+        self._field[self.y0 == "P", :, 0] = self._field[self.y0 == "P", :, -2]
+        self._field[self.y1 == "P", :, -1] = self._field[self.y1 == "P", :, 1]
 
     def dirichlet(self):
 
-        x0 = np.array(list(self.BC["x0"]))
-        x1 = np.array(list(self.BC["x1"]))
-        y0 = np.array(list(self.BC["y0"]))
-        y1 = np.array(list(self.BC["y1"]))
-
         rhox0 = rhox1 = rhoy0 = rhoy1 = float(self.material["rho0"])
 
-        if "D" in x0 and "px0" in self.BC.keys():
+        if "D" in self.x0 and "px0" in self.BC.keys():
             px0 = float(self.BC["px0"])
             rhox0 = EquationOfState(self.material).isoT_density(px0)
 
-        if "D" in x1 and "px1" in self.BC.keys():
+        if "D" in self.x1 and "px1" in self.BC.keys():
             px1 = float(self.BC["px1"])
             rhox1 = EquationOfState(self.material).isoT_density(px1)
 
-        if "D" in y0 and "py0" in self.BC.keys():
+        if "D" in self.y0 and "py0" in self.BC.keys():
             py0 = float(self.BC["py0"])
             rhoy0 = EquationOfState(self.material).isoT_density(py0)
 
-        if "D" in y1 and "py1" in self.BC.keys():
+        if "D" in self.y1 and "py1" in self.BC.keys():
             py1 = float(self.BC["py1"])
             rhoy1 = EquationOfState(self.material).isoT_density(py1)
 
-        self._field[x0 == "D", 0, :] = 2. * rhox0 - self._field[x0 == "D", 1, :]
-        self._field[x1 == "D", -1, :] = 2. * rhox1 - self._field[x0 == "D", -2, :]
-        self._field[y0 == "D", :, 0] = 2. * rhoy0 - self._field[y0 == "D", :, 1]
-        self._field[y1 == "D", :, -1] = 2. * rhoy1 - self._field[y0 == "D", :, -2]
+        self._field[self.x0 == "D", 0, :] = 2. * rhox0 - self._field[self.x0 == "D", 1, :]
+        self._field[self.x1 == "D", -1, :] = 2. * rhox1 - self._field[self.x1 == "D", -2, :]
+        self._field[self.y0 == "D", :, 0] = 2. * rhoy0 - self._field[self.y0 == "D", :, 1]
+        self._field[self.y1 == "D", :, -1] = 2. * rhoy1 - self._field[self.y0 == "D", :, -2]
 
     def neumann(self):
-        x0 = np.array(list(self.BC["x0"]))
-        x1 = np.array(list(self.BC["x1"]))
-        y0 = np.array(list(self.BC["y0"]))
-        y1 = np.array(list(self.BC["y1"]))
-
-        self._field[x0 == "N", 0, :] = self._field[x0 == "N", 1, :]
-        self._field[x1 == "N", -1, :] = self._field[x0 == "N", -2, :]
-        self._field[y0 == "N", :, 0] = self._field[y0 == "N", :, 1]
-        self._field[y1 == "N", :, -1] = self._field[y0 == "N", :, -2]
+        self._field[self.x0 == "N", 0, :] = self._field[self.x0 == "N", 1, :]
+        self._field[self.x1 == "N", -1, :] = self._field[self.x1 == "N", -2, :]
+        self._field[self.y0 == "N", :, 0] = self._field[self.y0 == "N", :, 1]
+        self._field[self.y1 == "N", :, -1] = self._field[self.y0 == "N", :, -2]
 
     def getSource(self, q, h):
 
