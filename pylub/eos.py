@@ -42,8 +42,8 @@ class EquationOfState:
             b = float(self.material['b'])
             return R * T * rho / (M - b * rho) - a * rho**2 / M**2
 
-        # Tait equation (Murnaghan)
-        elif self.material['EOS'] == "Tait":
+        # Murnaghan equation (modified Tait eq.)
+        elif self.material['EOS'] == "Murnaghan":
             rho0 = float(self.material['rho0'])
             p0 = float(self.material['P0'])
             K = float(self.material['K'])
@@ -137,6 +137,14 @@ class EquationOfState:
                     / ((c_l**2 * rho_l**2 - c_v**2 * rho_l * rho_v) * np.exp((p[p_mix] - Pcav) / N) + c_v**2 * rho_v * (-rho_v + rho_l))
 
             return rho
+
+        elif self.material["EOS"] == "Murnaghan":
+            rho0 = float(self.material['rho0'])
+            p0 = float(self.material['P0'])
+            K = float(self.material['K'])
+            n = float(self.material['n'])
+
+            return rho0 * (1 + n / K * (p - p0))**(1 / n)
 
     def alphaOfRho(self, rho):
         rho_l = float(self.material["rhol"])
