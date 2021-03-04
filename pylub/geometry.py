@@ -64,6 +64,15 @@ class GapHeight(VectorField):
             mask = np.greater(self.xx, self.Lx / 2)
             self._field[0][mask] = h0
 
+        elif self.geometry["type"] == "half_sine_squared":
+            h0 = float(self.geometry['h0'])
+            amp = float(self.geometry['amp'])
+            num = float(self.geometry['num'])
+
+            self._field[0] = h0 + amp * np.sin(- 4 * np.pi * (self.xx - self.Lx / 2) * num / self.Lx)**2
+            mask = np.greater(self.xx, self.Lx / 2)
+            self._field[0][mask] = h0
+
     def fill_gradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
         self._field[1:] = np.gradient(self._field[0], self.dx, self.dy, edge_order=2)
