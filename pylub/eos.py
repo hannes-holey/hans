@@ -90,18 +90,6 @@ class EquationOfState:
 
             return p
 
-        elif self.material['EOS'] == "Bayada_nocav":
-            c_l = float(self.material["cl"])
-            c_v = float(self.material["cv"])
-            rho_l = float(self.material["rhol"])
-            rho_v = float(self.material["rhov"])
-            N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-            Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
-
-            return Pcav + (rho - rho_l) * c_l**2
-
-        return p
-
     def isoT_density(self, p):
 
         # Dowson-Higginson
