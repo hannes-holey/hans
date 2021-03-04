@@ -5,11 +5,11 @@ from pylub.input import Input
 
 def get_parser():
     parser = ArgumentParser()
-    parser.add_argument('--plot', dest='plot', default=False, help="on-the-fly plot option", action='store_true')
-    parser.add_argument('--restart', dest="restart_file", default=None, help="restart simulation from last step of specified file")
-    parser.add_argument('-o', dest="out_dir", default="data", help="output directory (default: ./data)")
+    parser.add_argument('-p', '--plot', dest='plot', default=False, help="on-the-fly plot option", action='store_true')
+    parser.add_argument('-r', '--restart', dest="restart_file", default=None, help="restart simulation from last step of specified file")
+    parser.add_argument('-o', '--output', dest="out_dir", default="data", help="output directory (default: ./data)")
     required = parser.add_argument_group('required arguments')
-    required.add_argument("-i", dest="filename", help="path to input file", required=True)
+    required.add_argument('-i', '--input', dest="filename", help="path to input file", required=True)
 
     return parser
 
