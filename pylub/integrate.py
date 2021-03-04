@@ -73,13 +73,30 @@ class ConservedField(VectorField):
         return self._eps
 
     def update(self, i):
-        if self.numFlux == "MC":
+
+        # MacCormack forward backward
+        if self.numFlux == "MC" or self.numFlux == "MC_fb":
             try:
-                self.mac_cormack()
+                self.mac_cormack(0)
             except NotImplementedError:
                 print("MacCormack scheme not implemented. Exit!")
                 quit()
-        if self.numFlux == "LW":
+
+        # Mac Cormack backward forward
+        elif self.numFlux == "MC_bf":
+            try:
+                self.mac_cormack(1)
+            except NotImplementedError:
+                print("MacCormack scheme not implemented. Exit!")
+                quit()
+
+        # MacCormack alternating
+        elif self.numFlux == "MC_alt":
+            try:
+                self.mac_cormack(i % 2)
+            except NotImplementedError:
+                print("MacCormack scheme not implemented. Exit!")
+                quit()
             try:
                 self.richtmyer()
             except NotImplementedError:
@@ -92,9 +109,12 @@ class ConservedField(VectorField):
                 print("Runge-Kutta 3 scheme not implemented. Exit!")
                 quit()
 
-    def mac_cormack(self):
+    def mac_cormack(self, switch):
 
-        q0 = self._field.copy()
+        if switch == 0:
+            directions = [-1, 1]
+        elif switch == 1:
+            directions = [1, -1]
 
         for dir in [-1, 1]:
             self.viscous_stress.set(self._field, self.height.field)
@@ -102,6 +122,7 @@ class ConservedField(VectorField):
             self.lower_stress.set(self._field, self.height.field, "bottom")
 
             p = EquationOfState(self.material).isoT_pressure(self._field[0])
+        for dir in directions:
 
             fX, fY = self.hyperbolicFW_BW(p, dir)
             dX, dY = self.diffusiveCD()
