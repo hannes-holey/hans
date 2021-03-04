@@ -75,7 +75,7 @@ class EquationOfState:
                 if alpha < 0:
                     p = Pcav + (rho - rho_l) * c_l**2
                 elif alpha >= 0 and alpha <= 1:
-                    p = Pcav + N * np.log(rho_v * c_v**2 * rho / (rho_l * (rho_v * c_v**2 * (1 - alph) + rho_l * c_l**2 * alpha)))
+                    p = Pcav + N * np.log(rho_v * c_v**2 * rho / (rho_l * (rho_v * c_v**2 * (1 - alpha) + rho_l * c_l**2 * alpha)))
                 else:
                     p = c_v**2 * rho
 
@@ -113,7 +113,7 @@ class EquationOfState:
 
             return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
 
-        if self.material['EOS'] == "Bayada":
+        elif self.material['EOS'] == "Bayada":
             c_l = float(self.material["cl"])
             c_v = float(self.material["cv"])
             rho_l = float(self.material["rhol"])
