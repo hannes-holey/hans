@@ -8,7 +8,7 @@ from pylub.geometry import GapHeight
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, BC, geometry, material, numerics, q_init=None, grid=True):
+    def __init__(self, disc, BC, geometry, material, numerics, q_init=None, t_init=None, grid=True):
 
         super().__init__(disc, grid)
 
@@ -20,15 +20,21 @@ class ConservedField(VectorField):
         self.adaptive = bool(numerics["adaptive"])
 
         if q_init is not None:
-            self._field = q_init
+            self._field[:, 1:-1, 1:-1] = q_init
+            self.fill_ghost_cell()
         else:
             self._field[0] = float(material['rho0'])
 
         self.height = GapHeight(disc, geometry)
 
-        self._time = 0.
+        if t_init is not None:
+            self._time = t_init[0]
+            self._dt = t_init[1]
+        else:
+            self._time = 0.
+            self._dt = float(numerics["dt"])
+
         self._eps = 1.
-        self._dt = float(numerics["dt"])
 
         if self.adaptive:
             self.C = float(numerics["C"])
