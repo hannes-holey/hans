@@ -116,22 +116,17 @@ class ConservedField(VectorField):
         elif switch == 1:
             directions = [1, -1]
 
-        for dir in [-1, 1]:
-            self.viscous_stress.set(self._field, self.height.field)
-            self.upper_stress.set(self._field, self.height.field, "top")
-            self.lower_stress.set(self._field, self.height.field, "bottom")
+        q0 = self._field.copy()
 
-            p = EquationOfState(self.material).isoT_pressure(self._field[0])
         for dir in directions:
 
-            fX, fY = self.hyperbolicFW_BW(p, dir)
-            dX, dY = self.diffusiveCD()
+            fX, fY = self.predictor_corrector(self._field, self.height.field, dir)
             src = self.getSource(self._field, self.height.field)
 
-            self._field = self._field - fX - fY + dX + dY + self._dt * src
-            self.fill_ghost_cell()
+            self._field = self._field - fX - fY + self._dt * src
 
         self._field = 0.5 * (self._field + q0)
+        self.fill_ghost_cell()
 
         self.post_integrate(q0)
 
@@ -220,10 +215,15 @@ class ConservedField(VectorField):
 
         return out
 
-    def hyperbolicFlux(self, f, p, ax):
+    def predictor_corrector(self, f, h, dir):
 
-        F = np.zeros_like(f)
+        Fx = self.hyperbolicFlux(f, 1) - self.diffusiveFlux(f, h, 1)
+        Fy = self.hyperbolicFlux(f, 2) - self.diffusiveFlux(f, h, 2)
 
+        flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx) * self._dt / self.dx
+        flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy) * self._dt / self.dy
+
+        return flux_x, flux_y
         if ax == 1:
             if self.stokes:
                 F[0] = f[1]
@@ -244,19 +244,11 @@ class ConservedField(VectorField):
 
         return F
 
-    def hyperbolicFW_BW(self, p, dir):
+    def diffusiveFlux(self, f, h, ax):
 
-        Fx = self.hyperbolicFlux(self._field, p, 1)
-        Fy = self.hyperbolicFlux(self._field, p, 2)
+        self.viscous_stress.set(f, h)
 
-        flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx)
-        flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy)
-
-        return self._dt / self.dx * flux_x, self._dt / self.dy * flux_y
-
-    def diffusiveFlux(self, ax):
-
-        D = np.zeros_like(self._field)
+        D = np.zeros_like(f)
         if ax == 1:
             D[1] = self.viscous_stress.field[0]
             D[2] = self.viscous_stress.field[2]
