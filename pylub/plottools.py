@@ -132,7 +132,24 @@ class Plot:
 
         return fig, ax
 
-    def plot_2D(self, choice="all", figsize=(6.4, 4.8), aspect='equal', xyscale=1., zscale=1., contour_levels=[]):
+    def plot_2D(self, choice="all", figsize=(6.4, 4.8), xyscale=1., zscale=1., contour_levels=[], **kwargs):
+
+        if "aspect" not in kwargs:
+            kwargs["aspect"] = "equal"
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = "viridis"
+        if "interpolation" not in kwargs:
+            kwargs["interpolation"] = "none"
+        if "position" not in kwargs:
+            kwargs["position"] = "right"
+        if "orientation" not in kwargs:
+            kwargs["orientation"] = "vertical"
+        if "ticklocation" not in kwargs:
+            kwargs["ticklocation"] = "right"
+        if "color" not in kwargs:
+            kwargs["color"] = "red"
+        if "linewidth" not in kwargs:
+            kwargs["linewidth"] = 1.
 
         if choice == "all":
             fig, ax = plt.subplots(2, 2, figsize=figsize, sharex=True, tight_layout=True)
@@ -166,18 +183,20 @@ class Plot:
 
             unknowns = {"rho": rho, "p": p, "jx": jx, "jy": jy}
 
+            out = {}
+
             if choice == "all":
                 for count, (key, a) in enumerate(zip(unknowns.keys(), ax.flat)):
                     im = a.imshow(unknowns[key].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
-                                  interpolation='none', aspect='equal', cmap='viridis')
+                                  interpolation=kwargs["interpolation"], aspect=kwargs["aspect"], cmap=kwargs['cmap'])
 
                     divider = make_axes_locatable(a)
-                    cax = divider.append_axes("right", size="5%", pad=0.3)
+                    cax = divider.append_axes(kwargs["position"], size="5%", pad=0.1)
 
                     fmt = tk.ScalarFormatter(useMathText=True)
                     fmt.set_powerlimits((0, 0))
 
-                    cbar = plt.colorbar(im, cax=cax, format=fmt)
+                    cbar = plt.colorbar(im, cax=cax, format=fmt, orientation=kwargs["orientation"])
                     cbar.set_label(self.ylabels[key])
 
                     # Adjust ticks
@@ -185,26 +204,32 @@ class Plot:
                     a.set_ylabel(r'$L_y$')
             else:
                 im = ax.imshow(unknowns[choice].T * zscale, extent=(0, Lx*xyscale, 0, Ly*xyscale),
-                               interpolation='none', aspect=aspect, cmap='viridis')
+                               interpolation=kwargs["interpolation"], aspect=kwargs["aspect"], cmap=kwargs['cmap'])
 
                 if len(contour_levels) > 0:
-                    ax.contour(unknowns[choice].T * zscale, contour_levels, colors='red',
-                               extent=(0, Lx*xyscale, 0, Ly*xyscale), linewidths=1.)
+                    CS = ax.contour(unknowns[choice].T * zscale, contour_levels, colors=kwargs["color"],
+                                    extent=(0, Lx*xyscale, 0, Ly*xyscale), linewidths=kwargs["linewidth"])
+
+                    out["contour"] = CS
 
                 divider = make_axes_locatable(ax)
-                cax = divider.append_axes("right", size="5%", pad=0.3)
+                cax = divider.append_axes(kwargs["position"], size="5%", pad=0.1)
 
                 fmt = tk.ScalarFormatter(useMathText=True)
                 fmt.set_powerlimits((0, 0))
 
-                cbar = plt.colorbar(im, cax=cax, format=fmt)
+                cbar = plt.colorbar(im, cax=cax, format=fmt, orientation=kwargs["orientation"], ticklocation=kwargs["ticklocation"])
                 cbar.set_label(self.ylabels[choice])
 
                 # Adjust ticks
-                ax.set_xlabel(r'$L_x$ (mm)')
-                ax.set_ylabel(r'$L_y$ (mm)')
+                ax.set_xlabel(r'$L_x$')
+                ax.set_ylabel(r'$L_y$')
 
-        return fig, ax, cbar
+            out["fig"] = fig
+            out["ax"] = ax
+            out["cbar"] = cbar
+
+        return out
 
     def plot_cut_evolution(self, choice="all", dir="x", freq=1, figsize=(6.4, 4.8), xscale=1., yscale=1., tscale=1.):
         for filename, data in self.ds.items():
