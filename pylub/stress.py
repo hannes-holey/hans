@@ -16,7 +16,7 @@ class SymStressField2D(VectorField):
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = EquationOfState(self.mat).viscosity(q[0])
+        eta = EquationOfState(self.mat).viscosity(U, V, q[0], h[0])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 
@@ -50,7 +50,7 @@ class SymStressField3D(TensorField):
 
         U = float(self.geo['U'])
         V = float(self.geo['V'])
-        eta = EquationOfState(self.mat).viscosity(q[0])
+        eta = EquationOfState(self.mat).viscosity(U, V, q[0], h[0])
         zeta = float(self.mat['bulk'])
         lam = zeta - 2 / 3 * eta
 

@@ -178,23 +178,67 @@ class EquationOfState:
 
         return np.sqrt(np.amax(abs(c_squared)))
 
-    def viscosity(self, rho):
-        eta_l = float(self.material["shear"])
+    def viscosity(self, U, V, rho, height):
 
         if str(self.material["EOS"]) == "Bayada":
+            eta_l = float(self.material["shear"])
             visc_model = str(self.material["visc"])
             eta_v = float(self.material["shearv"])
-        else:
-            visc_model = None
 
-        if visc_model == "Dukler":
-            rho_v = float(self.material["rhov"])
-            alpha = self.alphaOfRho(rho)
-            return alpha * eta_v + (1 - alpha) * eta_l
-        elif visc_model == "McAdams":
-            rho_v = float(self.material["rhov"])
-            alpha = self.alphaOfRho(rho)
-            M = alpha * rho_v / rho
-            return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
+            if visc_model == "Dukler":
+                rho_v = float(self.material["rhov"])
+                alpha = self.alphaOfRho(rho)
+                return alpha * eta_v + (1 - alpha) * eta_l
+
+            elif visc_model == "McAdams":
+                rho_v = float(self.material["rhov"])
+                alpha = self.alphaOfRho(rho)
+                M = alpha * rho_v / rho
+                return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
+
         else:
-            return eta_l
+            if "visc" not in self.material.keys():
+                return float(self.material["shear"])
+
+            else:
+                if str(self.material["visc"]) == "Carreau":
+
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+                    mu0 = float(self.material["shear"])
+                    G = float(self.material["G"])
+                    a = float(self.material["a"])
+                    N = float(self.material["N"])
+
+                    return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
+
+                elif str(self.material["visc"]) == "Habchi":
+
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+
+                    rho0 = float(self.material['rho0'])
+                    g = float(self.material["g"])
+                    mu_inf = float(self.material["mu_inf"])
+                    phi_inf = float(self.material["phi_inf"])
+                    BF = float(self.material["BF"])
+                    G = float(self.material["G"])
+                    a = float(self.material["a"])
+                    N = float(self.material["N"])
+
+                    phi = (rho0 / rho)**g
+                    mu0 = mu_inf * np.exp(BF * phi_inf / (phi - phi_inf))
+
+                    return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
+
+                elif str(self.material["visc"]) == "Vogel":
+
+                    rho0 = float(self.material['rho0'])
+                    g = float(self.material["g"])
+                    mu_inf = float(self.material["mu_inf"])
+                    phi_inf = float(self.material["phi_inf"])
+                    BF = float(self.material["BF"])
+
+                    phi = (rho0 / rho)**g
+                    return mu_inf * np.exp(BF * phi_inf / (phi - phi_inf))
+
+                else:
+                    return float(self.material["shear"])
