@@ -61,7 +61,7 @@ class EquationOfState:
             return a * rho**3 + b * rho**2 + c * rho + d
 
         # Cavitation model Bayada and Chupin, J. Trib. 135, 2013
-        elif self.material['EOS'] == "Bayada":
+        elif self.material['EOS'].startswith("Bayada"):
             c_l = float(self.material["cl"])
             c_v = float(self.material["cv"])
             rho_l = float(self.material["rhol"])
@@ -109,7 +109,7 @@ class EquationOfState:
 
             return rho0 * (p / P0)**(1. - alpha / 2.)
 
-        elif self.material['EOS'] == "Bayada":
+        elif self.material['EOS'].startswith("Bayada"):
             c_l = float(self.material["cl"])
             c_v = float(self.material["cv"])
             rho_l = float(self.material["rhol"])
@@ -181,28 +181,30 @@ class EquationOfState:
 
             c_squared = 3 * a * rho**2 + 2 * b * rho + c
 
-        elif self.material['EOS'] == "Bayada":
+        elif self.material['EOS'].startswith("Bayada"):
+            # TODO: return also for mixture and vapor
             c_squared = float(self.material['cl'])**2
 
         return np.sqrt(np.amax(abs(c_squared)))
 
     def viscosity(self, U, V, rho, height):
 
-        if str(self.material["EOS"]) == "Bayada":
+        # Dukler viscosity in mixture (default)
+        if str(self.material["EOS"]) == "Bayada" or str(self.material["EOS"]) == "Bayada_D":
             eta_l = float(self.material["shear"])
-            visc_model = str(self.material["visc"])
             eta_v = float(self.material["shearv"])
+            rho_v = float(self.material["rhov"])
+            alpha = self.alphaOfRho(rho)
+            return alpha * eta_v + (1 - alpha) * eta_l
 
-            if visc_model == "Dukler":
-                rho_v = float(self.material["rhov"])
-                alpha = self.alphaOfRho(rho)
-                return alpha * eta_v + (1 - alpha) * eta_l
-
-            elif visc_model == "McAdams":
-                rho_v = float(self.material["rhov"])
-                alpha = self.alphaOfRho(rho)
-                M = alpha * rho_v / rho
-                return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
+        # McAdams viscosity in mixture
+        elif str(self.material["EOS"]) == "Bayada_MA":
+            eta_l = float(self.material["shear"])
+            eta_v = float(self.material["shearv"])
+            rho_v = float(self.material["rhov"])
+            alpha = self.alphaOfRho(rho)
+            M = alpha * rho_v / rho
+            return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
 
         else:
             if "piezo" in self.material.keys():

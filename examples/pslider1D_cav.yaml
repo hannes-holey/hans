@@ -29,7 +29,6 @@ numerics:
     numFlux: MC
 material:
     EOS: Bayada
-    visc: Dukler
     shear: 0.039
     shearv: 3.9e-5
     bulk: 0.
