@@ -205,48 +205,44 @@ class EquationOfState:
                 return eta_v * eta_l / (eta_l * M + eta_v * (1 - M))
 
         else:
-            if "visc" not in self.material.keys():
-                return float(self.material["shear"])
+            if "piezo" in self.material.keys():
 
-            else:
-                if str(self.material["visc"]) == "Carreau":
-
-                    shear_rate = np.sqrt(U**2 + V**2) / height
+                if str(self.material["piezo"]) == "Barus":
                     mu0 = float(self.material["shear"])
-                    G = float(self.material["G"])
-                    a = float(self.material["a"])
-                    N = float(self.material["N"])
+                    aB = float(self.material["aB"])
+                    p = self.isoT_pressure(rho)
+                    mu0 *= np.exp(aB * p)
 
-                    return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
-
-                elif str(self.material["visc"]) == "Habchi":
-
-                    shear_rate = np.sqrt(U**2 + V**2) / height
-
+                elif str(self.material["piezo"]) == "Vogel":
                     rho0 = float(self.material['rho0'])
                     g = float(self.material["g"])
                     mu_inf = float(self.material["mu_inf"])
                     phi_inf = float(self.material["phi_inf"])
                     BF = float(self.material["BF"])
-                    G = float(self.material["G"])
-                    a = float(self.material["a"])
-                    N = float(self.material["N"])
 
                     phi = (rho0 / rho)**g
                     mu0 = mu_inf * np.exp(BF * phi_inf / (phi - phi_inf))
+                else:
+                    mu0 = float(self.material["shear"])
+            else:
+                mu0 = float(self.material["shear"])
+
+            if "thinning" in self.material.keys():
+                if str(self.material["thinning"]) == "Eyring":
+                    tau0 = float(self.material["tau0"])
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+
+                    return tau0 / shear_rate * np.arcsinh(mu0 * shear_rate / tau0)
+
+                elif str(self.material["thinning"]) == "Carreau":
+
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+                    G = float(self.material["G"])
+                    a = float(self.material["a"])
+                    N = float(self.material["N"])
 
                     return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
-
-                elif str(self.material["visc"]) == "Vogel":
-
-                    rho0 = float(self.material['rho0'])
-                    g = float(self.material["g"])
-                    mu_inf = float(self.material["mu_inf"])
-                    phi_inf = float(self.material["phi_inf"])
-                    BF = float(self.material["BF"])
-
-                    phi = (rho0 / rho)**g
-                    return mu_inf * np.exp(BF * phi_inf / (phi - phi_inf))
-
                 else:
-                    return float(self.material["shear"])
+                    return mu0
+            else:
+                return mu0
