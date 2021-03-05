@@ -44,6 +44,22 @@ class GapHeight(VectorField):
             h2 = float(self.geometry['h2'])
             self._field[0] = h1 + (h2 - h1) / (self.Lx) * self.xx
 
+        elif self.geometry["type"] == "inclined_pocket":
+            h1 = float(self.geometry['h1'])
+            h2 = float(self.geometry['h2'])
+            hp = float(self.geometry['hp'])
+            c = float(self.geometry['c'])
+            l = float(self.geometry['l'])
+            w = float(self.geometry['w'])
+
+            self._field[0] = h1 + (h2 - h1) / (self.Lx) * self.xx
+
+            xmask = np.logical_and(self.xx > c, self.xx <= c + l)
+            ymask = np.logical_and(self.yy > (self.Ly - w) / 2., self.yy <= (self.Ly + w) / 2.)
+            xymask = np.logical_and(xmask, ymask)
+
+            self._field[0, xymask] += hp
+
         elif self.geometry["type"] == "step":
             h1 = float(self.geometry['h1'])
             h2 = float(self.geometry['h2'])
