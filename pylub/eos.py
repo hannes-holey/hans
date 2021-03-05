@@ -101,6 +101,14 @@ class EquationOfState:
 
             return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
 
+        # Power law, (alpha = 0: ideal gas)
+        elif self.material['EOS'] == "PL":
+            rho0 = float(self.material['rho0'])
+            P0 = float(self.material['P0'])
+            alpha = float(self.material['alpha'])
+
+            return rho0 * (p / P0)**(1. - alpha / 2.)
+
         elif self.material['EOS'] == "Bayada":
             c_l = float(self.material["cl"])
             c_v = float(self.material["cv"])
