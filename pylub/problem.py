@@ -8,6 +8,7 @@ import matplotlib.animation as animation
 from datetime import datetime
 from git import Repo
 import numpy as np
+import shutil
 
 from pylub.eos import EquationOfState
 from pylub.plottools import adaptiveLimits
@@ -144,8 +145,9 @@ class Problem:
                                     for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")])
             if len(existing_tags) > 0:
                 file_tag = existing_tags[-1] + 1
-                outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
-                self.outpath = os.path.join(out_dir, outfile)
+
+            outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
+            self.outpath = os.path.join(out_dir, outfile)
 
             # initialize NetCDF file
             self.nc = netCDF4.Dataset(self.outpath, 'w', format='NETCDF3_64BIT_OFFSET')
@@ -185,14 +187,22 @@ class Problem:
                     self.nc.setncattr(name, value)
 
         else:
+
+            # append to existing netCDF file
             self.nc = netCDF4.Dataset(self.restart_file, 'a', format='NETCDF3_64BIT_OFFSET')
-            self.nc.restarts += 1
             self.outpath = os.path.relpath(self.restart_file)
 
-            self.nc.setncattr(f"tStart_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            # create backup
+            backup_file = f"{os.path.splitext(self.restart_file)[0]}-{self.nc.restarts}.nc"
+            shutil.copy(self.restart_file, backup_file)
 
+            # increase restart counter
+            self.nc.restarts += 1
+
+            # append modified attributes
+            self.nc.setncattr(f"tStart_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             for key, value in self.numerics.items():
-                name = "numerics_" + key + "_" + str(self.nc.restarts)
+                name = "numerics_" + key + "-" + str(self.nc.restarts)
                 self.nc.setncattr(name, value)
 
     def write(self, i, mode=None):
