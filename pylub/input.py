@@ -49,21 +49,13 @@ class Input:
             numerics = self.check_num(inp['numerics'])
             material = self.check_mat(inp['material'])
 
-        q_init = None
-        t_init = None
-
-        if self.restartFile is not None:
-            q_init = self.getInitialField()
-            t_init = self.getInitialTime()
-
         thisProblem = Problem(options,
                               disc,
                               BC,
                               geometry,
                               numerics,
                               material,
-                              q_init,
-                              t_init)
+                              self.restartFile)
 
         return thisProblem
 
@@ -132,35 +124,3 @@ class Input:
         print("Checking material options... ", end="", flush=True)
         print("Done!")
         return material
-
-    def getInitialField(self):
-        """Read final field from NetCDF restart datafile.
-
-        Returns
-        -------
-        q0 : numpy.ndarray
-            Initial field to restart a simulation from a previous run.
-        """
-
-        file = netCDF4.Dataset(self.restartFile)
-
-        rho = np.array(file.variables['rho'])[-1]
-        jx = np.array(file.variables['jx'])[-1]
-        jy = np.array(file.variables['jy'])[-1]
-
-        q0 = np.zeros([3] + list(rho.shape))
-
-        q0[0] = rho
-        q0[1] = jx
-        q0[2] = jy
-
-        return q0
-
-    def getInitialTime(self):
-
-        file = netCDF4.Dataset(self.restartFile)
-
-        dt = float(file.variables["dt"][-1])
-        t = float(file.variables["time"][-1])
-
-        return (t, dt)
