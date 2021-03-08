@@ -115,7 +115,9 @@ class Problem:
         if not(os.path.exists(out_dir)):
             os.makedirs(out_dir)
 
-        file_tag = len([f for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")]) + 1
+        existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].lstrip("0"))
+                                for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")])
+        file_tag = existing_tags[-1] + 1
         outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
         self.relpath = os.path.join(out_dir, outfile)
 
