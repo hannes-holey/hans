@@ -1,5 +1,5 @@
+import sys
 import yaml
-import netCDF4
 import numpy as np
 
 from pylub.problem import Problem
@@ -59,12 +59,61 @@ class Input:
 
         return thisProblem
 
-    # consistency checks for input dicts
     def check_disc(self, disc):
+        """Check correctness of discretization input.
+
+        Returns
+        -------
+        disc : dict
+            Discretaization dictionary
+        """
         print("Checking discretization... ", end="", flush=True)
 
-        Nx = int(disc['Nx'])
-        Ny = int(disc['Ny'])
+        try:
+            Nx = int(disc['Nx'])
+            assert Nx > 0
+        except KeyError:
+            print("\nNumber of grid cells Nx not given. Abort.")
+            sys.exit(1)
+        except AssertionError:
+            try:
+                assert Nx != 0
+            except AssertionError:
+                print("\nNumber of grid cells Nx zero. Abort")
+                sys.exit(1)
+            else:
+                print("\nNumber of grid cells Nx negative. Converting to positive value.")
+                Nx *= -1
+                disc["Nx"] = Nx
+
+        try:
+            Ny = int(disc['Ny'])
+            assert Ny > 0
+        except KeyError:
+            print("\nNumber of grid cells Ny not given. Abort.")
+            sys.exit(1)
+        except AssertionError:
+            try:
+                assert Ny != 0
+            except AssertionError:
+                print("\nNumber of grid cells Ny zero. Abort")
+                sys.exit(1)
+            else:
+                print("\nNumber of grid cells Ny negative. Converting to positive value.")
+                Ny *= -1
+                disc["Ny"] = Ny
+
+        try:
+            assert ("dx" or "Lx") in disc.keys()
+        except AssertionError:
+            print("\nNeither 'dx' nor 'Lx' given. Abort.")
+            sys.exit(1)
+
+        try:
+            assert ("dy" or "Ly") in disc.keys()
+        except AssertionError:
+            print("\nNeither 'dy' nor 'Ly' given. Abort.")
+            sys.exit(1)
 
         if "dx" in disc.keys():
             dx = float(disc['dx'])
