@@ -15,8 +15,8 @@ class GapHeight(VectorField):
     def fill_analytic(self):
 
         if self.geometry["type"] == "journal":
-            CR = float(self.geometry['CR'])
-            eps = float(self.geometry['eps'])
+            CR = self.geometry['CR']
+            eps = self.geometry['eps']
 
             Rb = self.Lx / (2 * np.pi)
             c = CR * Rb
@@ -27,30 +27,30 @@ class GapHeight(VectorField):
             print(f"Max. channel height: {np.amax(self._field[0, 1:-1,1:-1]):.2g} m")
 
         elif self.geometry["type"] == "parabolic":
-            hmin = float(self.geometry['hmin'])
-            hmax = float(self.geometry['hmax'])
+            hmin = self.geometry['hmin']
+            hmax = self.geometry['hmax']
             self._field[0] = 4 * (hmax - hmin) / self.Lx**2 * (self.xx - self.Lx / 2)**2 + hmin
 
         elif self.geometry["type"] == "twin_parabolic":
-            hmin = float(self.geometry['hmin'])
-            hmax = float(self.geometry['hmax'])
+            hmin = self.geometry['hmin']
+            hmax = self.geometry['hmax']
 
             right = np.greater(self.xx, self.Lx / 2)
             self._field[0] = 16 * (hmax - hmin) / self.Lx**2 * (self.xx - self.Lx / 4)**2 + hmin
             self._field[0][right] = 16 * (hmax - hmin) / self.Lx**2 * (self.xx[right] - 3 * self.Lx / 4)**2 + hmin
 
         elif self.geometry["type"] == "inclined":
-            h1 = float(self.geometry['h1'])
-            h2 = float(self.geometry['h2'])
+            h1 = self.geometry['h1']
+            h2 = self.geometry['h2']
             self._field[0] = h1 + (h2 - h1) / (self.Lx) * self.xx
 
         elif self.geometry["type"] == "inclined_pocket":
-            h1 = float(self.geometry['h1'])
-            h2 = float(self.geometry['h2'])
-            hp = float(self.geometry['hp'])
-            c = float(self.geometry['c'])
-            l = float(self.geometry['l'])
-            w = float(self.geometry['w'])
+            h1 = self.geometry['h1']
+            h2 = self.geometry['h2']
+            hp = self.geometry['hp']
+            c = self.geometry['c']
+            l = self.geometry['l']
+            w = self.geometry['w']
 
             self._field[0] = h1 + (h2 - h1) / (self.Lx) * self.xx
 
@@ -60,30 +60,19 @@ class GapHeight(VectorField):
 
             self._field[0, xymask] += hp
 
-        elif self.geometry["type"] == "step":
-            h1 = float(self.geometry['h1'])
-            h2 = float(self.geometry['h2'])
-
-            lstep = self.Lx / 3
-            rstep = 2. * lstep
-
-            mask = np.logical_and(np.less(self.xx, rstep), np.greater(self.xx, lstep))
-            self._field[0] = h1
-            self._field[0][mask] = h2
-
         elif self.geometry["type"] == "half_sine":
-            h0 = float(self.geometry['h0'])
-            amp = float(self.geometry['amp'])
-            num = float(self.geometry['num'])
+            h0 = self.geometry['h0']
+            amp = self.geometry['amp']
+            num = self.geometry['num']
 
             self._field[0] = h0 - amp * np.sin(- 4 * np.pi * (self.xx - self.Lx / 2) * num / self.Lx)
             mask = np.greater(self.xx, self.Lx / 2)
             self._field[0][mask] = h0
 
         elif self.geometry["type"] == "half_sine_squared":
-            h0 = float(self.geometry['h0'])
-            amp = float(self.geometry['amp'])
-            num = float(self.geometry['num'])
+            h0 = self.geometry['h0']
+            amp = self.geometry['amp']
+            num = self.geometry['num']
 
             self._field[0] = h0 + amp * np.sin(- 4 * np.pi * (self.xx - self.Lx / 2) * num / self.Lx)**2
             mask = np.greater(self.xx, self.Lx / 2)

@@ -161,15 +161,106 @@ class Input:
 
     def check_geo(self, geo):
         print("Checking geometry... ", end="", flush=True)
+
+        if geo["type"] == "journal":
+            geo["CR"] = float(geo["CR"])
+            geo["eps"] = float(geo["eps"])
+        elif geo["type"] == "parabolic":
+            geo["hmin"] = float(geo['hmin'])
+            geo["hmax"] = float(geo['hmax'])
+        elif geo["type"] == "twin_parabolic":
+            geo["hmin"] = float(geo['hmin'])
+            geo["hmax"] = float(geo['hmax'])
+        elif geo["type"] == "inclined":
+            geo["h1"] = float(geo['h1'])
+            geo["h2"] = float(geo['h2'])
+        elif geo["type"] == "inclined_pocket":
+            geo["h1"] = float(geo['h1'])
+            geo["h2"] = float(geo['h2'])
+            geo["hp"] = float(geo['hp'])
+            geo["c"] = float(geo['c'])
+            geo["l"] = float(geo['l'])
+            geo["w"] = float(geo['w'])
+        elif geo["type"] == "half_sine" or geo["type"] == "half_sine_squared":
+            geo["h0"] = float(geo['h0'])
+            geo["amp"] = float(geo['amp'])
+            geo["num"] = float(geo['num'])
+
         print("Done!")
         return geo
 
     def check_num(self, numerics):
         print("Checking numerics options... ", end="", flush=True)
+
+        numerics["stokes"] = int(numerics["stokes"])
+        numerics["adaptive"] = int(numerics["adaptive"])
+        numerics["C"] = float(numerics["C"])
+        numerics["tol"] = float(numerics["tol"])
+        numerics["dt"] = float(numerics["dt"])
+        numerics["maxT"] = float(numerics["maxT"])
+
         print("Done!")
         return numerics
 
     def check_mat(self, material):
         print("Checking material options... ", end="", flush=True)
+
+        if material["EOS"] == "DH":
+            material["rho0"] = float(material["rho0"])
+            material["P0"] = float(material["P0"])
+            material["C1"] = float(material["C1"])
+            material["C2"] = float(material["C2"])
+        elif material["EOS"] == "PL":
+            material["rho0"] = float(material["rho0"])
+            material["P0"] = float(material["P0"])
+            material["alpha"] = float(material['alpha'])
+        elif material["EOS"] == "vdW":
+            material["M"] = float(material['M'])
+            material["T"] = float(material['T0'])
+            material["a"] = float(material['a'])
+            material["b"] = float(material['b'])
+        elif material["EOS"] == "Murnaghan":
+            material["rho0"] = float(material["rho0"])
+            material["P0"] = float(material["P0"])
+            material["K"] = float(material['K'])
+            material["n"] = float(material['n'])
+        elif material["EOS"] == "cubic":
+            material["a"] = float(material['a'])
+            material["b"] = float(material['b'])
+            material["c"] = float(material['c'])
+            material["d"] = float(material['d'])
+        elif material["EOS"].startswith("Bayada"):
+            material["cl"] = float(material["cl"])
+            material["cv"] = float(material["cv"])
+            material["rhol"] = float(material["rhol"])
+            material["rhov"] = float(material["rhov"])
+            material["shear"] = float(material["shear"])
+            material["shearv"] = float(material["shearv"])
+            material["rhov"] = float(material["rhov"])
+
+        material["shear"] = float(material["shear"])
+        material["bulk"] = float(material["bulk"])
+
+        if "Pcav" in material.keys():
+            material["Pcav"] = float(material["Pcav"])
+
+        if "piezo" in material.keys():
+            if material["piezo"] == "Barus":
+                material["aB"] = float(material["aB"])
+            elif material["piezo"] == "Vogel":
+                material["rho0"] = float(material['rho0'])
+                material["g"] = float(material["g"])
+                material["mu_inf"] = float(material["mu_inf"])
+                material["phi_inf"] = float(material["phi_inf"])
+                material["BF"] = float(material["BF"])
+
+        if "thinning" in material.keys():
+            if material["thinning"] == "Eyring":
+                material["tau0"] = float(material["tau0"])
+            elif material["thinning"] == "Carreau":
+                material["G"] = float(material["G"])
+                material["a"] = float(material["a"])
+                material["N"] = float(material["N"])
+
         print("Done!")
         return material
