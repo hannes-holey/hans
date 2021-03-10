@@ -177,6 +177,7 @@ class Problem:
 
             categories = {"options": self.options,
                           "disc": self.disc,
+                          "bc": self.BC,
                           "geometry": self.geometry,
                           "numerics": self.numerics,
                           "material": self.material}
