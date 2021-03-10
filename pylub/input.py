@@ -104,13 +104,13 @@ class Input:
                 disc["Ny"] = Ny
 
         try:
-            assert ("dx" or "Lx") in disc.keys()
+            assert "dx" in disc.keys() or "Lx" in disc.keys()
         except AssertionError:
             print("\nNeither 'dx' nor 'Lx' given. Abort.")
             sys.exit(1)
 
         try:
-            assert ("dy" or "Ly") in disc.keys()
+            assert "dy" in disc.keys() or "Ly" in disc.keys()
         except AssertionError:
             print("\nNeither 'dy' nor 'Ly' given. Abort.")
             sys.exit(1)
