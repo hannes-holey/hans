@@ -141,7 +141,7 @@ class Problem:
 
         if self.restart_file is None:
             file_tag = 1
-            existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].lstrip("0"))
+            existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].split("-")[0].lstrip("0"))
                                     for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")])
             if len(existing_tags) > 0:
                 file_tag = existing_tags[-1] + 1
@@ -172,7 +172,7 @@ class Problem:
             repo_path = [path for path in sys.path if path.endswith("pylub")][0]
             git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
 
-            self.nc.setncattr(f"tStart_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tStart-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             self.nc.commit = git_commit
 
             categories = {"options": self.options,
@@ -200,7 +200,7 @@ class Problem:
             self.nc.restarts += 1
 
             # append modified attributes
-            self.nc.setncattr(f"tStart_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tStart-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             for key, value in self.numerics.items():
                 name = "numerics_" + key + "-" + str(self.nc.restarts)
                 self.nc.setncattr(name, value)
@@ -223,14 +223,14 @@ class Problem:
         self.nc.variables["eps"][k] = self.q.eps
 
         if mode == "converged":
-            self.nc.setncattr(f"tEnd_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
         elif mode == "maxtime":
-            self.nc.setncattr(f"tEnd_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {float(self.numerics['maxT']):.1e} s reached.")
             print(f"Output written to: {self.outpath}")
         elif mode == "abort":
-            self.nc.setncattr(f"tEnd_{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             print("Walltime exceeded")
 
         if mode is not None:
