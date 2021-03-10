@@ -5,7 +5,6 @@ data/
 config/
 submit.sh
 .docblock.json
-README.yml
 .ipynb_checkpoints
 build
 dist
