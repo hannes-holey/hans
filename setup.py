@@ -16,7 +16,7 @@ setup(name='pylub',
       test_suite='tests',
       install_requires=["numpy>=1.18.1",
                         "matplotlib>=3.2.0",
-                        "PyYAML>=1.18.1",
+                        "PyYAML>=5.3",
                         "GitPython>=3.1.0",
                         "netCDF4>=1.5.3"],
       zip_safe=False)
