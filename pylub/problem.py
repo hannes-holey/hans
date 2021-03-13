@@ -79,8 +79,8 @@ class Problem:
         rho = np.array(file.variables['rho'])[-1]
         jx = np.array(file.variables['jx'])[-1]
         jy = np.array(file.variables['jy'])[-1]
-        dt = float(file.variables["dt"][-1])
-        t = float(file.variables["time"][-1])
+        dt = file.variables["dt"][-1]
+        t = file.variables["time"][-1]
 
         q0 = np.zeros([3] + list(rho.shape))
 
@@ -109,8 +109,8 @@ class Problem:
 
             self.init_netcdf(out_dir)
 
-            maxT = float(self.numerics["maxT"])
-            tol = float(self.numerics["tol"])
+            maxT = self.numerics["maxT"]
+            tol = self.numerics["tol"]
 
             i = 0
             while self.q.time < maxT:
@@ -228,7 +228,7 @@ class Problem:
             print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
         elif mode == "maxtime":
             self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-            print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {float(self.numerics['maxT']):.1e} s reached.")
+            print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
             print(f"Output written to: {self.outpath}")
         elif mode == "abort":
             self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
