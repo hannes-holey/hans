@@ -9,6 +9,7 @@ from datetime import datetime
 from git import Repo
 import numpy as np
 import shutil
+from functools import partial
 
 from pylub.eos import EquationOfState
 from pylub.plottools import adaptiveLimits
@@ -118,10 +119,11 @@ class Problem:
                 self.q.update(i)
                 tDiff = maxT - self.q.time
 
-                signal.signal(signal.SIGTERM, self.receive_signal)
-                signal.signal(signal.SIGHUP, self.receive_signal)
-                signal.signal(signal.SIGUSR1, self.receive_signal)
-                signal.signal(signal.SIGUSR2, self.receive_signal)
+                signal.signal(signal.SIGINT, partial(self.receive_signal, i))
+                signal.signal(signal.SIGTERM, partial(self.receive_signal, i))
+                signal.signal(signal.SIGHUP, partial(self.receive_signal, i))
+                signal.signal(signal.SIGUSR1, partial(self.receive_signal, i))
+                signal.signal(signal.SIGUSR2, partial(self.receive_signal, i))
 
                 if i % self.writeInterval == 0:
                     self.write(i)
@@ -232,17 +234,21 @@ class Problem:
             print(f"Output written to: {self.outpath}")
         elif mode == "abort":
             self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-            print("Walltime exceeded")
+            print(f"Execution stopped. Output written to: {self.outpath}")
 
         if mode is not None:
             walltime = time.time() - self.tStart
             print(f"Total wall clock time: {time.strftime('%H:%M:%S', time.gmtime(walltime))} (Performance: {i / walltime:.2f} steps/s)")
 
-    def receive_signal(self, i, signum, stack):
-        walltime = time.time() - self.tStart
-        print(f"python: PID: {os.getpid()} recieved {signum} at time {walltime}", flush=True)
+    def receive_signal(self, i, signum, frame):
+        print(f"\npython: PID: {os.getpid()} recieved signal {signum}. Writing last step:", flush=True)
+
+        if signum == signal.SIGINT:
+            self.write(i, mode="abort")
+            sys.exit()
 
         if signum == signal.SIGTERM:
+            self.write(i, mode="abort")
             sys.exit()
 
         if signum == signal.SIGUSR1:
