@@ -9,7 +9,7 @@ from datetime import datetime
 from git import Repo
 import numpy as np
 import shutil
-from functools import partial
+# from functools import partial
 
 from pylub.eos import EquationOfState
 from pylub.plottools import adaptiveLimits
@@ -112,29 +112,33 @@ class Problem:
 
             maxT = self.numerics["maxT"]
             tol = self.numerics["tol"]
+            self.write_mode = None
 
             i = 0
-            while self.q.time < maxT:
-
+            while True:
                 self.q.update(i)
-                tDiff = maxT - self.q.time
 
-                signal.signal(signal.SIGINT, partial(self.receive_signal, i))
-                signal.signal(signal.SIGTERM, partial(self.receive_signal, i))
-                signal.signal(signal.SIGHUP, partial(self.receive_signal, i))
-                signal.signal(signal.SIGUSR1, partial(self.receive_signal, i))
-                signal.signal(signal.SIGUSR2, partial(self.receive_signal, i))
+                # catch signals and execute signal handler
+                signal.signal(signal.SIGINT, self.receive_signal)
+                signal.signal(signal.SIGTERM, self.receive_signal)
+                signal.signal(signal.SIGHUP, self.receive_signal)
+                signal.signal(signal.SIGUSR1, self.receive_signal)
+                # signal.signal(signal.SIGUSR2, self.receive_signal)
 
-                if i % self.writeInterval == 0:
-                    self.write(i)
-                elif self.q.eps < tol:
-                    self.write(i, mode="converged")
-                    break
-                elif tDiff < self.q.dt:
+                # convergence
+                if self.q.eps < tol:
+                    self.write_mode = "converged"
+
+                # maximum time reached
+                if (maxT - self.q.time) < self.q.dt:
                     i += 1
                     self.q.update(i)
-                    self.write(i, mode="maxtime")
+                    self.write_mode = "maxtime"
 
+                # write to file and stdout given the specified mode
+                self.write(i, mode=self.write_mode)
+
+                # increase time step
                 i += 1
 
     def init_netcdf(self, out_dir):
@@ -210,50 +214,47 @@ class Problem:
 
     def write(self, i, mode=None):
 
-        print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
+        def to_netcdf(i, last=False):
+            print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
-        k = self.nc.variables["rho"].shape[0]
+            k = self.nc.variables["rho"].shape[0]
 
-        self.nc.variables["rho"][k] = self.q.field[0, 1:-1, 1:-1]
-        self.nc.variables["jx"][k] = self.q.field[1, 1:-1, 1:-1]
-        self.nc.variables["jy"][k] = self.q.field[2, 1:-1, 1:-1]
+            self.nc.variables["rho"][k] = self.q.field[0, 1:-1, 1:-1]
+            self.nc.variables["jx"][k] = self.q.field[1, 1:-1, 1:-1]
+            self.nc.variables["jy"][k] = self.q.field[2, 1:-1, 1:-1]
 
-        self.nc.variables["time"][k] = self.q.time
-        self.nc.variables["mass"][k] = self.q.mass
-        self.nc.variables["vmax"][k] = self.q.vmax
-        self.nc.variables["vSound"][k] = self.q.vSound
-        self.nc.variables["dt"][k] = self.q.dt
-        self.nc.variables["eps"][k] = self.q.eps
+            self.nc.variables["time"][k] = self.q.time
+            self.nc.variables["mass"][k] = self.q.mass
+            self.nc.variables["vmax"][k] = self.q.vmax
+            self.nc.variables["vSound"][k] = self.q.vSound
+            self.nc.variables["dt"][k] = self.q.dt
+            self.nc.variables["eps"][k] = self.q.eps
 
-        if mode == "converged":
-            self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            if last:
+                self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+
+        if i % self.writeInterval == 0:
+            to_netcdf(i)
+        elif mode == "converged":
+            to_netcdf(i, last=True)
             print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
         elif mode == "maxtime":
-            self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            to_netcdf(i, last=True)
             print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
             print(f"Output written to: {self.outpath}")
         elif mode == "abort":
-            self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            to_netcdf(i, last=True)
             print(f"Execution stopped. Output written to: {self.outpath}")
 
         if mode is not None:
             walltime = time.time() - self.tStart
             print(f"Total wall clock time: {time.strftime('%H:%M:%S', time.gmtime(walltime))} (Performance: {i / walltime:.2f} steps/s)")
-
-    def receive_signal(self, i, signum, frame):
-        print(f"\npython: PID: {os.getpid()} recieved signal {signum}. Writing last step:", flush=True)
-
-        if signum == signal.SIGINT:
-            self.write(i, mode="abort")
             sys.exit()
 
-        if signum == signal.SIGTERM:
-            self.write(i, mode="abort")
-            sys.exit()
+    def receive_signal(self, signum, frame):
 
-        if signum == signal.SIGUSR1:
-            self.write(i, mode="abort")
-            sys.exit()
+        if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
+            self.write_mode = "abort"
 
     def plot(self):
 
