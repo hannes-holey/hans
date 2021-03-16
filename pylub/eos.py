@@ -165,6 +165,14 @@ class EquationOfState:
             alpha = self.material['alpha']
             c_squared = -2. * p0 * (rho / rho0)**(-2. / (alpha - 2.)) / ((alpha - 2) * rho)
 
+        # Van der Waals equation
+        elif self.material['EOS'] == "vdW":
+            M = self.material['M']
+            T = self.material['T0']
+            a = self.material['a']
+            b = self.material['b']
+            c_squared = R * T * M / (M - b * rho)**2 - 2 * a * rho / M**2
+
         # Tait equation (Murnaghan)
         elif self.material['EOS'] == "Tait":
             rho0 = self.material['rho0']
