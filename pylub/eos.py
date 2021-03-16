@@ -110,6 +110,7 @@ class EquationOfState:
 
             return rho0 * (p / P0)**(1. - alpha / 2.)
 
+        # Cavitation model Bayada and Chupin, J. Trib. 135, 2013
         elif self.material['EOS'].startswith("Bayada"):
             c_l = self.material["cl"]
             c_v = self.material["cv"]
@@ -190,9 +191,28 @@ class EquationOfState:
 
             c_squared = 3 * a * rho**2 + 2 * b * rho + c
 
+        # Cavitation model Bayada and Chupin, J. Trib. 135, 2013
         elif self.material['EOS'].startswith("Bayada"):
-            # TODO: return also for mixture and vapor
-            c_squared = self.material['cl']**2
+            rho_v = self.material["rhov"]
+            rho_l = self.material["rhol"]
+            c_l = self.material['cl']
+            c_v = self.material['cv']
+            alpha = (rho - rho_l) / (rho_v - rho_l)
+
+            if np.isscalar(rho):
+                if alpha < 0:
+                    c_squared = c_l**2
+                elif alpha >= 0 and alpha <= 1:
+                    c_squared = rho_v * rho_l * (c_v * c_l)**2 / (alpha * rho_l * c_l**2 + (1 - alpha) * rho_v * c_v**2) / rho
+                else:
+                    c_squared = c_v**2
+
+            else:
+                mix = np.logical_and(alpha <= 1, alpha >= 0)
+                c_squared = np.ones_like(rho) * c_v**2
+                c_squared[alpha < 0] = c_l**2
+                c_squared[mix] = rho_v * rho_l * (c_v * c_l)**2 / (alpha[mix] * rho_l * c_l**2 +
+                                                                   (1 - alpha[mix]) * rho_v * c_v**2) / rho[mix]
 
         return np.sqrt(np.amax(abs(c_squared)))
 
