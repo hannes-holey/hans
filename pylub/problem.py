@@ -9,7 +9,6 @@ from datetime import datetime
 from git import Repo
 import numpy as np
 import shutil
-# from functools import partial
 
 from pylub.eos import EquationOfState
 from pylub.plottools import adaptiveLimits
@@ -214,11 +213,11 @@ class Problem:
 
     def write(self, i, mode=None):
 
-        def to_netcdf(i, last=False):
+        def to_stdout(i):
             print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
+        def to_netcdf(i, last=False):
             k = self.nc.variables["rho"].shape[0]
-
             self.nc.variables["rho"][k] = self.q.field[0, 1:-1, 1:-1]
             self.nc.variables["jx"][k] = self.q.field[1, 1:-1, 1:-1]
             self.nc.variables["jy"][k] = self.q.field[2, 1:-1, 1:-1]
@@ -234,15 +233,19 @@ class Problem:
                 self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
         if i % self.writeInterval == 0:
+            to_stdout(i)
             to_netcdf(i)
         elif mode == "converged":
+            to_stdout(i)
             to_netcdf(i, last=True)
             print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
         elif mode == "maxtime":
+            to_stdout(i)
             to_netcdf(i, last=True)
             print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
             print(f"Output written to: {self.outpath}")
         elif mode == "abort":
+            to_stdout(i)
             to_netcdf(i, last=True)
             print(f"Execution stopped. Output written to: {self.outpath}")
 
