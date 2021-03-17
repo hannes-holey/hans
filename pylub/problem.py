@@ -114,7 +114,7 @@ class Problem:
             self.write_mode = None
 
             i = 0
-            while True:
+            while self.write_mode is None:
                 self.q.update(i)
 
                 # catch signals and execute signal handler
@@ -126,13 +126,13 @@ class Problem:
 
                 # convergence
                 if self.q.eps < tol:
-                    self.write_mode = "converged"
+                    self.write_mode = 0
 
                 # maximum time reached
                 if (maxT - self.q.time) < self.q.dt:
                     i += 1
                     self.q.update(i)
-                    self.write_mode = "maxtime"
+                    self.write_mode = 1
 
                 # write to file and stdout given the specified mode
                 self.write(i, mode=self.write_mode)
@@ -213,8 +213,21 @@ class Problem:
 
     def write(self, i, mode=None):
 
-        def to_stdout(i):
+        def to_stdout(i, mode=None):
             print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
+
+            if mode == 0:
+                print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
+            elif mode == 1:
+                print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
+                print(f"Output written to: {self.outpath}")
+            elif mode == 2:
+                print(f"Execution stopped. Output written to: {self.outpath}")
+
+            if mode is not None:
+                walltime = time.time() - self.tStart
+                print(f"Total wall clock time: {time.strftime('%H:%M:%S', time.gmtime(walltime))}", end=" ")
+                print(f"(Performance: {i / walltime:.2f} steps/s)")
 
         def to_netcdf(i, last=False):
             k = self.nc.variables["rho"].shape[0]
@@ -235,29 +248,15 @@ class Problem:
         if i % self.writeInterval == 0:
             to_stdout(i)
             to_netcdf(i)
-        elif mode == "converged":
-            to_stdout(i)
-            to_netcdf(i, last=True)
-            print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
-        elif mode == "maxtime":
-            to_stdout(i)
-            to_netcdf(i, last=True)
-            print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
-            print(f"Output written to: {self.outpath}")
-        elif mode == "abort":
-            to_stdout(i)
-            to_netcdf(i, last=True)
-            print(f"Execution stopped. Output written to: {self.outpath}")
 
         if mode is not None:
-            walltime = time.time() - self.tStart
-            print(f"Total wall clock time: {time.strftime('%H:%M:%S', time.gmtime(walltime))} (Performance: {i / walltime:.2f} steps/s)")
-            sys.exit()
+            to_stdout(i, mode=mode)
+            to_netcdf(i, last=True)
 
     def receive_signal(self, signum, frame):
 
         if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
-            self.write_mode = "abort"
+            self.write_mode = 2
 
     def plot(self):
 
