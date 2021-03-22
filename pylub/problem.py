@@ -2,7 +2,6 @@ import os
 import sys
 import signal
 import netCDF4
-import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from datetime import datetime
@@ -100,7 +99,7 @@ class Problem:
                                 q_init=self.q_init,
                                 t_init=self.t_init)
 
-        self.tStart = time.time()
+        self.tStart = datetime.now()
         print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
 
         if plot:
@@ -177,7 +176,7 @@ class Problem:
             repo_path = [path for path in sys.path if path.endswith("pylub")][0]
             git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
 
-            self.nc.setncattr(f"tStart-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tStart-{self.nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
             self.nc.commit = git_commit
 
             categories = {"options": self.options,
@@ -206,7 +205,7 @@ class Problem:
             self.nc.restarts += 1
 
             # append modified attributes
-            self.nc.setncattr(f"tStart-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            self.nc.setncattr(f"tStart-{self.nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
             for key, value in self.numerics.items():
                 name = "numerics_" + key + "-" + str(self.nc.restarts)
                 self.nc.setncattr(name, value)
@@ -225,9 +224,8 @@ class Problem:
                 print(f"Execution stopped. Output written to: {self.outpath}")
 
             if mode is not None:
-                walltime = time.time() - self.tStart
-                print(f"Total wall clock time: {time.strftime('%H:%M:%S', time.gmtime(walltime))}", end=" ")
-                print(f"(Performance: {i / walltime:.2f} steps/s)")
+                walltime = datetime.now() - self.tStart
+                print(f"Total wall clock time: {str(walltime).split('.')[0]} (Performance: {i / walltime.total_seconds():.2f} steps/s)")
 
         def to_netcdf(i, last=False):
             k = self.nc.variables["rho"].shape[0]
