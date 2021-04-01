@@ -148,14 +148,20 @@ class Problem:
                 os.makedirs(out_dir)
 
         if self.restart_file is None:
-            file_tag = 1
-            existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].split("-")[0].lstrip("0"))
-                                    for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")])
-            if len(existing_tags) > 0:
-                file_tag = existing_tags[-1] + 1
 
-            outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
-            self.outpath = os.path.join(out_dir, outfile)
+            if self.q.rank == 0:
+                file_tag = 1
+                existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].split("-")[0].lstrip("0"))
+                                        for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")])
+                if len(existing_tags) > 0:
+                    file_tag = existing_tags[-1] + 1
+
+                outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
+                self.outpath = os.path.join(out_dir, outfile)
+            else:
+                self.outpath = None
+
+            self.outpath = self.q.comm.bcast(self.outpath, root=0)
 
             # initialize NetCDF file
             self.nc = netCDF4.Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
