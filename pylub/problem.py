@@ -141,8 +141,10 @@ class Problem:
                 i += 1
 
     def init_netcdf(self, out_dir):
-        if not(os.path.exists(out_dir)):
-            os.makedirs(out_dir)
+
+        if self.q.rank == 0:
+            if not(os.path.exists(out_dir)):
+                os.makedirs(out_dir)
 
         if self.restart_file is None:
             file_tag = 1
