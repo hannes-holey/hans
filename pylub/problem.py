@@ -100,7 +100,8 @@ class Problem:
                                 t_init=self.t_init)
 
         self.tStart = datetime.now()
-        print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"))
+        if self.q.rank == 0:
+            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"), flush=True)
 
         if plot:
             self.plot()
@@ -154,16 +155,20 @@ class Problem:
             self.outpath = os.path.join(out_dir, outfile)
 
             # initialize NetCDF file
-            self.nc = netCDF4.Dataset(self.outpath, 'w', format='NETCDF3_64BIT_OFFSET')
+            self.nc = netCDF4.Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
             self.nc.restarts = 0
             self.nc.createDimension('x', self.Nx)
             self.nc.createDimension('y', self.Ny)
             self.nc.createDimension('step', None)
 
             # create conserved variables timeseries of fields
-            self.nc.createVariable('rho', 'f8', ('step', 'x', 'y'))
-            self.nc.createVariable('jx', 'f8', ('step', 'x', 'y'))
-            self.nc.createVariable('jy', 'f8', ('step', 'x', 'y'))
+            var0 = self.nc.createVariable('rho', 'f8', ('step', 'x', 'y'))
+            var1 = self.nc.createVariable('jx', 'f8', ('step', 'x', 'y'))
+            var2 = self.nc.createVariable('jy', 'f8', ('step', 'x', 'y'))
+
+            var0.set_collective(True)
+            var1.set_collective(True)
+            var2.set_collective(True)
 
             # create scalar variables
             self.nc.createVariable('time', 'f8', ('step'))
@@ -194,7 +199,7 @@ class Problem:
         else:
 
             # append to existing netCDF file
-            self.nc = netCDF4.Dataset(self.restart_file, 'a', format='NETCDF3_64BIT_OFFSET')
+            self.nc = netCDF4.Dataset(self.restart_file, 'a', parallel=True, format='NETCDF3_64BIT_OFFSET')
             self.outpath = os.path.relpath(self.restart_file)
 
             # create backup
@@ -229,9 +234,9 @@ class Problem:
 
         def to_netcdf(i, last=False):
             k = self.nc.variables["rho"].shape[0]
-            self.nc.variables["rho"][k] = self.q.field[0, 1:-1, 1:-1]
-            self.nc.variables["jx"][k] = self.q.field[1, 1:-1, 1:-1]
-            self.nc.variables["jy"][k] = self.q.field[2, 1:-1, 1:-1]
+            self.nc.variables['rho'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[0]
+            self.nc.variables['jx'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[1]
+            self.nc.variables['jy'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[2]
 
             self.nc.variables["time"][k] = self.q.time
             self.nc.variables["mass"][k] = self.q.mass
@@ -242,13 +247,16 @@ class Problem:
 
             if last:
                 self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                self.nc.close()
 
         if i % self.writeInterval == 0:
-            to_stdout(i)
+            if self.q.rank == 0:
+                to_stdout(i)
             to_netcdf(i)
 
         if mode is not None:
-            to_stdout(i, mode=mode)
+            if self.q.rank == 0:
+                to_stdout(i, mode=mode)
             to_netcdf(i, last=True)
 
     def receive_signal(self, signum, frame):

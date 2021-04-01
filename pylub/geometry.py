@@ -4,9 +4,9 @@ from pylub.field import VectorField
 
 class GapHeight(VectorField):
 
-    def __init__(self, disc, geometry, grid=True):
+    def __init__(self, disc, geometry):
 
-        super().__init__(disc, grid)
+        super().__init__(disc)
 
         self.geometry = geometry
         self.fill_analytic()
@@ -23,8 +23,8 @@ class GapHeight(VectorField):
             e = eps * c
             self._field[0] = c + e * np.cos(self.xx / Rb)
 
-            print(f"Min. channel height: {np.amin(self._field[0, 1:-1,1:-1]):.2g} m")
-            print(f"Max. channel height: {np.amax(self._field[0, 1:-1,1:-1]):.2g} m")
+            # print(f"Min. channel height: {np.amin(self.inner[0]):.2g} m", flush=True)
+            # print(f"Max. channel height: {np.amax(self.inner[0]):.2g} m", flush=True)
 
         elif self.geometry["type"] == "parabolic":
             hmin = self.geometry['hmin']

@@ -1,5 +1,7 @@
 import os
+from mpi4py import MPI
 from argparse import ArgumentParser
+
 from pylub.input import Input
 
 
@@ -16,14 +18,25 @@ def get_parser():
 
 if __name__ == "__main__":
 
-    parser = get_parser()
-    args = parser.parse_args()
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
 
-    inputFile = os.path.join(os.getcwd(), args.filename)
-    if args.restart_file is not None:
-        restartFile = os.path.join(os.getcwd(), args.restart_file)
+    if rank == 0:
+        parser = get_parser()
+        args = parser.parse_args()
+
+        inputFile = os.path.join(os.getcwd(), args.filename)
+        if args.restart_file is not None:
+            restartFile = os.path.join(os.getcwd(), args.restart_file)
+        else:
+            restartFile = None
+
+        myProblem = Input(inputFile, restartFile).getProblem()
+
     else:
-        restartFile = None
+        myProblem = None
+        args = None
 
-    myProblem = Input(inputFile, restartFile).getProblem()
+    args = comm.bcast(args, root=0)
+    myProblem = comm.bcast(myProblem, root=0)
     myProblem.run(args.plot, args.out_dir)

@@ -1,16 +1,17 @@
 import numpy as np
+from mpi4py import MPI
 
 from pylub.field import VectorField
 from pylub.stress import SymStressField2D, SymStressField3D
-from pylub.eos import EquationOfState
 from pylub.geometry import GapHeight
+from pylub.eos import EquationOfState
 
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, BC, geometry, material, numerics, q_init=None, t_init=None, grid=True):
+    def __init__(self, disc, BC, geometry, material, numerics, q_init=None, t_init=None):
 
-        super().__init__(disc, grid)
+        super().__init__(disc)
 
         self.BC = BC
         self.material = material
@@ -25,7 +26,7 @@ class ConservedField(VectorField):
         self.y1 = np.array(list(self.BC["y1"]))
 
         if q_init is not None:
-            self._field[:, 1:-1, 1:-1] = q_init
+            self._field[:, 1:-1, 1:-1] = q_init[:, self.wo_ghost_x, self.wo_ghost_y]
             self.fill_ghost_cell()
         else:
             self._field[0] = float(material['rho0'])
@@ -44,21 +45,24 @@ class ConservedField(VectorField):
         if self.adaptive:
             self.C = float(numerics["C"])
 
-        self.viscous_stress = SymStressField2D(disc, geometry, material, grid=False)
-        self.upper_stress = SymStressField3D(disc, geometry, material, grid=False)
-        self.lower_stress = SymStressField3D(disc, geometry, material, grid=False)
+        self.viscous_stress = SymStressField2D(disc, geometry, material)
+        self.upper_stress = SymStressField3D(disc, geometry, material)
+        self.lower_stress = SymStressField3D(disc, geometry, material)
 
     @property
     def mass(self):
-        return np.sum(self._field[0] * self.height.field[0] * self.dx * self.dy)
+        local_mass = np.sum(self.inner[0] * self.height.inner[0] * self.dx * self.dy)
+        return self.comm.allreduce(local_mass, op=MPI.SUM)
 
     @property
     def vSound(self):
-        return EquationOfState(self.material).soundSpeed(self._field[0])
+        local_vSound = EquationOfState(self.material).soundSpeed(self.inner[0])
+        return self.comm.allreduce(local_vSound, op=MPI.MAX)
 
     @property
     def vmax(self):
-        return self.vSound + np.amax(np.sqrt(self._field[1]**2 + self._field[2]**2) / self._field[0])
+        local_vmax = np.amax(np.sqrt(self.inner[1]**2 + self.inner[2]**2) / self.inner[0])
+        return self.comm.allreduce(local_vmax, op=MPI.MAX)
 
     @property
     def time(self):
@@ -154,15 +158,23 @@ class ConservedField(VectorField):
     def post_integrate(self, q0):
         self._time += self._dt
 
-        if self.adaptive:
-            self._dt = self.C * min(self.dx, self.dy) / self.vmax
+        vSound = EquationOfState(self.material).soundSpeed(self.inner[0])
+        vmax = np.amax(np.sqrt(self.inner[1]**2 + self.inner[2]**2) / self.inner[0])
 
-        self._eps = np.linalg.norm(self._field[0] - q0[0]) / np.linalg.norm(q0[0]) / self.C
+        if self.adaptive:
+            self._dt = self.C * min(self.dx, self.dy) / (vmax + vSound)
+
+        self._dt = self.comm.allreduce(self._dt, op=MPI.MIN)
+
+        self._eps = np.linalg.norm(self.inner[0] - q0[0, 1:-1, 1:-1]) / np.linalg.norm(q0[0, 1:-1, 1:-1]) / self.C
+
+        self._eps = self.comm.allreduce(self._eps, op=MPI.MAX)
 
     def fill_ghost_cell(self):
-        self.periodic()
-        self.dirichlet()
-        self.neumann()
+        self.communicate()
+        # self.periodic()
+        # self.dirichlet()
+        # self.neumann()
 
     def periodic(self):
 

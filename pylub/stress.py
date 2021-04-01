@@ -4,9 +4,9 @@ from pylub.eos import EquationOfState
 
 class SymStressField2D(VectorField):
 
-    def __init__(self, disc, geometry, material, grid=False):
+    def __init__(self, disc, geometry, material):
 
-        super().__init__(disc, grid)
+        super().__init__(disc)
 
         self.disc = disc
         self.geo = geometry
@@ -30,9 +30,9 @@ class SymStressField2D(VectorField):
 
 class SymStressField3D(TensorField):
 
-    def __init__(self, disc, geometry, material, grid=False):
+    def __init__(self, disc, geometry, material):
 
-        super().__init__(disc, grid)
+        super().__init__(disc)
 
         self.disc = disc
         self.geo = geometry

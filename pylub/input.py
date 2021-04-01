@@ -262,5 +262,5 @@ class Input:
                 material["a"] = float(material["a"])
                 material["N"] = float(material["N"])
 
-        print("Done!")
+        print("Done!", flush=True)
         return material
