@@ -101,6 +101,7 @@ class Problem:
 
         self.tStart = datetime.now()
         if self.q.rank == 0:
+            print(f"Running on {self.q.comm.dims[0]}x{self.q.comm.dims[1]} MPI processes", flush=True)
             print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"), flush=True)
 
         if plot:
