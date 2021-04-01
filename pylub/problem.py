@@ -101,8 +101,7 @@ class Problem:
 
         self.tStart = datetime.now()
         if self.q.rank == 0:
-            print(f"Running on {self.q.comm.dims[0]}x{self.q.comm.dims[1]} MPI processes", flush=True)
-            print("{:10s}\t{:12s}\t{:12s}\t{:12s}".format("Step", "Timestep", "Time", "Epsilon"), flush=True)
+            print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
 
         if plot:
             self.plot()
@@ -239,7 +238,9 @@ class Problem:
 
             if mode is not None:
                 walltime = datetime.now() - self.tStart
-                print(f"Total wall clock time: {str(walltime).split('.')[0]} (Performance: {i / walltime.total_seconds():.2f} steps/s)")
+                print(f"Total wall clock time: {str(walltime).split('.')[0]}", end=" ")
+                print(
+                    f"(Performance: {i / walltime.total_seconds(): .2f} steps/s on {self.q.comm.dims[0]} x {self.q.comm.dims[1]} MPI grid)")
 
         def to_netcdf(i, last=False):
             k = self.nc.variables["rho"].shape[0]
