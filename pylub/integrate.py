@@ -166,9 +166,13 @@ class ConservedField(VectorField):
 
         self._dt = self.comm.allreduce(self._dt, op=MPI.MIN)
 
-        self._eps = np.linalg.norm(self.inner[0] - q0[0, 1:-1, 1:-1]) / np.linalg.norm(q0[0, 1:-1, 1:-1]) / self.C
+        diff = np.sum((self.inner[0] - q0[0, 1:-1, 1:-1])**2)
+        denom = np.sum(q0[0, 1:-1, 1:-1]**2)
 
-        self._eps = self.comm.allreduce(self._eps, op=MPI.MAX)
+        diff = self.comm.allreduce(diff, op=MPI.SUM)
+        denom = self.comm.allreduce(denom, op=MPI.SUM)
+
+        self._eps = np.sqrt(diff / denom) / self.C
 
     def fill_ghost_cell(self):
         self.communicate()
