@@ -66,9 +66,6 @@ class Problem:
         if self.restart_file is not None:
             self.read_last_frame()
 
-        self.Nx = self.disc["Nx"]
-        self.Ny = self.disc["Ny"]
-
     def read_last_frame(self):
         """Read last frame from the restart file and use as initial values for new run
         """
@@ -165,8 +162,8 @@ class Problem:
             # initialize NetCDF file
             self.nc = netCDF4.Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
             self.nc.restarts = 0
-            self.nc.createDimension('x', self.Nx)
-            self.nc.createDimension('y', self.Ny)
+            self.nc.createDimension('x', self.q.Nx)
+            self.nc.createDimension('y', self.q.Ny)
             self.nc.createDimension('step', None)
 
             # create conserved variables timeseries of fields
@@ -278,11 +275,11 @@ class Problem:
 
         fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
 
-        x = self.q.xx[1:-1, self.Ny // 2]
-        ax[0, 0].plot(x, self.q.field[1, 1:-1, self.Ny // 2])
-        ax[0, 1].plot(x, self.q.field[2, 1:-1, self.Ny // 2])
-        ax[1, 0].plot(x, self.q.field[0, 1:-1, self.Ny // 2])
-        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.Ny // 2]))
+        x = self.q.xx[1:-1, self.q.Ny // 2]
+        ax[0, 0].plot(x, self.q.field[1, 1:-1, self.q.Ny // 2])
+        ax[0, 1].plot(x, self.q.field[2, 1:-1, self.q.Ny // 2])
+        ax[1, 0].plot(x, self.q.field[0, 1:-1, self.q.Ny // 2])
+        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.q.Ny // 2]))
 
         ax[0, 0].set_title(r'$j_x$')
         ax[0, 1].set_title(r'$j_y$')
@@ -309,10 +306,10 @@ class Problem:
 
         fig.suptitle('time = {:.2f} ns'.format(self.q.time * 1e9))
 
-        ax[0, 0].lines[0].set_ydata(self.q.field[1, 1:-1, self.Ny // 2])
-        ax[0, 1].lines[0].set_ydata(self.q.field[2, 1:-1, self.Ny // 2])
-        ax[1, 0].lines[0].set_ydata(self.q.field[0, 1:-1, self.Ny // 2])
-        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.Ny // 2]))
+        ax[0, 0].lines[0].set_ydata(self.q.field[1, 1:-1, self.q.Ny // 2])
+        ax[0, 1].lines[0].set_ydata(self.q.field[2, 1:-1, self.q.Ny // 2])
+        ax[1, 0].lines[0].set_ydata(self.q.field[0, 1:-1, self.q.Ny // 2])
+        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.q.Ny // 2]))
 
         ax = adaptiveLimits(ax)
 
