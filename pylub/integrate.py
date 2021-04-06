@@ -36,7 +36,7 @@ class ConservedField(VectorField):
 
         if q_init is not None:
             self._field[:, 1:-1, 1:-1] = q_init[:, self.wo_ghost_x, self.wo_ghost_y]
-            self.fill_ghost_cell()
+            self.fill_ghost_buffer()
         else:
             self._field[0] = float(material['rho0'])
 
@@ -198,11 +198,12 @@ class ConservedField(VectorField):
         # Send to right, receive from left
         recvbuf = np.ascontiguousarray(self._field[:, 0, :])
         self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -2, :]), self.rd, recvbuf=recvbuf, source=self.rs)
+
         if self.rs >= 0:
             self._field[:, 0, :] = recvbuf
         else:
-            self._field[self.x0 == "P", 0, :] = self._field[self.x0 == "P", -2, :]
             self._field[self.x0 == "D", 0, :] = 2. * self.rhox0 - self._field[self.x0 == "D", 1, :]
+            self._field[self.x0 == "N", 0, :] = self._field[self.x0 == "N", 1, :]
 
         # Send to bottom, receive from top
         recvbuf = np.ascontiguousarray(self._field[:, :, -1])
@@ -211,12 +212,13 @@ class ConservedField(VectorField):
         if self.bs >= 0:
             self._field[:, :, -1] = recvbuf
         else:
-            self._field[self.y1 == "D", :, -1] = 2. * self.rhoy1 - self._field[self.y0 == "D", :, -2]
-            self._field[self.y1 == "N", :, -1] = self._field[self.y0 == "N", :, -2]
+            self._field[self.y1 == "D", :, -1] = 2. * self.rhoy1 - self._field[self.y1 == "D", :, -2]
+            self._field[self.y1 == "N", :, -1] = self._field[self.y1 == "N", :, -2]
 
         # Send to top, receive from bottom
         recvbuf = np.ascontiguousarray(self._field[:, :, 0])
         self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -2]), self.td, recvbuf=recvbuf, source=self.ts)
+
         if self.ts >= 0:
             self._field[:, :, 0] = recvbuf
         else:
