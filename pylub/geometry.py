@@ -54,7 +54,7 @@ class GapHeight(VectorField):
 
             self._field[0] = h1 + (h2 - h1) / (self.Lx) * self.xx
 
-            xmask = np.logical_and(self.xx > c, self.xx <= cp + lp)
+            xmask = np.logical_and(self.xx > cp, self.xx <= cp + lp)
             ymask = np.logical_and(self.yy > (self.Ly - wp) / 2., self.yy <= (self.Ly + wp) / 2.)
             xymask = np.logical_and(xmask, ymask)
 
