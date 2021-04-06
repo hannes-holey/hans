@@ -18,5 +18,6 @@ setup(name='pylub',
                         "matplotlib>=3.2.0",
                         "PyYAML>=5.3",
                         "GitPython>=3.1.0",
-                        "netCDF4>=1.5.3"],
+                        "netCDF4>=1.5.3",
+                        "pytest>4"],
       zip_safe=False)

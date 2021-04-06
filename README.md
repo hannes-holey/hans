@@ -7,9 +7,9 @@ pip install .
 ```
 
 ## Tests
-Run all tests with
+Run serial tests from the main source directory with
 ```
-python -m unittest discover tests
+pytest
 ```
 
 ## Examples
