@@ -25,6 +25,15 @@ class ConservedField(VectorField):
         self.y0 = np.array(list(self.BC["y0"]))
         self.y1 = np.array(list(self.BC["y1"]))
 
+        if "D" in self.x0:
+            self.rhox0 = self.BC["rhox0"]
+        if "D" in self.x1:
+            self.rhox1 = self.BC["rhox1"]
+        if "D" in self.y0:
+            self.rhoy0 = self.BC["rhoy0"]
+        if "D" in self.y1:
+            self.rhoy1 = self.BC["rhoy1"]
+
         if q_init is not None:
             self._field[:, 1:-1, 1:-1] = q_init[:, self.wo_ghost_x, self.wo_ghost_y]
             self.fill_ghost_cell()
@@ -135,7 +144,7 @@ class ConservedField(VectorField):
             self._field = self._field - fX - fY + self._dt * src
 
         self._field = 0.5 * (self._field + q0)
-        self.fill_ghost_cell()
+        self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 
@@ -148,7 +157,7 @@ class ConservedField(VectorField):
         # Step 2
         self.leap_frog(q0)
 
-        self.fill_ghost_cell()
+        self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 
@@ -174,49 +183,45 @@ class ConservedField(VectorField):
 
         self._eps = np.sqrt(diff / denom) / self.C
 
-    def fill_ghost_cell(self):
-        self.communicate()
-        # self.periodic()
-        # self.dirichlet()
-        # self.neumann()
+    def fill_ghost_buffer(self):
 
-    def periodic(self):
+        # Send to left, receive from right
+        recvbuf = np.ascontiguousarray(self._field[:, -1, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, 1, :]), self.ld, recvbuf=recvbuf, source=self.ls)
 
-        self._field[self.x0 == "P", 0, :] = self._field[self.x0 == "P", -2, :]
-        self._field[self.x1 == "P", -1, :] = self._field[self.x1 == "P", 1, :]
-        self._field[self.y0 == "P", :, 0] = self._field[self.y0 == "P", :, -2]
-        self._field[self.y1 == "P", :, -1] = self._field[self.y1 == "P", :, 1]
+        if self.ls >= 0:
+            self._field[:, -1, :] = recvbuf
+        else:
+            self._field[self.x1 == "D", -1, :] = 2. * self.rhox1 - self._field[self.x1 == "D", -2, :]
+            self._field[self.x1 == "N", -1, :] = self._field[self.x1 == "N", -2, :]
 
-    def dirichlet(self):
+        # Send to right, receive from left
+        recvbuf = np.ascontiguousarray(self._field[:, 0, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -2, :]), self.rd, recvbuf=recvbuf, source=self.rs)
+        if self.rs >= 0:
+            self._field[:, 0, :] = recvbuf
+        else:
+            self._field[self.x0 == "P", 0, :] = self._field[self.x0 == "P", -2, :]
+            self._field[self.x0 == "D", 0, :] = 2. * self.rhox0 - self._field[self.x0 == "D", 1, :]
 
-        rhox0 = rhox1 = rhoy0 = rhoy1 = float(self.material["rho0"])
+        # Send to bottom, receive from top
+        recvbuf = np.ascontiguousarray(self._field[:, :, -1])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, 1]), self.bd, recvbuf=recvbuf, source=self.bs)
 
-        if "D" in self.x0 and "px0" in self.BC.keys():
-            px0 = float(self.BC["px0"])
-            rhox0 = EquationOfState(self.material).isoT_density(px0)
+        if self.bs >= 0:
+            self._field[:, :, -1] = recvbuf
+        else:
+            self._field[self.y1 == "D", :, -1] = 2. * self.rhoy1 - self._field[self.y0 == "D", :, -2]
+            self._field[self.y1 == "N", :, -1] = self._field[self.y0 == "N", :, -2]
 
-        if "D" in self.x1 and "px1" in self.BC.keys():
-            px1 = float(self.BC["px1"])
-            rhox1 = EquationOfState(self.material).isoT_density(px1)
-
-        if "D" in self.y0 and "py0" in self.BC.keys():
-            py0 = float(self.BC["py0"])
-            rhoy0 = EquationOfState(self.material).isoT_density(py0)
-
-        if "D" in self.y1 and "py1" in self.BC.keys():
-            py1 = float(self.BC["py1"])
-            rhoy1 = EquationOfState(self.material).isoT_density(py1)
-
-        self._field[self.x0 == "D", 0, :] = 2. * rhox0 - self._field[self.x0 == "D", 1, :]
-        self._field[self.x1 == "D", -1, :] = 2. * rhox1 - self._field[self.x1 == "D", -2, :]
-        self._field[self.y0 == "D", :, 0] = 2. * rhoy0 - self._field[self.y0 == "D", :, 1]
-        self._field[self.y1 == "D", :, -1] = 2. * rhoy1 - self._field[self.y0 == "D", :, -2]
-
-    def neumann(self):
-        self._field[self.x0 == "N", 0, :] = self._field[self.x0 == "N", 1, :]
-        self._field[self.x1 == "N", -1, :] = self._field[self.x1 == "N", -2, :]
-        self._field[self.y0 == "N", :, 0] = self._field[self.y0 == "N", :, 1]
-        self._field[self.y1 == "N", :, -1] = self._field[self.y0 == "N", :, -2]
+        # Send to top, receive from bottom
+        recvbuf = np.ascontiguousarray(self._field[:, :, 0])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -2]), self.td, recvbuf=recvbuf, source=self.ts)
+        if self.ts >= 0:
+            self._field[:, :, 0] = recvbuf
+        else:
+            self._field[self.y0 == "D", :, 0] = 2. * self.rhoy0 - self._field[self.y0 == "D", :, 1]
+            self._field[self.y0 == "N", :, 0] = self._field[self.y0 == "N", :, 1]
 
     def getSource(self, q, h):
 

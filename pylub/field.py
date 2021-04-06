@@ -13,11 +13,13 @@ class Field:
         self.dy = float(disc['dy'])
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
+        periodicX = bool(disc['pX'])
+        periodicY = bool(disc['pY'])
 
         self.Lx = self.dx * self.Nx
         self.Ly = self.dy * self.Ny
 
-        self.comm, self.rank, size_x, size_y = self.get_2d_cartesian_communicator(MPI.COMM_WORLD)
+        self.comm, self.rank, size_x, size_y = self.get_2d_cartesian_communicator(MPI.COMM_WORLD, (periodicX, periodicY))
         mpix, mpiy = self.comm.Get_coords(self.rank)
 
         # local array sizes
@@ -145,25 +147,6 @@ class Field:
                 np.roll(self._field, 1, axis=1) +
                 np.roll(self._field, 1, axis=2) +
                 np.roll(self._field, (1, 1), axis=(1, 2))) / 4.
-
-    def communicate(self):
-
-        # Send to left, receive from right
-        recvbuf = np.ascontiguousarray(self._field[:, -1, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, 1, :]), self.ld, recvbuf=recvbuf, source=self.ls)
-        self._field[:, -1, :] = recvbuf
-        # Send to right, receive from left
-        recvbuf = np.ascontiguousarray(self._field[:, 0, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -2, :]), self.rd, recvbuf=recvbuf, source=self.rs)
-        self._field[:, 0, :] = recvbuf
-        # Send to bottom, receive from top
-        recvbuf = np.ascontiguousarray(self._field[:, :, -1])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, 1]), self.bd, recvbuf=recvbuf, source=self.bs)
-        self._field[:, :, -1] = recvbuf
-        # Send to top, receive from bottom
-        recvbuf = np.ascontiguousarray(self._field[:, :, 0])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -2]), self.td, recvbuf=recvbuf, source=self.ts)
-        self._field[:, :, 0] = recvbuf
 
 
 class ScalarField(Field):

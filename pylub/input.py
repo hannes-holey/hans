@@ -3,6 +3,7 @@ import yaml
 import numpy as np
 
 from pylub.problem import Problem
+from pylub.eos import EquationOfState
 
 
 class Input:
@@ -44,10 +45,10 @@ class Input:
 
             options = self.check_options(inp['options'])
             disc = self.check_disc(inp['disc'])
-            BC = self.check_bc(inp['BC'])
             geometry = self.check_geo(inp['geometry'])
             numerics = self.check_num(inp['numerics'])
             material = self.check_mat(inp['material'])
+            BC = self.check_bc(inp['BC'], disc, material)
 
         thisProblem = Problem(options,
                               disc,
@@ -140,7 +141,7 @@ class Input:
         print("Done!")
         return options
 
-    def check_bc(self, bc):
+    def check_bc(self, bc, disc, material):
         print("Checking boundary conditions... ", end="", flush=True)
 
         x0 = np.array(list(bc["x0"]))
@@ -152,6 +153,44 @@ class Input:
         assert len(x1) == 3
         assert len(y0) == 3
         assert len(y1) == 3
+
+        if "P" in x0 and "P" in x1:
+            disc["pX"] = 1
+        else:
+            disc["pX"] = 0
+
+        if "P" in y0 and "P" in y1:
+            disc["pY"] = 1
+        else:
+            disc["pY"] = 0
+
+        if "D" in x0:
+            if "px0" in bc.keys():
+                px0 = float(bc["px0"])
+                bc["rhox0"] = EquationOfState(material).isoT_density(px0)
+            else:
+                bc["rhox0"] = material["rho0"]
+
+        if "D" in x1:
+            if "px1" in bc.keys():
+                px1 = float(bc["px1"])
+                bc["rhox1"] = EquationOfState(material).isoT_density(px1)
+            else:
+                bc["rhox1"] = material["rho0"]
+
+        if "D" in y0:
+            if "py0" in bc.keys():
+                py0 = float(bc["py0"])
+                bc["rhoy0"] = EquationOfState(material).isoT_density(py0)
+            else:
+                bc["rhoy0"] = material["rho0"]
+
+        if "D" in y1:
+            if "py1" in bc.keys():
+                py1 = float(bc["py1"])
+                bc["rhoy1"] = EquationOfState(material).isoT_density(py1)
+            else:
+                bc["rhoy1"] = material["rho0"]
 
         assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
         assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
