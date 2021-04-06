@@ -148,7 +148,7 @@ class Problem:
             if self.q.rank == 0:
                 file_tag = 1
                 existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].split("-")[0].lstrip("0"))
-                                        for f in os.listdir(out_dir) if f.startswith(f"{self.name}_")])
+                                        for f in os.listdir(out_dir) if (f.startswith(f"{self.name}_") and f.endswith(".nc"))])
                 if len(existing_tags) > 0:
                     file_tag = existing_tags[-1] + 1
 
