@@ -100,10 +100,10 @@ class Field:
         rank = comm.Get_rank()
         size = comm.Get_size()
 
-        # define MPI grd sizes from number of procs
-        possible_grids = [(i, size // i) for i in range(size, 0, -1) if size % i == 0]
-        grid_diff = [abs(i[0] - i[1]) for i in possible_grids]
-        size_x, size_y = possible_grids[grid_diff.index(min(grid_diff))]
+        # define optimal MPI grid from number of procs and global grid size
+        possible_grids = [(i, size // i) for i in range(1, size + 1) if size % i == 0]
+        grid_selector = [abs(i[0] / i[1] - self.Nx / self.Ny) for i in possible_grids]
+        size_x, size_y = possible_grids[grid_selector.index(min(grid_selector))]
 
         # create cartesian communicator
         cartcomm = comm.Create_cart(dims=(size_x, size_y), periods=periods)
