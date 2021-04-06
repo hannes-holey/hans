@@ -1,5 +1,7 @@
 import os
+import sys
 import time
+import fcntl
 import netCDF4
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,6 +15,9 @@ from pylub.eos import EquationOfState
 class Plot:
 
     def __init__(self, path, mode="select", fname=[]):
+
+        flag = fcntl.fcntl(sys.stdin.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(sys.stdin.fileno(), fcntl.F_SETFL, flag & ~os.O_NONBLOCK)
 
         self.ds = self.select_nc_files(path, mode=mode, fname=fname)
 
