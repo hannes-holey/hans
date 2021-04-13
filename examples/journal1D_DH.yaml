@@ -18,7 +18,8 @@ geometry:
     U: 0.1
     V: 0.
 numerics:
-    stokes: 1
+    stokes: 0
+    fluctuating: 0
     adaptive: 1
     C: 0.05
     tol: 1e-9

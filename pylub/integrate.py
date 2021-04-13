@@ -2,7 +2,7 @@ import numpy as np
 from mpi4py import MPI
 
 from pylub.field import VectorField
-from pylub.stress import SymStressField2D, SymStressField3D
+from pylub.stress import SymStressField2D, SymStressField3D, SymStochStressField3D
 from pylub.geometry import GapHeight
 from pylub.eos import EquationOfState
 
@@ -19,6 +19,7 @@ class ConservedField(VectorField):
         self.stokes = bool(numerics["stokes"])
         self.numFlux = str(numerics["numFlux"])
         self.adaptive = bool(numerics["adaptive"])
+        self.fluctuating = bool(numerics["fluctuating"])
 
         self.x0 = np.array(list(self.BC["x0"]))
         self.x1 = np.array(list(self.BC["x1"]))
@@ -57,6 +58,9 @@ class ConservedField(VectorField):
         self.viscous_stress = SymStressField2D(disc, geometry, material)
         self.upper_stress = SymStressField3D(disc, geometry, material)
         self.lower_stress = SymStressField3D(disc, geometry, material)
+
+        if self.fluctuating:
+            self.stoch_stress = SymStochStressField3D(disc, geometry, material, grid=False)
 
     @property
     def mass(self):
@@ -162,7 +166,35 @@ class ConservedField(VectorField):
         self.post_integrate(q0)
 
     def runge_kutta3(self):
-        raise NotImplementedError
+
+        W_A = np.random.normal(size=(3, 3, self.Nx+2, self.Ny+2))
+        W_B = np.random.normal(size=(3, 3, self.Nx+2, self.Ny+2))
+
+        q0 = self._field.copy()
+
+        for stage in np.arange(1, 4):
+            self.viscous_stress.set(self._field, self.height.field)
+            self.upper_stress.set(self._field, self.height.field, "top")
+            self.lower_stress.set(self._field, self.height.field, "bottom")
+            self.stoch_stress.set(W_A, W_B, self.height.field, self._dt, stage)
+
+            dX, dY = self.diffusiveCD()
+            fX, fY = self.hyperbolicTVD()
+            sX, sY = self.stochasticFlux()
+            src = self.getSource(self._field, self.height.field)
+
+            tmp = self._field - fX - fY + dX + dY + sX + sY + self._dt * src
+
+            if stage == 1:
+                self._field = tmp
+            elif stage == 2:
+                self._field = 3 / 4 * q0 + 1 / 4 * tmp
+            elif stage == 3:
+                self._field = 1 / 3 * q0 + 2 / 3 * tmp
+
+            self.fill_ghost_cell()
+
+        self.post_integrate(q0)
 
     def post_integrate(self, q0):
         self._time += self._dt
@@ -342,6 +374,51 @@ class ConservedField(VectorField):
 
         return D
 
+    def cubicInterpolation(self, q, ax):
+
+        # weights proposed by Bell et al., PRE 76 (2007)
+        # a1 = (np.sqrt(7) + 1) / 4
+        # a2 = (np.sqrt(7) - 1) / 4
+
+        # weights from piecewise parabolic method (PPM)
+        # Collela and Woodward, J. Comp. Phys. 54 (1984)
+        a1 = 7 / 12
+        a2 = 1 / 12
+
+        Q = a1 * (q + np.roll(q, -1, axis=ax)) - a2 * (np.roll(q, 1, axis=ax) + np.roll(q, -2, axis=ax))
+
+        return Q
+
+    def hyperbolicTVD(self):
+
+        Qx = self.cubicInterpolation(self._field, 1)
+        Px = EquationOfState(self.material).isoT_pressure(Qx[0])
+
+        Qy = self.cubicInterpolation(self._field, 2)
+        Py = EquationOfState(self.material).isoT_pressure(Qy[0])
+
+        Fx = self.hyperbolicFlux(Qx, Px, 1)
+        Fy = self.hyperbolicFlux(Qy, Py, 2)
+
+        flux_x = Fx - np.roll(Fx, 1, axis=1)
+        flux_y = Fy - np.roll(Fy, 1, axis=2)
+
+        return self._dt / self.dx * flux_x, self._dt / self.dy * flux_y
+
+    def hyperbolicCD(self, q, p, dt, ax):
+
+        F = self.hyperbolicFlux(q.field, p, ax)
+
+        flux = np.roll(F, -1, axis=ax) - np.roll(F, 1, axis=ax)
+
+        if ax == 1:
+            dx = q.dx
+
+        elif ax == 2:
+            dx = q.dy
+
+        return dt / (2 * dx) * flux
+
     def diffusiveCD(self):
 
         Dx = self.diffusiveFlux(1)
@@ -351,3 +428,27 @@ class ConservedField(VectorField):
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
         return self._dt / (2 * self.dx) * flux_x, self._dt / (2 * self.dy) * flux_y
+
+    def stochasticFlux(self):
+
+        Sx_E = np.zeros([3, self.Nx+2, self.Ny+2])
+        Sx_W = np.zeros([3, self.Nx+2, self.Ny+2])
+        Sy_N = np.zeros([3, self.Nx+2, self.Ny+2])
+        Sy_S = np.zeros([3, self.Nx+2, self.Ny+2])
+
+        corrX = self.dx / self.height.field[0]
+        corrY = self.dy / self.height.field[0]
+
+        # corrX = corrY = 1.
+
+        Sx_E[1] = self.stoch_stress.field[0]
+        Sx_E[2] = self.stoch_stress.field[5]
+        Sx_W[1] = np.roll(self.stoch_stress.field[0], 1, axis=0)
+        Sx_W[2] = np.roll(self.stoch_stress.field[5], 1, axis=0)
+
+        Sy_N[1] = self.stoch_stress.field[5]
+        Sy_N[2] = self.stoch_stress.field[1]
+        Sy_S[1] = np.roll(self.stoch_stress.field[5], 1, axis=1)
+        Sy_S[2] = np.roll(self.stoch_stress.field[1], 1, axis=1)
+
+        return self._dt / self.dx * (Sx_E - Sx_W) * corrX, self._dt / self.dy * (Sy_N - Sy_S) * corrY
