@@ -19,7 +19,7 @@ class ConservedField(VectorField):
         self.stokes = bool(numerics["stokes"])
         self.integrator = str(numerics["integrator"])
         self.adaptive = bool(numerics["adaptive"])
-        self.fluctuating = bool(numerics["fluctuating"])
+        fluctuating = bool(numerics["fluctuating"])
 
         self.x0 = np.array(list(self.BC["x0"]))
         self.x1 = np.array(list(self.BC["x1"]))
@@ -54,13 +54,15 @@ class ConservedField(VectorField):
 
         if self.adaptive:
             self.C = float(numerics["C"])
+        else:
+            self.C = 1.
 
         self.viscous_stress = SymStressField2D(disc, geometry, material)
         self.upper_stress = SymStressField3D(disc, geometry, material)
         self.lower_stress = SymStressField3D(disc, geometry, material)
 
-        if self.fluctuating:
-            self.stoch_stress = SymStochStressField3D(disc, geometry, material, grid=False)
+        if fluctuating:
+            self.stoch_stress = SymStochStressField3D(disc, geometry, material)
 
     @property
     def mass(self):
@@ -167,16 +169,21 @@ class ConservedField(VectorField):
 
     def runge_kutta3(self):
 
-        W_A = np.random.normal(size=(3, 3, self.Nx+2, self.Ny+2))
-        W_B = np.random.normal(size=(3, 3, self.Nx+2, self.Ny+2))
+        # wshape = (3, 3) + self._field.shape[1:]
+
+        W_A = np.random.normal(size=(3, 3) + self._field.shape[1:])
+        W_B = np.random.normal(size=(3, 3) + self._field.shape[1:])
 
         q0 = self._field.copy()
 
         for stage in np.arange(1, 4):
-            self.viscous_stress.set(self._field, self.height.field)
-            self.upper_stress.set(self._field, self.height.field, "top")
-            self.lower_stress.set(self._field, self.height.field, "bottom")
+            # self.viscous_stress.set(self._field, self.height.field)
+            # self.upper_stress.set(self._field, self.height.field, "top")
+            # self.lower_stress.set(self._field, self.height.field, "bottom")
             self.stoch_stress.set(W_A, W_B, self.height.field, self._dt, stage)
+
+            # dX = self.diffusiveFlux(self._field, self.height.field, 1)
+            # dY = self.diffusiveFlux(self._field, self.height.field, 2)
 
             dX, dY = self.diffusiveCD()
             fX, fY = self.hyperbolicTVD()
@@ -204,11 +211,10 @@ class ConservedField(VectorField):
 
         if self.adaptive:
             self._dt = self.C * min(self.dx, self.dy) / (vmax + vSound)
+            self._dt = self.comm.allreduce(self._dt, op=MPI.MIN)
 
-        self._dt = self.comm.allreduce(self._dt, op=MPI.MIN)
-
-        diff = np.sum((self.inner[0] - q0[0, 1:-1, 1:-1])**2)
-        denom = np.sum(q0[0, 1:-1, 1:-1]**2)
+        diff = np.sum((self.inner[0] - q0[:, self.ngxl:-self.ngxr, self.ngyb:-self.ngyt])**2)
+        denom = np.sum(q0[:, self.ngxl:-self.ngxr, self.ngyb:-self.ngyt]**2)
 
         diff = self.comm.allreduce(diff, op=MPI.SUM)
         denom = self.comm.allreduce(denom, op=MPI.SUM)
@@ -218,41 +224,41 @@ class ConservedField(VectorField):
     def fill_ghost_buffer(self):
 
         # Send to left, receive from right
-        recvbuf = np.ascontiguousarray(self._field[:, -1, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, 1, :]), self.ld, recvbuf=recvbuf, source=self.ls)
+        recvbuf = np.ascontiguousarray(self._field[:, -self.ngxr:, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, self.ngxl:self.ngx, :]), self.ld, recvbuf=recvbuf, source=self.ls)
 
         if self.ls >= 0:
-            self._field[:, -1, :] = recvbuf
+            self._field[:, -self.ngxr:, :] = recvbuf
         else:
             self._field[self.x1 == "D", -1, :] = 2. * self.rhox1 - self._field[self.x1 == "D", -2, :]
             self._field[self.x1 == "N", -1, :] = self._field[self.x1 == "N", -2, :]
 
         # Send to right, receive from left
-        recvbuf = np.ascontiguousarray(self._field[:, 0, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -2, :]), self.rd, recvbuf=recvbuf, source=self.rs)
+        recvbuf = np.ascontiguousarray(self._field[:, :self.ngxl, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -self.ngx:-self.ngxr, :]), self.rd, recvbuf=recvbuf, source=self.rs)
 
         if self.rs >= 0:
-            self._field[:, 0, :] = recvbuf
+            self._field[:, :self.ngxl, :] = recvbuf
         else:
             self._field[self.x0 == "D", 0, :] = 2. * self.rhox0 - self._field[self.x0 == "D", 1, :]
             self._field[self.x0 == "N", 0, :] = self._field[self.x0 == "N", 1, :]
 
         # Send to bottom, receive from top
-        recvbuf = np.ascontiguousarray(self._field[:, :, -1])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, 1]), self.bd, recvbuf=recvbuf, source=self.bs)
+        recvbuf = np.ascontiguousarray(self._field[:, :, -self.ngyt:])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, self.ngyb:self.ngy]), self.bd, recvbuf=recvbuf, source=self.bs)
 
         if self.bs >= 0:
-            self._field[:, :, -1] = recvbuf
+            self._field[:, :, -self.ngyt:] = recvbuf
         else:
             self._field[self.y1 == "D", :, -1] = 2. * self.rhoy1 - self._field[self.y1 == "D", :, -2]
             self._field[self.y1 == "N", :, -1] = self._field[self.y1 == "N", :, -2]
 
         # Send to top, receive from bottom
-        recvbuf = np.ascontiguousarray(self._field[:, :, 0])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -2]), self.td, recvbuf=recvbuf, source=self.ts)
+        recvbuf = np.ascontiguousarray(self._field[:, :, :self.ngyb])
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -self.ngy:-self.ngyt]), self.td, recvbuf=recvbuf, source=self.ts)
 
         if self.ts >= 0:
-            self._field[:, :, 0] = recvbuf
+            self._field[:, :, :self.ngyb] = recvbuf
         else:
             self._field[self.y0 == "D", :, 0] = 2. * self.rhoy0 - self._field[self.y0 == "D", :, 1]
             self._field[self.y0 == "N", :, 0] = self._field[self.y0 == "N", :, 1]
@@ -392,13 +398,13 @@ class ConservedField(VectorField):
     def hyperbolicTVD(self):
 
         Qx = self.cubicInterpolation(self._field, 1)
-        Px = EquationOfState(self.material).isoT_pressure(Qx[0])
+        # Px = EquationOfState(self.material).isoT_pressure(Qx[0])
 
         Qy = self.cubicInterpolation(self._field, 2)
-        Py = EquationOfState(self.material).isoT_pressure(Qy[0])
+        # Py = EquationOfState(self.material).isoT_pressure(Qy[0])
 
-        Fx = self.hyperbolicFlux(Qx, Px, 1)
-        Fy = self.hyperbolicFlux(Qy, Py, 2)
+        Fx = self.hyperbolicFlux(Qx, 1)
+        Fy = self.hyperbolicFlux(Qy, 2)
 
         flux_x = Fx - np.roll(Fx, 1, axis=1)
         flux_y = Fy - np.roll(Fy, 1, axis=2)
@@ -421,8 +427,10 @@ class ConservedField(VectorField):
 
     def diffusiveCD(self):
 
-        Dx = self.diffusiveFlux(1)
-        Dy = self.diffusiveFlux(2)
+        Dx = self.diffusiveFlux(self._field, self.height.field, 1)
+        Dy = self.diffusiveFlux(self._field, self.height.field, 2)
+        # Dx = self.diffusiveFlux(1)
+        # Dy = self.diffusiveFlux(2)
 
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
@@ -431,10 +439,10 @@ class ConservedField(VectorField):
 
     def stochasticFlux(self):
 
-        Sx_E = np.zeros([3, self.Nx+2, self.Ny+2])
-        Sx_W = np.zeros([3, self.Nx+2, self.Ny+2])
-        Sy_N = np.zeros([3, self.Nx+2, self.Ny+2])
-        Sy_S = np.zeros([3, self.Nx+2, self.Ny+2])
+        Sx_E = np.zeros((3,) + self._field.shape[1:])
+        Sx_W = np.zeros((3,) + self._field.shape[1:])
+        Sy_N = np.zeros((3,) + self._field.shape[1:])
+        Sy_S = np.zeros((3,) + self._field.shape[1:])
 
         corrX = self.dx / self.height.field[0]
         corrY = self.dy / self.height.field[0]

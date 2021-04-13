@@ -46,7 +46,7 @@ class Input:
             options = self.check_options(inp['options'])
             disc = self.check_disc(inp['disc'])
             geometry = self.check_geo(inp['geometry'])
-            numerics = self.check_num(inp['numerics'])
+            numerics = self.check_num(inp['numerics'], disc)
             material = self.check_mat(inp['material'])
             BC = self.check_bc(inp['BC'], disc, material)
 
@@ -228,8 +228,13 @@ class Input:
         print("Done!")
         return geo
 
-    def check_num(self, numerics):
+    def check_num(self, numerics, disc):
         print("Checking numerics options... ", end="", flush=True)
+
+        if "fluctuating" in numerics.keys():
+            numerics["fluctuating"] = int(numerics["fluctuating"])
+        else:
+            numerics["fluctuating"] = 0
 
         numerics["stokes"] = int(numerics["stokes"])
         numerics["adaptive"] = int(numerics["adaptive"])
@@ -238,6 +243,17 @@ class Input:
         numerics["dt"] = float(numerics["dt"])
         numerics["maxT"] = float(numerics["maxT"])
         numerics["integrator"] = str(numerics["integrator"])
+
+        if numerics["integrator"] == "RK3":
+            disc["ngxl"] = 1
+            disc["ngxr"] = 2
+            disc["ngyb"] = 1
+            disc["ngyt"] = 2
+        else:
+            disc["ngxl"] = 1
+            disc["ngxr"] = 1
+            disc["ngyb"] = 1
+            disc["ngyt"] = 1
 
         print("Done!")
         return numerics

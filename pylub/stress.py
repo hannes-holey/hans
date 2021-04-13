@@ -69,9 +69,9 @@ class SymStressField3D(TensorField):
 
 class SymStochStressField3D(TensorField):
 
-    def __init__(self, disc, geometry, material, grid=False):
+    def __init__(self, disc, geometry, material):
 
-        super().__init__(disc, grid)
+        super().__init__(disc)
 
         self.disc = disc
         self.material = material

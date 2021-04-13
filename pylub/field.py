@@ -13,8 +13,17 @@ class Field:
         self.dy = float(disc['dy'])
         self.Nx = int(disc['Nx'])
         self.Ny = int(disc['Ny'])
+
         periodicX = bool(disc['pX'])
         periodicY = bool(disc['pY'])
+
+        self.ngxl = int(disc["ngxl"])
+        self.ngxr = int(disc["ngxr"])
+        self.ngx = self.ngxl + self.ngxr
+
+        self.ngyb = int(disc["ngyb"])
+        self.ngyt = int(disc["ngyt"])
+        self.ngy = self.ngyb + self.ngyt
 
         self.Lx = self.dx * self.Nx
         self.Ly = self.dy * self.Ny
@@ -49,18 +58,18 @@ class Field:
             ybottom = self.Ny - ny
             ytop = self.Ny - 1
 
-        idx = np.linspace(xleft - 1, xright + 1, nx + 2, dtype=int)
-        idy = np.linspace(ybottom - 1, ytop + 1, ny + 2, dtype=int)
+        idx = np.linspace(xleft - self.ngxl, xright + self.ngxr, nx + self.ngx, dtype=int)
+        idy = np.linspace(ybottom - self.ngyb, ytop + self.ngyt, ny + self.ngy, dtype=int)
 
-        self.wo_ghost_x = slice(idx[0] + 1, idx[-1])
-        self.wo_ghost_y = slice(idy[0] + 1, idy[-1])
+        self.wo_ghost_x = slice(idx[0] + self.ngxl, idx[-self.ngxr])
+        self.wo_ghost_y = slice(idy[0] + self.ngyb, idy[-self.ngyt])
 
         idxx, idyy = np.meshgrid(idx, idy, indexing='ij')
 
-        self.xx = idxx * (self.Lx + 2. * self.dx) / (self.Nx + 2) + self.dx / 2
-        self.yy = idyy * (self.Ly + 2. * self.dy) / (self.Ny + 2) + self.dy / 2
+        self.xx = idxx * (self.Lx + self.ngx * self.dx) / (self.Nx + self.ngx) + self.dx / 2
+        self.yy = idyy * (self.Ly + self.ngy * self.dy) / (self.Ny + self.ngy) + self.dy / 2
 
-        self._field = np.zeros(shape=(self.ndim, nx + 2, ny + 2), dtype=np.float64)
+        self._field = np.zeros(shape=(self.ndim, nx + self.ngx, ny + self.ngy), dtype=np.float64)
 
         self.ls, self.ld, self.rs, self.rd, self.bs, self.bd, self.ts, self.td = self.get_neighbors()
 
@@ -116,7 +125,7 @@ class Field:
 
     @property
     def inner(self):
-        return np.ascontiguousarray(self._field[:, 1:-1, 1:-1])
+        return np.ascontiguousarray(self._field[:, self.ngxl:-self.ngxr, self.ngyb:-self.ngyt])
 
     @property
     def edgeE(self):
