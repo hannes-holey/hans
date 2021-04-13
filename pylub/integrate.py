@@ -17,7 +17,7 @@ class ConservedField(VectorField):
         self.material = material
 
         self.stokes = bool(numerics["stokes"])
-        self.numFlux = str(numerics["numFlux"])
+        self.integrator = str(numerics["integrator"])
         self.adaptive = bool(numerics["adaptive"])
         self.fluctuating = bool(numerics["fluctuating"])
 
@@ -92,7 +92,7 @@ class ConservedField(VectorField):
     def update(self, i):
 
         # MacCormack forward backward
-        if self.numFlux == "MC" or self.numFlux == "MC_fb":
+        if self.integrator == "MC" or self.integrator == "MC_fb":
             try:
                 self.mac_cormack(0)
             except NotImplementedError:
@@ -100,7 +100,7 @@ class ConservedField(VectorField):
                 quit()
 
         # Mac Cormack backward forward
-        elif self.numFlux == "MC_bf":
+        elif self.integrator == "MC_bf":
             try:
                 self.mac_cormack(1)
             except NotImplementedError:
@@ -108,7 +108,7 @@ class ConservedField(VectorField):
                 quit()
 
         # MacCormack alternating
-        elif self.numFlux == "MC_alt":
+        elif self.integrator == "MC_alt":
             try:
                 self.mac_cormack(i % 2)
             except NotImplementedError:
@@ -116,7 +116,7 @@ class ConservedField(VectorField):
                 quit()
 
         # Richtmyer two-step Lax-Wendroff
-        elif self.numFlux == "LW":
+        elif self.integrator == "LW":
             try:
                 self.richtmyer()
             except NotImplementedError:
@@ -124,7 +124,7 @@ class ConservedField(VectorField):
                 quit()
 
         # 3rd order Runge-Kutta
-        elif self.numFlux == "RK3":
+        elif self.integrator == "RK3":
             try:
                 self.runge_kutta3()
             except NotImplementedError:
@@ -192,7 +192,7 @@ class ConservedField(VectorField):
             elif stage == 3:
                 self._field = 1 / 3 * q0 + 2 / 3 * tmp
 
-            self.fill_ghost_cell()
+            self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 

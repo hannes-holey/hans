@@ -237,6 +237,7 @@ class Input:
         numerics["tol"] = float(numerics["tol"])
         numerics["dt"] = float(numerics["dt"])
         numerics["maxT"] = float(numerics["maxT"])
+        numerics["integrator"] = str(numerics["integrator"])
 
         print("Done!")
         return numerics
