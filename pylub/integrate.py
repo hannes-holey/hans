@@ -225,8 +225,11 @@ class ConservedField(VectorField):
 
         # Send to left, receive from right
         recvbuf = np.ascontiguousarray(self._field[:, -self.ngxr:, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, self.ngxl:self.ngx, :]), self.ld, recvbuf=recvbuf, source=self.ls)
-
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, self.ngxl:self.ngx, :]),
+                           self.ld,
+                           recvbuf=recvbuf,
+                           source=self.ls)
+        # fill ghost buffer, adjust for non-periodic BCs
         if self.ls >= 0:
             self._field[:, -self.ngxr:, :] = recvbuf
         else:
@@ -235,8 +238,11 @@ class ConservedField(VectorField):
 
         # Send to right, receive from left
         recvbuf = np.ascontiguousarray(self._field[:, :self.ngxl, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -self.ngx:-self.ngxr, :]), self.rd, recvbuf=recvbuf, source=self.rs)
-
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -self.ngx:-self.ngxr, :]),
+                           self.rd,
+                           recvbuf=recvbuf,
+                           source=self.rs)
+        # fill ghost buffer, adjust for non-periodic BCs
         if self.rs >= 0:
             self._field[:, :self.ngxl, :] = recvbuf
         else:
@@ -245,8 +251,11 @@ class ConservedField(VectorField):
 
         # Send to bottom, receive from top
         recvbuf = np.ascontiguousarray(self._field[:, :, -self.ngyt:])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, self.ngyb:self.ngy]), self.bd, recvbuf=recvbuf, source=self.bs)
-
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, self.ngyb:self.ngy]),
+                           self.bd,
+                           recvbuf=recvbuf,
+                           source=self.bs)
+        # fill ghost buffer, adjust for non-periodic BCs
         if self.bs >= 0:
             self._field[:, :, -self.ngyt:] = recvbuf
         else:
@@ -255,8 +264,11 @@ class ConservedField(VectorField):
 
         # Send to top, receive from bottom
         recvbuf = np.ascontiguousarray(self._field[:, :, :self.ngyb])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -self.ngy:-self.ngyt]), self.td, recvbuf=recvbuf, source=self.ts)
-
+        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -self.ngy:-self.ngyt]),
+                           self.td,
+                           recvbuf=recvbuf,
+                           source=self.ts)
+        # fill ghost buffer, adjust for non-periodic BCs
         if self.ts >= 0:
             self._field[:, :, :self.ngyb] = recvbuf
         else:
