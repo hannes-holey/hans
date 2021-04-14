@@ -257,14 +257,14 @@ class Problem:
                 self.nc.close()
 
         if i % self.writeInterval == 0:
+            to_netcdf(i)
             if self.q.rank == 0:
                 to_stdout(i)
-            to_netcdf(i)
 
         if mode is not None:
+            to_netcdf(i, last=True)
             if self.q.rank == 0:
                 to_stdout(i, mode=mode)
-            to_netcdf(i, last=True)
 
     def receive_signal(self, signum, frame):
 
