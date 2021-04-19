@@ -82,18 +82,20 @@ class Problem:
                                 q_init=q_init,
                                 t_init=t_init)
 
+        rank = self.q.comm.Get_rank()
+
         # time stamp of simulation start time
         self.tStart = datetime.now()
 
         # Header line for screen output
-        if self.q.rank == 0:
+        if rank == 0:
             print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
 
         if plot:
             # on-the-fly plotting
             self.plot(writeInterval)
         else:
-            nc = self.init_netcdf(name, out_dir)
+            nc = self.init_netcdf(name, out_dir, rank)
 
             i = 0
             self._write_mode = 0
@@ -114,7 +116,7 @@ class Problem:
                 signal.signal(signal.SIGUSR2, self.receive_signal)
 
                 # convergence
-                if self.q.eps < tol:
+                if i > 1 and self.q.eps < tol:
                     self._write_mode = 1
                     break
 
@@ -125,11 +127,11 @@ class Problem:
 
                 if i % writeInterval == 0:
                     self.write_to_netcdf(i, nc, mode=self._write_mode)
-                    if self.q.rank == 0:
+                    if rank == 0:
                         self.write_to_stdout(i, mode=self._write_mode)
 
             self.write_to_netcdf(i, nc, mode=self._write_mode)
-            if self.q.rank == 0:
+            if rank == 0:
                 self.write_to_stdout(i, mode=self._write_mode)
 
     def read_last_frame(self):
@@ -159,8 +161,8 @@ class Problem:
 
         return q0, (t, dt)
 
-    def init_netcdf(self, name, out_dir):
-        """Initialie netCDF4 file, create dimensions, variables and metadata.
+    def init_netcdf(self, name, out_dir, rank):
+        """Initialize netCDF4 file, create dimensions, variables and metadata.
 
         Parameters
         ----------
@@ -168,7 +170,8 @@ class Problem:
             Filename prefix.
         out_dir : str
             Output directoy.
-
+        rank : int
+            Rank of the MPI communicator
         Returns
         -------
         netCDF4.Dataset
@@ -176,14 +179,14 @@ class Problem:
 
         """
 
-        if self.q.rank == 0:
+        if rank == 0:
             if not(os.path.exists(out_dir)):
                 os.makedirs(out_dir)
 
         if self.restart_file is None:
 
             # create uniqe filename from timestamp
-            if self.q.rank == 0:
+            if rank == 0:
                 timestamp = datetime.now().replace(microsecond=0).strftime("%Y-%m-%d_%H%M%S")
                 outfile = f"{timestamp}_{name}.nc"
 
@@ -197,8 +200,8 @@ class Problem:
             # initialize NetCDF file
             nc = Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
             nc.restarts = 0
-            nc.createDimension('x', self.q.Nx)
-            nc.createDimension('y', self.q.Ny)
+            nc.createDimension('x', self.disc["Nx"])
+            nc.createDimension('y', self.disc["Ny"])
             nc.createDimension('step', None)
 
             # create unknown variable buffer as timeseries of 2D fields
@@ -297,17 +300,20 @@ class Problem:
             Writing mode (0: normal, 1: converged, 2: max time, 3: execution stopped).
 
         """
-        k = nc.variables["rho"].shape[0]
-        nc.variables['rho'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[0]
-        nc.variables['jx'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[1]
-        nc.variables['jy'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[2]
 
-        nc.variables["time"][k] = self.q.time
-        nc.variables["mass"][k] = self.q.mass
-        nc.variables["vmax"][k] = self.q.vmax
-        nc.variables["vSound"][k] = self.q.vSound
-        nc.variables["dt"][k] = self.q.dt
-        nc.variables["eps"][k] = self.q.eps
+        step = nc.variables["rho"].shape[0]
+        xrange, yrange = self.q.without_ghost
+
+        nc.variables['rho'][step, xrange, yrange] = self.q.inner[0]
+        nc.variables['jx'][step, xrange, yrange] = self.q.inner[1]
+        nc.variables['jy'][step, xrange, yrange] = self.q.inner[2]
+
+        nc.variables["time"][step] = self.q.time
+        nc.variables["mass"][step] = self.q.mass
+        nc.variables["vmax"][step] = self.q.vmax
+        nc.variables["vSound"][step] = self.q.vSound
+        nc.variables["dt"][step] = self.q.dt
+        nc.variables["eps"][step] = self.q.eps
 
         if mode > 0:
             nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
@@ -340,11 +346,15 @@ class Problem:
 
         fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
 
-        x = self.q.xx[1:-1, self.q.Ny // 2]
-        ax[0, 0].plot(x, self.q.field[1, 1:-1, self.q.Ny // 2])
-        ax[0, 1].plot(x, self.q.field[2, 1:-1, self.q.Ny // 2])
-        ax[1, 0].plot(x, self.q.field[0, 1:-1, self.q.Ny // 2])
-        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.q.Ny // 2]))
+        Nx = self.disc["Nx"]
+        dx = self.disc["dx"]
+        Lx = self.disc["Lx"]
+        x = np.arange(Nx) * Lx + dx / 2
+
+        ax[0, 0].plot(x, self.q.centerline_x[1])
+        ax[0, 1].plot(x, self.q.centerline_x[2])
+        ax[1, 0].plot(x, self.q.centerline_x[0])
+        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.q.centerline_x[0]))
 
         ax[0, 0].set_title(r'$j_x$')
         ax[0, 1].set_title(r'$j_y$')
@@ -386,12 +396,12 @@ class Problem:
         self.q.update(i)
         fig.suptitle('time = {:.2f} ns'.format(self.q.time * 1e9))
 
-        ax[0, 0].lines[0].set_ydata(self.q.field[1, 1:-1, self.q.Ny // 2])
-        ax[0, 1].lines[0].set_ydata(self.q.field[2, 1:-1, self.q.Ny // 2])
-        ax[1, 0].lines[0].set_ydata(self.q.field[0, 1:-1, self.q.Ny // 2])
-        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.q.field[0, 1:-1, self.q.Ny // 2]))
+        ax[0, 0].lines[0].set_ydata(self.q.centerline_x[1])
+        ax[0, 1].lines[0].set_ydata(self.q.centerline_x[2])
+        ax[1, 0].lines[0].set_ydata(self.q.centerline_x[0])
+        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.q.centerline_x[0]))
 
         ax = adaptiveLimits(ax)
 
         if i % writeInterval == 0:
-            print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}")
+            print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)

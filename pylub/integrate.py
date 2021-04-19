@@ -25,6 +25,9 @@ class ConservedField(VectorField):
         self.y0 = np.array(list(self.BC["y0"]))
         self.y1 = np.array(list(self.BC["y1"]))
 
+        self.dx = disc["dx"]
+        self.dy = disc["dy"]
+
         if "D" in self.x0:
             self.rhox0 = self.BC["rhox0"]
         if "D" in self.x1:
@@ -35,21 +38,21 @@ class ConservedField(VectorField):
             self.rhoy1 = self.BC["rhoy1"]
 
         if q_init is not None:
-            self._field[:, 1:-1, 1:-1] = q_init[:, self.wo_ghost_x, self.wo_ghost_y]
+            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost]
             self.fill_ghost_buffer()
         else:
-            self._field[0] = float(material['rho0'])
+            self.field[0] = float(material['rho0'])
 
         self.height = GapHeight(disc, geometry)
 
         if t_init is not None:
-            self._time = t_init[0]
-            self._dt = t_init[1]
+            self.time = t_init[0]
+            self.dt = t_init[1]
         else:
-            self._time = 0.
-            self._dt = float(numerics["dt"])
+            self.time = 0.
+            self.dt = numerics["dt"]
 
-        self._eps = 1.
+        self.eps = 1.
 
         if self.adaptive:
             self.C = numerics["C"]
@@ -58,32 +61,31 @@ class ConservedField(VectorField):
         self.upper_stress = SymStressField3D(disc, geometry, material)
         self.lower_stress = SymStressField3D(disc, geometry, material)
 
+        self.neighbors = self.get_neighbors()
+
     @property
     def mass(self):
         local_mass = np.sum(self.inner[0] * self.height.inner[0] * self.dx * self.dy)
-        return self.comm.allreduce(local_mass, op=MPI.SUM)
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_mass, recvbuf, op=MPI.SUM)
+
+        return recvbuf[0]
 
     @property
     def vSound(self):
         local_vSound = EquationOfState(self.material).soundSpeed(self.inner[0])
-        return self.comm.allreduce(local_vSound, op=MPI.MAX)
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_vSound, recvbuf, op=MPI.MAX)
+
+        return recvbuf[0]
 
     @property
     def vmax(self):
         local_vmax = np.amax(np.sqrt(self.inner[1]**2 + self.inner[2]**2) / self.inner[0])
-        return self.comm.allreduce(local_vmax, op=MPI.MAX)
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_vmax, recvbuf, op=MPI.MAX)
 
-    @property
-    def time(self):
-        return self._time
-
-    @property
-    def dt(self):
-        return self._dt
-
-    @property
-    def eps(self):
-        return self._eps
+        return recvbuf[0]
 
     def update(self, i):
 
@@ -134,23 +136,23 @@ class ConservedField(VectorField):
         elif switch == 1:
             directions = [1, -1]
 
-        q0 = self._field.copy()
+        q0 = self.field.copy()
 
         for dir in directions:
 
-            fX, fY = self.predictor_corrector(self._field, self.height.field, dir)
-            src = self.getSource(self._field, self.height.field)
+            fX, fY = self.predictor_corrector(self.field, self.height.field, dir)
+            src = self.getSource(self.field, self.height.field)
 
-            self._field = self._field - fX - fY + self._dt * src
+            self.field = self.field - fX - fY + self.dt * src
 
-        self._field = 0.5 * (self._field + q0)
+        self.field = 0.5 * (self.field + q0)
         self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 
     def richtmyer(self):
 
-        q0 = self._field.copy()
+        q0 = self.field.copy()
 
         # Step 1
         self.lax_step()
@@ -165,67 +167,67 @@ class ConservedField(VectorField):
         raise NotImplementedError
 
     def post_integrate(self, q0):
-        self._time += self._dt
-
-        vSound = EquationOfState(self.material).soundSpeed(self.inner[0])
-        vmax = np.amax(np.sqrt(self.inner[1]**2 + self.inner[2]**2) / self.inner[0])
+        self.time += self.dt
 
         if self.adaptive:
-            self._dt = self.C * min(self.dx, self.dy) / (vmax + vSound)
+            self.dt = self.C * min(self.dx, self.dy) / (self.vmax + self.vSound)
         else:
-            self.C = self._dt * (vmax + vSound) / min(self.dx, self.dy)
+            self.C = self.dt * (self.vmax + self.vSound) / min(self.dx, self.dy)
 
-        self._dt = self.comm.allreduce(self._dt, op=MPI.MIN)
+        local_diff = np.sum((self.inner[0] - q0[0, 1:-1, 1:-1])**2)
+        local_denom = np.sum(q0[0, 1:-1, 1:-1]**2)
 
-        diff = np.sum((self.inner[0] - q0[0, 1:-1, 1:-1])**2)
-        denom = np.sum(q0[0, 1:-1, 1:-1]**2)
+        diff = np.empty(1)
+        denom = np.empty(1)
 
-        diff = self.comm.allreduce(diff, op=MPI.SUM)
-        denom = self.comm.allreduce(denom, op=MPI.SUM)
+        self.comm.Allreduce(local_diff, diff, op=MPI.SUM)
+        self.comm.Allreduce(local_denom, denom, op=MPI.SUM)
 
-        self._eps = np.sqrt(diff / denom) / self.C
+        self.eps = np.sqrt(diff[0] / denom[0]) / self.C
 
     def fill_ghost_buffer(self):
 
-        # Send to left, receive from right
-        recvbuf = np.ascontiguousarray(self._field[:, -1, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, 1, :]), self.ld, recvbuf=recvbuf, source=self.ls)
+        (ls, ld), (rs, rd), (bs, bd), (ts, td) = self.neighbors
 
-        if self.ls >= 0:
-            self._field[:, -1, :] = recvbuf
+        # Send to left, receive from right
+        recvbuf = np.ascontiguousarray(self.field[:, -1, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, 1, :]), ld, recvbuf=recvbuf, source=ls)
+
+        if ls >= 0:
+            self.field[:, -1, :] = recvbuf
         else:
-            self._field[self.x1 == "D", -1, :] = 2. * self.rhox1 - self._field[self.x1 == "D", -2, :]
-            self._field[self.x1 == "N", -1, :] = self._field[self.x1 == "N", -2, :]
+            self.field[self.x1 == "D", -1, :] = 2. * self.rhox1 - self.field[self.x1 == "D", -2, :]
+            self.field[self.x1 == "N", -1, :] = self.field[self.x1 == "N", -2, :]
 
         # Send to right, receive from left
-        recvbuf = np.ascontiguousarray(self._field[:, 0, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, -2, :]), self.rd, recvbuf=recvbuf, source=self.rs)
+        recvbuf = np.ascontiguousarray(self.field[:, 0, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, -2, :]), rd, recvbuf=recvbuf, source=rs)
 
-        if self.rs >= 0:
-            self._field[:, 0, :] = recvbuf
+        if rs >= 0:
+            self.field[:, 0, :] = recvbuf
         else:
-            self._field[self.x0 == "D", 0, :] = 2. * self.rhox0 - self._field[self.x0 == "D", 1, :]
-            self._field[self.x0 == "N", 0, :] = self._field[self.x0 == "N", 1, :]
+            self.field[self.x0 == "D", 0, :] = 2. * self.rhox0 - self.field[self.x0 == "D", 1, :]
+            self.field[self.x0 == "N", 0, :] = self.field[self.x0 == "N", 1, :]
 
         # Send to bottom, receive from top
-        recvbuf = np.ascontiguousarray(self._field[:, :, -1])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, 1]), self.bd, recvbuf=recvbuf, source=self.bs)
+        recvbuf = np.ascontiguousarray(self.field[:, :, -1])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, 1]), bd, recvbuf=recvbuf, source=bs)
 
-        if self.bs >= 0:
-            self._field[:, :, -1] = recvbuf
+        if bs >= 0:
+            self.field[:, :, -1] = recvbuf
         else:
-            self._field[self.y1 == "D", :, -1] = 2. * self.rhoy1 - self._field[self.y1 == "D", :, -2]
-            self._field[self.y1 == "N", :, -1] = self._field[self.y1 == "N", :, -2]
+            self.field[self.y1 == "D", :, -1] = 2. * self.rhoy1 - self.field[self.y1 == "D", :, -2]
+            self.field[self.y1 == "N", :, -1] = self.field[self.y1 == "N", :, -2]
 
         # Send to top, receive from bottom
-        recvbuf = np.ascontiguousarray(self._field[:, :, 0])
-        self.comm.Sendrecv(np.ascontiguousarray(self._field[:, :, -2]), self.td, recvbuf=recvbuf, source=self.ts)
+        recvbuf = np.ascontiguousarray(self.field[:, :, 0])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, -2]), td, recvbuf=recvbuf, source=ts)
 
-        if self.ts >= 0:
-            self._field[:, :, 0] = recvbuf
+        if ts >= 0:
+            self.field[:, :, 0] = recvbuf
         else:
-            self._field[self.y0 == "D", :, 0] = 2. * self.rhoy0 - self._field[self.y0 == "D", :, 1]
-            self._field[self.y0 == "N", :, 0] = self._field[self.y0 == "N", :, 1]
+            self.field[self.y0 == "D", :, 0] = 2. * self.rhoy0 - self.field[self.y0 == "D", :, 1]
+            self.field[self.y0 == "N", :, 0] = self.field[self.y0 == "N", :, 1]
 
     def getSource(self, q, h):
 
@@ -262,8 +264,8 @@ class ConservedField(VectorField):
         Fx = self.hyperbolicFlux(f, 1) - self.diffusiveFlux(f, h, 1)
         Fy = self.hyperbolicFlux(f, 2) - self.diffusiveFlux(f, h, 2)
 
-        flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx) * self._dt / self.dx
-        flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy) * self._dt / self.dy
+        flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx) * self.dt / self.dx
+        flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy) * self.dt / self.dy
 
         return flux_x, flux_y
 
@@ -286,7 +288,7 @@ class ConservedField(VectorField):
 
         src = self.getSource(self.verticeNE, self.height.verticeNE)
 
-        self._field = self.verticeNE - self._dt / (2. * self.dx) * (FE - FW) - self._dt / (2. * self.dy) * (FN - FS) + src * self._dt / 2.
+        self.field = self.verticeNE - self.dt / (2. * self.dx) * (FE - FW) - self.dt / (2. * self.dy) * (FN - FS) + src * self.dt / 2.
 
     def leap_frog(self, q0):
 
@@ -302,7 +304,7 @@ class ConservedField(VectorField):
 
         src = self.getSource(self.verticeSW, self.height.field)
 
-        self._field = q0 - self._dt / self.dx * (FE - FW) - self._dt / self.dy * (FN - FS) + src * self.dt
+        self.field = q0 - self.dt / self.dx * (FE - FW) - self.dt / self.dy * (FN - FS) + src * self.dt
 
     def hyperbolicFlux(self, f, ax):
 
@@ -352,4 +354,4 @@ class ConservedField(VectorField):
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
-        return self._dt / (2 * self.dx) * flux_x, self._dt / (2 * self.dy) * flux_y
+        return self.dt / (2 * self.dx) * flux_x, self.dt / (2 * self.dy) * flux_y
