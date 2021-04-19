@@ -1,7 +1,7 @@
 import os
-import sys
 import signal
-import netCDF4
+from netCDF4 import Dataset
+from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from datetime import datetime
@@ -15,25 +15,11 @@ from pylub.integrate import ConservedField
 
 
 class Problem:
-    """Problem class, contains all information about a specific simulation
-
-    Attributes
-    ----------
-    options : dict
-        Contains IO options.
-    disc : dict
-        Contains discretization parameters.
-    geometry : dict
-        Contains geometry parameters.
-    numerics : dict
-        Contains parameters for the numeric scheme.
-    material : dict
-        Contains material parameters.
-
-    """
+    """Collects all information about a single problem
+    and contains the methods to run a simulation, based on the problem defintiion."""
 
     def __init__(self, options, disc, BC, geometry, numerics, material, restart_file):
-        """Constructor
+        """Constructor.
 
         Parameters
         ----------
@@ -41,14 +27,17 @@ class Problem:
             Contains IO options.
         disc : dict
             Contains discretization parameters.
+        BC : dict
+            Contains boundary condition parameters.
         geometry : dict
             Contains geometry parameters.
         numerics : dict
-            Contains parameters for the numeric scheme.
+            Contains numerics parameters.
         material : dict
             Contains material parameters.
         restart_file : str
-            Filename of the netCDF file, from which simulation is restarted
+            Filename of the netCDF file, from which simulation is restarted.
+
         """
 
         self.options = options
@@ -58,19 +47,103 @@ class Problem:
         self.numerics = numerics
         self.material = material
         self.restart_file = restart_file
-        self.writeInterval = int(options['writeInterval'])
-        self.name = str(options['name'])
-        self.q_init = None
-        self.t_init = None
 
-        if self.restart_file is not None:
-            self.read_last_frame()
+    def run(self, out_dir, plot=False):
+        """Starts the simulation.
 
-    def read_last_frame(self):
-        """Read last frame from the restart file and use as initial values for new run
+        Parameters
+        ----------
+        out_dir : str
+            Output directory.
+        plot : bool
+            On-the-fly plotting flag (default: False).
+
         """
 
-        file = netCDF4.Dataset(self.restart_file, "r")
+        # global write options
+        writeInterval = self.options['writeInterval']
+        name = self.options['name']
+        maxT = self.numerics["maxT"]
+        tol = self.numerics["tol"]
+
+        # read last frame of restart file
+        if self.restart_file is not None:
+            q_init, t_init = self.read_last_frame()
+        else:
+            q_init = None
+            t_init = None
+
+        # intialize solution field
+        self.q = ConservedField(self.disc,
+                                self.BC,
+                                self.geometry,
+                                self.material,
+                                self.numerics,
+                                q_init=q_init,
+                                t_init=t_init)
+
+        # time stamp of simulation start time
+        self.tStart = datetime.now()
+
+        # Header line for screen output
+        if self.q.rank == 0:
+            print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
+
+        if plot:
+            # on-the-fly plotting
+            self.plot(writeInterval)
+        else:
+            nc = self.init_netcdf(name, out_dir)
+
+            i = 0
+            self._write_mode = 0
+
+            while self._write_mode == 0:
+
+                # Perform time update
+                self.q.update(i)
+
+                # increase time step
+                i += 1
+
+                # catch signals and execute signal handler
+                signal.signal(signal.SIGINT, self.receive_signal)
+                signal.signal(signal.SIGTERM, self.receive_signal)
+                signal.signal(signal.SIGHUP, self.receive_signal)
+                signal.signal(signal.SIGUSR1, self.receive_signal)
+                signal.signal(signal.SIGUSR2, self.receive_signal)
+
+                # convergence
+                if self.q.eps < tol:
+                    self._write_mode = 1
+                    break
+
+                # maximum time reached
+                if self.q.time > maxT:
+                    self._write_mode = 2
+                    break
+
+                if i % writeInterval == 0:
+                    self.write_to_netcdf(i, nc, mode=self._write_mode)
+                    if self.q.rank == 0:
+                        self.write_to_stdout(i, mode=self._write_mode)
+
+            self.write_to_netcdf(i, nc, mode=self._write_mode)
+            if self.q.rank == 0:
+                self.write_to_stdout(i, mode=self._write_mode)
+
+    def read_last_frame(self):
+        """Read last frame from restart file and use as initial values for new run.
+
+        Returns
+        -------
+        np.array
+            Solution field at last frame, used as inital field.
+        tuple
+            Total time and timestep of last frame.
+        """
+
+        file = Dataset(self.restart_file, "r")
 
         rho = np.array(file.variables['rho'])[-1]
         jx = np.array(file.variables['jx'])[-1]
@@ -84,60 +157,24 @@ class Problem:
         q0[1] = jx
         q0[2] = jy
 
-        self.q_init = q0
-        self.t_init = (t, dt)
+        return q0, (t, dt)
 
-    def run(self, plot=False, out_dir="data"):
-        self.q = ConservedField(self.disc,
-                                self.BC,
-                                self.geometry,
-                                self.material,
-                                self.numerics,
-                                q_init=self.q_init,
-                                t_init=self.t_init)
+    def init_netcdf(self, name, out_dir):
+        """Initialie netCDF4 file, create dimensions, variables and metadata.
 
-        self.tStart = datetime.now()
-        if self.q.rank == 0:
-            print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
+        Parameters
+        ----------
+        name : str
+            Filename prefix.
+        out_dir : str
+            Output directoy.
 
-        if plot:
-            self.plot()
-        else:
+        Returns
+        -------
+        netCDF4.Dataset
+            Initialized dataset.
 
-            self.init_netcdf(out_dir)
-
-            maxT = self.numerics["maxT"]
-            tol = self.numerics["tol"]
-            self.write_mode = None
-
-            i = 0
-            while self.write_mode is None:
-                self.q.update(i)
-
-                # catch signals and execute signal handler
-                signal.signal(signal.SIGINT, self.receive_signal)
-                signal.signal(signal.SIGTERM, self.receive_signal)
-                signal.signal(signal.SIGHUP, self.receive_signal)
-                signal.signal(signal.SIGUSR1, self.receive_signal)
-                # signal.signal(signal.SIGUSR2, self.receive_signal)
-
-                # convergence
-                if self.q.eps < tol:
-                    self.write_mode = 0
-
-                # maximum time reached
-                if (maxT - self.q.time) < self.q.dt:
-                    i += 1
-                    self.q.update(i)
-                    self.write_mode = 1
-
-                # write to file and stdout given the specified mode
-                self.write(i, mode=self.write_mode)
-
-                # increase time step
-                i += 1
-
-    def init_netcdf(self, out_dir):
+        """
 
         if self.q.rank == 0:
             if not(os.path.exists(out_dir)):
@@ -158,34 +195,34 @@ class Problem:
             self.outpath = self.q.comm.bcast(self.outpath, root=0)
 
             # initialize NetCDF file
-            self.nc = netCDF4.Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
-            self.nc.restarts = 0
-            self.nc.createDimension('x', self.q.Nx)
-            self.nc.createDimension('y', self.q.Ny)
-            self.nc.createDimension('step', None)
+            nc = Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
+            nc.restarts = 0
+            nc.createDimension('x', self.q.Nx)
+            nc.createDimension('y', self.q.Ny)
+            nc.createDimension('step', None)
 
-            # create conserved variables timeseries of fields
-            var0 = self.nc.createVariable('rho', 'f8', ('step', 'x', 'y'))
-            var1 = self.nc.createVariable('jx', 'f8', ('step', 'x', 'y'))
-            var2 = self.nc.createVariable('jy', 'f8', ('step', 'x', 'y'))
-
+            # create unknown variable buffer as timeseries of 2D fields
+            var0 = nc.createVariable('rho', 'f8', ('step', 'x', 'y'))
+            var1 = nc.createVariable('jx', 'f8', ('step', 'x', 'y'))
+            var2 = nc.createVariable('jy', 'f8', ('step', 'x', 'y'))
             var0.set_collective(True)
             var1.set_collective(True)
             var2.set_collective(True)
 
             # create scalar variables
-            self.nc.createVariable('time', 'f8', ('step'))
-            self.nc.createVariable('mass', 'f8', ('step'))
-            self.nc.createVariable('vmax', 'f8', ('step'))
-            self.nc.createVariable('vSound', 'f8', ('step'))
-            self.nc.createVariable('dt', 'f8', ('step'))
-            self.nc.createVariable('eps', 'f8', ('step'))
+            nc.createVariable('time', 'f8', ('step'))
+            nc.createVariable('mass', 'f8', ('step'))
+            nc.createVariable('vmax', 'f8', ('step'))
+            nc.createVariable('vSound', 'f8', ('step'))
+            nc.createVariable('dt', 'f8', ('step'))
+            nc.createVariable('eps', 'f8', ('step'))
 
-            repo_path = [path for path in sys.path if path.endswith("pylub")][0]
-            git_commit = str(Repo(path=repo_path, search_parent_directories=True).head.object.hexsha)
+            # write metadata
+            git_commit = Repo(path=Path(__file__).parents[1],
+                              search_parent_directories=True).head.object.hexsha
 
-            self.nc.setncattr(f"tStart-{self.nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
-            self.nc.commit = git_commit
+            nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
+            nc.setncattr("commit", str(git_commit))
 
             categories = {"options": self.options,
                           "disc": self.disc,
@@ -197,79 +234,109 @@ class Problem:
             for cat_name, cat in categories.items():
                 for key, value in cat.items():
                     name = cat_name + "_" + key
-                    self.nc.setncattr(name, value)
+                    nc.setncattr(name, value)
 
         else:
-
             # append to existing netCDF file
-            self.nc = netCDF4.Dataset(self.restart_file, 'a', parallel=True, format='NETCDF3_64BIT_OFFSET')
+            nc = Dataset(self.restart_file, 'a', parallel=True, format='NETCDF3_64BIT_OFFSET')
             self.outpath = os.path.relpath(self.restart_file)
 
             # create backup
-            backup_file = f"{os.path.splitext(self.restart_file)[0]}-{self.nc.restarts}.nc"
+            backup_file = f"{os.path.splitext(self.restart_file)[0]}-{nc.restarts}.nc"
             shutil.copy(self.restart_file, backup_file)
 
             # increase restart counter
-            self.nc.restarts += 1
+            nc.restarts += 1
 
             # append modified attributes
-            self.nc.setncattr(f"tStart-{self.nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
+            nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
             for key, value in self.numerics.items():
-                name = "numerics_" + key + "-" + str(self.nc.restarts)
-                self.nc.setncattr(name, value)
+                name = f"numerics_{key}-{nc.restarts}"
+                nc.setncattr(name, value)
 
-    def write(self, i, mode=None):
+        return nc
 
-        def to_stdout(i, mode=None):
-            print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
+    def write_to_stdout(self, i, mode):
+        """Write information about the current time step to stdout.
 
-            if mode == 0:
-                print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}")
-            elif mode == 1:
-                print(f"\nNo convergence within {i:d} steps. Stopping criterion: maximum time {self.numerics['maxT']:.1e} s reached.")
-                print(f"Output written to: {self.outpath}")
-            elif mode == 2:
-                print(f"Execution stopped. Output written to: {self.outpath}")
+        Parameters
+        ----------
+        i : int
+            Current time step.
+        mode : int
+            Writing mode (0: normal, 1: converged, 2: max time, 3: execution stopped).
 
-            if mode is not None:
-                walltime = datetime.now() - self.tStart
-                print(f"Total wall clock time: {str(walltime).split('.')[0]}", end=" ")
-                print(
-                    f"(Performance: {i / walltime.total_seconds(): .2f} steps/s on {self.q.comm.dims[0]} x {self.q.comm.dims[1]} MPI grid)")
+        """
+        print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
-        def to_netcdf(i, last=False):
-            k = self.nc.variables["rho"].shape[0]
-            self.nc.variables['rho'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[0]
-            self.nc.variables['jx'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[1]
-            self.nc.variables['jy'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[2]
+        if mode == 1:
+            print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}", flush=True)
+        elif mode == 2:
+            print(f"\nNo convergence within {i: d} steps", end=" ", flush=True)
+            print(f"Stopping criterion: maximum time {self.numerics['maxT']: .1e} s reached.", flush=True)
+            print(f"Output written to: {self.outpath}", flush=True)
+        elif mode == 3:
+            print(f"Execution stopped. Output written to: {self.outpath}", flush=True)
 
-            self.nc.variables["time"][k] = self.q.time
-            self.nc.variables["mass"][k] = self.q.mass
-            self.nc.variables["vmax"][k] = self.q.vmax
-            self.nc.variables["vSound"][k] = self.q.vSound
-            self.nc.variables["dt"][k] = self.q.dt
-            self.nc.variables["eps"][k] = self.q.eps
+        if mode > 0:
+            walltime = datetime.now() - self.tStart
+            print(f"Total wall clock time: {str(walltime).split('.')[0]}", end=" ", flush=True)
+            print(f"(Performance: {i/walltime.total_seconds(): .2f} steps/s", end=" ", flush=True)
+            print(f"on {self.q.comm.dims[0]} x {self.q.comm.dims[1]} MPI grid)", flush=True)
 
-            if last:
-                self.nc.setncattr(f"tEnd-{self.nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-                self.nc.close()
+    def write_to_netcdf(self, i, nc, mode):
+        """Append current solution field to netCDF file.
 
-        if i % self.writeInterval == 0:
-            to_netcdf(i)
-            if self.q.rank == 0:
-                to_stdout(i)
+        Parameters
+        ----------
+        i : int
+            Current time step.
+        nc : netCDF4.Dataset
+            NetCDF Dataset object.
+        mode : int
+            Writing mode (0: normal, 1: converged, 2: max time, 3: execution stopped).
 
-        if mode is not None:
-            to_netcdf(i, last=True)
-            if self.q.rank == 0:
-                to_stdout(i, mode=mode)
+        """
+        k = nc.variables["rho"].shape[0]
+        nc.variables['rho'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[0]
+        nc.variables['jx'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[1]
+        nc.variables['jy'][k, self.q.wo_ghost_x, self.q.wo_ghost_y] = self.q.inner[2]
+
+        nc.variables["time"][k] = self.q.time
+        nc.variables["mass"][k] = self.q.mass
+        nc.variables["vmax"][k] = self.q.vmax
+        nc.variables["vSound"][k] = self.q.vSound
+        nc.variables["dt"][k] = self.q.dt
+        nc.variables["eps"][k] = self.q.eps
+
+        if mode > 0:
+            nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            nc.close()
 
     def receive_signal(self, signum, frame):
+        """Signal handler. Catches signals send to the process and sets write mode to 3 (abort).
+
+        Parameters
+        ----------
+        signum :
+            signal code
+        frame :
+            Description of parameter `frame`.
+
+        """
 
         if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
-            self.write_mode = 2
+            self._write_mode = 3
 
-    def plot(self):
+    def plot(self, writeInterval):
+        """Wrapper function to initialize on-the-fly plotting.
+
+        Parameters
+        ----------
+        writeInterval : int
+            Write interval for stdout in plotting mode.
+
+        """
 
         fig, ax = plt.subplots(2, 2, figsize=(14, 9), sharex=True)
 
@@ -293,15 +360,30 @@ class Problem:
         _ = animation.FuncAnimation(fig,
                                     self.animate1D,
                                     100000,
-                                    fargs=(fig, ax),
+                                    fargs=(fig, ax, writeInterval),
                                     interval=1,
                                     init_func=init,
                                     repeat=False)
 
         plt.show()
 
-    def animate1D(self, i, fig, ax):
+    def animate1D(self, i, fig, ax, writeInterval):
+        """Animator function. Update solution and plots.
 
+        Parameters
+        ----------
+        i : type
+            Current time step.
+        fig : matplotlib.figure
+            Figure object.
+        ax :  np.array
+            Array containing the axes of the figure.
+        writeInterval : int
+            Write interval for stdout in plotting mode.
+
+        """
+
+        self.q.update(i)
         fig.suptitle('time = {:.2f} ns'.format(self.q.time * 1e9))
 
         ax[0, 0].lines[0].set_ydata(self.q.field[1, 1:-1, self.q.Ny // 2])

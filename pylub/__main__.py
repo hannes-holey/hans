@@ -69,4 +69,4 @@ if __name__ == "__main__":
 
     args = comm.bcast(args, root=0)
     myProblem = comm.bcast(myProblem, root=0)
-    myProblem.run(args.plot, args.out_dir)
+    myProblem.run(args.out_dir, args.plot)
