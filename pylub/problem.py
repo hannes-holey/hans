@@ -313,6 +313,5 @@ class Problem:
 
         ax = adaptiveLimits(ax)
 
-        self.q.update(i)
-        if i % self.writeInterval == 0:
-            print("{:10d}\t{:.6e}\t{:.6e}\t{:.6e}".format(i, self.q.dt, self.q.time, self.q.eps))
+        if i % writeInterval == 0:
+            print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}")
