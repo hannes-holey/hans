@@ -51,6 +51,8 @@ class Input:
             numerics = self.check_num(inp['numerics'])
             material = self.check_mat(inp['material'])
             BC = self.check_bc(inp['BC'], disc, material)
+            print("Sanity checks completed. Start simulation!")
+            print(60 * "-")
 
         thisProblem = Problem(options,
                               disc,
@@ -76,7 +78,7 @@ class Input:
             Contains I/O options.
 
         """
-        print("Checking I/O options... ", end="", flush=True)
+        print("Checking I/O options... ")
 
         try:
             writeInterval = int(options["writeInterval"])
@@ -95,7 +97,6 @@ class Input:
                 writeInterval *= -1
                 options["writeInterval"] = writeInterval
 
-        print("Done!")
         return options
 
     def check_disc(self, disc):
@@ -111,7 +112,7 @@ class Input:
         dict
             Discretization parameters.
         """
-        print("Checking discretization... ", end="", flush=True)
+        print("Checking discretization... ")
 
         try:
             Nx = int(disc['Nx'])
@@ -175,8 +176,6 @@ class Input:
             Ly = float(disc["Ly"])
             disc["dy"] = Ly / Ny
 
-        print("Done!")
-
         return disc
 
     def check_geo(self, geo):
@@ -193,7 +192,7 @@ class Input:
             Geometry parameters.
 
         """
-        print("Checking geometry... ", end="", flush=True)
+        print("Checking geometry... ")
 
         if geo["type"] == "journal":
             geo["CR"] = float(geo["CR"])
@@ -219,7 +218,6 @@ class Input:
             geo["amp"] = float(geo['amp'])
             geo["num"] = float(geo['num'])
 
-        print("Done!")
         return geo
 
     def check_num(self, numerics):
@@ -236,16 +234,55 @@ class Input:
             Numerics options.
 
         """
-        print("Checking numerics options... ", end="", flush=True)
+        print("Checking numerics options... ")
 
-        numerics["stokes"] = int(numerics["stokes"])
-        numerics["adaptive"] = int(numerics["adaptive"])
-        numerics["C"] = float(numerics["C"])
-        numerics["tol"] = float(numerics["tol"])
-        numerics["dt"] = float(numerics["dt"])
-        numerics["maxT"] = float(numerics["maxT"])
+        try:
+            numerics["numFlux"] = numerics["numFlux"]
+            assert numerics["numFlux"] in ["MC", "MC_bf", "MC_fb", "MC_alt", "LW", "RK3"]
+        except KeyError:
+            print("***Integrator not specified. Use default (MacCormack).")
+            numerics["numFlux"] = "MC"
+        except AssertionError:
+            print(f'***Unknown integrator \'{numerics["numFlux"]}\'. Abort.')
+            sys.exit(1)
 
-        print("Done!")
+        try:
+            numerics["stokes"] = int(numerics["stokes"])
+        except KeyError:
+            print("***Boolean parameter 'stokes' not given. Use default (True).")
+            numerics["stokes"] = 1
+
+        try:
+            numerics["adaptive"] = int(numerics["adaptive"])
+        except KeyError:
+            print("***Boolean parameter 'adaptive' not given. Use default (False).")
+            numerics["adaptive"] = 0
+
+        if numerics["adaptive"] == 1:
+            try:
+                numerics["C"] = float(numerics["C"])
+            except KeyError:
+                print("***CFL number not given. Use default (0.5).")
+                numerics["C"] = 0.5
+
+        try:
+            numerics["tol"] = float(numerics["tol"])
+        except KeyError:
+            print("***Convergence tolerance not given. Use default (1e-9).")
+            numerics["tol"] = 1e-9
+
+        try:
+            numerics["dt"] = float(numerics["dt"])
+        except KeyError:
+            print("***Timestep not given. Use default (1e-10).")
+            numerics["dt"] = 1e-10
+
+        try:
+            numerics["maxT"] = float(numerics["maxT"])
+        except KeyError:
+            print("***Maximum time not given. Use default (1e-6).")
+            numerics["maxT"] = 1e-6
+
         return numerics
 
     def check_mat(self, material):
@@ -262,7 +299,7 @@ class Input:
             Material parameters
 
         """
-        print("Checking material options... ", end="", flush=True)
+        print("Checking material options... ")
 
         if material["EOS"] == "DH":
             material["rho0"] = float(material["rho0"])
@@ -321,7 +358,6 @@ class Input:
                 material["a"] = float(material["a"])
                 material["N"] = float(material["N"])
 
-        print("Done!", flush=True)
         return material
 
     def check_bc(self, bc, disc, material):
@@ -342,7 +378,7 @@ class Input:
             Boundary condition parameters.
 
         """
-        print("Checking boundary conditions... ", end="", flush=True)
+        print("Checking boundary conditions... ")
 
         x0 = np.array(list(bc["x0"]))
         x1 = np.array(list(bc["x1"]))
@@ -395,5 +431,4 @@ class Input:
         assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
         assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
 
-        print("Done!")
         return bc

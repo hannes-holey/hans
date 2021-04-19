@@ -52,7 +52,7 @@ class ConservedField(VectorField):
         self._eps = 1.
 
         if self.adaptive:
-            self.C = float(numerics["C"])
+            self.C = numerics["C"]
 
         self.viscous_stress = SymStressField2D(disc, geometry, material)
         self.upper_stress = SymStressField3D(disc, geometry, material)
