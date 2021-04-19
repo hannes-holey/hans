@@ -172,6 +172,8 @@ class ConservedField(VectorField):
 
         if self.adaptive:
             self._dt = self.C * min(self.dx, self.dy) / (vmax + vSound)
+        else:
+            self.C = self._dt * (vmax + vSound) / min(self.dx, self.dy)
 
         self._dt = self.comm.allreduce(self._dt, op=MPI.MIN)
 
