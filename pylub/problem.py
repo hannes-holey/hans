@@ -145,18 +145,16 @@ class Problem:
 
         if self.restart_file is None:
 
+            # create uniqe filename from timestamp
             if self.q.rank == 0:
-                file_tag = 1
-                existing_tags = sorted([int(os.path.splitext(f)[0].split("_")[-1].split("-")[0].lstrip("0"))
-                                        for f in os.listdir(out_dir) if (f.startswith(f"{self.name}_") and f.endswith(".nc"))])
-                if len(existing_tags) > 0:
-                    file_tag = existing_tags[-1] + 1
+                timestamp = datetime.now().replace(microsecond=0).strftime("%Y-%m-%d_%H%M%S")
+                outfile = f"{timestamp}_{name}.nc"
 
-                outfile = f"{self.name}_{str(file_tag).zfill(4)}.nc"
+                assert outfile not in os.listdir(out_dir)
                 self.outpath = os.path.join(out_dir, outfile)
+
             else:
                 self.outpath = None
-
             self.outpath = self.q.comm.bcast(self.outpath, root=0)
 
             # initialize NetCDF file

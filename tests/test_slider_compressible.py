@@ -16,7 +16,7 @@ def setup(tmpdir_factory):
     material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
-    ds = netCDF4.Dataset(tmp_dir.join("slider1D_DH_0001.nc"))
+    ds = netCDF4.Dataset(tmp_dir.join(os.path.basename(myTestProblem.outpath)))
     rho_ref, p_ref = np.loadtxt(os.path.join("tests", "slider_2e-3_inf_DH_ref.dat"), unpack=True)
 
     yield ds, rho_ref, p_ref, material
