@@ -7,7 +7,7 @@ from pylub.eos import EquationOfState
 
 
 class Input:
-    """Reads the yaml input file to define a problem.
+    """Reads the yaml input file that defines a problem.
 
     Attributes
     ----------
@@ -25,24 +25,26 @@ class Input:
         inputFile : str
             filename of the .yaml input file
         restartFile : str
-            filename of the .nc data file
+            filename of the .nc data file (default: None)
         """
         self.inputFile = inputFile
         self.restartFile = restartFile
 
     def getProblem(self):
-        """Parses through yaml file and returns an instance of the Problem class.
+        """Parses the yaml input file, performs sanity checks,
+        and returns an instance of the Problem class.
 
         Returns
         -------
         Problem
-            Object containing all information about the current job.
+            Problem Object containing all information about the current job.
 
         """
 
         with open(self.inputFile, 'r') as ymlfile:
             inp = yaml.full_load(ymlfile)
 
+            # Perform sanity checks for input parameters
             options = self.check_options(inp['options'])
             disc = self.check_disc(inp['disc'])
             geometry = self.check_geo(inp['geometry'])
@@ -60,13 +62,54 @@ class Input:
 
         return thisProblem
 
-    def check_disc(self, disc):
-        """Check correctness of discretization input.
+    def check_options(self, options):
+        """Sanity check for I/O options input.
+
+        Parameters
+        ----------
+        options : dict
+            I/O options read from yaml file.
 
         Returns
         -------
+        dict
+            Contains I/O options.
+
+        """
+        print("Checking I/O options... ", end="", flush=True)
+
+        try:
+            writeInterval = int(options["writeInterval"])
+            assert writeInterval > 0
+        except KeyError:
+            print("\nOutput interval not given, fallback to 1000", flush=True)
+            options["writeInterval"] = 1000
+        except AssertionError:
+            try:
+                assert writeInterval != 0
+            except AssertionError:
+                print("\nOutput interval is zero. fallback to 1000", flush=True)
+                options["writeInterval"] = 1000
+            else:
+                print("\nOutput interval is negative. Converting to positive value.", flush=True)
+                writeInterval *= -1
+                options["writeInterval"] = writeInterval
+
+        print("Done!")
+        return options
+
+    def check_disc(self, disc):
+        """Sanity check for discretization input.
+
+        Parameters
+        ----------
         disc : dict
-            Discretaization dictionary
+            Discretization parameters read from yaml file.
+
+        Returns
+        -------
+        dict
+            Discretization parameters.
         """
         print("Checking discretization... ", end="", flush=True)
 
@@ -136,69 +179,20 @@ class Input:
 
         return disc
 
-    def check_options(self, options):
-        print("Checking I/O options... ", end="", flush=True)
-        print("Done!")
-        return options
-
-    def check_bc(self, bc, disc, material):
-        print("Checking boundary conditions... ", end="", flush=True)
-
-        x0 = np.array(list(bc["x0"]))
-        x1 = np.array(list(bc["x1"]))
-        y0 = np.array(list(bc["y0"]))
-        y1 = np.array(list(bc["y1"]))
-
-        assert len(x0) == 3
-        assert len(x1) == 3
-        assert len(y0) == 3
-        assert len(y1) == 3
-
-        if "P" in x0 and "P" in x1:
-            disc["pX"] = 1
-        else:
-            disc["pX"] = 0
-
-        if "P" in y0 and "P" in y1:
-            disc["pY"] = 1
-        else:
-            disc["pY"] = 0
-
-        if "D" in x0:
-            if "px0" in bc.keys():
-                px0 = float(bc["px0"])
-                bc["rhox0"] = EquationOfState(material).isoT_density(px0)
-            else:
-                bc["rhox0"] = material["rho0"]
-
-        if "D" in x1:
-            if "px1" in bc.keys():
-                px1 = float(bc["px1"])
-                bc["rhox1"] = EquationOfState(material).isoT_density(px1)
-            else:
-                bc["rhox1"] = material["rho0"]
-
-        if "D" in y0:
-            if "py0" in bc.keys():
-                py0 = float(bc["py0"])
-                bc["rhoy0"] = EquationOfState(material).isoT_density(py0)
-            else:
-                bc["rhoy0"] = material["rho0"]
-
-        if "D" in y1:
-            if "py1" in bc.keys():
-                py1 = float(bc["py1"])
-                bc["rhoy1"] = EquationOfState(material).isoT_density(py1)
-            else:
-                bc["rhoy1"] = material["rho0"]
-
-        assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
-        assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
-
-        print("Done!")
-        return bc
-
     def check_geo(self, geo):
+        """Sanity check for geometry input.
+
+        Parameters
+        ----------
+        geo : dict
+            Discretization parameters read from yaml input file.
+
+        Returns
+        -------
+        dict
+            Geometry parameters.
+
+        """
         print("Checking geometry... ", end="", flush=True)
 
         if geo["type"] == "journal":
@@ -229,6 +223,19 @@ class Input:
         return geo
 
     def check_num(self, numerics):
+        """Sanity check for numerics options.
+
+        Parameters
+        ----------
+        numerics : dict
+            Numerics options read from yaml input file.
+
+        Returns
+        -------
+        dict
+            Numerics options.
+
+        """
         print("Checking numerics options... ", end="", flush=True)
 
         numerics["stokes"] = int(numerics["stokes"])
@@ -242,6 +249,19 @@ class Input:
         return numerics
 
     def check_mat(self, material):
+        """Sanity check on material settings.
+
+        Parameters
+        ----------
+        material : dict
+            Material parameters read from yaml input file.
+
+        Returns
+        -------
+        dict
+            Material parameters
+
+        """
         print("Checking material options... ", end="", flush=True)
 
         if material["EOS"] == "DH":
@@ -303,3 +323,77 @@ class Input:
 
         print("Done!", flush=True)
         return material
+
+    def check_bc(self, bc, disc, material):
+        """Sanity check for boundary condition input.
+
+        Parameters
+        ----------
+        bc : dict
+            Boundary condition parameters read from yaml input file.
+        disc : dict
+            Discretization parameters.
+        material : dict
+            Material parameters.
+
+        Returns
+        -------
+        dict
+            Boundary condition parameters.
+
+        """
+        print("Checking boundary conditions... ", end="", flush=True)
+
+        x0 = np.array(list(bc["x0"]))
+        x1 = np.array(list(bc["x1"]))
+        y0 = np.array(list(bc["y0"]))
+        y1 = np.array(list(bc["y1"]))
+
+        assert len(x0) == 3
+        assert len(x1) == 3
+        assert len(y0) == 3
+        assert len(y1) == 3
+
+        if "P" in x0 and "P" in x1:
+            disc["pX"] = 1
+        else:
+            disc["pX"] = 0
+
+        if "P" in y0 and "P" in y1:
+            disc["pY"] = 1
+        else:
+            disc["pY"] = 0
+
+        if "D" in x0:
+            if "px0" in bc.keys():
+                px0 = float(bc["px0"])
+                bc["rhox0"] = EquationOfState(material).isoT_density(px0)
+            else:
+                bc["rhox0"] = material["rho0"]
+
+        if "D" in x1:
+            if "px1" in bc.keys():
+                px1 = float(bc["px1"])
+                bc["rhox1"] = EquationOfState(material).isoT_density(px1)
+            else:
+                bc["rhox1"] = material["rho0"]
+
+        if "D" in y0:
+            if "py0" in bc.keys():
+                py0 = float(bc["py0"])
+                bc["rhoy0"] = EquationOfState(material).isoT_density(py0)
+            else:
+                bc["rhoy0"] = material["rho0"]
+
+        if "D" in y1:
+            if "py1" in bc.keys():
+                py1 = float(bc["py1"])
+                bc["rhoy1"] = EquationOfState(material).isoT_density(py1)
+            else:
+                bc["rhoy1"] = material["rho0"]
+
+        assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
+        assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
+
+        print("Done!")
+        return bc

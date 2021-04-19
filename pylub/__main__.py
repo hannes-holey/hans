@@ -6,12 +6,38 @@ from pylub.input import Input
 
 
 def get_parser():
+    """Parses input arguments from command line.
+
+    Returns
+    -------
+    ArgumentParser
+        Parser object.
+
+    """
+
     parser = ArgumentParser()
-    parser.add_argument('-p', '--plot', dest='plot', default=False, help="on-the-fly plot option", action='store_true')
-    parser.add_argument('-r', '--restart', dest="restart_file", default=None, help="restart simulation from last step of specified file")
-    parser.add_argument('-o', '--output', dest="out_dir", default="data", help="output directory (default: ./data)")
+
+    # required arguments
     required = parser.add_argument_group('required arguments')
-    required.add_argument('-i', '--input', dest="filename", help="path to input file", required=True)
+    required.add_argument('-i', '--input',
+                          dest="filename",
+                          help="path to input file",
+                          required=True)
+
+    # optional arguments
+    parser.add_argument('-p', '--plot',
+                        dest='plot',
+                        default=False,
+                        help="on-the-fly plot option",
+                        action='store_true')
+    parser.add_argument('-r', '--restart',
+                        dest="restart_file",
+                        default=None,
+                        help="restart simulation from last step of specified file")
+    parser.add_argument('-o', '--output',
+                        dest="out_dir",
+                        default="data",
+                        help="output directory (default: ./data)")
 
     return parser
 
