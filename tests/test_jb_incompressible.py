@@ -29,7 +29,7 @@ import numpy as np
 import pytest
 
 from pylub.input import Input
-from pylub.eos import EquationOfState
+from pylub.material import Material
 
 
 @pytest.fixture(scope="session")
@@ -50,7 +50,7 @@ def setup(tmpdir_factory):
 def test_pressure(setup):
     ds, rho_ref, p_ref, material = setup
     rho = np.array(ds.variables["rho"])[-1]
-    p = EquationOfState(material).isoT_pressure(rho)
+    p = Material(material).eos_pressure(rho)
     p = p[:, p.shape[1] // 2] / 1e6
     p_ref /= 1e6
 

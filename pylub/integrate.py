@@ -29,7 +29,7 @@ from mpi4py import MPI
 from pylub.field import VectorField
 from pylub.stress import SymStressField2D, SymStressField3D
 from pylub.geometry import GapHeight
-from pylub.eos import EquationOfState
+from pylub.material import Material
 
 
 class ConservedField(VectorField):
@@ -98,7 +98,7 @@ class ConservedField(VectorField):
 
     @property
     def vSound(self):
-        local_vSound = EquationOfState(self.material).soundSpeed(self.inner[0])
+        local_vSound = Material(self.material).eos_sound_speed(self.inner[0])
         recvbuf = np.empty(1, dtype=float)
         self.comm.Allreduce(local_vSound, recvbuf, op=MPI.MAX)
 
@@ -333,7 +333,8 @@ class ConservedField(VectorField):
 
     def hyperbolicFlux(self, f, ax):
 
-        p = EquationOfState(self.material).isoT_pressure(f[0])
+        p = Material(self.material).eos_pressure(f[0])
+        inertialess = bool(self.numerics["stokes"])
 
         F = np.zeros_like(f)
         if ax == 1:

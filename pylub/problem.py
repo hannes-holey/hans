@@ -34,7 +34,7 @@ from git import Repo
 import numpy as np
 import shutil
 
-from pylub.eos import EquationOfState
+from pylub.material import Material
 from pylub.plottools import adaptiveLimits
 from pylub.integrate import ConservedField
 
@@ -379,7 +379,7 @@ class Problem:
         ax[0, 0].plot(x, self.q.centerline_x[1])
         ax[0, 1].plot(x, self.q.centerline_x[2])
         ax[1, 0].plot(x, self.q.centerline_x[0])
-        ax[1, 1].plot(x, EquationOfState(self.material).isoT_pressure(self.q.centerline_x[0]))
+        ax[1, 1].plot(x, Material(self.material).eos_pressure(self.q.centerline_x[0]))
 
         ax[0, 0].set_title(r'$j_x$')
         ax[0, 1].set_title(r'$j_y$')
@@ -424,7 +424,7 @@ class Problem:
         ax[0, 0].lines[0].set_ydata(self.q.centerline_x[1])
         ax[0, 1].lines[0].set_ydata(self.q.centerline_x[2])
         ax[1, 0].lines[0].set_ydata(self.q.centerline_x[0])
-        ax[1, 1].lines[0].set_ydata(EquationOfState(self.material).isoT_pressure(self.q.centerline_x[0]))
+        ax[1, 1].lines[0].set_ydata(Material(self.material).eos_pressure(self.q.centerline_x[0]))
 
         ax = adaptiveLimits(ax)
 

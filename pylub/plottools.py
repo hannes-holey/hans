@@ -34,7 +34,7 @@ import matplotlib.animation as animation
 import matplotlib.ticker as tk
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from pylub.eos import EquationOfState
+from pylub.material import Material
 
 
 class Plot:
@@ -131,7 +131,7 @@ class Plot:
             Ny = int(data.disc_Ny)
 
             rho = np.array(data.variables["rho"])[-1]
-            p = EquationOfState(material).isoT_pressure(rho)
+            p = Material(material).eos_pressure(rho)
             jx = np.array(data.variables["jx"])[-1]
             jy = np.array(data.variables["jy"])[-1]
 
@@ -208,7 +208,7 @@ class Plot:
                 Ly = dy * Ny
 
             rho = np.array(data.variables["rho"])[-1]
-            p = EquationOfState(material).isoT_pressure(rho)
+            p = Material(material).eos_pressure(rho)
             jx = np.array(data.variables["jx"])[-1]
             jy = np.array(data.variables["jy"])[-1]
 
@@ -277,7 +277,7 @@ class Plot:
             maxT = time[-1]
 
             rho = np.array(data.variables["rho"])
-            p = EquationOfState(material).isoT_pressure(rho)
+            p = Material(material).eos_pressure(rho)
             jx = np.array(data.variables["jx"])
             jy = np.array(data.variables["jy"])
 
@@ -362,7 +362,7 @@ class Plot:
             material = {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
 
             rho = np.array(data.variables["rho"])
-            p = EquationOfState(material).isoT_pressure(rho)
+            p = Material(material).eos_pressure(rho)
             jx = np.array(data.variables["jx"])
             jy = np.array(data.variables["jy"])
 

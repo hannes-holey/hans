@@ -28,7 +28,7 @@ import yaml
 import numpy as np
 
 from pylub.problem import Problem
-from pylub.eos import EquationOfState
+from pylub.material import Material
 
 
 class Input:
@@ -75,13 +75,13 @@ class Input:
             geometry = self.check_geo(inp['geometry'])
             numerics = self.check_num(inp['numerics'])
             material = self.check_mat(inp['material'])
-            BC = self.check_bc(inp['BC'], disc, material)
+            bc = self.check_bc(inp['BC'], disc, material)
             print("Sanity checks completed. Start simulation!")
             print(60 * "-")
 
         thisProblem = Problem(options,
                               disc,
-                              BC,
+                              bc,
                               geometry,
                               numerics,
                               material,
@@ -428,28 +428,28 @@ class Input:
         if "D" in x0:
             if "px0" in bc.keys():
                 px0 = float(bc["px0"])
-                bc["rhox0"] = EquationOfState(material).isoT_density(px0)
+                bc["rhox0"] = Material(material).eos_density(px0)
             else:
                 bc["rhox0"] = material["rho0"]
 
         if "D" in x1:
             if "px1" in bc.keys():
                 px1 = float(bc["px1"])
-                bc["rhox1"] = EquationOfState(material).isoT_density(px1)
+                bc["rhox1"] = Material(material).eos_density(px1)
             else:
                 bc["rhox1"] = material["rho0"]
 
         if "D" in y0:
             if "py0" in bc.keys():
                 py0 = float(bc["py0"])
-                bc["rhoy0"] = EquationOfState(material).isoT_density(py0)
+                bc["rhoy0"] = Material(material).eos_density(py0)
             else:
                 bc["rhoy0"] = material["rho0"]
 
         if "D" in y1:
             if "py1" in bc.keys():
                 py1 = float(bc["py1"])
-                bc["rhoy1"] = EquationOfState(material).isoT_density(py1)
+                bc["rhoy1"] = Material(material).eos_density(py1)
             else:
                 bc["rhoy1"] = material["rho0"]
 

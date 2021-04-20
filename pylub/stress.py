@@ -24,7 +24,7 @@ SOFTWARE.
 
 
 from pylub.field import VectorField, TensorField
-from pylub.eos import EquationOfState
+from pylub.material import Material
 
 
 class SymStressField2D(VectorField):

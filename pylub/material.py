@@ -29,12 +29,12 @@ import numpy as np
 R = 8.314462618
 
 
-class EquationOfState:
+class Material:
 
     def __init__(self, material):
         self.material = material
 
-    def isoT_pressure(self, rho):
+    def eos_pressure(self, rho):
 
         # Dowson-Higginson (with cavitation)
         if self.material['EOS'] == "DH":
@@ -116,7 +116,7 @@ class EquationOfState:
 
             return p
 
-    def isoT_density(self, p):
+    def eos_density(self, p):
 
         # Dowson-Higginson
         if self.material['EOS'] == "DH":
@@ -175,7 +175,7 @@ class EquationOfState:
     #
     #     return (rho - rho_l) / (rho_v - rho_l)
 
-    def soundSpeed(self, rho):
+    def eos_sound_speed(self, rho):
 
         # Dowson-Higginson
         if self.material['EOS'] == "DH":
