@@ -43,7 +43,7 @@ class Problem:
     """Collects all information about a single problem
     and contains the methods to run a simulation, based on the problem defintiion."""
 
-    def __init__(self, options, disc, BC, geometry, numerics, material, restart_file):
+    def __init__(self, options, disc, bc, geometry, numerics, material, restart_file):
         """Constructor.
 
         Parameters
@@ -52,7 +52,7 @@ class Problem:
             Contains IO options.
         disc : dict
             Contains discretization parameters.
-        BC : dict
+        bc : dict
             Contains boundary condition parameters.
         geometry : dict
             Contains geometry parameters.
@@ -67,7 +67,7 @@ class Problem:
 
         self.options = options
         self.disc = disc
-        self.BC = BC
+        self.bc = bc
         self.geometry = geometry
         self.numerics = numerics
         self.material = material
@@ -100,7 +100,7 @@ class Problem:
 
         # intialize solution field
         self.q = ConservedField(self.disc,
-                                self.BC,
+                                self.bc,
                                 self.geometry,
                                 self.material,
                                 self.numerics,
@@ -254,15 +254,19 @@ class Problem:
 
             categories = {"options": self.options,
                           "disc": self.disc,
-                          "bc": self.BC,
+                          "bc": self.bc,
                           "geometry": self.geometry,
                           "numerics": self.numerics,
                           "material": self.material}
 
-            for cat_name, cat in categories.items():
+            self.bc["x0"] = "".join(self.bc["x0"])
+            self.bc["x1"] = "".join(self.bc["x1"])
+            self.bc["y0"] = "".join(self.bc["y0"])
+            self.bc["y1"] = "".join(self.bc["y1"])
+
+            for name, cat in categories.items():
                 for key, value in cat.items():
-                    name = cat_name + "_" + key
-                    nc.setncattr(name, value)
+                    nc.setncattr(f"{name}_{key}", value)
 
         else:
             # append to existing netCDF file

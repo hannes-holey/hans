@@ -405,55 +405,55 @@ class Input:
         """
         print("Checking boundary conditions... ")
 
-        x0 = np.array(list(bc["x0"]))
-        x1 = np.array(list(bc["x1"]))
-        y0 = np.array(list(bc["y0"]))
-        y1 = np.array(list(bc["y1"]))
+        bc["x0"] = np.array(list(bc["x0"]))
+        bc["x1"] = np.array(list(bc["x1"]))
+        bc["y0"] = np.array(list(bc["y0"]))
+        bc["y1"] = np.array(list(bc["y1"]))
 
-        assert len(x0) == 3
-        assert len(x1) == 3
-        assert len(y0) == 3
-        assert len(y1) == 3
+        assert len(bc["x0"]) == 3
+        assert len(bc["x1"]) == 3
+        assert len(bc["y0"]) == 3
+        assert len(bc["y1"]) == 3
 
-        if "P" in x0 and "P" in x1:
+        if "P" in bc["x0"] and "P" in bc["x1"]:
             disc["pX"] = 1
         else:
             disc["pX"] = 0
 
-        if "P" in y0 and "P" in y1:
+        if "P" in bc["y0"] and "P" in bc["y1"]:
             disc["pY"] = 1
         else:
             disc["pY"] = 0
 
-        if "D" in x0:
+        if "D" in bc["x0"]:
             if "px0" in bc.keys():
                 px0 = float(bc["px0"])
                 bc["rhox0"] = Material(material).eos_density(px0)
             else:
                 bc["rhox0"] = material["rho0"]
 
-        if "D" in x1:
+        if "D" in bc["x1"]:
             if "px1" in bc.keys():
                 px1 = float(bc["px1"])
                 bc["rhox1"] = Material(material).eos_density(px1)
             else:
                 bc["rhox1"] = material["rho0"]
 
-        if "D" in y0:
+        if "D" in bc["y0"]:
             if "py0" in bc.keys():
                 py0 = float(bc["py0"])
                 bc["rhoy0"] = Material(material).eos_density(py0)
             else:
                 bc["rhoy0"] = material["rho0"]
 
-        if "D" in y1:
+        if "D" in bc["y1"]:
             if "py1" in bc.keys():
                 py1 = float(bc["py1"])
                 bc["rhoy1"] = Material(material).eos_density(py1)
             else:
                 bc["rhoy1"] = material["rho0"]
 
-        assert np.all((x0 == "P") == (x1 == "P")), "Inconsistent boundary conditions (x)"
-        assert np.all((y0 == "P") == (y1 == "P")), "Inconsistent boundary conditions (y)"
+        assert np.all((bc["x0"] == "P") == (bc["x1"] == "P")), "Inconsistent boundary conditions (x)"
+        assert np.all((bc["y0"] == "P") == (bc["y1"] == "P")), "Inconsistent boundary conditions (y)"
 
         return bc
