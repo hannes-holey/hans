@@ -33,12 +33,30 @@ from pylub.material import Material
 
 
 class ConservedField(VectorField):
-    """
-    This class contains the field of conserved variable densities (rho, jx, jy),
-    and the methods to update them. Derived from VectorField.
-    """
 
     def __init__(self, disc, bc, geometry, material, numerics, q_init=None, t_init=None):
+        """
+        This class contains the field of conserved variable densities (rho, jx, jy),
+        and the methods to update them. Derived from VectorField.
+
+        Parameters
+        ----------
+        disc : dict
+            Discretization parameters.
+        bc : dict
+            Boundary condition parameters.
+        geometry : dict
+            Geometry parameters.
+        material : dict
+            Material parameters.
+        numerics : dict
+            numerics parameters
+        q_init : np.array
+            Inital field in case of a restart (the default is None)
+        t_init : tuple
+            Initial time and time step in case of a restart (the default is None).
+
+        """
 
         super().__init__(disc)
 
@@ -91,6 +109,15 @@ class ConservedField(VectorField):
         return recvbuf[0]
 
     def update(self, i):
+        """
+        Wrapper function for the explicit time update of the solution field.
+
+        Parameters
+        ----------
+        i : int
+            time step
+
+        """
 
         integrator = self.numerics["numFlux"]
 
@@ -135,6 +162,16 @@ class ConservedField(VectorField):
                 quit()
 
     def mac_cormack(self, switch):
+        """
+        Explicit time update using MacCormack's predictor corrector scheme with source term.
+        Field is updated in place.
+
+        Parameters
+        ----------
+        switch : int
+            Determine if predictor step is forwards (0) or backwards (1).
+
+        """
 
         dx = self.disc["dx"]
         dy = self.disc["dy"]
@@ -159,6 +196,11 @@ class ConservedField(VectorField):
         self.post_integrate(q0)
 
     def richtmyer(self):
+        """
+        Explicit time update using Richtmyer's two-step scheme with source term.
+        Field is updated in place.
+
+        """
 
         q0 = self.field.copy()
 
@@ -175,6 +217,16 @@ class ConservedField(VectorField):
         raise NotImplementedError
 
     def post_integrate(self, q0):
+        """
+        Compute relative change of solution after time update.
+        Update time, and, if adaptive time-stepping is used, also the time step.
+
+        Parameters
+        ----------
+        q0 : np.array
+            Copy of the solution field from the previous step
+
+        """
         min_dist = min(self.disc["dx"], self.disc["dy"])
 
         self.time += self.dt
@@ -197,6 +249,11 @@ class ConservedField(VectorField):
         self.eps = np.sqrt(diff[0] / denom[0]) / CFL
 
     def fill_ghost_buffer(self):
+        """
+        Communicate results from adjacent domains to ghost buffers.
+        Fill ghost cells at the boundary according to the applied BCs.
+
+        """
 
         x0 = self.bc["x0"]
         x1 = self.bc["x1"]
@@ -246,6 +303,22 @@ class ConservedField(VectorField):
             self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
 
     def get_source(self, q, h):
+        """
+        Compute the source term from the unknown and gap height.
+
+        Parameters
+        ----------
+        q : np.array
+            Solution field.
+        h : np.array
+            Gap height (and gradients).
+
+        Returns
+        -------
+        np.array
+            Source term
+
+        """
 
         self.viscous_stress.set(q, h)
         self.upper_stress.set(q, h, "top")
@@ -275,17 +348,111 @@ class ConservedField(VectorField):
 
         return out
 
-    def predictor_corrector(self, f, h, dir):
+    def predictor_corrector(self, q, h, dir):
+        """
+        Compute predictor/corrector fluxes fro MacCormack's method.
 
-        Fx = self.hyperbolicFlux(f, 1) - self.diffusiveFlux(f, h, 1)
-        Fy = self.hyperbolicFlux(f, 2) - self.diffusiveFlux(f, h, 2)
+        Parameters
+        ----------
+        q : np.array
+            Solution field.
+        h : np.array
+            Gap height (and gradients).
+        dir : int
+            Direction of the substep (-1: forwards / 1: backwards differencing)
+
+        Returns
+        -------
+        tuple
+            Total numerical flux in x- and y-directions respectively.
+
+        """
+
+        Fx = self.hyperbolicFlux(q, 1) - self.diffusiveFlux(q, h, 1)
+        Fy = self.hyperbolicFlux(q, 2) - self.diffusiveFlux(q, h, 2)
 
         flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx)
         flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy)
 
         return flux_x, flux_y
 
+    def hyperbolicFlux(self, q, ax):
+        """Compute hyperbolic flux.
+
+        Parameters
+        ----------
+        q : np.array
+            Solution field.
+        ax : int
+            Axis parameter, 1 == x and 2 == y
+
+        Returns
+        -------
+        np.array
+            Hyperbolic flux field.
+
+        """
+
+        p = Material(self.material).eos_pressure(q[0])
+        inertialess = bool(self.numerics["stokes"])
+
+        F = np.zeros_like(q)
+        if ax == 1:
+            if inertialess:
+                F[0] = q[1]
+                F[1] = p
+            else:
+                F[0] = q[1]
+                F[1] = q[1] * q[1] / q[0] + p
+                F[2] = q[2] * q[1] / q[0]
+
+        elif ax == 2:
+            if inertialess:
+                F[0] = q[2]
+                F[2] = p
+            else:
+                F[0] = q[2]
+                F[1] = q[1] * q[2] / q[0]
+                F[2] = q[2] * q[2] / q[0] + p
+
+        return F
+
+    def diffusiveFlux(self, q, h, ax):
+        """Compute diffusive flux.
+
+        Parameters
+        ----------
+        q : np.array
+            Solution field.
+        h : np.array
+            Gap height (and gradients).
+        ax : int
+            Axis parameter, 1 == x and 2 == y
+
+        Returns
+        -------
+        np.array
+            Diffusive flux field
+
+        """
+
+        self.viscous_stress.set(q, h)
+
+        D = np.zeros_like(q)
+        if ax == 1:
+            D[1] = self.viscous_stress.field[0]
+            D[2] = self.viscous_stress.field[2]
+
+        elif ax == 2:
+            D[1] = self.viscous_stress.field[2]
+            D[2] = self.viscous_stress.field[1]
+
+        return D
+
     def lax_step(self):
+
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
 
         QS = self.edgeE
         QW = self.edgeN
@@ -304,9 +471,12 @@ class ConservedField(VectorField):
 
         src = self.get_source(self.verticeNE, self.height.verticeNE)
 
-        self.field = self.verticeNE - self.dt / (2. * self.dx) * (FE - FW) - self.dt / (2. * self.dy) * (FN - FS) + src * self.dt / 2.
+        self.field = self.verticeNE - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy - src)
 
     def leap_frog(self, q0):
+
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
 
         QE = self.edgeS
         QN = self.edgeW
@@ -320,48 +490,7 @@ class ConservedField(VectorField):
 
         src = self.get_source(self.verticeSW, self.height.field)
 
-        self.field = q0 - self.dt / self.dx * (FE - FW) - self.dt / self.dy * (FN - FS) + src * self.dt
-
-    def hyperbolicFlux(self, f, ax):
-
-        p = Material(self.material).eos_pressure(f[0])
-        inertialess = bool(self.numerics["stokes"])
-
-        F = np.zeros_like(f)
-        if ax == 1:
-            if inertialess:
-                F[0] = f[1]
-                F[1] = p
-            else:
-                F[0] = f[1]
-                F[1] = f[1] * f[1] / f[0] + p
-                F[2] = f[2] * f[1] / f[0]
-
-        elif ax == 2:
-            if inertialess:
-                F[0] = f[2]
-                F[2] = p
-            else:
-                F[0] = f[2]
-                F[1] = f[1] * f[2] / f[0]
-                F[2] = f[2] * f[2] / f[0] + p
-
-        return F
-
-    def diffusiveFlux(self, f, h, ax):
-
-        self.viscous_stress.set(f, h)
-
-        D = np.zeros_like(f)
-        if ax == 1:
-            D[1] = self.viscous_stress.field[0]
-            D[2] = self.viscous_stress.field[2]
-
-        elif ax == 2:
-            D[1] = self.viscous_stress.field[2]
-            D[2] = self.viscous_stress.field[1]
-
-        return D
+        self.field = q0 - self.dt / dx * (FE - FW) - self.dt / dy * (FN - FS) + src * self.dt
 
     def diffusiveCD(self):
 

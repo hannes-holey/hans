@@ -28,21 +28,9 @@ import numpy as np
 
 
 class Field:
-    """Base class for all field objects.
-
-    Attributes
-    ----------
-    comm : mpi4py.MPI.Cartcomm
-        2D cartesian communicator.
-    field : np.array
-        Buffer holding the data of the class instance.
-    disc : dict
-        Discretization parameters.
-
-    """
 
     def __init__(self, disc, ndim):
-        """Constructor.
+        """Base class for all field objects.
 
         Parameters
         ----------
@@ -50,6 +38,15 @@ class Field:
             Discretization parameters.
         ndim : int
             Dimensionality.
+
+        Attributes
+        ----------
+        comm : mpi4py.MPI.Cartcomm
+            2D cartesian communicator.
+        field : np.array
+            Buffer holding the data of the class instance.
+        disc : dict
+            Discretization parameters.
 
         """
 

@@ -40,11 +40,11 @@ from pylub.integrate import ConservedField
 
 
 class Problem:
-    """Collects all information about a single problem
-    and contains the methods to run a simulation, based on the problem defintiion."""
 
     def __init__(self, options, disc, bc, geometry, numerics, material, restart_file):
-        """Constructor.
+        """
+        Collects all information about a single problem
+        and contains the methods to run a simulation, based on the problem defintiion."
 
         Parameters
         ----------
@@ -74,7 +74,8 @@ class Problem:
         self.restart_file = restart_file
 
     def run(self, out_dir, plot=False):
-        """Starts the simulation.
+        """
+        Starts the simulation.
 
         Parameters
         ----------
@@ -160,7 +161,8 @@ class Problem:
                 self.write_to_stdout(i, mode=self._write_mode)
 
     def read_last_frame(self):
-        """Read last frame from restart file and use as initial values for new run.
+        """
+        Read last frame from restart file and use as initial values for new run.
 
         Returns
         -------
@@ -187,7 +189,8 @@ class Problem:
         return q0, (t, dt)
 
     def init_netcdf(self, name, out_dir, rank):
-        """Initialize netCDF4 file, create dimensions, variables and metadata.
+        """
+        Initialize netCDF4 file, create dimensions, variables and metadata.
 
         Parameters
         ----------
@@ -289,7 +292,8 @@ class Problem:
         return nc
 
     def write_to_stdout(self, i, mode):
-        """Write information about the current time step to stdout.
+        """
+        Write information about the current time step to stdout.
 
         Parameters
         ----------
@@ -317,7 +321,8 @@ class Problem:
             print(f"on {self.q.comm.dims[0]} x {self.q.comm.dims[1]} MPI grid)", flush=True)
 
     def write_to_netcdf(self, i, nc, mode):
-        """Append current solution field to netCDF file.
+        """
+        Append current solution field to netCDF file.
 
         Parameters
         ----------
@@ -349,7 +354,8 @@ class Problem:
             nc.close()
 
     def receive_signal(self, signum, frame):
-        """Signal handler. Catches signals send to the process and sets write mode to 3 (abort).
+        """
+        Signal handler. Catches signals send to the process and sets write mode to 3 (abort).
 
         Parameters
         ----------
@@ -364,7 +370,8 @@ class Problem:
             self._write_mode = 3
 
     def plot(self, writeInterval):
-        """Wrapper function to initialize on-the-fly plotting.
+        """
+        Initialize on-the-fly plotting.
 
         Parameters
         ----------
@@ -407,7 +414,8 @@ class Problem:
         plt.show()
 
     def animate1D(self, i, fig, ax, writeInterval):
-        """Animator function. Update solution and plots.
+        """
+        Animator function. Update solution and plots.
 
         Parameters
         ----------

@@ -32,18 +32,10 @@ from pylub.material import Material
 
 
 class Input:
-    """Reads the yaml input file that defines a problem.
-
-    Attributes
-    ----------
-    inputFile : str
-        filename of the .yaml input file
-    restartFile : str
-        filename of the .nc data file
-    """
 
     def __init__(self, inputFile, restartFile=None):
-        """ Constructor
+        """
+        Reads the yaml input file that defines a problem.
 
         Parameters
         ----------
@@ -51,12 +43,14 @@ class Input:
             filename of the .yaml input file
         restartFile : str
             filename of the .nc data file (default: None)
+
         """
         self.inputFile = inputFile
         self.restartFile = restartFile
 
     def getProblem(self):
-        """Parses the yaml input file, performs sanity checks,
+        """
+        Parses the yaml input file, performs sanity checks,
         and returns an instance of the Problem class.
 
         Returns
@@ -90,7 +84,8 @@ class Input:
         return thisProblem
 
     def check_options(self, options):
-        """Sanity check for I/O options input.
+        """
+        Sanity check for I/O options input.
 
         Parameters
         ----------
@@ -125,7 +120,8 @@ class Input:
         return options
 
     def check_disc(self, disc):
-        """Sanity check for discretization input.
+        """
+        Sanity check for discretization input.
 
         Parameters
         ----------
@@ -136,6 +132,7 @@ class Input:
         -------
         dict
             Discretization parameters.
+
         """
         print("Checking discretization... ")
 
@@ -204,7 +201,8 @@ class Input:
         return disc
 
     def check_geo(self, geo):
-        """Sanity check for geometry input.
+        """
+        Sanity check for geometry input.
 
         Parameters
         ----------
@@ -246,7 +244,8 @@ class Input:
         return geo
 
     def check_num(self, numerics):
-        """Sanity check for numerics options.
+        """
+        Sanity check for numerics options.
 
         Parameters
         ----------
@@ -311,7 +310,8 @@ class Input:
         return numerics
 
     def check_mat(self, material):
-        """Sanity check on material settings.
+        """
+        Sanity check on material settings.
 
         Parameters
         ----------
@@ -386,7 +386,8 @@ class Input:
         return material
 
     def check_bc(self, bc, disc, material):
-        """Sanity check for boundary condition input.
+        """
+        Sanity check for boundary condition input.
 
         Parameters
         ----------
