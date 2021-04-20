@@ -33,16 +33,15 @@ class SymStressField2D(VectorField):
 
         super().__init__(disc)
 
-        self.disc = disc
-        self.geo = geometry
-        self.mat = material
+        self.geometry = geometry
+        self.material = material
 
     def set(self, q, h):
 
-        U = self.geo['U']
-        V = self.geo['V']
-        eta = EquationOfState(self.mat).viscosity(U, V, q[0], h[0])
-        zeta = self.mat['bulk']
+        U = self.geometry['U']
+        V = self.geometry['V']
+        eta = Material(self.material).viscosity(U, V, q[0], h[0])
+        zeta = self.material['bulk']
 
         visc_1 = zeta + 4 / 3 * eta
         visc_2 = zeta - 2 / 3 * eta
@@ -59,16 +58,15 @@ class SymStressField3D(TensorField):
 
         super().__init__(disc)
 
-        self.disc = disc
-        self.geo = geometry
-        self.mat = material
+        self.geometry = geometry
+        self.material = material
 
     def set(self, q, h, bound):
 
-        U = self.geo['U']
-        V = self.geo['V']
-        eta = EquationOfState(self.mat).viscosity(U, V, q[0], h[0])
-        zeta = self.mat['bulk']
+        U = self.geometry['U']
+        V = self.geometry['V']
+        eta = Material(self.material).viscosity(U, V, q[0], h[0])
+        zeta = self.material['bulk']
 
         visc_1 = zeta + 4 / 3 * eta
         visc_2 = zeta - 2 / 3 * eta
