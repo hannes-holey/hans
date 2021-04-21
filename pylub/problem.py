@@ -147,7 +147,7 @@ class Problem:
                     break
 
                 # maximum time reached
-                if self.q.time > maxT:
+                if round(self.q.time, 15) >= maxT:
                     self._write_mode = 2
                     break
 
