@@ -255,17 +255,25 @@ class Problem:
             nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
             nc.setncattr("commit", str(git_commit))
 
+            disc = self.disc.copy()
+            bc = self.bc.copy()
+
             categories = {"options": self.options,
-                          "disc": self.disc,
-                          "bc": self.bc,
+                          "disc": disc,
+                          "bc": bc,
                           "geometry": self.geometry,
                           "numerics": self.numerics,
                           "material": self.material}
 
-            self.bc["x0"] = "".join(self.bc["x0"])
-            self.bc["x1"] = "".join(self.bc["x1"])
-            self.bc["y0"] = "".join(self.bc["y0"])
-            self.bc["y1"] = "".join(self.bc["y1"])
+            # reset modified input dictionaries
+            bc["x0"] = "".join(bc["x0"])
+            bc["x1"] = "".join(bc["x1"])
+            bc["y0"] = "".join(bc["y0"])
+            bc["y1"] = "".join(bc["y1"])
+
+            del disc["nghost"]
+            del disc["pX"]
+            del disc["pY"]
 
             for name, cat in categories.items():
                 for key, value in cat.items():

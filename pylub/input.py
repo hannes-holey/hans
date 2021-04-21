@@ -308,9 +308,9 @@ class Input:
             numerics["maxT"] = 1e-6
 
         if numerics["integrator"] == "RK3":
-            disc["nghost"] = np.array([1, 2, 1, 2], dtype=int)
+            disc["nghost"] = 2
         else:
-            disc["nghost"] = np.array([1, 1, 1, 1], dtype=int)
+            disc["nghost"] = 1
 
         try:
             numerics["fluctuating"] = int(numerics["fluctuating"])

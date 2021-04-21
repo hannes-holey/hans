@@ -70,7 +70,8 @@ class ConservedField(VectorField):
 
         # intialize field and time
         if q_init is not None:
-            self.field[:, self.without_ghost] = q_init[:, self.without_ghost]
+            ng = self.disc["nghost"]
+            self.field[:, ng:-ng, ng:-ng] = q_init[:, ng:-ng, ng:-ng]
             self.fill_ghost_buffer()
             self.time = t_init[0]
             self.dt = t_init[1]
@@ -218,37 +219,34 @@ class ConservedField(VectorField):
 
     def runge_kutta3(self):
 
-        # wshape = (3, 3) + self._field.shape[1:]
-
-        W_A = np.random.normal(size=(3, 3) + self.field.shape[1:])
-        W_B = np.random.normal(size=(3, 3) + self.field.shape[1:])
+        if bool(self.numerics["fluctuating"]):
+            W_A = np.random.normal(size=(3, 3) + self.field.shape[1:])
+            W_B = np.random.normal(size=(3, 3) + self.field.shape[1:])
 
         q0 = self.field.copy()
 
         for stage in np.arange(1, 4):
-            # self.viscous_stress.set(self._field, self.height.field)
-            # self.upper_stress.set(self._field, self.height.field, "top")
-            # self.lower_stress.set(self._field, self.height.field, "bottom")
-            self.stoch_stress.set(W_A, W_B, self.height.field, self.dt, stage)
-
-            # dX = self.diffusiveFlux(self._field, self.height.field, 1)
-            # dY = self.diffusiveFlux(self._field, self.height.field, 2)
 
             dX, dY = self.diffusiveCD()
             fX, fY = self.hyperbolicTVD()
-            sX, sY = self.stochasticFlux()
             src = self.get_source(self.field, self.height.field)
 
-            tmp = self.field - fX - fY + dX + dY + sX + sY + self.dt * src
+            if bool(self.numerics["fluctuating"]):
+                self.stoch_stress.set(W_A, W_B, self.height.field, self.dt, stage)
+                sX, sY = self.stochasticFlux()
+                tmp = self.field - fX - fY + dX + dY + sX + sY + self.dt * src
+            else:
+                tmp = self.field - fX - fY + dX + dY + self.dt * src
 
             if stage == 1:
                 self.field = tmp
+                self.fill_ghost_buffer()
             elif stage == 2:
                 self.field = 3 / 4 * q0 + 1 / 4 * tmp
+                self.fill_ghost_buffer()
             elif stage == 3:
                 self.field = 1 / 3 * q0 + 2 / 3 * tmp
-
-            self.fill_ghost_buffer()
+                self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 
@@ -264,7 +262,7 @@ class ConservedField(VectorField):
 
         """
         min_dist = min(self.disc["dx"], self.disc["dy"])
-        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
+        ng = self.disc["nghost"]
 
         self.time += self.dt
 
@@ -277,8 +275,8 @@ class ConservedField(VectorField):
         diff = np.empty(1)
         denom = np.empty(1)
 
-        local_diff = np.sum((self.inner[0] - q0[0, ngxl:-ngxr, ngyb:-ngyt])**2)
-        local_denom = np.sum(q0[0, ngxl:-ngxr, ngyb:-ngyt]**2)
+        local_diff = np.sum((self.inner[0] - q0[0, ng:-ng, ng:-ng])**2)
+        local_denom = np.sum(q0[0, ng:-ng, ng:-ng]**2)
 
         self.comm.Allreduce(local_diff, diff, op=MPI.SUM)
         self.comm.Allreduce(local_denom, denom, op=MPI.SUM)
@@ -299,46 +297,45 @@ class ConservedField(VectorField):
 
         (ls, ld), (rs, rd), (bs, bd), (ts, td) = self.get_neighbors()
 
-        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
-        ngx = ngxl + ngxr
-        ngy = ngyb + ngyt
+        ng = self.disc["nghost"]
+        ngt = 2 * ng
 
         # Send to left, receive from right
-        recvbuf = np.ascontiguousarray(self.field[:, -ngxr:, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, ngxl:ngx, :]), ld, recvbuf=recvbuf, source=ls)
+        recvbuf = np.ascontiguousarray(self.field[:, -ng:, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, ng:ngt, :]), ld, recvbuf=recvbuf, source=ls)
         # fill ghost buffer, adjust for non-periodic BCs
         if ls >= 0:
-            self.field[:, -ngxr:, :] = recvbuf
+            self.field[:, -ng:, :] = recvbuf
         else:
             self.field[x1 == "D", -1, :] = 2. * self.bc["rhox1"] - self.field[x1 == "D", -2, :]
             self.field[x1 == "N", -1, :] = self.field[x1 == "N", -2, :]
 
         # Send to right, receive from left
-        recvbuf = np.ascontiguousarray(self.field[:, :ngxl, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, -ngx:-ngxr, :]), rd, recvbuf=recvbuf, source=rs)
+        recvbuf = np.ascontiguousarray(self.field[:, :ng, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, -ngt:-ng, :]), rd, recvbuf=recvbuf, source=rs)
         # fill ghost buffer, adjust for non-periodic BCs
         if rs >= 0:
-            self.field[:, :ngxl, :] = recvbuf
+            self.field[:, :ng, :] = recvbuf
         else:
             self.field[x0 == "D", 0, :] = 2. * self.bc["rhox0"] - self.field[x0 == "D", 1, :]
             self.field[x0 == "N", 0, :] = self.field[x0 == "N", 1, :]
 
         # Send to bottom, receive from top
-        recvbuf = np.ascontiguousarray(self.field[:, :, -ngyt:])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, ngyb:ngy]), bd, recvbuf=recvbuf, source=bs)
+        recvbuf = np.ascontiguousarray(self.field[:, :, -ng:])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, ng:ngt]), bd, recvbuf=recvbuf, source=bs)
         # fill ghost buffer, adjust for non-periodic BCs
         if bs >= 0:
-            self.field[:, :, -ngyt:] = recvbuf
+            self.field[:, :, -ng:] = recvbuf
         else:
             self.field[y1 == "D", :, -1] = 2. * self.bc["rhoy1"] - self.field[y1 == "D", :, -2]
             self.field[y1 == "N", :, -1] = self.field[y1 == "N", :, -2]
 
         # Send to top, receive from bottom
-        recvbuf = np.ascontiguousarray(self.field[:, :, :ngyb])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, -ngy:-ngyt]), td, recvbuf=recvbuf, source=ts)
+        recvbuf = np.ascontiguousarray(self.field[:, :, :ng])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, -ngt:-ng]), td, recvbuf=recvbuf, source=ts)
         # fill ghost buffer, adjust for non-periodic BCs
         if ts >= 0:
-            self.field[:, :, :ngyb] = recvbuf
+            self.field[:, :, :ng] = recvbuf
         else:
             self.field[y0 == "D", :, 0] = 2. * self.bc["rhoy0"] - self.field[y0 == "D", :, 1]
             self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
@@ -591,8 +588,6 @@ class ConservedField(VectorField):
 
         Dx = self.diffusiveFlux(self.field, self.height.field, 1)
         Dy = self.diffusiveFlux(self.field, self.height.field, 2)
-        # Dx = self.diffusiveFlux(1)
-        # Dy = self.diffusiveFlux(2)
 
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)

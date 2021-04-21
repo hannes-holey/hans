@@ -94,12 +94,12 @@ class Field:
             ybottom = Ny - ny
             ytop = Ny - 1
 
-        ngxl, ngxr, ngyb, ngyt = disc["nghost"]
+        ng = disc["nghost"]
 
-        self._idx = np.linspace(xleft - ngxl, xright + ngxr, nx + ngxl + ngxr, dtype=int)
-        self._idy = np.linspace(ybottom - ngyb, ytop + ngyt, ny + ngyb + ngyt, dtype=int)
+        self._idx = np.linspace(xleft - ng, xright + ng, nx + 2 * ng, dtype=int)
+        self._idy = np.linspace(ybottom - ng, ytop + ng, ny + 2 * ng, dtype=int)
 
-        self.field = np.zeros(shape=(ndim, nx + ngxl + ngxr, ny + ngyb + ngyt), dtype=np.float64)
+        self.field = np.zeros(shape=(ndim, nx + 2 * ng, ny + 2 * ng), dtype=np.float64)
 
     def get_2d_cart_comm(self, comm, shape, periods=(True, True)):
         """
@@ -160,8 +160,8 @@ class Field:
 
     @property
     def inner(self):
-        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
-        return np.ascontiguousarray(self.field[:, ngxl:-ngxr, ngyb:-ngyt])
+        ng = self.disc["nghost"]
+        return np.ascontiguousarray(self.field[:, ng:-ng, ng:-ng])
 
     @property
     def edgeE(self):
@@ -199,20 +199,20 @@ class Field:
 
     @property
     def without_ghost(self):
-        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
-        wo_ghost_x = slice(self._idx[ngxl], self._idx[-ngxr])
-        wo_ghost_y = slice(self._idy[ngyb], self._idy[-ngyt])
+        ng = self.disc["nghost"]
+        wo_ghost_x = slice(self._idx[ng], self._idx[-ng])
+        wo_ghost_y = slice(self._idy[ng], self._idy[-ng])
         return wo_ghost_x, wo_ghost_y
 
     @property
     def centerline_x(self):
-        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
-        return self.field[:, ngxl:-ngxr, self.disc["Ny"] // 2 + ngyb]
+        ng = self.disc["nghost"]
+        return self.field[:, ng:-ng, self.disc["Ny"] // 2 + ng]
 
     @property
     def centerline_y(self):
-        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
-        return self.field[:, self.disc["Nx"] // 2 + ngxl, ngyb:-ngyt]
+        ng = self.disc["nghost"]
+        return self.field[:, self.disc["Nx"] // 2 + ng, ng:-ng]
 
 
 class ScalarField(Field):
