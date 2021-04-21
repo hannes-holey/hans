@@ -27,7 +27,7 @@ import numpy as np
 from mpi4py import MPI
 
 from pylub.field import VectorField
-from pylub.stress import SymStressField2D, SymStressField3D
+from pylub.stress import SymStressField2D, SymStressField3D, SymStochStressField3D
 from pylub.geometry import GapHeight
 from pylub.material import Material
 
@@ -70,7 +70,7 @@ class ConservedField(VectorField):
 
         # intialize field and time
         if q_init is not None:
-            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost]
+            self.field[:, self.without_ghost] = q_init[:, self.without_ghost]
             self.fill_ghost_buffer()
             self.time = t_init[0]
             self.dt = t_init[1]
@@ -82,6 +82,9 @@ class ConservedField(VectorField):
         self.viscous_stress = SymStressField2D(disc, geometry, material)
         self.upper_stress = SymStressField3D(disc, geometry, material)
         self.lower_stress = SymStressField3D(disc, geometry, material)
+
+        if bool(self.numerics["fluctuating"]):
+            self.stoch_stress = SymStochStressField3D(disc, geometry, material)
 
     @property
     def mass(self):
@@ -119,7 +122,7 @@ class ConservedField(VectorField):
 
         """
 
-        integrator = self.numerics["numFlux"]
+        integrator = self.numerics["integrator"]
 
         # MacCormack forward backward
         if integrator == "MC" or integrator == "MC_fb":
@@ -214,7 +217,40 @@ class ConservedField(VectorField):
         self.post_integrate(q0)
 
     def runge_kutta3(self):
-        raise NotImplementedError
+
+        # wshape = (3, 3) + self._field.shape[1:]
+
+        W_A = np.random.normal(size=(3, 3) + self.field.shape[1:])
+        W_B = np.random.normal(size=(3, 3) + self.field.shape[1:])
+
+        q0 = self.field.copy()
+
+        for stage in np.arange(1, 4):
+            # self.viscous_stress.set(self._field, self.height.field)
+            # self.upper_stress.set(self._field, self.height.field, "top")
+            # self.lower_stress.set(self._field, self.height.field, "bottom")
+            self.stoch_stress.set(W_A, W_B, self.height.field, self.dt, stage)
+
+            # dX = self.diffusiveFlux(self._field, self.height.field, 1)
+            # dY = self.diffusiveFlux(self._field, self.height.field, 2)
+
+            dX, dY = self.diffusiveCD()
+            fX, fY = self.hyperbolicTVD()
+            sX, sY = self.stochasticFlux()
+            src = self.get_source(self.field, self.height.field)
+
+            tmp = self.field - fX - fY + dX + dY + sX + sY + self.dt * src
+
+            if stage == 1:
+                self.field = tmp
+            elif stage == 2:
+                self.field = 3 / 4 * q0 + 1 / 4 * tmp
+            elif stage == 3:
+                self.field = 1 / 3 * q0 + 2 / 3 * tmp
+
+            self.fill_ghost_buffer()
+
+        self.post_integrate(q0)
 
     def post_integrate(self, q0):
         """
@@ -228,6 +264,7 @@ class ConservedField(VectorField):
 
         """
         min_dist = min(self.disc["dx"], self.disc["dy"])
+        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
 
         self.time += self.dt
 
@@ -237,11 +274,11 @@ class ConservedField(VectorField):
         else:
             CFL = self.dt * (self.vmax + self.vSound) / min_dist
 
-        local_diff = np.sum((self.inner[0] - q0[0, 1:-1, 1:-1])**2)
-        local_denom = np.sum(q0[0, 1:-1, 1:-1]**2)
-
         diff = np.empty(1)
         denom = np.empty(1)
+
+        local_diff = np.sum((self.inner[0] - q0[0, ngxl:-ngxr, ngyb:-ngyt])**2)
+        local_denom = np.sum(q0[0, ngxl:-ngxr, ngyb:-ngyt]**2)
 
         self.comm.Allreduce(local_diff, diff, op=MPI.SUM)
         self.comm.Allreduce(local_denom, denom, op=MPI.SUM)
@@ -262,42 +299,46 @@ class ConservedField(VectorField):
 
         (ls, ld), (rs, rd), (bs, bd), (ts, td) = self.get_neighbors()
 
-        # Send to left, receive from right
-        recvbuf = np.ascontiguousarray(self.field[:, -1, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, 1, :]), ld, recvbuf=recvbuf, source=ls)
+        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
+        ngx = ngxl + ngxr
+        ngy = ngyb + ngyt
 
+        # Send to left, receive from right
+        recvbuf = np.ascontiguousarray(self.field[:, -ngxr:, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, ngxl:ngx, :]), ld, recvbuf=recvbuf, source=ls)
+        # fill ghost buffer, adjust for non-periodic BCs
         if ls >= 0:
-            self.field[:, -1, :] = recvbuf
+            self.field[:, -ngxr:, :] = recvbuf
         else:
             self.field[x1 == "D", -1, :] = 2. * self.bc["rhox1"] - self.field[x1 == "D", -2, :]
             self.field[x1 == "N", -1, :] = self.field[x1 == "N", -2, :]
 
         # Send to right, receive from left
-        recvbuf = np.ascontiguousarray(self.field[:, 0, :])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, -2, :]), rd, recvbuf=recvbuf, source=rs)
-
+        recvbuf = np.ascontiguousarray(self.field[:, :ngxl, :])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, -ngx:-ngxr, :]), rd, recvbuf=recvbuf, source=rs)
+        # fill ghost buffer, adjust for non-periodic BCs
         if rs >= 0:
-            self.field[:, 0, :] = recvbuf
+            self.field[:, :ngxl, :] = recvbuf
         else:
             self.field[x0 == "D", 0, :] = 2. * self.bc["rhox0"] - self.field[x0 == "D", 1, :]
             self.field[x0 == "N", 0, :] = self.field[x0 == "N", 1, :]
 
         # Send to bottom, receive from top
-        recvbuf = np.ascontiguousarray(self.field[:, :, -1])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, 1]), bd, recvbuf=recvbuf, source=bs)
-
+        recvbuf = np.ascontiguousarray(self.field[:, :, -ngyt:])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, ngyb:ngy]), bd, recvbuf=recvbuf, source=bs)
+        # fill ghost buffer, adjust for non-periodic BCs
         if bs >= 0:
-            self.field[:, :, -1] = recvbuf
+            self.field[:, :, -ngyt:] = recvbuf
         else:
             self.field[y1 == "D", :, -1] = 2. * self.bc["rhoy1"] - self.field[y1 == "D", :, -2]
             self.field[y1 == "N", :, -1] = self.field[y1 == "N", :, -2]
 
         # Send to top, receive from bottom
-        recvbuf = np.ascontiguousarray(self.field[:, :, 0])
-        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, -2]), td, recvbuf=recvbuf, source=ts)
-
+        recvbuf = np.ascontiguousarray(self.field[:, :, :ngyb])
+        self.comm.Sendrecv(np.ascontiguousarray(self.field[:, :, -ngy:-ngyt]), td, recvbuf=recvbuf, source=ts)
+        # fill ghost buffer, adjust for non-periodic BCs
         if ts >= 0:
-            self.field[:, :, 0] = recvbuf
+            self.field[:, :, :ngyb] = recvbuf
         else:
             self.field[y0 == "D", :, 0] = 2. * self.bc["rhoy0"] - self.field[y0 == "D", :, 1]
             self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
@@ -492,12 +533,95 @@ class ConservedField(VectorField):
 
         self.field = q0 - self.dt / dx * (FE - FW) - self.dt / dy * (FN - FS) + src * self.dt
 
+    def cubicInterpolation(self, q, ax):
+
+        # weights proposed by Bell et al., PRE 76 (2007)
+        # a1 = (np.sqrt(7) + 1) / 4
+        # a2 = (np.sqrt(7) - 1) / 4
+
+        # weights from piecewise parabolic method (PPM)
+        # Collela and Woodward, J. Comp. Phys. 54 (1984)
+        a1 = 7 / 12
+        a2 = 1 / 12
+
+        Q = a1 * (q + np.roll(q, -1, axis=ax)) - a2 * (np.roll(q, 1, axis=ax) + np.roll(q, -2, axis=ax))
+
+        return Q
+
+    def hyperbolicTVD(self):
+
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
+
+        Qx = self.cubicInterpolation(self.field, 1)
+        # Px = EquationOfState(self.material).isoT_pressure(Qx[0])
+
+        Qy = self.cubicInterpolation(self.field, 2)
+        # Py = EquationOfState(self.material).isoT_pressure(Qy[0])
+
+        Fx = self.hyperbolicFlux(Qx, 1)
+        Fy = self.hyperbolicFlux(Qy, 2)
+
+        flux_x = Fx - np.roll(Fx, 1, axis=1)
+        flux_y = Fy - np.roll(Fy, 1, axis=2)
+
+        return self.dt / dx * flux_x, self.dt / dy * flux_y
+
+    def hyperbolicCD(self, q, p, dt, ax):
+
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
+
+        F = self.hyperbolicFlux(q.field, ax)
+
+        flux = np.roll(F, -1, axis=ax) - np.roll(F, 1, axis=ax)
+
+        if ax == 1:
+            dx = self.disc["dx"]
+            return dt / (2 * dx) * flux
+
+        elif ax == 2:
+            dy = self.disc["dy"]
+            return dt / (2 * dy) * flux
+
     def diffusiveCD(self):
 
-        Dx = self.diffusiveFlux(1)
-        Dy = self.diffusiveFlux(2)
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
+
+        Dx = self.diffusiveFlux(self.field, self.height.field, 1)
+        Dy = self.diffusiveFlux(self.field, self.height.field, 2)
+        # Dx = self.diffusiveFlux(1)
+        # Dy = self.diffusiveFlux(2)
 
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
-        return self.dt / (2 * self.dx) * flux_x, self.dt / (2 * self.dy) * flux_y
+        return self.dt / (2 * dx) * flux_x, self.dt / (2 * dy) * flux_y
+
+    def stochasticFlux(self):
+
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
+
+        Sx_E = np.zeros((3,) + self.field.shape[1:])
+        Sx_W = np.zeros((3,) + self.field.shape[1:])
+        Sy_N = np.zeros((3,) + self.field.shape[1:])
+        Sy_S = np.zeros((3,) + self.field.shape[1:])
+
+        corrX = dx / self.height.field[0]
+        corrY = dy / self.height.field[0]
+
+        # corrX = corrY = 1.
+
+        Sx_E[1] = self.stoch_stress.field[0]
+        Sx_E[2] = self.stoch_stress.field[5]
+        Sx_W[1] = np.roll(self.stoch_stress.field[0], 1, axis=0)
+        Sx_W[2] = np.roll(self.stoch_stress.field[5], 1, axis=0)
+
+        Sy_N[1] = self.stoch_stress.field[5]
+        Sy_N[2] = self.stoch_stress.field[1]
+        Sy_S[1] = np.roll(self.stoch_stress.field[5], 1, axis=1)
+        Sy_S[2] = np.roll(self.stoch_stress.field[1], 1, axis=1)
+
+        return self.dt / dx * (Sx_E - Sx_W) * corrX, self.dt / dy * (Sy_N - Sy_S) * corrY

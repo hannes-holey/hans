@@ -61,8 +61,8 @@ class Field:
         periodicY = bool(disc['pY'])
 
         # get cartesian communicator
-        self.comm = self._get_2d_cart_comm(MPI.COMM_WORLD, (Nx, Ny),
-                                           periods=(periodicX, periodicY))
+        self.comm = self.get_2d_cart_comm(MPI.COMM_WORLD, (Nx, Ny),
+                                          periods=(periodicX, periodicY))
         rank = self.comm.Get_rank()
         mpix, mpiy = self.comm.Get_coords(rank)
         size_x, size_y = self.comm.dims
@@ -94,13 +94,16 @@ class Field:
             ybottom = Ny - ny
             ytop = Ny - 1
 
-        self._idx = np.linspace(xleft - 1, xright + 1, nx + 2, dtype=int)
-        self._idy = np.linspace(ybottom - 1, ytop + 1, ny + 2, dtype=int)
+        ngxl, ngxr, ngyb, ngyt = disc["nghost"]
 
-        self.field = np.zeros(shape=(ndim, nx + 2, ny + 2), dtype=np.float64)
+        self._idx = np.linspace(xleft - ngxl, xright + ngxr, nx + ngxl + ngxr, dtype=int)
+        self._idy = np.linspace(ybottom - ngyb, ytop + ngyt, ny + ngyb + ngyt, dtype=int)
 
-    def _get_2d_cart_comm(self, comm, shape, periods=(True, True)):
-        """Creates a two-dimensional cartesian MPI communicator.
+        self.field = np.zeros(shape=(ndim, nx + ngxl + ngxr, ny + ngyb + ngyt), dtype=np.float64)
+
+    def get_2d_cart_comm(self, comm, shape, periods=(True, True)):
+        """
+        Creates a two-dimensional cartesian MPI communicator.
 
         Parameters
         ----------
@@ -119,6 +122,7 @@ class Field:
             size of MPI grid in x direction
         size_y : int
             size of MPI grid in y direction
+
         """
 
         # get size of communicator
@@ -137,7 +141,8 @@ class Field:
         return cartcomm
 
     def get_neighbors(self):
-        """Get MPI ranks of neighboring cells.
+        """
+        Get MPI ranks of neighboring cells.
 
         Returns
         -------
@@ -155,7 +160,8 @@ class Field:
 
     @property
     def inner(self):
-        return np.ascontiguousarray(self.field[:, 1:-1, 1:-1])
+        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
+        return np.ascontiguousarray(self.field[:, ngxl:-ngxr, ngyb:-ngyt])
 
     @property
     def edgeE(self):
@@ -193,17 +199,20 @@ class Field:
 
     @property
     def without_ghost(self):
-        wo_ghost_x = slice(self._idx[0] + 1, self._idx[-1])
-        wo_ghost_y = slice(self._idy[0] + 1, self._idy[-1])
+        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
+        wo_ghost_x = slice(self._idx[ngxl], self._idx[-ngxr])
+        wo_ghost_y = slice(self._idy[ngyb], self._idy[-ngyt])
         return wo_ghost_x, wo_ghost_y
 
     @property
     def centerline_x(self):
-        return self.field[:, 1:-1, self.disc["Ny"] // 2]
+        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
+        return self.field[:, ngxl:-ngxr, self.disc["Ny"] // 2 + ngyb]
 
     @property
     def centerline_y(self):
-        return self.field[:, self.disc["Ny"] // 2, 1:-1]
+        ngxl, ngxr, ngyb, ngyt = self.disc["nghost"]
+        return self.field[:, self.disc["Nx"] // 2 + ngxl, ngyb:-ngyt]
 
 
 class ScalarField(Field):

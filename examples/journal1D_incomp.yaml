@@ -24,7 +24,7 @@ numerics:
     tol: 1e-9
     dt: 1e-10
     maxT: 5.e-5
-    numFlux: MC
+    integrator: MC
 material:
     EOS: DH
     shear: 0.0794

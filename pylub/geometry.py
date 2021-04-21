@@ -50,8 +50,11 @@ class GapHeight(VectorField):
 
         idxx, idyy = self.id_grid
 
-        xx = idxx * (Lx + 2. * dx) / (Nx + 2) + dx / 2
-        yy = idyy * (Ly + 2. * dy) / (Ny + 2) + dy / 2
+        ngx = self.disc["nghost"][0] + self.disc["nghost"][1]
+        ngy = self.disc["nghost"][2] + self.disc["nghost"][3]
+
+        xx = idxx * (Lx + ngx * dx) / (Nx + ngx) + dx / 2
+        yy = idyy * (Ly + ngy * dy) / (Ny + ngy) + dy / 2
 
         if self.geometry["type"] == "journal":
             CR = self.geometry['CR']

@@ -67,7 +67,7 @@ class Input:
             options = self.check_options(inp['options'])
             disc = self.check_disc(inp['disc'])
             geometry = self.check_geo(inp['geometry'])
-            numerics = self.check_num(inp['numerics'])
+            numerics = self.check_num(inp['numerics'], disc)
             material = self.check_mat(inp['material'])
             bc = self.check_bc(inp['BC'], disc, material)
             print("Sanity checks completed. Start simulation!")
@@ -183,17 +183,17 @@ class Input:
             sys.exit(1)
 
         if "dx" in disc.keys():
-            dx = float(disc['dx'])
-            Lx = dx * Nx
-            disc['Lx'] = Lx
+            disc["dx"] = float(disc['dx'])
+            # Lx = dx * Nx
+            disc['Lx'] = disc["dx"] * Nx
         else:
             Lx = float(disc["Lx"])
             disc["dx"] = Lx / Nx
 
         if "dy" in disc.keys():
-            dy = float(disc['dy'])
-            Ly = dy * Ny
-            disc['Ly'] = Ly
+            disc["dy"] = float(disc['dy'])
+            # Ly = dy * Ny
+            disc['Ly'] = disc["dy"] * Ny
         else:
             Ly = float(disc["Ly"])
             disc["dy"] = Ly / Ny
@@ -243,7 +243,7 @@ class Input:
 
         return geo
 
-    def check_num(self, numerics):
+    def check_num(self, numerics, disc):
         """
         Sanity check for numerics options.
 
@@ -261,13 +261,13 @@ class Input:
         print("Checking numerics options... ")
 
         try:
-            numerics["numFlux"] = numerics["numFlux"]
-            assert numerics["numFlux"] in ["MC", "MC_bf", "MC_fb", "MC_alt", "LW", "RK3"]
+            numerics["integrator"] = numerics["integrator"]
+            assert numerics["integrator"] in ["MC", "MC_bf", "MC_fb", "MC_alt", "LW", "RK3"]
         except KeyError:
             print("***Integrator not specified. Use default (MacCormack).")
-            numerics["numFlux"] = "MC"
+            numerics["integrator"] = "MC"
         except AssertionError:
-            print(f'***Unknown integrator \'{numerics["numFlux"]}\'. Abort.')
+            print(f'***Unknown integrator \'{numerics["integrator"]}\'. Abort.')
             sys.exit(1)
 
         try:
@@ -306,6 +306,16 @@ class Input:
         except KeyError:
             print("***Maximum time not given. Use default (1e-6).")
             numerics["maxT"] = 1e-6
+
+        if numerics["integrator"] == "RK3":
+            disc["nghost"] = np.array([1, 2, 1, 2], dtype=int)
+        else:
+            disc["nghost"] = np.array([1, 1, 1, 1], dtype=int)
+
+        try:
+            numerics["fluctuating"] = int(numerics["fluctuating"])
+        except KeyError:
+            numerics["fluctuating"] = 0
 
         return numerics
 
