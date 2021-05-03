@@ -70,7 +70,7 @@ class ConservedField(VectorField):
 
         # intialize field and time
         if q_init is not None:
-            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost]
+            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost[0], self.without_ghost[1]]
             self.fill_ghost_buffer()
             self.time = t_init[0]
             self.dt = t_init[1]
