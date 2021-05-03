@@ -46,7 +46,7 @@ class Material:
             p = P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
             if 'Pcav' in self.material.keys():
                 Pcav = self.material['Pcav']
-                rho_cav = self.isoT_density(Pcav)
+                rho_cav = self.eos_density(Pcav)
                 p[rho < rho_cav] = Pcav
 
             return p
@@ -270,7 +270,7 @@ class Material:
                 if self.material["piezo"] == "Barus":
                     mu0 = self.material["shear"]
                     aB = self.material["aB"]
-                    p = self.isoT_pressure(rho)
+                    p = self.eos_pressure(rho)
                     mu0 *= np.exp(aB * p)
 
                 elif self.material["piezo"] == "Vogel":
