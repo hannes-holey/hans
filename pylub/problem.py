@@ -279,8 +279,9 @@ class Problem:
             self.outpath = os.path.relpath(self.restart_file)
 
             # create backup
-            backup_file = f"{os.path.splitext(self.restart_file)[0]}-{nc.restarts}.nc"
-            shutil.copy(self.restart_file, backup_file)
+            if rank == 0:
+                backup_file = f"{os.path.splitext(self.restart_file)[0]}-{nc.restarts}.nc"
+                shutil.copy(self.restart_file, backup_file)
 
             # increase restart counter
             nc.restarts += 1
