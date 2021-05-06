@@ -26,6 +26,7 @@ SOFTWARE.
 import sys
 import yaml
 import numpy as np
+from mpi4py import MPI
 
 from pylub.problem import Problem
 from pylub.material import Material
@@ -104,16 +105,16 @@ class Input:
             writeInterval = int(options["writeInterval"])
             assert writeInterval > 0
         except KeyError:
-            print("\nOutput interval not given, fallback to 1000", flush=True)
+            print("***Output interval not given, fallback to 1000")
             options["writeInterval"] = 1000
         except AssertionError:
             try:
                 assert writeInterval != 0
             except AssertionError:
-                print("\nOutput interval is zero. fallback to 1000", flush=True)
+                print("***Output interval is zero. fallback to 1000")
                 options["writeInterval"] = 1000
             else:
-                print("\nOutput interval is negative. Converting to positive value.", flush=True)
+                print("***Output interval is negative. Converting to positive value.")
                 writeInterval *= -1
                 options["writeInterval"] = writeInterval
 
@@ -140,63 +141,47 @@ class Input:
             Nx = int(disc['Nx'])
             assert Nx > 0
         except KeyError:
-            print("\nNumber of grid cells Nx not given. Abort.")
-            sys.exit(1)
+            print("***Number of grid cells Nx not specified. Abort.")
+            abort()
         except AssertionError:
-            try:
-                assert Nx != 0
-            except AssertionError:
-                print("\nNumber of grid cells Nx zero. Abort")
-                sys.exit(1)
-            else:
-                print("\nNumber of grid cells Nx negative. Converting to positive value.")
-                Nx *= -1
-                disc["Nx"] = Nx
+            print("***Number of grid cells Nx must be larger than zero. Abort")
+            abort()
 
         try:
             Ny = int(disc['Ny'])
             assert Ny > 0
         except KeyError:
-            print("\nNumber of grid cells Ny not given. Abort.")
-            sys.exit(1)
+            print("***Number of grid cells 'Ny' not specified. Abort.")
+            abort()
         except AssertionError:
-            try:
-                assert Ny != 0
-            except AssertionError:
-                print("\nNumber of grid cells Ny zero. Abort")
-                sys.exit(1)
-            else:
-                print("\nNumber of grid cells Ny negative. Converting to positive value.")
-                Ny *= -1
-                disc["Ny"] = Ny
+            print("***Number of grid cells 'Ny' must be larger than zero. Abort")
+            abort()
 
         try:
             assert "dx" in disc.keys() or "Lx" in disc.keys()
         except AssertionError:
-            print("\nNeither 'dx' nor 'Lx' given. Abort.")
-            sys.exit(1)
+            print("***Neither 'dx' nor 'Lx' specified. Abort.")
+            abort()
 
         try:
             assert "dy" in disc.keys() or "Ly" in disc.keys()
         except AssertionError:
-            print("\nNeither 'dy' nor 'Ly' given. Abort.")
-            sys.exit(1)
+            print("***Neither 'dy' nor 'Ly' specified. Abort.")
+            abort()
 
         if "dx" in disc.keys():
             disc["dx"] = float(disc['dx'])
-            # Lx = dx * Nx
             disc['Lx'] = disc["dx"] * Nx
         else:
-            Lx = float(disc["Lx"])
-            disc["dx"] = Lx / Nx
+            disc["Lx"] = float(disc["Lx"])
+            disc["dx"] = disc["Lx"] / Nx
 
         if "dy" in disc.keys():
             disc["dy"] = float(disc['dy'])
-            # Ly = dy * Ny
             disc['Ly'] = disc["dy"] * Ny
         else:
-            Ly = float(disc["Ly"])
-            disc["dy"] = Ly / Ny
+            disc["Ly"] = float(disc["Ly"])
+            disc["dy"] = disc["Ly"] / Ny
 
         return disc
 
@@ -468,3 +453,11 @@ class Input:
         assert np.all((bc["y0"] == "P") == (bc["y1"] == "P")), "Inconsistent boundary conditions (y)"
 
         return bc
+
+
+def abort(errcode=0):
+    if MPI.COMM_WORLD.Get_size() == 1:
+        sys.exit(errcode)
+    else:
+        sys.stdout.flush()
+        MPI.COMM_WORLD.Abort(errcode)

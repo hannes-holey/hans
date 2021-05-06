@@ -48,8 +48,8 @@ class SymStressField2D(VectorField):
         visc_2 = zeta - 2 / 3 * eta
 
         # origin bottom, U_top = 0, U_bottom = U
-        self.field[0] = -3 * ((U * q[0] - q[1]) * visc_1 * h[1] + (V * q[0] - q[2]) * visc_2 * h[2]) / (h[0] * q[0])
-        self.field[1] = -3 * ((V * q[0] - q[2]) * visc_1 * h[2] + (U * q[0] - q[1]) * visc_2 * h[1]) / (h[0] * q[0])
+        self.field[0] = -((U * q[0] - 3 * q[1]) * visc_1 * h[1] + (V * q[0] - 3 * q[2]) * visc_2 * h[2]) / (h[0] * q[0])
+        self.field[1] = -((V * q[0] - 3 * q[2]) * visc_1 * h[2] + (U * q[0] - 3 * q[1]) * visc_2 * h[1]) / (h[0] * q[0])
         self.field[2] = -eta * ((V * q[0] - 3 * q[2]) * h[1] + (U * q[0] - 3 * q[1]) * h[2]) / (h[0] * q[0])
 
 

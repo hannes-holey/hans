@@ -70,8 +70,7 @@ class ConservedField(VectorField):
 
         # intialize field and time
         if q_init is not None:
-            ng = self.disc["nghost"]
-            self.field[:, ng:-ng, ng:-ng] = q_init[:, ng:-ng, ng:-ng]
+            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost[0], self.without_ghost[1]]
             self.fill_ghost_buffer()
             self.time = t_init[0]
             self.dt = t_init[1]
@@ -193,9 +192,9 @@ class ConservedField(VectorField):
             src = self.get_source(self.field, self.height.field)
 
             self.field = self.field - self.dt * (fX / dx + fY / dy - src)
+            self.fill_ghost_buffer()
 
         self.field = 0.5 * (self.field + q0)
-        self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 
@@ -210,9 +209,10 @@ class ConservedField(VectorField):
 
         # Step 1
         self.lax_step()
+        self.fill_ghost_buffer()
+
         # Step 2
         self.leap_frog(q0)
-
         self.fill_ghost_buffer()
 
         self.post_integrate(q0)
@@ -492,43 +492,26 @@ class ConservedField(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        QS = self.edgeE
-        QW = self.edgeN
-        QN = np.roll(QS, -1, axis=2)
-        QE = np.roll(QW, -1, axis=1)
+        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, 1)
+        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, 2)
+        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, 1)
+        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, 2)
+        src = self.get_source(self.field, self.height.field)
 
-        hS = self.height.edgeE
-        hW = self.height.edgeN
-        hN = np.roll(hS, -1, axis=2)
-        hE = np.roll(hW, -1, axis=1)
-
-        FS = self.hyperbolicFlux(QS, 1) - self.diffusiveFlux(QS, hS, 1)
-        FW = self.hyperbolicFlux(QW, 2) - self.diffusiveFlux(QW, hW, 2)
-        FN = self.hyperbolicFlux(QN, 1) - self.diffusiveFlux(QN, hN, 1)
-        FE = self.hyperbolicFlux(QE, 2) - self.diffusiveFlux(QE, hE, 2)
-
-        src = self.get_source(self.verticeNE, self.height.verticeNE)
-
-        self.field = self.verticeNE - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy - src)
+        self.field = self.field - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy - src)
 
     def leap_frog(self, q0):
 
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        QE = self.edgeS
-        QN = self.edgeW
-        QW = np.roll(QE, 1, axis=1)
-        QS = np.roll(QN, 1, axis=2)
+        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, 1)
+        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, 2)
+        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, 1)
+        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, 2)
+        src = self.get_source(self.field, self.height.field)
 
-        FE = self.hyperbolicFlux(QE, 1) - self.diffusiveFlux(QE, self.height.edgeE, 1)
-        FN = self.hyperbolicFlux(QN, 2) - self.diffusiveFlux(QN, self.height.edgeN, 2)
-        FW = self.hyperbolicFlux(QW, 1) - self.diffusiveFlux(QW, self.height.edgeW, 1)
-        FS = self.hyperbolicFlux(QS, 2) - self.diffusiveFlux(QS, self.height.edgeS, 2)
-
-        src = self.get_source(self.verticeSW, self.height.field)
-
-        self.field = q0 - self.dt / dx * (FE - FW) - self.dt / dy * (FN - FS) + src * self.dt
+        self.field = q0 - self.dt * ((FE - FW) / dx + (FN - FS) / dy - src)
 
     def cubicInterpolation(self, q, ax):
 
