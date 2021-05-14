@@ -32,12 +32,13 @@ from pylub.input import Input
 from pylub.material import Material
 
 
-@pytest.fixture(scope="session")
-def setup(tmpdir_factory):
+@pytest.fixture(scope="session", params=["MC", "RK3", "LW"])
+def setup(tmpdir_factory, request):
     config_file = os.path.join("examples", "journal1D_incomp.yaml")
     tmp_dir = tmpdir_factory.mktemp("tmp")
 
     myTestProblem = Input(config_file).getProblem()
+    myTestProblem.numerics["integrator"] = request.param
     material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
