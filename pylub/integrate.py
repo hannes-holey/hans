@@ -219,6 +219,9 @@ class ConservedField(VectorField):
 
     def runge_kutta3(self):
 
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
+
         if bool(self.numerics["fluctuating"]):
             W_A = np.random.normal(size=(3, 3) + self.field.shape[1:])
             W_B = np.random.normal(size=(3, 3) + self.field.shape[1:])
@@ -227,16 +230,24 @@ class ConservedField(VectorField):
 
         for stage in np.arange(1, 4):
 
+            if bool(self.numerics["fluctuating"]):
+                self.stoch_stress.set(W_A, W_B, self.height.field, self.dt, stage)
+
             dX, dY = self.diffusiveCD()
             fX, fY = self.hyperbolicTVD()
             src = self.get_source(self.field, self.height.field)
 
+            tmp = self.field - self.dt * (fX / dx - fY / dy + dX / (2 * dx) + dY / (2 * dy) - src)
+
             if bool(self.numerics["fluctuating"]):
-                self.stoch_stress.set(W_A, W_B, self.height.field, self.dt, stage)
+                corrX = dx / self.height.field[0]
+                corrY = dy / self.height.field[0]
+
+                # corrX = 1.
+                # corrY = 1.
+
                 sX, sY = self.stochasticFlux()
-                tmp = self.field - fX - fY + dX + dY + sX + sY + self.dt * src
-            else:
-                tmp = self.field - fX - fY + dX + dY + self.dt * src
+                tmp += (sX / dx * corrX + sY / dy * corrY) * self.dt
 
             if stage == 1:
                 self.field = tmp
@@ -362,26 +373,33 @@ class ConservedField(VectorField):
         self.upper_stress.set(q, h, "top")
         self.lower_stress.set(q, h, "bottom")
 
+        mask2d = [True, True, False, False, False, True]
+
+        if bool(self.numerics["fluctuating"]):
+            stress = self.viscous_stress.field + self.stoch_stress.field[mask2d]
+        else:
+            stress = self.viscous_stress.field
+
         out = np.zeros_like(q)
 
         # origin bottom, U_top = 0, U_bottom = U
         out[0] = (-q[1] * h[1] - q[2] * h[2]) / h[0]
 
         if bool(self.numerics["stokes"]):
-            out[1] = ((q[1] * q[1] / q[0] + self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
-                      (q[1] * q[2] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
+            out[1] = ((q[1] * q[1] / q[0] + stress[0] - self.upper_stress.field[0]) * h[1] +
+                      (q[1] * q[2] / q[0] + stress[2] - self.upper_stress.field[5]) * h[2] +
                       self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
 
-            out[2] = ((q[2] * q[1] / q[0] + self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
-                      (q[2] * q[2] / q[0] + self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
+            out[2] = ((q[2] * q[1] / q[0] + stress[2] - self.upper_stress.field[5]) * h[1] +
+                      (q[2] * q[2] / q[0] + stress[1] - self.upper_stress.field[1]) * h[2] +
                       self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
         else:
-            out[1] = ((self.viscous_stress.field[0] - self.upper_stress.field[0]) * h[1] +
-                      (self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[2] +
+            out[1] = ((stress[0] - self.upper_stress.field[0]) * h[1] +
+                      (stress[2] - self.upper_stress.field[5]) * h[2] +
                       self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
 
-            out[2] = ((self.viscous_stress.field[2] - self.upper_stress.field[5]) * h[1] +
-                      (self.viscous_stress.field[1] - self.upper_stress.field[1]) * h[2] +
+            out[2] = ((stress[2] - self.upper_stress.field[5]) * h[1] +
+                      (stress[1] - self.upper_stress.field[1]) * h[2] +
                       self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
 
         return out
@@ -530,14 +548,8 @@ class ConservedField(VectorField):
 
     def hyperbolicTVD(self):
 
-        dx = self.disc["dx"]
-        dy = self.disc["dy"]
-
         Qx = self.cubicInterpolation(self.field, 1)
-        # Px = EquationOfState(self.material).isoT_pressure(Qx[0])
-
         Qy = self.cubicInterpolation(self.field, 2)
-        # Py = EquationOfState(self.material).isoT_pressure(Qy[0])
 
         Fx = self.hyperbolicFlux(Qx, 1)
         Fy = self.hyperbolicFlux(Qy, 2)
@@ -545,7 +557,7 @@ class ConservedField(VectorField):
         flux_x = Fx - np.roll(Fx, 1, axis=1)
         flux_y = Fy - np.roll(Fy, 1, axis=2)
 
-        return self.dt / dx * flux_x, self.dt / dy * flux_y
+        return flux_x, flux_y
 
     def hyperbolicCD(self, q, p, dt, ax):
 
@@ -566,31 +578,20 @@ class ConservedField(VectorField):
 
     def diffusiveCD(self):
 
-        dx = self.disc["dx"]
-        dy = self.disc["dy"]
-
         Dx = self.diffusiveFlux(self.field, self.height.field, 1)
         Dy = self.diffusiveFlux(self.field, self.height.field, 2)
 
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
-        return self.dt / (2 * dx) * flux_x, self.dt / (2 * dy) * flux_y
+        return flux_x, flux_y
 
     def stochasticFlux(self):
-
-        dx = self.disc["dx"]
-        dy = self.disc["dy"]
 
         Sx_E = np.zeros((3,) + self.field.shape[1:])
         Sx_W = np.zeros((3,) + self.field.shape[1:])
         Sy_N = np.zeros((3,) + self.field.shape[1:])
         Sy_S = np.zeros((3,) + self.field.shape[1:])
-
-        corrX = dx / self.height.field[0]
-        corrY = dy / self.height.field[0]
-
-        # corrX = corrY = 1.
 
         Sx_E[1] = self.stoch_stress.field[0]
         Sx_E[2] = self.stoch_stress.field[5]
@@ -602,4 +603,4 @@ class ConservedField(VectorField):
         Sy_S[1] = np.roll(self.stoch_stress.field[5], 1, axis=1)
         Sy_S[2] = np.roll(self.stoch_stress.field[1], 1, axis=1)
 
-        return self.dt / dx * (Sx_E - Sx_W) * corrX, self.dt / dy * (Sy_N - Sy_S) * corrY
+        return (Sx_E - Sx_W), (Sy_N - Sy_S)
