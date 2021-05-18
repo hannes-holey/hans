@@ -248,6 +248,7 @@ class ConservedField(VectorField):
 
                 sX, sY = self.stochasticFlux()
                 tmp += (sX / dx * corrX + sY / dy * corrY) * self.dt
+            tmp = self.field - self.dt * (fX / dx + fY / dy + dX / (2 * dx) + dY / (2 * dy) - src)
 
             if stage == 1:
                 self.field = tmp
