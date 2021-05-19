@@ -226,7 +226,11 @@ class Problem:
             self.outpath = self.q.comm.bcast(self.outpath, root=0)
 
             # initialize NetCDF file
-            nc = Dataset(self.outpath, 'w', parallel=True, format='NETCDF3_64BIT_OFFSET')
+            parallel = False
+            if self.q.comm.Get_size() > 1:
+                parallel = True
+
+            nc = Dataset(self.outpath, 'w', parallel=parallel, format='NETCDF3_64BIT_OFFSET')
             nc.restarts = 0
             nc.createDimension('x', self.disc["Nx"])
             nc.createDimension('y', self.disc["Ny"])
@@ -281,7 +285,10 @@ class Problem:
 
         else:
             # append to existing netCDF file
-            nc = Dataset(self.restart_file, 'a', parallel=True, format='NETCDF3_64BIT_OFFSET')
+            parallel = False
+            if self.q.comm.Get_size() > 1:
+                parallel = True
+            nc = Dataset(self.restart_file, 'a', parallel=parallel, format='NETCDF3_64BIT_OFFSET')
             self.outpath = os.path.relpath(self.restart_file)
 
             # create backup
