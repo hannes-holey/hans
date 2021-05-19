@@ -28,7 +28,7 @@ SOFTWARE.
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
-from pylub.plottools import Plot
+from hans.plottools import Plot
 
 
 def get_parser():

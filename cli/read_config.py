@@ -25,7 +25,7 @@ SOFTWARE.
 """
 
 
-from pylub.plottools import Plot
+from hans.plottools import Plot
 
 if __name__ == "__main__":
 
