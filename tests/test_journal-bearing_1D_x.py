@@ -32,17 +32,18 @@ from pylub.input import Input
 from pylub.material import Material
 
 
-@pytest.fixture(scope="session")
-def setup(tmpdir_factory):
-    config_file = os.path.join("examples", "journal1D_DH.yaml")
+@pytest.fixture(scope="session", params=["MC", "RK3", "LW"])
+def setup(tmpdir_factory, request):
+    config_file = os.path.join("tests", "journal-bearing1D_x_incompressible.yaml")
     tmp_dir = tmpdir_factory.mktemp("tmp")
 
     myTestProblem = Input(config_file).getProblem()
+    myTestProblem.numerics["integrator"] = request.param
     material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
     ds = netCDF4.Dataset(tmp_dir.join(os.path.basename(myTestProblem.outpath)))
-    rho_ref, p_ref = np.loadtxt(os.path.join("tests", "jb_0.7_inf_DH_ref.dat"), unpack=True)
+    rho_ref, p_ref = np.loadtxt(os.path.join("tests", "journal-bearing1D_eps0.7_incompressible.dat"), unpack=True)
 
     yield ds, rho_ref, p_ref, material
 

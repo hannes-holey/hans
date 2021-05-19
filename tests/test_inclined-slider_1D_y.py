@@ -32,18 +32,17 @@ from pylub.input import Input
 from pylub.material import Material
 
 
-@pytest.fixture(scope="session", params=["MC", "RK3", "LW"])
-def setup(tmpdir_factory, request):
-    config_file = os.path.join("examples", "journal1D_incomp.yaml")
+@pytest.fixture(scope="session")
+def setup(tmpdir_factory):
+    config_file = os.path.join("tests", "inclined-slider1D_y_ideal-gas.yaml")
     tmp_dir = tmpdir_factory.mktemp("tmp")
 
     myTestProblem = Input(config_file).getProblem()
-    myTestProblem.numerics["integrator"] = request.param
     material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
     ds = netCDF4.Dataset(tmp_dir.join(os.path.basename(myTestProblem.outpath)))
-    rho_ref, p_ref = np.loadtxt(os.path.join("tests", "jb_0.7_inf_stiffDH_ref.dat"), unpack=True)
+    rho_ref, p_ref = np.loadtxt(os.path.join("tests", "inclined-slider1D_ideal-gas_U50_s5.6e-4.dat"), unpack=True, usecols=(1, 2))
 
     yield ds, rho_ref, p_ref, material
 
@@ -52,7 +51,7 @@ def test_pressure(setup):
     ds, rho_ref, p_ref, material = setup
     rho = np.array(ds.variables["rho"])[-1]
     p = Material(material).eos_pressure(rho)
-    p = p[:, p.shape[1] // 2] / 1e6
+    p = p[p.shape[0] // 2, :] / 1e6
     p_ref /= 1e6
 
     np.testing.assert_almost_equal(p, p_ref, decimal=1)
@@ -61,13 +60,6 @@ def test_pressure(setup):
 def test_density(setup):
     ds, rho_ref, p_ref, material = setup
     rho = np.array(ds.variables["rho"])[-1]
-    rho = rho[:, rho.shape[1] // 2]
+    rho = rho[rho.shape[0] // 2, :]
 
     np.testing.assert_almost_equal(rho, rho_ref, decimal=1)
-
-
-def test_massConservation(setup):
-    ds, rho_ref, p_ref, material = setup
-    mass = np.array(ds.variables["mass"])
-    relDiff = abs(mass[-1] - mass[0]) / mass[0]
-    assert relDiff < 0.001
