@@ -297,11 +297,6 @@ class Input:
         else:
             disc["nghost"] = 1
 
-        try:
-            numerics["fluctuating"] = int(numerics["fluctuating"])
-        except KeyError:
-            numerics["fluctuating"] = 0
-
         return numerics
 
     def check_mat(self, material):

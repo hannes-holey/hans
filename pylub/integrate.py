@@ -27,7 +27,7 @@ import numpy as np
 from mpi4py import MPI
 
 from pylub.field import VectorField
-from pylub.stress import SymStressField2D, SymStressField3D, SymStochStressField3D
+from pylub.stress import SymStressField2D, SymStressField3D
 from pylub.geometry import GapHeight
 from pylub.material import Material
 
@@ -82,9 +82,6 @@ class ConservedField(VectorField):
         self.viscous_stress = SymStressField2D(disc, geometry, material)
         self.upper_stress = SymStressField3D(disc, geometry, material)
         self.lower_stress = SymStressField3D(disc, geometry, material)
-
-        if bool(self.numerics["fluctuating"]):
-            self.stoch_stress = SymStochStressField3D(disc, geometry, material)
 
     @property
     def mass(self):
@@ -222,32 +219,14 @@ class ConservedField(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        if bool(self.numerics["fluctuating"]):
-            W_A = np.random.normal(size=(3, 3) + self.field.shape[1:])
-            W_B = np.random.normal(size=(3, 3) + self.field.shape[1:])
-
         q0 = self.field.copy()
 
         for stage in np.arange(1, 4):
-
-            if bool(self.numerics["fluctuating"]):
-                self.stoch_stress.set(W_A, W_B, self.height.field, self.dt, stage)
 
             dX, dY = self.diffusiveCD()
             fX, fY = self.hyperbolicTVD()
             src = self.get_source(self.field, self.height.field)
 
-            tmp = self.field - self.dt * (fX / dx - fY / dy + dX / (2 * dx) + dY / (2 * dy) - src)
-
-            if bool(self.numerics["fluctuating"]):
-                corrX = dx / self.height.field[0]
-                corrY = dy / self.height.field[0]
-
-                # corrX = 1.
-                # corrY = 1.
-
-                sX, sY = self.stochasticFlux()
-                tmp += (sX / dx * corrX + sY / dy * corrY) * self.dt
             tmp = self.field - self.dt * (fX / dx + fY / dy + dX / (2 * dx) + dY / (2 * dy) - src)
 
             if stage == 1:
@@ -374,12 +353,7 @@ class ConservedField(VectorField):
         self.upper_stress.set(q, h, "top")
         self.lower_stress.set(q, h, "bottom")
 
-        mask2d = [True, True, False, False, False, True]
-
-        if bool(self.numerics["fluctuating"]):
-            stress = self.viscous_stress.field + self.stoch_stress.field[mask2d]
-        else:
-            stress = self.viscous_stress.field
+        stress = self.viscous_stress.field
 
         out = np.zeros_like(q)
 
@@ -586,22 +560,3 @@ class ConservedField(VectorField):
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)
 
         return flux_x, flux_y
-
-    def stochasticFlux(self):
-
-        Sx_E = np.zeros((3,) + self.field.shape[1:])
-        Sx_W = np.zeros((3,) + self.field.shape[1:])
-        Sy_N = np.zeros((3,) + self.field.shape[1:])
-        Sy_S = np.zeros((3,) + self.field.shape[1:])
-
-        Sx_E[1] = self.stoch_stress.field[0]
-        Sx_E[2] = self.stoch_stress.field[5]
-        Sx_W[1] = np.roll(self.stoch_stress.field[0], 1, axis=0)
-        Sx_W[2] = np.roll(self.stoch_stress.field[5], 1, axis=0)
-
-        Sy_N[1] = self.stoch_stress.field[5]
-        Sy_N[2] = self.stoch_stress.field[1]
-        Sy_S[1] = np.roll(self.stoch_stress.field[5], 1, axis=1)
-        Sy_S[2] = np.roll(self.stoch_stress.field[1], 1, axis=1)
-
-        return (Sx_E - Sx_W), (Sy_N - Sy_S)
