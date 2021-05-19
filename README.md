@@ -1,13 +1,12 @@
 # HANS
 
-[![PyPI version](https://badge.fury.io/py/hans.svg)](https://badge.fury.io/py/hans) [![CI](https://github.com/hannes-holey/pylub/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/hannes-holey/pylub/actions/workflows/ci.yaml) 
+[![PyPI version](https://badge.fury.io/py/hans.svg)](https://badge.fury.io/py/hans) [![CI](https://github.com/hannes-holey/pylub/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/hannes-holey/pylub/actions/workflows/ci.yaml)
 
 A Height-Averaged Navier-Stokes (HANS) solver for 2D lubrication problems
 
 ## Installation
-Install from the main source directory via
 ```
-pip install .
+pip install hans
 ```
 
 ## Tests
