@@ -34,7 +34,7 @@ import matplotlib.animation as animation
 import matplotlib.ticker as tk
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from pylub.material import Material
+from hans.material import Material
 
 
 class Plot:

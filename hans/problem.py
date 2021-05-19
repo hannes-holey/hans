@@ -34,9 +34,9 @@ from git import Repo
 import numpy as np
 import shutil
 
-from pylub.material import Material
-from pylub.plottools import adaptiveLimits
-from pylub.integrate import ConservedField
+from hans.material import Material
+from hans.plottools import adaptiveLimits
+from hans.integrate import ConservedField
 
 
 class Problem:

@@ -26,10 +26,10 @@ SOFTWARE.
 import numpy as np
 from mpi4py import MPI
 
-from pylub.field import VectorField
-from pylub.stress import SymStressField2D, SymStressField3D
-from pylub.geometry import GapHeight
-from pylub.material import Material
+from hans.field import VectorField
+from hans.stress import SymStressField2D, SymStressField3D
+from hans.geometry import GapHeight
+from hans.material import Material
 
 
 class ConservedField(VectorField):

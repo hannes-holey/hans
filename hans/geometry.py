@@ -24,7 +24,7 @@ SOFTWARE.
 
 
 import numpy as np
-from pylub.field import VectorField
+from hans.field import VectorField
 
 
 class GapHeight(VectorField):

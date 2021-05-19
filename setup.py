@@ -1,12 +1,17 @@
 from setuptools import setup, find_packages
 
-setup(name='pylub',
-      description='A 2D Fluid Mechanics Solver for Lubrication',
-      url='http://github.com/hannes-holey/pylub',
+with open("requirements.txt", "r") as fh:
+    requirements = [line.strip() for line in fh]
+
+setup(name='hans',
+      description='Height-Averaged Navier-Stokes (HANS) solver for 2D lubrication problems',
       author='Hannes Holey',
       author_email='hannes.holey@kit.edu',
+      url='http://github.com/hannes-holey/hans',
       license="MIT",
       packages=find_packages(),
+      package_data={'': ['ChangeLog.md']},
+      include_package_data=True,
       scripts=['cli/plot1D_evolution.py',
                'cli/plot1D_last.py',
                'cli/plot2D_last.py',

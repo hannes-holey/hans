@@ -23,8 +23,8 @@ SOFTWARE.
 """
 
 
-from pylub.field import VectorField, TensorField
-from pylub.material import Material
+from hans.field import VectorField, TensorField
+from hans.material import Material
 
 
 class SymStressField2D(VectorField):

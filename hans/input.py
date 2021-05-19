@@ -28,8 +28,8 @@ import yaml
 import numpy as np
 from mpi4py import MPI
 
-from pylub.problem import Problem
-from pylub.material import Material
+from hans.problem import Problem
+from hans.material import Material
 
 
 class Input:

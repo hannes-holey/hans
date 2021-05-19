@@ -27,7 +27,7 @@ import os
 from mpi4py import MPI
 from argparse import ArgumentParser
 
-from pylub.input import Input
+from hans.input import Input
 
 
 def get_parser():
