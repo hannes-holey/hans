@@ -202,7 +202,7 @@ class Input:
         """
         print("Checking geometry... ")
 
-        if geo["type"] == "journal":
+        if geo["type"] in ["journal", "journal_x", "journal_y"]:
             geo["CR"] = float(geo["CR"])
             geo["eps"] = float(geo["eps"])
         elif geo["type"] == "parabolic":
@@ -211,7 +211,7 @@ class Input:
         elif geo["type"] == "twin_parabolic":
             geo["hmin"] = float(geo['hmin'])
             geo["hmax"] = float(geo['hmax'])
-        elif geo["type"] == "inclined":
+        elif geo["type"] in ["inclined", "inclined_x", "inclined_y"]:
             geo["h1"] = float(geo['h1'])
             geo["h2"] = float(geo['h2'])
         elif geo["type"] == "inclined_pocket":
@@ -221,7 +221,7 @@ class Input:
             geo["c"] = float(geo['c'])
             geo["l"] = float(geo['l'])
             geo["w"] = float(geo['w'])
-        elif geo["type"] == "half_sine" or geo["type"] == "half_sine_squared":
+        elif geo["type"] in ["half_sine", "half_sine_squared"]:
             geo["h0"] = float(geo['h0'])
             geo["amp"] = float(geo['amp'])
             geo["num"] = float(geo['num'])

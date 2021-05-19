@@ -55,7 +55,7 @@ class GapHeight(VectorField):
         xx = idxx * (Lx + 2 * ng * dx) / (Nx + 2 * ng) + dx / 2
         yy = idyy * (Ly + 2 * ng * dy) / (Ny + 2 * ng) + dy / 2
 
-        if self.geometry["type"] == "journal":
+        if self.geometry["type"] in ["journal", "journal_x"]:
             CR = self.geometry['CR']
             eps = self.geometry['eps']
 
@@ -63,6 +63,15 @@ class GapHeight(VectorField):
             c = CR * Rb
             e = eps * c
             self.field[0] = c + e * np.cos(xx / Rb)
+
+        elif self.geometry["type"] == "journal_y":
+            CR = self.geometry['CR']
+            eps = self.geometry['eps']
+
+            Rb = Ly / (2 * np.pi)
+            c = CR * Rb
+            e = eps * c
+            self.field[0] = c + e * np.cos(yy / Rb)
 
         elif self.geometry["type"] == "parabolic":
             hmin = self.geometry['hmin']
@@ -77,10 +86,15 @@ class GapHeight(VectorField):
             self.field[0] = 16 * (hmax - hmin) / Lx**2 * (xx - Lx / 4)**2 + hmin
             self.field[0][right] = 16 * (hmax - hmin) / Lx**2 * (xx[right] - 3 * Lx / 4)**2 + hmin
 
-        elif self.geometry["type"] == "inclined":
+        elif self.geometry["type"] in ["inclined", "inclined_x"]:
             h1 = self.geometry['h1']
             h2 = self.geometry['h2']
             self.field[0] = h1 + (h2 - h1) / (Lx) * xx
+
+        elif self.geometry["type"] == "inclined_y":
+            h1 = self.geometry['h1']
+            h2 = self.geometry['h2']
+            self.field[0] = h1 + (h2 - h1) / (Ly) * yy
 
         elif self.geometry["type"] == "inclined_pocket":
             h1 = self.geometry['h1']
