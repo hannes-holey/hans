@@ -1,4 +1,7 @@
 # HANS
+
+[![CI](https://github.com/hannes-holey/pylub/actions/workflows/main.yaml/badge.svg?branch=master)](https://github.com/hannes-holey/pylub/actions/workflows/main.yaml)
+
 A Height-Averaged Navier-Stokes (HANS) solver for 2D lubrication problems
 
 ## Installation
