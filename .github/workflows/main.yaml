@@ -15,17 +15,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
 
-    - name: install_python
+    - name: Install MPI
       run: |
-        sudo apt-get update -qy
-        sudo apt-get install -y python3-dev python3-pip openmpi-bin libopenmpi-dev
-        sudo pip3 install setuptools
-        sudo pip3 install -r requirements.txt
-    - name: build
+        sudo apt-get install -y openmpi-bin libopenmpi-dev
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      # run: |
+      #   sudo apt-get update -qy
+      #   sudo apt-get install -y python3-dev python3-pip openmpi-bin libopenmpi-dev
+      #   sudo pip3 install setuptools
+
+    - name: Install requirements
       run: |
-        python3 setup.py install
+        python -m pip install --upgrade pip
+        python -m pip install setuptools
+        python -m pip install -r requirements.txt
+
+    - name: Install hans
+      run: |
+        sudo python3 setup.py install
     - name: Test with pytest
       run: |
         pytest
