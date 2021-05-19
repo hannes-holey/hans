@@ -28,8 +28,8 @@ import netCDF4
 import numpy as np
 import pytest
 
-from pylub.input import Input
-from pylub.material import Material
+from hans.input import Input
+from hans.material import Material
 
 
 @pytest.fixture(scope="session", params=["MC", "RK3", "LW"])
