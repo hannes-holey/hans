@@ -9,3 +9,4 @@ submit.sh
 build
 dist
 *.egg-info
+.eggs
