@@ -26,11 +26,10 @@ SOFTWARE.
 import os
 import signal
 from netCDF4 import Dataset
-from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from datetime import datetime
-from git import Repo
+from pkg_resources import get_distribution
 import numpy as np
 import shutil
 
@@ -253,11 +252,8 @@ class Problem:
             nc.createVariable('eps', 'f8', ('step'))
 
             # write metadata
-            git_commit = Repo(path=Path(__file__).parents[1],
-                              search_parent_directories=True).head.object.hexsha
-
             nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
-            nc.setncattr("commit", str(git_commit))
+            nc.setncattr("version", get_distribution('hans').version)
 
             disc = self.disc.copy()
             bc = self.bc.copy()
