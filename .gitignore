@@ -2,8 +2,6 @@
 *~
 __pycache__
 data/
-config/
-submit.sh
 .docblock.json
 .ipynb_checkpoints
 build
