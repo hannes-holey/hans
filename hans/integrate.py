@@ -28,13 +28,13 @@ from mpi4py import MPI
 
 from hans.field import VectorField
 from hans.stress import SymStressField2D, SymStressField3D
-from hans.geometry import GapHeight
+from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
 
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, bc, geometry, material, numerics, q_init=None, t_init=None):
+    def __init__(self, disc, bc, geometry, material, numerics, surface, q_init=None, t_init=None):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
         and the methods to update them. Derived from VectorField.
@@ -51,6 +51,8 @@ class ConservedField(VectorField):
             Material parameters.
         numerics : dict
             numerics parameters
+        surface : dict
+            surface parameters
         q_init : np.array
             Inital field in case of a restart (the default is None)
         t_init : tuple
@@ -65,8 +67,9 @@ class ConservedField(VectorField):
         self.material = material
         self.numerics = numerics
 
-        # initialize gap height field
+        # initialize gap height and slip length field
         self.height = GapHeight(disc, geometry)
+        self.slip_length = SlipLength(disc, surface)
 
         # intialize field and time
         if q_init is not None:
@@ -186,7 +189,7 @@ class ConservedField(VectorField):
         for dir in directions:
 
             fX, fY = self.predictor_corrector(self.field, self.height.field, dir)
-            src = self.get_source(self.field, self.height.field)
+            src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
             self.field = self.field - self.dt * (fX / dx + fY / dy - src)
             self.fill_ghost_buffer()
@@ -225,7 +228,7 @@ class ConservedField(VectorField):
 
             dX, dY = self.diffusiveCD()
             fX, fY = self.hyperbolicTVD()
-            src = self.get_source(self.field, self.height.field)
+            src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
             tmp = self.field - self.dt * (fX / dx + fY / dy + dX / (2 * dx) + dY / (2 * dy) - src)
 
@@ -331,7 +334,7 @@ class ConservedField(VectorField):
             self.field[y0 == "D", :, 0] = 2. * self.bc["rhoy0"] - self.field[y0 == "D", :, 1]
             self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
 
-    def get_source(self, q, h):
+    def get_source(self, q, h, Ls):
         """
         Compute the source term from the unknown and gap height.
 
@@ -341,6 +344,8 @@ class ConservedField(VectorField):
             Solution field.
         h : np.array
             Gap height (and gradients).
+        Ls : np.array
+            Slip length (lower surface)
 
         Returns
         -------
@@ -349,9 +354,9 @@ class ConservedField(VectorField):
 
         """
 
-        self.viscous_stress.set(q, h)
-        self.upper_stress.set(q, h, "top")
-        self.lower_stress.set(q, h, "bottom")
+        self.viscous_stress.set(q, h, Ls)
+        self.upper_stress.set(q, h, Ls, "top")
+        self.lower_stress.set(q, h, Ls, "bottom")
 
         stress = self.viscous_stress.field
 
@@ -399,8 +404,8 @@ class ConservedField(VectorField):
 
         """
 
-        Fx = self.hyperbolicFlux(q, 1) - self.diffusiveFlux(q, h, 1)
-        Fy = self.hyperbolicFlux(q, 2) - self.diffusiveFlux(q, h, 2)
+        Fx = self.hyperbolicFlux(q, 1) - self.diffusiveFlux(q, h, self.slip_length.field, 1)
+        Fy = self.hyperbolicFlux(q, 2) - self.diffusiveFlux(q, h, self.slip_length.field, 2)
 
         flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx)
         flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy)
@@ -448,7 +453,7 @@ class ConservedField(VectorField):
 
         return F
 
-    def diffusiveFlux(self, q, h, ax):
+    def diffusiveFlux(self, q, h, Ls, ax):
         """Compute diffusive flux.
 
         Parameters
@@ -457,6 +462,8 @@ class ConservedField(VectorField):
             Solution field.
         h : np.array
             Gap height (and gradients).
+        Ls : np.array
+            Slip length (lower surface)
         ax : int
             Axis parameter, 1 == x and 2 == y
 
@@ -467,7 +474,7 @@ class ConservedField(VectorField):
 
         """
 
-        self.viscous_stress.set(q, h)
+        self.viscous_stress.set(q, h, Ls)
 
         D = np.zeros_like(q)
         if ax == 1:
@@ -485,11 +492,11 @@ class ConservedField(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, 1)
-        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, 2)
-        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, 1)
-        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, 2)
-        src = self.get_source(self.field, self.height.field)
+        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, self.slip_length.field, 1)
+        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, self.slip_length.field, 2)
+        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, self.slip_length.field, 1)
+        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, self.slip_length.field, 2)
+        src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
         self.field = self.field - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy - src)
 
@@ -498,11 +505,11 @@ class ConservedField(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, 1)
-        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, 2)
-        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, 1)
-        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, 2)
-        src = self.get_source(self.field, self.height.field)
+        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, self.slip_length.field, 1)
+        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, self.slip_length.field, 2)
+        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, self.slip_length.field, 1)
+        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, self.slip_length.field, 2)
+        src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
         self.field = q0 - self.dt * ((FE - FW) / dx + (FN - FS) / dy - src)
 
@@ -553,8 +560,8 @@ class ConservedField(VectorField):
 
     def diffusiveCD(self):
 
-        Dx = self.diffusiveFlux(self.field, self.height.field, 1)
-        Dy = self.diffusiveFlux(self.field, self.height.field, 2)
+        Dx = self.diffusiveFlux(self.field, self.height.field, self.slip_length.field, 1)
+        Dy = self.diffusiveFlux(self.field, self.height.field, self.slip_length.field, 2)
 
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)

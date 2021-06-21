@@ -40,7 +40,7 @@ from hans.integrate import ConservedField
 
 class Problem:
 
-    def __init__(self, options, disc, bc, geometry, numerics, material, restart_file):
+    def __init__(self, options, disc, bc, geometry, numerics, material, surface, restart_file):
         """
         Collects all information about a single problem
         and contains the methods to run a simulation, based on the problem defintiion."
@@ -59,6 +59,8 @@ class Problem:
             Contains numerics parameters.
         material : dict
             Contains material parameters.
+        surface : dict
+            Contains surface parameters.
         restart_file : str
             Filename of the netCDF file, from which simulation is restarted.
 
@@ -70,6 +72,7 @@ class Problem:
         self.geometry = geometry
         self.numerics = numerics
         self.material = material
+        self.surface = surface
         self.restart_file = restart_file
 
     def run(self, out_dir, plot=False):
@@ -104,6 +107,7 @@ class Problem:
                                 self.geometry,
                                 self.material,
                                 self.numerics,
+                                self.surface,
                                 q_init=q_init,
                                 t_init=t_init)
 
@@ -264,6 +268,9 @@ class Problem:
                           "geometry": self.geometry,
                           "numerics": self.numerics,
                           "material": self.material}
+
+            if self.surface is not None:
+                categories["surface"] = self.surface
 
             # reset modified input dictionaries
             bc["x0"] = "".join(bc["x0"])

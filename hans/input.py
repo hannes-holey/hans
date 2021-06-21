@@ -71,6 +71,12 @@ class Input:
             numerics = self.check_num(inp['numerics'], disc)
             material = self.check_mat(inp['material'])
             bc = self.check_bc(inp['BC'], disc, material)
+
+            if "surface" in inp.keys():
+                surface = self.check_surface(inp['surface'])
+            else:
+                surface = None
+
             print("Sanity checks completed. Start simulation!")
             print(60 * "-")
 
@@ -80,6 +86,7 @@ class Input:
                               geometry,
                               numerics,
                               material,
+                              surface,
                               self.restartFile)
 
         return thisProblem
@@ -374,6 +381,25 @@ class Input:
                 material["N"] = float(material["N"])
 
         return material
+
+    def check_surface(self, surface):
+
+        if "lslip" in surface.keys():
+            surface["lslip"] = float(surface["lslip"])
+        else:
+            surface["lslip"] = 0.
+
+        if surface["type"] in ["stripes", "stripes_x", "stripes_y"]:
+            try:
+                surface["num"] = int(surface["num"])
+            except KeyError:
+                surface["num"] = 1
+            try:
+                surface["sign"] = int(surface["sign"])
+            except KeyError:
+                surface["sign"] = -1
+
+        return surface
 
     def check_bc(self, bc, disc, material):
         """
