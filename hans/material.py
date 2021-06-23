@@ -46,10 +46,9 @@ class Material:
             p = P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
             if 'Pcav' in self.material.keys():
                 Pcav = self.material['Pcav']
-                rho_cav = self.eos_density(Pcav)
-                p[rho < rho_cav] = Pcav
-
-            return p
+                return np.maximum(p, Pcav)
+            else:
+                return p
 
         # Power law, (alpha = 0: ideal gas)
         elif self.material['EOS'] == "PL":
@@ -66,7 +65,12 @@ class Material:
             a = self.material['a']
             b = self.material['b']
 
-            return R * T * rho / (M - b * rho) - a * rho**2 / M**2
+            p = R * T * rho / (M - b * rho) - a * rho**2 / M**2
+            if 'Pcav' in self.material.keys():
+                Pcav = self.material['Pcav']
+                return np.maximum(p, Pcav)
+            else:
+                return p
 
         # Murnaghan equation (modified Tait eq.)
         elif self.material['EOS'] == "Murnaghan":

@@ -24,7 +24,7 @@ SOFTWARE.
 
 
 import numpy as np
-from hans.field import VectorField
+from hans.field import ScalarField, VectorField
 
 
 class GapHeight(VectorField):
@@ -137,3 +137,47 @@ class GapHeight(VectorField):
         dy = self.disc["dy"]
 
         self.field[1:] = np.gradient(self.field[0], dx, dy, edge_order=2)
+
+
+class SlipLength(ScalarField):
+
+    def __init__(self, disc, surface):
+
+        super().__init__(disc)
+
+        if surface is not None:
+
+            self.surface = surface
+            self.disc = disc
+
+            self.fill()
+
+    def fill(self):
+
+        Lx = self.disc["Lx"]
+        Ly = self.disc["Ly"]
+        Nx = self.disc["Nx"]
+        Ny = self.disc["Ny"]
+        dx = self.disc["dx"]
+        dy = self.disc["dy"]
+
+        idxx, idyy = self.id_grid
+
+        ng = self.disc["nghost"]
+
+        xx = idxx * (Lx + 2 * ng * dx) / (Nx + 2 * ng) + dx / 2
+        yy = idyy * (Ly + 2 * ng * dy) / (Ny + 2 * ng) + dy / 2
+
+        if self.surface["type"] in ["stripes", "stripes_x"]:
+            num = self.surface["num"]
+            sign = self.surface["sign"]
+            sin = sign * np.sin(2 * np.pi * xx * num / Lx)
+            mask = np.greater(sin, 0)
+        elif self.surface["type"] in ["stripes_y"]:
+            num = self.surface["num"]
+            sign = self.surface["sign"]
+            sin = sign * np.sin(2 * np.pi * yy * num / Ly)
+            mask = np.greater(sin, 0)
+
+        ls = self.surface["lslip"]
+        self.field[0, mask] = ls
