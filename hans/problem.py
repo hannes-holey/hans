@@ -75,14 +75,14 @@ class Problem:
         self.surface = surface
         self.restart_file = restart_file
 
-    def run(self, out_dir, plot=False):
+    def run(self, out_dir="data", plot=False):
         """
         Starts the simulation.
 
         Parameters
         ----------
         out_dir : str
-            Output directory.
+            Output directory (default: data).
         plot : bool
             On-the-fly plotting flag (default: False).
 
