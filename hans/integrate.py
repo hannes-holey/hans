@@ -27,7 +27,7 @@ import numpy as np
 from mpi4py import MPI
 
 from hans.field import VectorField
-from hans.stress import SymStressField2D, SymStressField3D
+from hans.stress import SymStressField2D, SymStressField3D, SymStochStressField3D
 from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
 
