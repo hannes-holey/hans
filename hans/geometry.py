@@ -173,11 +173,42 @@ class SlipLength(ScalarField):
             sign = self.surface["sign"]
             sin = sign * np.sin(2 * np.pi * xx * num / Lx)
             mask = np.greater(sin, 0)
+
         elif self.surface["type"] in ["stripes_y"]:
             num = self.surface["num"]
             sign = self.surface["sign"]
             sin = sign * np.sin(2 * np.pi * yy * num / Ly)
             mask = np.greater(sin, 0)
+
+        elif self.surface["type"] == "checkerboard":
+            right_x = np.greater(xx, Lx / 2)
+            center_y = np.logical_and(np.greater(yy, Ly / 4), np.less(yy, 3 * Ly / 4))
+            mask_1 = np.logical_and(right_x, center_y)
+            mask_2 = np.logical_and(np.logical_not(right_x), np.logical_not(center_y))
+            mask = np.logical_or(mask_1, mask_2)
+
+        elif self.surface["type"] == "circle":
+            center = (3 * Lx / 4, Ly / 2)
+            radius = Lx / 4
+            mask = np.less((xx - center[0])**2 + (yy - center[1])**2, radius**2)
+
+        elif self.surface["type"] == "circle2":
+            center_1 = (3 * Lx / 4, Ly/2)
+            center_2 = (Lx / 4, Ly)
+            center_3 = (Lx / 4, 0)
+            radius = Lx / 4
+            mask_1 = np.less((xx - center_1[0])**2 + (yy - center_1[1])**2, radius**2)
+            mask_2 = np.less((xx - center_2[0])**2 + (yy - center_2[1])**2, radius**2)
+            mask_3 = np.less((xx - center_3[0])**2 + (yy - center_3[1])**2, radius**2)
+
+            mask = np.logical_or(np.logical_or(mask_1, mask_2), mask_3)
+
+        elif self.surface["type"] == "square":
+            right_x = np.greater(xx, Lx / 2)
+            center_y = np.logical_and(np.greater(yy, Ly / 4), np.less(yy, 3 * Ly / 4))
+            mask = np.logical_and(right_x, center_y)
+
+        # print(mask.astype(int))
 
         ls = self.surface["lslip"]
         self.field[0, mask] = ls
