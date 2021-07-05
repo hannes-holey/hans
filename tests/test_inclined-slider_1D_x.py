@@ -24,12 +24,11 @@ SOFTWARE.
 
 
 import os
-import netCDF4
 import numpy as np
 import pytest
 
 from hans.input import Input
-from hans.material import Material
+from hans.plottools import DatasetSelector
 
 
 @pytest.fixture(scope="session")
@@ -38,28 +37,28 @@ def setup(tmpdir_factory):
     tmp_dir = tmpdir_factory.mktemp("tmp")
 
     myTestProblem = Input(config_file).getProblem()
-    material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
-    ds = netCDF4.Dataset(tmp_dir.join(os.path.basename(myTestProblem.outpath)))
-    rho_ref, p_ref = np.loadtxt(os.path.join("tests", "inclined-slider1D_ideal-gas_U50_s5.6e-4.dat"), unpack=True, usecols=(1, 2))
+    file = DatasetSelector("", mode="name", fname=[str(tmp_dir.join(os.path.basename(myTestProblem.outpath)))])
 
-    yield ds, rho_ref, p_ref, material
+    fdata = file.get_centerline()
+
+    yield fdata
 
 
 def test_pressure(setup):
-    ds, rho_ref, p_ref, material = setup
-    rho = np.array(ds.variables["rho"])[-1]
-    p = Material(material).eos_pressure(rho)
-    p = p[:, p.shape[1] // 2] / 1e6
-    p_ref /= 1e6
 
-    np.testing.assert_almost_equal(p, p_ref, decimal=1)
+    p_ref = np.loadtxt(os.path.join("tests", "inclined-slider1D_ideal-gas_U50_s5.6e-4.dat"), unpack=True, usecols=(2,))
+
+    for data in setup.values():
+        p = data["p"][1]
+        np.testing.assert_almost_equal(p / 1e6, p_ref / 1e6, decimal=1)
 
 
 def test_density(setup):
-    ds, rho_ref, p_ref, material = setup
-    rho = np.array(ds.variables["rho"])[-1]
-    rho = rho[:, rho.shape[1] // 2]
 
-    np.testing.assert_almost_equal(rho, rho_ref, decimal=1)
+    rho_ref = np.loadtxt(os.path.join("tests", "inclined-slider1D_ideal-gas_U50_s5.6e-4.dat"), unpack=True, usecols=(1,))
+
+    for data in setup.values():
+        rho = data["rho"][1]
+        np.testing.assert_almost_equal(rho, rho_ref, decimal=1)
