@@ -24,9 +24,7 @@ SOFTWARE.
 
 
 import os
-import sys
 import time
-import fcntl
 import netCDF4
 import numpy as np
 
@@ -36,9 +34,6 @@ from hans.material import Material
 class DatasetSelector:
 
     def __init__(self, path, mode="select", fname=[]):
-
-        flag = fcntl.fcntl(sys.stdin.fileno(), fcntl.F_GETFL)
-        fcntl.fcntl(sys.stdin.fileno(), fcntl.F_SETFL, flag & ~os.O_NONBLOCK)
 
         self.ds = self.get_files(path, mode=mode, fname=fname)
 
