@@ -27,24 +27,71 @@ SOFTWARE.
 
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tk
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from hans.plottools import Plot
+from hans.plottools import DatasetSelector
 
 
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
-    parser.add_argument('-v', dest="choice", default="all", choices=["rho", "p", "jx", "jy"], help="variable (default: all)")
-    # parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
+    parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
 
     return parser
 
 
 if __name__ == "__main__":
 
+    ylabels = {"rho": r"Density $\rho$",
+               "p": r"Pressure $p$",
+               "jx": r"Momentum density $j_x$",
+               "jy": r"Momentum denisty $j_y$"}
+
     parser = get_parser()
     args = parser.parse_args()
 
-    files = Plot(args.path)
-    fig, ax, cb = files.plot_2D(choice=args.choice)
+    files = DatasetSelector(args.path)
+
+    if args.key is None:
+        data = files.get_field()
+
+        for fn, fdata in data.items():
+            fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8), tight_layout=True)
+            print("Plotting ", fn)
+            for (key, zdata), axis in zip(fdata.items(), ax.flat):
+                im = axis.imshow(zdata.T, extent=(0, 1, 0, 1))
+
+                divider = make_axes_locatable(axis)
+                cax = divider.append_axes("right", size="5%", pad=0.1)
+
+                fmt = tk.ScalarFormatter(useMathText=True)
+                fmt.set_powerlimits((0, 0))
+
+                cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
+                cbar.set_label(ylabels[key])
+
+                axis.set_xlabel(r"$x/L_x$")
+                axis.set_ylabel(r"$y/L_y$")
+
+    else:
+        data = files.get_field(key=args.key)
+        for fn, fdata in data.items():
+            fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
+            print("Plotting ", fn)
+            zdata = fdata[args.key]
+            im = ax.imshow(zdata.T, extent=(0, 1, 0, 1))
+
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+
+            fmt = tk.ScalarFormatter(useMathText=True)
+            fmt.set_powerlimits((0, 0))
+
+            cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
+            cbar.set_label(ylabels[args.key])
+
+            ax.set_xlabel(r"$x/L_x$")
+            ax.set_ylabel(r"$y/L_y$")
+
     plt.show()

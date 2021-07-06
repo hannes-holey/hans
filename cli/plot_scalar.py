@@ -28,21 +28,58 @@ SOFTWARE.
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
-from hans.plottools import Plot
+from hans.plottools import DatasetSelector
 
 
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
-    parser.add_argument('-v', dest="attr", default="mass", choices=["mass", "vmax", "vSound", "dt", "eps"], help="variable (default: mass)")
+    parser.add_argument('-v', dest="key", default=None, choices=[None, "mass",
+                                                                 "vmax", "vSound", "dt", "eps"], help="variable (default: None)")
     return parser
 
 
 if __name__ == "__main__":
 
+    ylabels = {"mass": r"Mass $m$",
+               "vmax": r"Max. velocity $v_\mathrm{max}$",
+               "vSound": r"Velocity of sound $c$",
+               "dt": r"Time step $\Delta t$",
+               "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert /(\Vert\rho_n\Vert\,CFL)$"}
+
     parser = get_parser()
     args = parser.parse_args()
 
-    files = Plot(args.path)
-    fig, ax = files.plot_timeseries(args.attr)
+    files = DatasetSelector(args.path)
+
+    if args.key is None:
+        data = files.get_scalar()
+        fig, ax = plt.subplots(3, 2, sharex=True, figsize=(6.4, 7.2), tight_layout=True)
+        ax[1, 0].set_xlabel(r"Time $t$")
+        ax[1, 1].set_xlabel(r"Time $t$")
+
+        for fn, fdata in data.items():
+            print("Plotting ", fn)
+            for (key, (xdata, ydata)), axis in zip(fdata.items(), ax.flat):
+                axis.plot(xdata, ydata)
+                axis.set_ylabel(ylabels[key])
+
+                if key == "eps":
+                    axis.set_yscale("log")
+
+    else:
+        data = files.get_scalar(args.key)
+
+        fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
+        for fn, fdata in data.items():
+            print("Plotting ", fn)
+            xdata, ydata = fdata[args.key]
+            ax.plot(xdata, ydata)
+
+        ax.set_ylabel(ylabels[args.key])
+        ax.set_xlabel(rf"Time $t$")
+
+        if args.key == "eps":
+            ax.set_yscale("log")
+
     plt.show()

@@ -25,11 +25,11 @@ SOFTWARE.
 """
 
 
-from hans.plottools import Plot
+from hans.plottools import DatasetSelector
 
 if __name__ == "__main__":
 
-    files = Plot(".")
+    files = DatasetSelector(".")
 
     for filename, data in files.ds.items():
 
