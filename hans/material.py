@@ -72,8 +72,8 @@ class Material:
             else:
                 return p
 
-        # Murnaghan equation (modified Tait eq.)
-        elif self.material['EOS'] == "Murnaghan":
+        # Murnaghan-Tait equation (modified Tait eq.)
+        elif self.material['EOS'] == "Tait":
             rho0 = self.material['rho0']
             P0 = self.material['P0']
             K = self.material['K']
@@ -165,7 +165,7 @@ class Material:
 
             return rho
 
-        elif self.material["EOS"] == "Murnaghan":
+        elif self.material["EOS"] == "Tait":
             rho0 = self.material['rho0']
             P0 = self.material['P0']
             K = self.material['K']
