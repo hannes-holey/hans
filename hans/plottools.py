@@ -121,21 +121,21 @@ class DatasetSelector:
             out[filename] = {}
 
             if key is None:
-                for key in keys:
+                for k in keys:
 
-                    if key == "p":
+                    if k == "p":
                         rho = np.array(data.variables["rho"][index])
                         material = get_material_dict(data)
                         frame = Material(material).eos_pressure(rho)
                     else:
-                        frame = np.array(data.variables[key][index])
+                        frame = np.array(data.variables[k][index])
 
                     if dir == "x":
                         ydata = frame[:, Ny // 2]
                     elif dir == "y":
                         ydata = frame[Nx // 2, :]
 
-                    out[filename][key] = (xdata, ydata)
+                    out[filename][k] = (xdata, ydata)
 
             else:
 
@@ -179,15 +179,15 @@ class DatasetSelector:
 
             if key is None:
 
-                for key in keys:
-                    out[filename][key] = {}
+                for k in keys:
+                    out[filename][k] = {}
 
-                    if key == "p":
+                    if k == "p":
                         rho = np.array(data.variables["rho"][::freq])
                         material = get_material_dict(data)
                         frames = Material(material).eos_pressure(rho)
                     else:
-                        frames = np.array(data.variables[key][::freq])
+                        frames = np.array(data.variables[k][::freq])
 
                     for i, t in enumerate(time):
                         if dir == "x":
@@ -195,7 +195,7 @@ class DatasetSelector:
                         elif dir == "y":
                             ydata = frames[i, Nx // 2, :]
 
-                        out[filename][key][t] = (xdata, ydata)
+                        out[filename][k][t] = (xdata, ydata)
 
             else:
                 assert key in keys
@@ -227,10 +227,10 @@ class DatasetSelector:
         for filename, data in self.ds.items():
             out[filename] = {}
             if key is None:
-                for key in keys:
+                for k in keys:
                     time = np.array(data.variables['time'])[::freq]
-                    ydata = np.array(data.variables[key])[::freq]
-                    out[filename][key] = (time, ydata)
+                    ydata = np.array(data.variables[k])[::freq]
+                    out[filename][k] = (time, ydata)
 
             else:
                 assert key in keys
@@ -252,14 +252,14 @@ class DatasetSelector:
             out[filename] = {}
 
             if key is None:
-                for key in keys:
-                    if key == "p":
+                for k in keys:
+                    if k == "p":
                         rho = np.array(data.variables["rho"][index])
                         material = get_material_dict(data)
                         frame = Material(material).eos_pressure(rho)
                     else:
-                        frame = np.array(data.variables[key][index])
-                    out[filename][key] = frame
+                        frame = np.array(data.variables[k][index])
+                    out[filename][k] = frame
 
             else:
                 assert key in keys
@@ -287,17 +287,17 @@ class DatasetSelector:
             out[filename] = {}
 
             if key is None:
-                for key in keys:
-                    out[filename][key] = {}
+                for k in keys:
+                    out[filename][k] = {}
                     if key == "p":
                         rho = np.array(data.variables["rho"][::freq])
                         material = get_material_dict(data)
                         frames = Material(material).eos_pressure(rho)
                     else:
-                        frames = np.array(data.variables[key][::freq])
+                        frames = np.array(data.variables[k][::freq])
 
                     for i, t in enumerate(time):
-                        out[filename][key][t] = frames[i]
+                        out[filename][k][t] = frames[i]
 
             else:
                 assert key in keys
