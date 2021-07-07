@@ -75,7 +75,7 @@ class Problem:
         self.surface = surface
         self.restart_file = restart_file
 
-    def run(self, out_dir="data", plot=False):
+    def run(self, out_dir="data", out_name=None, plot=False):
         """
         Starts the simulation.
 
@@ -83,6 +83,8 @@ class Problem:
         ----------
         out_dir : str
             Output directory (default: data).
+        out_name : str
+            NetCDF output filename (default: None)
         plot : bool
             On-the-fly plotting flag (default: False).
 
@@ -90,7 +92,6 @@ class Problem:
 
         # global write options
         writeInterval = self.options['writeInterval']
-        name = self.options['name']
         maxT = self.numerics["maxT"]
         tol = self.numerics["tol"]
 
@@ -124,7 +125,7 @@ class Problem:
             # on-the-fly plotting
             self.plot(writeInterval)
         else:
-            nc = self.init_netcdf(name, out_dir, rank)
+            nc = self.init_netcdf(out_dir, out_name, rank)
 
             i = 0
             self._write_mode = 0
@@ -191,16 +192,16 @@ class Problem:
 
         return q0, (t, dt)
 
-    def init_netcdf(self, name, out_dir, rank):
+    def init_netcdf(self, out_dir, out_name, rank):
         """
         Initialize netCDF4 file, create dimensions, variables and metadata.
 
         Parameters
         ----------
-        name : str
-            Filename prefix.
         out_dir : str
             Output directoy.
+        out_name : str
+            Filename prefix.
         rank : int
             Rank of the MPI communicator
         Returns
@@ -215,17 +216,21 @@ class Problem:
                 os.makedirs(out_dir)
 
         if self.restart_file is None:
-
-            # create uniqe filename from timestamp
             if rank == 0:
-                timestamp = datetime.now().replace(microsecond=0).strftime("%Y-%m-%d_%H%M%S")
-                outfile = f"{timestamp}_{name}.nc"
+                if out_name is None:
+                    # default unique filename with timestamp
+                    timestamp = datetime.now().replace(microsecond=0).strftime("%Y-%m-%d_%H%M%S")
+                    name = self.options["name"]
+                    outfile = f"{timestamp}_{name}.nc"
+                else:
+                    # custom filename with zero padded number
+                    tag = str(len([1 for f in os.listdir(out_dir) if f.startswith(out_name)]) + 1).zfill(4)
+                    outfile = f"{out_name}-{tag}.nc"
 
-                assert outfile not in os.listdir(out_dir)
                 self.outpath = os.path.join(out_dir, outfile)
-
             else:
                 self.outpath = None
+
             self.outpath = self.q.comm.bcast(self.outpath, root=0)
 
             # initialize NetCDF file

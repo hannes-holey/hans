@@ -63,6 +63,10 @@ def get_parser():
                         dest="out_dir",
                         default="data",
                         help="output directory (default: ./data)")
+    parser.add_argument('-n', '--name',
+                        dest="out_name",
+                        default=None,
+                        help="output filename (without extension *.nc)")
 
     return parser
 
@@ -94,4 +98,4 @@ if __name__ == "__main__":
 
     args = comm.bcast(args, root=0)
     myProblem = comm.bcast(myProblem, root=0)
-    myProblem.run(out_dir=args.out_dir, plot=args.plot)
+    myProblem.run(out_dir=args.out_dir, out_name=args.out_name, plot=args.plot)
