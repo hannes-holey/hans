@@ -342,7 +342,7 @@ class Input:
             material["T"] = float(material['T0'])
             material["a"] = float(material['a'])
             material["b"] = float(material['b'])
-        elif material["EOS"] == "Murnaghan":
+        elif material["EOS"] == "Tait":
             material["rho0"] = float(material["rho0"])
             material["P0"] = float(material["P0"])
             material["K"] = float(material['K'])
