@@ -221,6 +221,9 @@ class Input:
         elif geo["type"] in ["inclined", "inclined_x", "inclined_y"]:
             geo["h1"] = float(geo['h1'])
             geo["h2"] = float(geo['h2'])
+        elif geo["type"] == "perturbation":
+            geo["factor"] = float(geo["factor"])
+            geo["h"] = float(geo['h'])
         elif geo["type"] == "inclined_pocket":
             geo["h1"] = float(geo['h1'])
             geo["h2"] = float(geo['h2'])

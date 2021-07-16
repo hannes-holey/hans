@@ -103,6 +103,9 @@ class Problem:
             q_init[0] += self.material["rho0"]
             t_init = (0., self.numerics["dt"])
 
+        if self.geometry["type"] == "perturbation":
+            q_init[0, self.disc["Nx"] // 2, self.disc["Ny"] // 2] *= self.geometry["factor"]
+
         # intialize solution field
         self.q = ConservedField(self.disc,
                                 self.bc,

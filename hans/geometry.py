@@ -96,6 +96,10 @@ class GapHeight(VectorField):
             h2 = self.geometry['h2']
             self.field[0] = h1 + (h2 - h1) / (Ly) * yy
 
+        elif self.geometry["type"] == "perturbation":
+            h = self.geometry['h']
+            self.field[0] = h
+
         elif self.geometry["type"] == "inclined_pocket":
             h1 = self.geometry['h1']
             h2 = self.geometry['h2']
