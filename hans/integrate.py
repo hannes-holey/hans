@@ -34,7 +34,7 @@ from hans.material import Material
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, bc, geometry, material, numerics, surface, q_init=None, t_init=None):
+    def __init__(self, disc, bc, geometry, material, numerics, surface, q_init, t_init):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
         and the methods to update them. Derived from VectorField.
@@ -54,9 +54,9 @@ class ConservedField(VectorField):
         surface : dict
             surface parameters
         q_init : np.array
-            Inital field in case of a restart (the default is None)
+            Initial field of conserved variables.
         t_init : tuple
-            Initial time and time step in case of a restart (the default is None).
+            Initial time and time step.
 
         """
 
@@ -72,15 +72,12 @@ class ConservedField(VectorField):
         self.slip_length = SlipLength(disc, surface)
 
         # intialize field and time
-        if q_init is not None:
-            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost[0], self.without_ghost[1]]
-            self.fill_ghost_buffer()
-            self.time = t_init[0]
-            self.dt = t_init[1]
-        else:
-            self.field[0] = material['rho0']
-            self.time = 0.
-            self.dt = numerics["dt"]
+        ng = self.disc["nghost"]
+        self.field[:, ng:-ng, ng:-ng] = q_init[:, self.without_ghost[0], self.without_ghost[1]]
+        self.fill_ghost_buffer()
+
+        self.time = t_init[0]
+        self.dt = t_init[1]
 
         self.viscous_stress = SymStressField2D(disc, geometry, material)
         self.upper_stress = SymStressField3D(disc, geometry, material)

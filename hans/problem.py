@@ -99,8 +99,9 @@ class Problem:
         if self.restart_file is not None:
             q_init, t_init = self.read_last_frame()
         else:
-            q_init = None
-            t_init = None
+            q_init = q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+            q_init[0] += self.material["rho0"]
+            t_init = (0., self.numerics["dt"])
 
         # intialize solution field
         self.q = ConservedField(self.disc,
@@ -109,8 +110,8 @@ class Problem:
                                 self.material,
                                 self.numerics,
                                 self.surface,
-                                q_init=q_init,
-                                t_init=t_init)
+                                q_init,
+                                t_init)
 
         rank = self.q.comm.Get_rank()
 
