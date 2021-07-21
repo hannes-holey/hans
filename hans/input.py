@@ -65,6 +65,8 @@ class Input:
             inp = yaml.full_load(ymlfile)
 
             # Perform sanity checks for input parameters
+
+            # Mandatory inputs
             options = self.check_options(inp['options'])
             disc = self.check_disc(inp['disc'])
             geometry = self.check_geo(inp['geometry'])
@@ -72,10 +74,16 @@ class Input:
             material = self.check_mat(inp['material'])
             bc = self.check_bc(inp['BC'], disc, material)
 
-            if "surface" in inp.keys():
+            # Optional inputs
+            try:
                 surface = self.check_surface(inp['surface'])
-            else:
+            except KeyError:
                 surface = None
+
+            try:
+                ic = self.check_ic(inp["IC"])
+            except KeyError:
+                ic = None
 
             print("Sanity checks completed. Start simulation!")
             print(60 * "-")
@@ -87,7 +95,7 @@ class Input:
                               numerics,
                               material,
                               surface,
-                              self.restartFile)
+                              ic)
 
         return thisProblem
 
@@ -383,6 +391,21 @@ class Input:
         return material
 
     def check_surface(self, surface):
+        """
+        Sanity check for surface input.
+
+        Parameters
+        ----------
+        surface : dict
+            Surface parameters read from yaml input file.
+
+        Returns
+        -------
+        dict
+            Surface parameters.
+
+        """
+        print("Checking szrface parameters... ")
 
         if "lslip" in surface.keys():
             surface["lslip"] = float(surface["lslip"])
@@ -400,6 +423,35 @@ class Input:
                 surface["sign"] = -1
 
         return surface
+
+    def check_ic(self,  ic):
+        """
+        Sanity check for initial conditions input.
+
+        Parameters
+        ----------
+        ic : dict
+            Initial condition parameters read from yaml input file.
+
+        Returns
+        -------
+        dict
+            Initial conditions parameters.
+
+        """
+        print("Checking initial conditions... ")
+
+        if self.restartFile is not None:
+            ic["type"] = "restart"
+            ic["file"] = self.restartFile
+
+        else:
+            if ic["type"] == "perturbation":
+                ic["factor"] = float(ic["factor"])
+            elif ic["type"] == "longitudinal_wave":
+                ic["amp"] = float(ic["amp"])
+
+        return ic
 
     def check_bc(self, bc, disc, material):
         """
