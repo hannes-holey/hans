@@ -40,7 +40,7 @@ from hans.integrate import ConservedField
 
 class Problem:
 
-    def __init__(self, options, disc, bc, geometry, numerics, material, surface, restart_file):
+    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic):
         """
         Collects all information about a single problem
         and contains the methods to run a simulation, based on the problem defintiion."
@@ -73,7 +73,7 @@ class Problem:
         self.numerics = numerics
         self.material = material
         self.surface = surface
-        self.restart_file = restart_file
+        self.ic = ic
 
     def run(self, out_dir="data", out_name=None, plot=False):
         """
@@ -95,16 +95,8 @@ class Problem:
         maxT = self.numerics["maxT"]
         tol = self.numerics["tol"]
 
-        # read last frame of restart file
-        if self.restart_file is not None:
-            q_init, t_init = self.read_last_frame()
-        else:
-            q_init = q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
-            q_init[0] += self.material["rho0"]
-            t_init = (0., self.numerics["dt"])
-
-        if self.geometry["type"] == "perturbation":
-            q_init[0, self.disc["Nx"] // 2, self.disc["Ny"] // 2] *= self.geometry["factor"]
+        # Initial conditions
+        q_init, t_init = self.get_initial_conditions()
 
         # intialize solution field
         self.q = ConservedField(self.disc,
@@ -168,6 +160,45 @@ class Problem:
             if rank == 0:
                 self.write_to_stdout(i, mode=self._write_mode)
 
+    def get_initial_conditions(self):
+        """
+        Return the initial field given by last frame of restart file
+        or as defined through inputs.
+
+        Returns
+        -------
+        np.array
+            Inital field of conserved variables.
+        tuple
+            Inital time and timestep
+        """
+
+        if self.ic is None:
+            q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+            q_init[0] += self.material["rho0"]
+            t_init = (0., self.numerics["dt"])
+        else:
+            # read last frame of restart file
+            if self.ic["type"] == "restart":
+                q_init, t_init = self.read_last_frame()
+            elif self.ic["type"] == "perturbation":
+                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+                q_init[0] += self.material["rho0"]
+                t_init = (0., self.numerics["dt"])
+                q_init[0, self.disc["Nx"] // 2, self.disc["Ny"] // 2] *= self.ic["factor"]
+            elif self.ic["type"] == "longitudinal_wave":
+                x = np.linspace(0 + self.disc["dx"]/2, self.disc["Lx"] - self.disc["dx"]/2, self.disc["Nx"])
+                y = np.linspace(0 + self.disc["dy"]/2, self.disc["Ly"] - self.disc["dy"]/2, self.disc["Ny"])
+                xx, yy = np.meshgrid(x, y, indexing="ij")
+
+                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+                q_init[0] += self.material["rho0"]
+                k = 2. * np.pi / self.disc["Lx"]
+                q_init[1] += self.ic["amp"] * np.sin(k * xx)
+                t_init = (0., self.numerics["dt"])
+
+        return q_init, t_init
+
     def read_last_frame(self):
         """
         Read last frame from restart file and use as initial values for new run.
@@ -180,7 +211,7 @@ class Problem:
             Total time and timestep of last frame.
         """
 
-        file = Dataset(self.restart_file, "r")
+        file = Dataset(self.ic["file"], "r")
 
         rho = np.array(file.variables['rho'])[-1]
         jx = np.array(file.variables['jx'])[-1]
@@ -219,7 +250,7 @@ class Problem:
             if not(os.path.exists(out_dir)):
                 os.makedirs(out_dir)
 
-        if self.restart_file is None:
+        if self.ic is None or self.ic["type"] != "restart":
             if rank == 0:
                 if out_name is None:
                     # default unique filename with timestamp
@@ -281,6 +312,9 @@ class Problem:
             if self.surface is not None:
                 categories["surface"] = self.surface
 
+            if self.ic is not None:
+                categories["ic"] = self.ic
+
             # reset modified input dictionaries
             bc["x0"] = "".join(bc["x0"])
             bc["x1"] = "".join(bc["x1"])
@@ -300,13 +334,13 @@ class Problem:
             parallel = False
             if self.q.comm.Get_size() > 1:
                 parallel = True
-            nc = Dataset(self.restart_file, 'a', parallel=parallel, format='NETCDF3_64BIT_OFFSET')
-            self.outpath = os.path.relpath(self.restart_file)
+            nc = Dataset(self.ic["file"], 'a', parallel=parallel, format='NETCDF3_64BIT_OFFSET')
+            self.outpath = os.path.relpath(self.ic["file"])
 
             # create backup
             if rank == 0:
-                backup_file = f"{os.path.splitext(self.restart_file)[0]}-{nc.restarts}.nc"
-                shutil.copy(self.restart_file, backup_file)
+                backup_file = f"{os.path.splitext(self.ic['file'])[0]}-{nc.restarts}.nc"
+                shutil.copy(self.ic["file"], backup_file)
 
             # increase restart counter
             nc.restarts += 1
@@ -316,6 +350,9 @@ class Problem:
             for key, value in self.numerics.items():
                 name = f"numerics_{key}-{nc.restarts}"
                 nc.setncattr(name, value)
+
+            nc.setncattr(f"ic_type-{nc.restarts}", "restart")
+            nc.setncattr(f"ic_file-{nc.restarts}", backup_file)
 
         return nc
 
