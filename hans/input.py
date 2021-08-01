@@ -23,10 +23,8 @@ SOFTWARE.
 """
 
 
-import sys
 import yaml
 import numpy as np
-from mpi4py import MPI
 
 from hans.problem import Problem
 from hans.material import Material
@@ -527,10 +525,3 @@ class Input:
 
         return bc
 
-
-def abort(errcode=0):
-    if MPI.COMM_WORLD.Get_size() == 1:
-        sys.exit(errcode)
-    else:
-        sys.stdout.flush()
-        MPI.COMM_WORLD.Abort(errcode)

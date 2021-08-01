@@ -33,6 +33,7 @@ from pkg_resources import get_distribution
 import numpy as np
 import shutil
 
+from hans.tools import abort
 from hans.material import Material
 from hans.plottools import adaptiveLimits
 from hans.integrate import ConservedField
