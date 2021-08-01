@@ -76,6 +76,24 @@ class Problem:
         self.surface = surface
         self.ic = ic
 
+        self.sanity_checks()
+
+    def sanity_checks(self):
+
+        self.check_options()
+        self.check_disc()
+        self.check_geo()
+        self.check_num()
+        self.check_mat()
+        self.check_bc()
+        if self.ic is not None:
+            self.check_ic()
+        if self.surface is not None:
+            self.check_surface()
+
+        print("Sanity checks completed. Start simulation!")
+        print(60 * "-")
+
     def run(self, out_dir="data", out_name=None, plot=False):
         """
         Starts the simulation.
@@ -508,3 +526,335 @@ class Problem:
 
         if i % writeInterval == 0:
             print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
+
+    def check_options(self):
+        """
+        Sanity check for I/O options input.
+        """
+        print("Checking I/O options... ")
+
+        try:
+            writeInterval = int(self.options["writeInterval"])
+            assert writeInterval > 0
+        except KeyError:
+            print("***Output interval not given, fallback to 1000")
+            self.options["writeInterval"] = 1000
+        except AssertionError:
+            try:
+                assert writeInterval != 0
+            except AssertionError:
+                print("***Output interval is zero. fallback to 1000")
+                self.options["writeInterval"] = 1000
+            else:
+                print("***Output interval is negative. Converting to positive value.")
+                writeInterval *= -1
+                self.options["writeInterval"] = writeInterval
+
+    def check_disc(self):
+        """
+        Sanity check for discretization input.
+        [Nx, Ny] are required, then look for [Lx, Ly] or [dx, dy] (in that order).
+        """
+        print("Checking discretization... ")
+
+        try:
+            self.disc["Nx"] = int(self.disc['Nx'])
+            assert self.disc["Nx"] > 0
+        except KeyError:
+            print("***Number of grid cells Nx not specified. Abort.")
+            abort()
+        except AssertionError:
+            print("***Number of grid cells Nx must be larger than zero. Abort")
+            abort()
+
+        try:
+            self.disc["Ny"] = int(self.disc['Ny'])
+            assert self.disc["Ny"] > 0
+        except KeyError:
+            print("***Number of grid cells 'Ny' not specified. Abort.")
+            abort()
+        except AssertionError:
+            print("***Number of grid cells 'Ny' must be larger than zero. Abort")
+            abort()
+
+        try:
+            self.disc["Lx"] = float(self.disc["Lx"])
+        except KeyError:
+            try:
+                self.disc["dx"] = float(self.disc["dx"])
+            except KeyError:
+                print("At least two of 'Nx' 'Lx', 'dx' must be given. Abort.")
+                abort()
+            else:
+                self.disc["Lx"] = self.disc["dx"] * self.disc["Nx"]
+        else:
+            self.disc["dx"] = self.disc["Lx"] / self.disc["Nx"]
+
+        try:
+            self.disc["Ly"] = float(self.disc["Ly"])
+        except KeyError:
+            try:
+                self.disc["dy"] = float(self.disc["dy"])
+            except KeyError:
+                print("At least two of 'Ny' 'Ly', 'dy' must be given. Abort.")
+                abort()
+            else:
+                self.disc["Ly"] = self.disc["dy"] * self.disc["Ny"]
+        else:
+            self.disc["dy"] = self.disc["Ly"] / self.disc["Ny"]
+
+    def check_geo(self):
+        """
+        Sanity check for geometry input.
+        """
+        print("Checking geometry... ")
+
+        if self.geometry["type"] in ["journal", "journal_x", "journal_y"]:
+            self.geometry["CR"] = float(self.geometry["CR"])
+            self.geometry["eps"] = float(self.geometry["eps"])
+        elif self.geometry["type"] == "parabolic":
+            self.geometry["hmin"] = float(self.geometry['hmin'])
+            self.geometry["hmax"] = float(self.geometry['hmax'])
+        elif self.geometry["type"] == "twin_parabolic":
+            self.geometry["hmin"] = float(self.geometry['hmin'])
+            self.geometry["hmax"] = float(self.geometry['hmax'])
+        elif self.geometry["type"] in ["inclined", "inclined_x", "inclined_y"]:
+            self.geometry["h1"] = float(self.geometry['h1'])
+            self.geometry["h2"] = float(self.geometry['h2'])
+        elif self.geometry["type"] == "inclined_pocket":
+            self.geometry["h1"] = float(self.geometry['h1'])
+            self.geometry["h2"] = float(self.geometry['h2'])
+            self.geometry["hp"] = float(self.geometry['hp'])
+            self.geometry["c"] = float(self.geometry['c'])
+            self.geometry["l"] = float(self.geometry['l'])
+            self.geometry["w"] = float(self.geometry['w'])
+        elif self.geometry["type"] in ["half_sine", "half_sine_squared"]:
+            self.geometry["h0"] = float(self.geometry['h0'])
+            self.geometry["amp"] = float(self.geometry['amp'])
+            self.geometry["num"] = float(self.geometry['num'])
+
+    def check_num(self):
+        """
+        Sanity check for numerics options.
+        """
+        print("Checking numerics options... ")
+
+        try:
+            self.numerics["integrator"] = self.numerics["integrator"]
+            assert self.numerics["integrator"] in ["MC", "MC_bf", "MC_fb", "MC_alt", "LW", "RK3"]
+        except KeyError:
+            print("***Integrator not specified. Use default (MacCormack).")
+            self.numerics["integrator"] = "MC"
+        except AssertionError:
+            print(f'***Unknown integrator \'{self.numerics["integrator"]}\'. Abort.')
+            abort()
+
+        try:
+            self.numerics["stokes"] = int(self.numerics["stokes"])
+        except KeyError:
+            print("***Boolean parameter 'stokes' not given. Use default (True).")
+            self.numerics["stokes"] = 1
+
+        try:
+            self.numerics["adaptive"] = int(self.numerics["adaptive"])
+        except KeyError:
+            print("***Boolean parameter 'adaptive' not given. Use default (False).")
+            self.numerics["adaptive"] = 0
+
+        if self.numerics["adaptive"] == 1:
+            try:
+                self.numerics["C"] = float(self.numerics["C"])
+            except KeyError:
+                print("***CFL number not given. Use default (0.5).")
+                self.numerics["C"] = 0.5
+
+        try:
+            self.numerics["tol"] = float(self.numerics["tol"])
+        except KeyError:
+            print("***Convergence tolerance not given. Use default (1e-9).")
+            self.numerics["tol"] = 1e-9
+
+        try:
+            self.numerics["dt"] = float(self.numerics["dt"])
+        except KeyError:
+            print("***Timestep not given. Use default (1e-10).")
+            self.numerics["dt"] = 1e-10
+
+        try:
+            self.numerics["maxT"] = float(self.numerics["maxT"])
+        except KeyError:
+            print("***Maximum time not given. Use default (1e-6).")
+            self.numerics["maxT"] = 1e-6
+
+        if self.numerics["integrator"] == "RK3":
+            self.disc["nghost"] = 2
+        else:
+            self.disc["nghost"] = 1
+
+    def check_mat(self):
+        """
+        Sanity check on material settings.
+        """
+        print("Checking material options... ")
+
+        if self.material["EOS"] == "DH":
+            self.material["rho0"] = float(self.material["rho0"])
+            self.material["P0"] = float(self.material["P0"])
+            self.material["C1"] = float(self.material["C1"])
+            self.material["C2"] = float(self.material["C2"])
+        elif self.material["EOS"] == "PL":
+            self.material["rho0"] = float(self.material["rho0"])
+            self.material["P0"] = float(self.material["P0"])
+            self.material["alpha"] = float(self.material['alpha'])
+        elif self.material["EOS"] == "vdW":
+            self.material["M"] = float(self.material['M'])
+            self.material["T"] = float(self.material['T0'])
+            self.material["a"] = float(self.material['a'])
+            self.material["b"] = float(self.material['b'])
+        elif self.material["EOS"] == "Tait":
+            self.material["rho0"] = float(self.material["rho0"])
+            self.material["P0"] = float(self.material["P0"])
+            self.material["K"] = float(self.material['K'])
+            self.material["n"] = float(self.material['n'])
+        elif self.material["EOS"] == "cubic":
+            self.material["a"] = float(self.material['a'])
+            self.material["b"] = float(self.material['b'])
+            self.material["c"] = float(self.material['c'])
+            self.material["d"] = float(self.material['d'])
+        elif self.material["EOS"].startswith("Bayada"):
+            self.material["cl"] = float(self.material["cl"])
+            self.material["cv"] = float(self.material["cv"])
+            self.material["rhol"] = float(self.material["rhol"])
+            self.material["rhov"] = float(self.material["rhov"])
+            self.material["shear"] = float(self.material["shear"])
+            self.material["shearv"] = float(self.material["shearv"])
+            self.material["rhov"] = float(self.material["rhov"])
+
+        self.material["shear"] = float(self.material["shear"])
+        self.material["bulk"] = float(self.material["bulk"])
+
+        if "Pcav" in self.material.keys():
+            self.material["Pcav"] = float(self.material["Pcav"])
+
+        if "piezo" in self.material.keys():
+            if self.material["piezo"] == "Barus":
+                self.material["aB"] = float(self.material["aB"])
+            elif self.material["piezo"] == "Vogel":
+                self.material["rho0"] = float(self.material['rho0'])
+                self.material["g"] = float(self.material["g"])
+                self.material["mu_inf"] = float(self.material["mu_inf"])
+                self.material["phi_inf"] = float(self.material["phi_inf"])
+                self.material["BF"] = float(self.material["BF"])
+
+        if "thinning" in self.material.keys():
+            if self.material["thinning"] == "Eyring":
+                self.material["tau0"] = float(self.material["tau0"])
+            elif self.material["thinning"] == "Carreau":
+                self.material["G"] = float(self.material["G"])
+                self.material["a"] = float(self.material["a"])
+                self.material["N"] = float(self.material["N"])
+
+    def check_surface(self):
+        """
+        Sanity check for surface input.
+        """
+        print("Checking surface parameters... ")
+
+        if "lslip" in self.surface.keys():
+            self.surface["lslip"] = float(self.surface["lslip"])
+        else:
+            self.surface["lslip"] = 0.
+
+        if self.surface["type"] in ["stripes", "stripes_x", "stripes_y"]:
+            try:
+                self.surface["num"] = int(self.surface["num"])
+            except KeyError:
+                self.surface["num"] = 1
+            try:
+                self.surface["sign"] = int(self.surface["sign"])
+            except KeyError:
+                self.surface["sign"] = -1
+
+    def check_ic(self):
+        """
+        Sanity check for initial conditions input.
+        """
+        print("Checking initial conditions... ")
+
+        if self.ic["type"] != "restart":
+            if self.ic["type"] == "perturbation":
+                self.ic["factor"] = float(self.ic["factor"])
+            elif self.ic["type"] == "longitudinal_wave":
+                self.ic["amp"] = float(self.ic["amp"])
+
+    def check_bc(self):
+        """
+        Sanity check for boundary condition input.
+
+        Parameters
+        ----------
+        bc : dict
+            Boundary condition parameters read from yaml input file.
+        disc : dict
+            Discretization parameters.
+        material : dict
+            Material parameters.
+
+        Returns
+        -------
+        dict
+            Boundary condition parameters.
+
+        """
+        print("Checking boundary conditions... ")
+
+        self.bc["x0"] = np.array(list(self.bc["x0"]))
+        self.bc["x1"] = np.array(list(self.bc["x1"]))
+        self.bc["y0"] = np.array(list(self.bc["y0"]))
+        self.bc["y1"] = np.array(list(self.bc["y1"]))
+
+        assert len(self.bc["x0"]) == 3
+        assert len(self.bc["x1"]) == 3
+        assert len(self.bc["y0"]) == 3
+        assert len(self.bc["y1"]) == 3
+
+        if "P" in self.bc["x0"] and "P" in self.bc["x1"]:
+            self.disc["pX"] = 1
+        else:
+            self.disc["pX"] = 0
+
+        if "P" in self.bc["y0"] and "P" in self.bc["y1"]:
+            self.disc["pY"] = 1
+        else:
+            self.disc["pY"] = 0
+
+        if "D" in self.bc["x0"]:
+            if "px0" in self.bc.keys():
+                px0 = float(self.bc["px0"])
+                self.bc["rhox0"] = Material(self.material).eos_density(px0)
+            else:
+                self.bc["rhox0"] = self.material["rho0"]
+
+        if "D" in self.bc["x1"]:
+            if "px1" in self.bc.keys():
+                px1 = float(self.bc["px1"])
+                self.bc["rhox1"] = Material(self.material).eos_density(px1)
+            else:
+                self.bc["rhox1"] = self.material["rho0"]
+
+        if "D" in self.bc["y0"]:
+            if "py0" in self.bc.keys():
+                py0 = float(self.bc["py0"])
+                self.bc["rhoy0"] = Material(self.material).eos_density(py0)
+            else:
+                self.bc["rhoy0"] = self.material["rho0"]
+
+        if "D" in self.bc["y1"]:
+            if "py1" in self.bc.keys():
+                py1 = float(self.bc["py1"])
+                self.bc["rhoy1"] = Material(self.material).eos_density(py1)
+            else:
+                self.bc["rhoy1"] = self.material["rho0"]
+
+        assert np.all((self.bc["x0"] == "P") == (self.bc["x1"] == "P")), "Inconsistent boundary conditions (x)"
+        assert np.all((self.bc["y0"] == "P") == (self.bc["y1"] == "P")), "Inconsistent boundary conditions (y)"
