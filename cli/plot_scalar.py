@@ -35,7 +35,7 @@ def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
     parser.add_argument('-v', dest="key", default=None, choices=[None, "mass",
-                                                                 "vmax", "vSound", "dt", "eps"], help="variable (default: None)")
+                                                                 "vmax", "vSound", "dt", "eps", "ekin"], help="variable (default: None)")
     return parser
 
 
@@ -45,7 +45,8 @@ if __name__ == "__main__":
                "vmax": r"Max. velocity $v_\mathrm{max}$",
                "vSound": r"Velocity of sound $c$",
                "dt": r"Time step $\Delta t$",
-               "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert /(\Vert\rho_n\Vert\,CFL)$"}
+               "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert /(\Vert\rho_n\Vert\,CFL)$",
+               "ekin": r"Kinetic energy $E_\mathrm{kin}$"}
 
     parser = get_parser()
     args = parser.parse_args()
@@ -55,8 +56,8 @@ if __name__ == "__main__":
     if args.key is None:
         data = files.get_scalar()
         fig, ax = plt.subplots(3, 2, sharex=True, figsize=(6.4, 7.2), tight_layout=True)
-        ax[1, 0].set_xlabel(r"Time $t$")
-        ax[1, 1].set_xlabel(r"Time $t$")
+        ax[2, 0].set_xlabel(r"Time $t$")
+        ax[2, 1].set_xlabel(r"Time $t$")
 
         for fn, fdata in data.items():
             print("Plotting ", fn)
