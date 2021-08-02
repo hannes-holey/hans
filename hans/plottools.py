@@ -222,7 +222,7 @@ class DatasetSelector:
 
         out = {}
 
-        keys = ["mass", "eps", "vSound", "vmax", "dt"]
+        keys = ["mass", "eps", "vSound", "vmax", "dt", "ekin"]
 
         for filename, data in self.ds.items():
             out[filename] = {}

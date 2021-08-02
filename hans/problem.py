@@ -313,6 +313,7 @@ class Problem:
             nc.createVariable('vSound', 'f8', ('step'))
             nc.createVariable('dt', 'f8', ('step'))
             nc.createVariable('eps', 'f8', ('step'))
+            nc.createVariable('ekin', 'f8', ('step'))
 
             # write metadata
             nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
@@ -432,6 +433,7 @@ class Problem:
         nc.variables["vSound"][step] = self.q.vSound
         nc.variables["dt"][step] = self.q.dt
         nc.variables["eps"][step] = self.q.eps
+        nc.variables["ekin"][step] = self.q.ekin
 
         if mode > 0:
             nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))

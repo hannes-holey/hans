@@ -111,6 +111,15 @@ class ConservedField(VectorField):
 
         return recvbuf[0]
 
+    @property
+    def ekin(self):
+        area = self.disc["dx"] * self.disc["dy"]
+        local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0] * area)
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_ekin, recvbuf, op=MPI.MAX)
+
+        return recvbuf[0]
+
     def update(self, i):
         """
         Wrapper function for the explicit time update of the solution field.
