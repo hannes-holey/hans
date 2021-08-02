@@ -229,8 +229,13 @@ class DatasetSelector:
             if key is None:
                 for k in keys:
                     time = np.array(data.variables['time'])[::freq]
-                    ydata = np.array(data.variables[k])[::freq]
-                    out[filename][k] = (time, ydata)
+                    try:
+                        ydata = np.array(data.variables[k])[::freq]
+                    except KeyError:
+                        print(f"Scalar variable {k} not in {filename}.")
+                        pass
+                    else:
+                        out[filename][k] = (time, ydata)
 
             else:
                 assert key in keys
