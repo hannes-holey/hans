@@ -752,7 +752,7 @@ class Problem:
             if self.material["thinning"] == "Eyring":
                 self.material["tau0"] = float(self.material["tau0"])
             elif self.material["thinning"] == "Carreau":
-                self.material["G"] = float(self.material["G"])
+                self.material["relax"] = float(self.material["relax"])
                 self.material["a"] = float(self.material["a"])
                 self.material["N"] = float(self.material["N"])
 

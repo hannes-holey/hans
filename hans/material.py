@@ -301,11 +301,16 @@ class Material:
                 elif str(self.material["thinning"]) == "Carreau":
 
                     shear_rate = np.sqrt(U**2 + V**2) / height
-                    G = self.material["G"]
+                    lam = self.material["relax"]
                     a = self.material["a"]
                     N = self.material["N"]
 
-                    return mu0 / (1 + (mu0 / G * shear_rate)**a)**(((1 / N) - 1) / a)
+                    if "shearinf" in self.material.keys():
+                        mu_inf = self.material["shearinf"]
+                    else:
+                        mu_inf = 0.
+
+                    return mu_inf + (mu0 - mu_inf) * (1 + (lam * shear_rate)**a)**((N - 1) / a)
                 else:
                     return mu0
             else:
