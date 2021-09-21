@@ -357,9 +357,10 @@ class Problem:
             nc = Dataset(self.ic["file"], 'a', parallel=parallel, format='NETCDF3_64BIT_OFFSET')
             self.outpath = os.path.relpath(self.ic["file"])
 
+            backup_file = f"{os.path.splitext(self.ic['file'])[0]}-{nc.restarts}.nc"
+
             # create backup
             if rank == 0:
-                backup_file = f"{os.path.splitext(self.ic['file'])[0]}-{nc.restarts}.nc"
                 shutil.copy(self.ic["file"], backup_file)
 
             # increase restart counter

@@ -76,9 +76,10 @@ class Input:
 
             if "IC" in inp.keys():
                 ic = inp["IC"]
-                if self.restartFile is not None:
-                    ic["type"] = "restart"
-                    ic["file"] = self.restartFile
+            elif self.restartFile is not None:
+                ic = {}
+                ic["type"] = "restart"
+                ic["file"] = self.restartFile
             else:
                 ic = None
 
