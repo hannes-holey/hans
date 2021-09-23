@@ -56,7 +56,13 @@ class Material:
             P0 = self.material['P0']
             alpha = self.material['alpha']
 
-            return P0 * (rho / rho0)**(1. / (1. - 0.5 * alpha))
+            p = P0 * (rho / rho0)**(1. / (1. - 0.5 * alpha))
+
+            if 'Pcav' in self.material.keys():
+                Pcav = self.material['Pcav']
+                return np.maximum(p, Pcav)
+            else:
+                return p
 
         # Van der Waals equation
         elif self.material['EOS'] == "vdW":
