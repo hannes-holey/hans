@@ -111,7 +111,17 @@ class Problem:
 
         # global write options
         writeInterval = self.options['writeInterval']
-        maxT = self.numerics["maxT"]
+
+        if "maxT" in self.numerics.keys():
+            maxT = self.numerics["maxT"]
+        else:
+            maxT = np.inf
+
+        if "maxIt" in self.numerics.keys():
+            maxIt = self.numerics["maxIt"]
+        else:
+            maxIt = np.inf
+
         tol = self.numerics["tol"]
 
         # Initial conditions
@@ -168,6 +178,11 @@ class Problem:
                 # maximum time reached
                 if round(self.q.time, 15) >= maxT:
                     self._write_mode = 2
+                    break
+
+                # maximum number of iterations reached
+                if i >= maxIt:
+                    self._write_mode = 3
                     break
 
                 if i % writeInterval == 0:
@@ -392,12 +407,16 @@ class Problem:
         print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
         if mode == 1:
-            print(f"\nSolution has converged after {i:d} steps, Output written to: {self.outpath}", flush=True)
+            print(f"\nSolution has converged after {i:d} steps. Output written to: {self.outpath}", flush=True)
         elif mode == 2:
-            print(f"\nNo convergence within {i: d} steps", end=" ", flush=True)
+            print(f"\nNo convergence within {i: d} steps.", end=" ", flush=True)
             print(f"Stopping criterion: maximum time {self.numerics['maxT']: .1e} s reached.", flush=True)
             print(f"Output written to: {self.outpath}", flush=True)
         elif mode == 3:
+            print(f"\nNo convergence within {i: d} steps.", end=" ", flush=True)
+            print(f"Stopping criterion: maximum number of iterations reached.", flush=True)
+            print(f"Output written to: {self.outpath}", flush=True)
+        elif mode == 4:
             print(f"Execution stopped. Output written to: {self.outpath}", flush=True)
 
         if mode > 0:
@@ -454,7 +473,7 @@ class Problem:
         """
 
         if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
-            self._write_mode = 3
+            self._write_mode = 4
 
     def plot(self, writeInterval):
         """
@@ -686,8 +705,16 @@ class Problem:
         try:
             self.numerics["maxT"] = float(self.numerics["maxT"])
         except KeyError:
-            print("***Maximum time not given. Use default (1e-6).")
-            self.numerics["maxT"] = 1e-6
+            pass
+
+        try:
+            self.numerics["maxIt"] = int(self.numerics["maxIt"])
+        except KeyError:
+            pass
+
+        if not("maxIt" in self.numerics.keys()) and not("maxT" in self.numerics.keys()):
+            print("***Either max. time or max. iterations must be given. Abort.")
+            abort()
 
         if self.numerics["integrator"] == "RK3":
             self.disc["nghost"] = 2
