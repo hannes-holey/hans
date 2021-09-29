@@ -208,7 +208,8 @@ class SlipLength(ScalarField):
             center_y = np.logical_and(np.greater(yy, Ly / 4), np.less(yy, 3 * Ly / 4))
             mask = np.logical_and(right_x, center_y)
 
-        # print(mask.astype(int))
+        elif self.surface["type"] == "full":
+            mask = None
 
         ls = self.surface["lslip"]
         self.field[0, mask] = ls
