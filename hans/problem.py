@@ -227,7 +227,7 @@ class Problem:
 
                 q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
                 q_init[0] += self.material["rho0"]
-                k = 2. * np.pi / self.disc["Lx"]
+                k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[1] += self.ic["amp"] * np.sin(k * xx)
                 t_init = (0., self.numerics["dt"])
 
@@ -816,6 +816,10 @@ class Problem:
                 self.ic["factor"] = float(self.ic["factor"])
             elif self.ic["type"] == "longitudinal_wave":
                 self.ic["amp"] = float(self.ic["amp"])
+                if "nwave" in self.ic.keys():
+                    self.ic["nwave"] = int(self.ic["nwave"])
+                else:
+                    self.ic["nwave"] = 1
 
     def check_bc(self):
         """
