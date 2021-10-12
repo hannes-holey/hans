@@ -122,7 +122,10 @@ class Problem:
         else:
             maxIt = np.inf
 
-        tol = self.numerics["tol"]
+        if "tol" in self.numerics.keys():
+            tol = self.numerics["tol"]
+        else:
+            tol = 0.
 
         # Initial conditions
         q_init, t_init = self.get_initial_conditions()
@@ -701,29 +704,33 @@ class Problem:
                 self.numerics["C"] = 0.5
 
         try:
-            self.numerics["tol"] = float(self.numerics["tol"])
-        except KeyError:
-            print("***Convergence tolerance not given. Use default (1e-9).")
-            self.numerics["tol"] = 1e-9
-
-        try:
             self.numerics["dt"] = float(self.numerics["dt"])
         except KeyError:
             print("***Timestep not given. Use default (1e-10).")
             self.numerics["dt"] = 1e-10
 
+        stopping_criteria = 0
+
+        try:
+            self.numerics["tol"] = float(self.numerics["tol"])
+            stopping_criteria += 1
+        except KeyError:
+            pass
+
         try:
             self.numerics["maxT"] = float(self.numerics["maxT"])
+            stopping_criteria += 1
         except KeyError:
             pass
 
         try:
             self.numerics["maxIt"] = int(self.numerics["maxIt"])
+            stopping_criteria += 1
         except KeyError:
             pass
 
-        if not("maxIt" in self.numerics.keys()) and not("maxT" in self.numerics.keys()):
-            print("***Either max. time or max. iterations must be given. Abort.")
+        if stopping_criteria == 0:
+            print("***No stopping criterion given. Abort.")
             abort()
 
         if self.numerics["integrator"] == "RK3":
