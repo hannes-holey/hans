@@ -230,6 +230,16 @@ class Problem:
                 k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[1] += self.ic["amp"] * np.sin(k * xx)
                 t_init = (0., self.numerics["dt"])
+            elif self.ic["type"] == "shear_wave":
+                x = np.linspace(0 + self.disc["dx"]/2, self.disc["Lx"] - self.disc["dx"]/2, self.disc["Nx"])
+                y = np.linspace(0 + self.disc["dy"]/2, self.disc["Ly"] - self.disc["dy"]/2, self.disc["Ny"])
+                xx, yy = np.meshgrid(x, y, indexing="ij")
+
+                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+                q_init[0] += self.material["rho0"]
+                k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
+                q_init[2] += self.ic["amp"] * np.sin(k * xx)
+                t_init = (0., self.numerics["dt"])
 
         return q_init, t_init
 
@@ -814,7 +824,7 @@ class Problem:
         if self.ic["type"] != "restart":
             if self.ic["type"] == "perturbation":
                 self.ic["factor"] = float(self.ic["factor"])
-            elif self.ic["type"] == "longitudinal_wave":
+            elif self.ic["type"] in ["longitudinal_wave", "shear_wave"]:
                 self.ic["amp"] = float(self.ic["amp"])
                 if "nwave" in self.ic.keys():
                     self.ic["nwave"] = int(self.ic["nwave"])
