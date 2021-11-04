@@ -24,12 +24,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from argparse import ArgumentParser
 
 from hans.plottools import DatasetSelector
 
+
+def get_parser():
+
+    parser = ArgumentParser()
+    parser.add_argument('-p', dest="path", default=".", help="path (default: data)")
+
+    return parser
+
+
 if __name__ == "__main__":
 
-    files = DatasetSelector(".")
+    parser = get_parser()
+    args = parser.parse_args()
+
+    files = DatasetSelector(args.path)
 
     for filename, data in files.ds.items():
 
