@@ -684,6 +684,12 @@ class Problem:
             print(f'***Unknown integrator \'{self.numerics["integrator"]}\'. Abort.')
             abort()
 
+        if self.numerics["integrator"].startswith("MC"):
+            try:
+                self.numerics["fluxLim"] = float(self.numerics["fluxLim"])
+            except KeyError:
+                pass
+
         try:
             self.numerics["stokes"] = int(self.numerics["stokes"])
         except KeyError:

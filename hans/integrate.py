@@ -221,7 +221,71 @@ class ConservedField(VectorField):
 
         self.field = 0.5 * (self.field + q0)
 
+        if "fluxLim" in self.numerics.keys():
+            self.field += self.numerics["fluxLim"] * self.flux_limiter(q0)
+            self.fill_ghost_buffer()
+
         self.post_integrate(q0)
+
+    def flux_limiter(self, q):
+
+        q_diffx_pos = np.roll(q, -1, axis=1) - q
+        denom_x_pos = np.sum(q_diffx_pos**2, axis=0)
+        q_diffx_neg = q - np.roll(q, 1, axis=1)
+        denom_x_neg = np.sum(q_diffx_neg**2, axis=0)
+
+        nonzero_x_pos = denom_x_pos != 0
+        nonzero_x_neg = denom_x_neg != 0
+
+        rx_pos = np.ones_like(denom_x_pos)
+        rx_pos[nonzero_x_pos] = np.sum(q_diffx_neg * q_diffx_pos, axis=0)[nonzero_x_pos] / denom_x_pos[nonzero_x_pos]
+
+        rx_neg = np.ones_like(denom_x_neg)
+        rx_neg[nonzero_x_neg] = np.sum(q_diffx_neg * q_diffx_pos, axis=0)[nonzero_x_neg] / denom_x_neg[nonzero_x_neg]
+
+        q_diffy_pos = np.roll(q, -1, axis=2) - q
+        denom_y_pos = np.sum(q_diffx_pos**2, axis=0)
+        q_diffy_neg = q - np.roll(q, 1, axis=2)
+        denom_y_neg = np.sum(q_diffx_pos**2, axis=0)
+
+        nonzero_y_pos = denom_y_pos != 0
+        nonzero_y_neg = denom_y_neg != 0
+
+        ry_pos = np.ones_like(denom_y_pos)
+        ry_neg = np.ones_like(denom_y_pos)
+
+        ry_pos[nonzero_y_pos] = np.sum(q_diffy_neg * q_diffy_pos, axis=0)[nonzero_y_pos] / denom_y_pos[nonzero_y_pos]
+        ry_neg[nonzero_y_neg] = np.sum(q_diffy_neg * q_diffy_pos, axis=0)[nonzero_y_neg] / denom_y_neg[nonzero_y_neg]
+
+        G_rx_pos = self.flux_limiter_function(rx_pos)
+        G_rx_pos_W = self.flux_limiter_function(np.roll(rx_pos, 1, axis=0))
+
+        G_rx_neg = self.flux_limiter_function(rx_neg)
+        G_rx_neg_E = self.flux_limiter_function(np.roll(rx_neg, -1, axis=0))
+
+        G_ry_pos = self.flux_limiter_function(ry_pos)
+        G_ry_pos_S = self.flux_limiter_function(np.roll(ry_pos, 1, axis=1))
+
+        G_ry_neg = self.flux_limiter_function(rx_neg)
+        G_ry_neg_N = self.flux_limiter_function(np.roll(ry_neg, -1, axis=1))
+
+        return (G_rx_pos + G_rx_neg_E) * q_diffx_pos \
+            - (G_rx_pos_W + G_rx_neg) * q_diffx_neg \
+            + (G_ry_pos + G_ry_neg_N) * q_diffy_pos \
+            - (G_ry_pos_S + G_ry_neg) * q_diffy_neg
+
+    def flux_limiter_function(self, r):
+
+        cfl = self.dt * (self.vmax + self.vSound) / min(self.disc["dx"], self.disc["dy"])
+
+        if cfl <= 0.5:
+            C = cfl * (1 - cfl)
+        else:
+            C = 0.25
+
+        phi = np.maximum(np.zeros_like(r), np.minimum(2*r, 1))
+
+        return 0.5 * C * (1 - phi)
 
     def richtmyer(self):
         """
