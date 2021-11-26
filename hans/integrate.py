@@ -222,12 +222,25 @@ class ConservedField(VectorField):
         self.field = 0.5 * (self.field + q0)
 
         if "fluxLim" in self.numerics.keys():
-            self.field += self.numerics["fluxLim"] * self.flux_limiter(q0)
+            self.field += self.numerics["fluxLim"] * self.TVD_MC_correction(q0)
             self.fill_ghost_buffer()
 
         self.post_integrate(q0)
 
-    def flux_limiter(self, q):
+    def TVD_MC_correction(self, q):
+        """
+        Compute the correction for the TVD-MacCormack scheme (Davis, 1984).
+
+        Parameters
+        ----------
+        q : np.array
+            Copy of the solution field from the previous step
+
+        Returns
+        ----------
+        np.array
+            TVD correction term
+        """
 
         q_diffx_pos = np.roll(q, -1, axis=1) - q
         denom_x_pos = np.sum(q_diffx_pos**2, axis=0)
@@ -275,6 +288,18 @@ class ConservedField(VectorField):
             - (G_ry_pos_S + G_ry_neg) * q_diffy_neg
 
     def flux_limiter_function(self, r):
+        """Flux limiter function of the TCD-MacCormack scheme (Davis, 1984)
+
+        Parameters
+        ----------
+        r : np.array
+            Scalar field, quantifying the relative cell difference of neighboring cell
+
+        Returns
+        ----------
+        np.array
+            Values of the flux limiter function
+        """
 
         cfl = self.dt * (self.vmax + self.vSound) / min(self.disc["dx"], self.disc["dy"])
 
