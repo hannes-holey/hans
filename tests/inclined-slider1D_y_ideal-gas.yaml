@@ -20,7 +20,7 @@ geometry:
 numerics:
     stokes: 1
     adaptive: 1
-    C: 0.4
+    C: 0.35
     tol: 1e-9
     dt: 1e-8
     maxT: 1.

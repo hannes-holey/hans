@@ -112,6 +112,22 @@ class ConservedField(VectorField):
         return recvbuf[0]
 
     @property
+    def vx_max(self):
+        local_vx_max = np.amax(self.inner[1] / self.inner[0])
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_vx_max, recvbuf, op=MPI.MAX)
+
+        return recvbuf[0]
+
+    @property
+    def vy_max(self):
+        local_vy_max = np.amax(self.inner[2] / self.inner[0])
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_vy_max, recvbuf, op=MPI.MAX)
+
+        return recvbuf[0]
+
+    @property
     def ekin(self):
         area = self.disc["dx"] * self.disc["dy"]
         local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0] * area)
@@ -264,16 +280,20 @@ class ConservedField(VectorField):
             Copy of the solution field from the previous step
 
         """
-        min_dist = min(self.disc["dx"], self.disc["dy"])
+
         ng = self.disc["nghost"]
 
         self.time += self.dt
 
+        dx = np.array([self.disc["dx"], self.disc["dy"]])
+        vmax = np.array([self.vx_max, self.vy_max]) + self.vSound
+        dt_crit = dx / vmax
+
         if bool(self.numerics["adaptive"]):
             CFL = self.numerics["C"]
-            self.dt = CFL * min_dist / (self.vmax + self.vSound)
+            self.dt = CFL * np.amin(dt_crit)
         else:
-            CFL = self.dt * (self.vmax + self.vSound) / min_dist
+            CFL = self.dt / np.amax(dt_crit)
 
         diff = np.empty(1)
         denom = np.empty(1)
