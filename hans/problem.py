@@ -503,8 +503,7 @@ class Problem:
 
         Nx = self.disc["Nx"]
         dx = self.disc["dx"]
-        Lx = self.disc["Lx"]
-        x = np.arange(Nx) * Lx + dx / 2
+        x = np.arange(Nx) * dx + dx / 2
 
         ax[0, 0].plot(x, self.q.centerline_x[1])
         ax[0, 1].plot(x, self.q.centerline_x[2])
