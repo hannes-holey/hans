@@ -806,6 +806,9 @@ class Problem:
                 self.material["a"] = float(self.material["a"])
                 self.material["N"] = float(self.material["N"])
 
+        if "PLindex" in self.material.keys():
+            self.material["PLindex"] = float(self.material["PLindex"])
+
     def check_surface(self):
         """
         Sanity check for surface input.
