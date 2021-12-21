@@ -79,6 +79,8 @@ class ConservedField(VectorField):
             self.dt = t_init[1]
         else:
             self.field[0] = material['rho0']
+            self.field[1] = geometry["U"] / 2 * material["rho0"]
+            self.field[2] = geometry["V"] / 2 * material["rho0"]
             self.time = 0.
             self.dt = numerics["dt"]
 
