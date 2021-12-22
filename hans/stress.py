@@ -99,16 +99,36 @@ class SymStressField3D(TensorField):
         except KeyError:
             self.n = 1
 
-    def num_param(self, Un, Vn):
+    def num_param(self, Um, Vm):
 
-        zmaxu = -1e5 * np.ones_like(Un)
-        zmaxv = 0.5 * np.ones_like(Vn)
+        # values for b
+        # 0.5 -0.714512478467
+        # 0.6 -0.610142431834
+        # 0.7 -0.537878481715
+        # 0.8 -0.485438588613
+        # 0.9 -0.446312057535
+        # 1.0 -0.416666666667
+        # 1.1 -0.393528444050
+        # 1.2 -0.375088307644
+        # 1.3 -0.363378160640
+        # 1.4 -0.353426202841
+        # 1.5 -0.337945369360
+        # 1.6 -0.340883666078
+        # 1.7 -0.337488427417
+        # 1.8 -0.335670825927
+        # TODO: automatic selection, more careful fitting
 
-        zmaxu[Un < 1.9] = (2. + 1./(Un[Un < 1.9] - 2.)) / 3.
-        zmaxv[Vn < 1.9] = (2. + 1./(Vn[Vn < 1.9] - 2.)) / 3.
+        # fitted parameters for n=1 (make sure that material.PLindex = 1.)
+        a = 0.50
+        b = -0.41666667
+        c = 2.5
 
-        zmaxu[Un >= 1.9] = -1e5
-        zmaxv[Vn >= 1.9] = 0.5
+        # set zmax to -1000 for Um<U/2, TODO: negative Um, Vm
+        zmaxu = -1e3 * np.ones_like(Um)
+        zmaxv = -1e3 * np.ones_like(Vm)
+
+        zmaxu[Um > c] = a + b / (Um[Um > c] - c)
+        zmaxv[Vm > c] = a + b / (Vm[Vm > c] - c)
 
         return zmaxu, zmaxv
 
@@ -124,42 +144,24 @@ class SymStressField3D(TensorField):
 
         n = self.n
 
-        zeroflux_x = np.isclose(q[1], 0)
-        zeroflux_y = np.isclose(q[2], 0)
-
         meanu = q[1] / q[0]
         meanv = q[2] / q[0]
 
-        # meanu[zeroflux_x] = U / 2
-        # meanv[zeroflux_y] = V / 2
-
-        if U == 0.:
-            U_nondim = np.zeros_like(q[0])
-        else:
-            U_nondim = U / meanu
-
-        if V == 0.:
-            V_nondim = np.zeros_like(q[0])
-        else:
-            V_nondim = V / meanv
-
-        UV_crit = (1 + 2 * n) / (1 + n)
-
-        # get numeric parameters
-        zmaxu, zmaxv = self.num_param(U_nondim, V_nondim)
-
-        print(np.amax(zmaxu), np.amax(U_nondim))
+        zmaxu, zmaxv = self.num_param(meanu, meanv)
 
         zmaxu *= h[0]
         zmaxv *= h[0]
 
+        U_crit = meanu * (1 + 2 * n) / (1 + n)
+        V_crit = meanv * (1 + 2 * n) / (1 + n)
+
         # case 1: U_nondim <= UV_crit; V_nondim <= UV_crit
-        maskU1 = U_nondim <= UV_crit
-        maskV1 = V_nondim <= UV_crit
+        maskU1 = U <= U_crit
+        maskV1 = V <= V_crit
 
         # case 2: U_nondim > UV_crit; V_nondim > UV_crit
-        maskU2 = U_nondim > UV_crit
-        maskV2 = V_nondim > UV_crit
+        maskU2 = U > U_crit
+        maskV2 = V > V_crit
 
         if bound == "top":
             if self.surface is None or self.surface["type"] == "full":
@@ -180,31 +182,31 @@ class SymStressField3D(TensorField):
                 s5_v1 = -s3_1 * h[1]
 
                 # case 2
-                s0_2 = -2*((1+2*n)*(q[1]*q[0]-U)*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n)) *
+                s0_2 = -2*((1+2*n)*(q[1]-U*q[0])*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n)) *
                            (power(zmaxu, 2+1/n)*n-power(zmaxu - h[0], 1+1/n)
-                            * (zmaxu*n+(1+n)*h[0]))*h[1])/(n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0]))**2
+                            * (zmaxu*n+(1+n)*h[0]))*h[1])/(q[0]*(n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0]))**2)
 
-                s1_2 = -2*((1+2*n)*(q[2]*q[0]-V)*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n)) *
+                s1_2 = -2*((1+2*n)*(q[2]-V*q[0])*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n)) *
                            (power(zmaxv, 2+1/n)*n-power(zmaxv - h[0], 1+1/n)
-                            * (zmaxv*n+(1+n)*h[0]))*h[2])/(n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0]))**2
+                            * (zmaxv*n+(1+n)*h[0]))*h[2])/(q[0]*(n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0]))**2)
 
-                s3_2 = ((1+1/n)*(1+2*n)*(q[2]*q[0]-V)*power(zmaxv-h[0], 1/n)*h[0]) / \
-                    (n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0]))
+                s3_2 = ((1+1/n)*(1+2*n)*(q[2]-V*q[0])*power(zmaxv-h[0], 1/n)*h[0]) / \
+                    (q[0]*(n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
 
-                s4_2 = ((1+1/n)*(1+2*n)*(q[1]*q[0]-V)*power(zmaxu-h[0], 1/n)*h[0]) / \
-                    (n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0]))
+                s4_2 = ((1+1/n)*(1+2*n)*(q[1]-U*q[0])*power(zmaxu-h[0], 1/n)*h[0]) / \
+                    (q[0]*(n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
 
-                s5_u2 = (1+2*n)*(-(((1+2*n)*(q[1]*q[0]-U)*(power(zmaxu, 1+1/n)
-                                                           - power(zmaxu-h[0], 1+1/n))**2 * h[0]*h[2]) /
-                                   (n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu * n+(1+2*n)*h[0]))**2)
-                                 + ((q[1]*q[0]-U)*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n))*h[2]) /
-                                 (n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
+                s5_u2 = (1+2*n)/q[0]*(-(((1+2*n)*(q[1]-U*q[0])*(power(zmaxu, 1+1/n)
+                                                                - power(zmaxu-h[0], 1+1/n))**2 * h[0]*h[2]) /
+                                        (n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu * n+(1+2*n)*h[0]))**2)
+                                      + ((q[1]-U*q[0])*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n))*h[2]) /
+                                      (n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
 
-                s5_v2 = (1+2*n)*(-(((1+2*n)*(q[2]*q[0]-V)*(power(zmaxv, 1+1/n)
-                                                           - power(zmaxv-h[0], 1+1/n))**2 * h[0]*h[1]) /
-                                   (n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv * n+(1+2*n)*h[0]))**2)
-                                 + ((q[2]*q[0]-V)*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n))*h[1]) /
-                                 (n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
+                s5_v2 = (1+2*n)/q[0]*(-(((1+2*n)*(q[2]-V*q[0])*(power(zmaxv, 1+1/n)
+                                                                - power(zmaxv-h[0], 1+1/n))**2 * h[0]*h[1]) /
+                                        (n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv * n+(1+2*n)*h[0]))**2)
+                                      + ((q[2]-V*q[0])*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n))*h[1]) /
+                                      (n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
 
                 self.field[0, maskU1] = eta * power(s0_1[maskU1], n)
                 self.field[0, maskU2] = eta * power(s0_2[maskU2], n)
@@ -215,6 +217,7 @@ class SymStressField3D(TensorField):
                 self.field[3, maskV1] = eta * power(s3_1[maskV1], n)
                 self.field[3, maskV2] = eta * power(s3_2[maskV2], n)
 
+                # TODO: probably wrong wall shear stress
                 self.field[4, maskU1] = eta * power(s4_1[maskU1], n)
                 self.field[4, maskU2] = eta * power(s4_2[maskU2], n)
 
@@ -256,11 +259,11 @@ class SymStressField3D(TensorField):
                 s4_1 = -(((1+2*n)*power(zmaxu, 1/n)*(q[0]*U*zmaxu-q[1]*h[0]))/(n*q[0]*(power(zmaxu, 2+1/n)+power(-zmaxu+h[0], 2+1/n))))
 
                 # case 2:
-                s3_2 = (power(zmaxv, 1/n)*(1+1/n)*(1+2*n)*(q[2]*q[0]-V)*h[0]) / (n*power(zmaxv-h[0], 2+1/n) +
-                                                                                 power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0]))
+                s3_2 = (power(zmaxv, 1/n)*(1+1/n)*(1+2*n)*(q[2]-V*q[0])*h[0]) / (q[0]*(n*power(zmaxv-h[0], 2+1/n) +
+                                                                                       power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
 
-                s4_2 = (power(zmaxu, 1/n)*(1+1/n)*(1+2*n)*(q[1]*q[0]-U)*h[0]) / (n*power(zmaxu-h[0], 2+1/n) +
-                                                                                 power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0]))
+                s4_2 = (power(zmaxu, 1/n)*(1+1/n)*(1+2*n)*(q[1]-U*q[0])*h[0]) / (q[0]*(n*power(zmaxu-h[0], 2+1/n) +
+                                                                                       power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
 
                 self.field[3, maskV1] = eta * power(s3_1[maskV1], n)
                 self.field[3, maskV2] = eta * power(s3_2[maskV2], n)
@@ -279,7 +282,6 @@ def power(base, exponent, mode='real'):
     complex_base = np.ones_like(base, dtype=complex)
     complex_base *= base
 
-    result = np.power(complex_base, exponent)
+    result = np.float_power(complex_base, exponent)
 
     return result.real
-    # return np.absolute(result)
