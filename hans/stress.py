@@ -31,6 +31,21 @@ from hans.material import Material
 class SymStressField2D(VectorField):
 
     def __init__(self, disc, geometry, material, surface=None):
+        """This class contains the averaged viscous stress tensor components (xx, yy, xy).
+        Derived from VectorField.
+
+        Parameters
+        ----------
+        disc : dict
+            Discretization parameters.
+        geometry : dict
+            Geometry parameters.
+        material : dict
+            Material parameters.
+        surface : dict
+            Surface parameters (the default is None).
+
+        """
 
         super().__init__(disc)
 
@@ -44,6 +59,18 @@ class SymStressField2D(VectorField):
             self.n = 1
 
     def set(self, q, h, Ls):
+        """Set method for Newtonian stress tensor components.
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Field of conserved variables.
+        h : numpy.ndarray
+            Field of height and height gradients.
+        Ls : numpy.ndarray
+            Field of slip lengths.
+
+        """
 
         U = self.geometry['U']
         V = self.geometry['V']
@@ -86,7 +113,22 @@ class SymStressField2D(VectorField):
 
 class SymStressField3D(TensorField):
 
-    def __init__(self, disc, geometry, material, surface):
+    def __init__(self, disc, geometry, material, surface=None):
+        """This class contains all viscous stress tensor components
+        evaluated at the top and bottom respectively. Derived from TensorField.
+
+        Parameters
+        ----------
+        disc : dict
+            Discretization parameters.
+        geometry : dict
+            Geometry parameters.
+        material : dict
+            Material parameters.
+        surface : dict
+            Surface parameters (the default is None).
+
+        """
 
         super().__init__(disc)
 
