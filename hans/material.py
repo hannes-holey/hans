@@ -304,7 +304,7 @@ class Material:
 
                     return tau0 / shear_rate * np.arcsinh(mu0 * shear_rate / tau0)
 
-                elif str(self.material["thinning"]) == "Carreau":
+                elif self.material["thinning"] == "Carreau":
 
                     shear_rate = np.sqrt(U**2 + V**2) / height
                     lam = self.material["relax"]
