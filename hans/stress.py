@@ -138,43 +138,46 @@ class SymStressField3D(TensorField):
 
         try:
             self.n = self.material["PLindex"]
+            self.PL = True
         except KeyError:
-            self.n = 1
-
-    def num_param(self, Um, Vm):
-
-        # values for b
-        # 0.5 -0.714512478467
-        # 0.6 -0.610142431834
-        # 0.7 -0.537878481715
-        # 0.8 -0.485438588613
-        # 0.9 -0.446312057535
-        # 1.0 -0.416666666667
-        # 1.1 -0.393528444050
-        # 1.2 -0.375088307644
-        # 1.3 -0.363378160640
-        # 1.4 -0.353426202841
-        # 1.5 -0.337945369360
-        # 1.6 -0.340883666078
-        # 1.7 -0.337488427417
-        # 1.8 -0.335670825927
-        # TODO: automatic selection, more careful fitting
-
-        # fitted parameters for n=1 (make sure that material.PLindex = 1.)
-        a = 0.50
-        b = -0.41666667
-        c = 2.5
-
-        # set zmax to -1000 for Um<U/2, TODO: negative Um, Vm
-        zmaxu = -1e3 * np.ones_like(Um)
-        zmaxv = -1e3 * np.ones_like(Vm)
-
-        zmaxu[Um > c] = a + b / (Um[Um > c] - c)
-        zmaxv[Vm > c] = a + b / (Vm[Vm > c] - c)
-
-        return zmaxu, zmaxv
+            self.PL = False
 
     def set(self, q, h, Ls, bound):
+        """Wrapper function around set methods for wall stress tensor components.
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Field of conserved variables.
+        h : numpy.ndarray
+            Field of height and height gradients.
+        Ls : numpy.ndarray
+            Field of slip lengths.
+        bound : str
+            Flag for bottom or top wall.
+
+        """
+
+        if self.PL:
+            self.set_PowerLaw(q, h, bound)
+        else:
+            self.set_Newton(q, h, Ls, bound)
+
+    def set_Newton(self, q, h, Ls, bound):
+        """Set method for Newtonian stress tensor components.
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Field of conserved variables.
+        h : numpy.ndarray
+            Field of height and height gradients.
+        Ls : numpy.ndarray
+            Field of slip lengths.
+        bound : str
+            Flag for bottom or top wall.
+
+        """
 
         U = self.geometry['U']
         V = self.geometry['V']
@@ -184,91 +187,31 @@ class SymStressField3D(TensorField):
         v1 = zeta + 4 / 3 * eta
         v2 = zeta - 2 / 3 * eta
 
-        n = self.n
-
-        meanu = q[1] / q[0]
-        meanv = q[2] / q[0]
-
-        zmaxu, zmaxv = self.num_param(meanu, meanv)
-
-        zmaxu *= h[0]
-        zmaxv *= h[0]
-
-        U_crit = meanu * (1 + 2 * n) / (1 + n)
-        V_crit = meanv * (1 + 2 * n) / (1 + n)
-
-        # case 1: U_nondim <= UV_crit; V_nondim <= UV_crit
-        maskU1 = U <= U_crit
-        maskV1 = V <= V_crit
-
-        # case 2: U_nondim > UV_crit; V_nondim > UV_crit
-        maskU2 = U > U_crit
-        maskV2 = V > V_crit
-
         if bound == "top":
             if self.surface is None or self.surface["type"] == "full":
                 # all other types than 'full' consider slip only at the top surface
+                self.field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v1*h[1]
+                                    + ((V*q[0] - 3*q[2]) * h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2) * (h[0] + Ls)/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
 
-                # case 1
-                s0_1 = -2 * ((1+2*n)*power(-zmaxu+h[0], 1/n)*(q[0]*U*zmaxu-q[1]*h[0])*h[1]) / \
-                    (n*q[0]*(power(zmaxu, 2+1/n)+power(-zmaxu+h[0], 2+1/n)))
+                self.field[1] = -2*(h[0] + Ls)*(((U*q[0] - 3*q[1])*h[0]**2
+                                                 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v2*h[1]
+                                                + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                                    + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v1) / (h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
 
-                s1_1 = -2 * ((1+2*n)*power(-zmaxv+h[0], 1/n)*(q[0]*V*zmaxv-q[2]*h[0])*h[2]) / \
-                    (n*q[0]*(power(zmaxv, 2+1/n)+power(-zmaxv+h[0], 2+1/n)))
+                self.field[2] = -2*(h[0] + Ls)*v2*(((U*q[0] - 3*q[1])*h[0]**2
+                                                    + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*h[1]
+                                                   + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                                      + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
 
-                s3_1 = ((1+2*n)*power(-zmaxv+h[0], 1/n)*(q[0]*V*zmaxv-q[2]*h[0]))/(n*q[0]*(power(zmaxv, 2+1/n)+power(-zmaxv+h[0], 2+1/n)))
+                self.field[3] = 2*(q[0]*V*h[0] - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
 
-                s4_1 = ((1+2*n)*power(-zmaxu+h[0], 1/n)*(q[0]*U*zmaxu-q[1]*h[0]))/(n*q[0]*(power(zmaxu, 2+1/n)+power(-zmaxu+h[0], 2+1/n)))
+                self.field[4] = 2*(q[0]*U*h[0] - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
 
-                s5_u1 = -s4_1 * h[2]
-                s5_v1 = -s3_1 * h[1]
-
-                # case 2
-                s0_2 = -2*((1+2*n)*(q[1]-U*q[0])*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n)) *
-                           (power(zmaxu, 2+1/n)*n-power(zmaxu - h[0], 1+1/n)
-                            * (zmaxu*n+(1+n)*h[0]))*h[1])/(q[0]*(n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0]))**2)
-
-                s1_2 = -2*((1+2*n)*(q[2]-V*q[0])*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n)) *
-                           (power(zmaxv, 2+1/n)*n-power(zmaxv - h[0], 1+1/n)
-                            * (zmaxv*n+(1+n)*h[0]))*h[2])/(q[0]*(n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0]))**2)
-
-                s3_2 = ((1+1/n)*(1+2*n)*(q[2]-V*q[0])*power(zmaxv-h[0], 1/n)*h[0]) / \
-                    (q[0]*(n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
-
-                s4_2 = ((1+1/n)*(1+2*n)*(q[1]-U*q[0])*power(zmaxu-h[0], 1/n)*h[0]) / \
-                    (q[0]*(n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
-
-                s5_u2 = (1+2*n)/q[0]*(-(((1+2*n)*(q[1]-U*q[0])*(power(zmaxu, 1+1/n)
-                                                                - power(zmaxu-h[0], 1+1/n))**2 * h[0]*h[2]) /
-                                        (n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu * n+(1+2*n)*h[0]))**2)
-                                      + ((q[1]-U*q[0])*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n))*h[2]) /
-                                      (n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
-
-                s5_v2 = (1+2*n)/q[0]*(-(((1+2*n)*(q[2]-V*q[0])*(power(zmaxv, 1+1/n)
-                                                                - power(zmaxv-h[0], 1+1/n))**2 * h[0]*h[1]) /
-                                        (n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv * n+(1+2*n)*h[0]))**2)
-                                      + ((q[2]-V*q[0])*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n))*h[1]) /
-                                      (n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
-
-                self.field[0, maskU1] = eta * power(s0_1[maskU1], n)
-                self.field[0, maskU2] = eta * power(s0_2[maskU2], n)
-
-                self.field[1, maskV1] = eta * power(s1_1[maskV1], n)
-                self.field[1, maskV2] = eta * power(s1_2[maskV2], n)
-
-                self.field[3, maskV1] = eta * power(s3_1[maskV1], n)
-                self.field[3, maskV2] = eta * power(s3_2[maskV2], n)
-
-                # TODO: probably wrong wall shear stress
-                self.field[4, maskU1] = eta * power(s4_1[maskU1], n)
-                self.field[4, maskU2] = eta * power(s4_2[maskU2], n)
-
-                self.field[5, maskU1] = eta * power(s5_u1[maskU1], n)
-                self.field[5, maskU2] = eta * power(s5_u2[maskU2], n)
-
-                self.field[5, maskV1] += eta * power(s5_v1[maskV1], n)
-                self.field[5, maskV2] += eta * power(s5_v2[maskV2], n)
-
+                self.field[5] = -2*eta*(h[0] + Ls)*(((V*q[0] - 3*q[2])*h[0]**2
+                                                     + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                                                    + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                                       + 6*Ls**2*(U*q[0] - 2*q[1]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
             else:
                 # all other types than 'full' consider slip only at the top surface
                 self.field[0] = (-6*v1*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
@@ -294,36 +237,201 @@ class SymStressField3D(TensorField):
         elif bound == "bottom":
             if self.surface is None or self.surface["type"] == "full":
                 # surface type "full" means that both surface are slippery with equal slip length
+                self.field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                                     + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v1*h[1]
+                                    + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2)*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
 
-                # case 1:
-                s3_1 = -(((1+2*n)*power(zmaxv, 1/n)*(q[0]*V*zmaxv-q[2]*h[0]))/(n*q[0]*(power(zmaxv, 2+1/n)+power(-zmaxv+h[0], 2+1/n))))
+                self.field[1] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                                     + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v2*h[1]
+                                    + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*(zeta + (4*eta)/3))*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
 
-                s4_1 = -(((1+2*n)*power(zmaxu, 1/n)*(q[0]*U*zmaxu-q[1]*h[0]))/(n*q[0]*(power(zmaxu, 2+1/n)+power(-zmaxu+h[0], 2+1/n))))
+                self.field[2] = -2*v2*Ls*(((U*q[0] - 3*q[1])*h[0]**2
+                                           + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[1]
+                                          + ((V*q[0] - 3*q[2])*h[0] ** 2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                             + 6*Ls ** 2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
 
-                # case 2:
-                s3_2 = (power(zmaxv, 1/n)*(1+1/n)*(1+2*n)*(q[2]-V*q[0])*h[0]) / (q[0]*(n*power(zmaxv-h[0], 2+1/n) +
-                                                                                       power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
+                self.field[3] = -2*(2*q[0]*V*h[0] + 6*q[0]*V*Ls - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
 
-                s4_2 = (power(zmaxu, 1/n)*(1+1/n)*(1+2*n)*(q[1]-U*q[0])*h[0]) / (q[0]*(n*power(zmaxu-h[0], 2+1/n) +
-                                                                                       power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
+                self.field[4] = -2*(2*q[0]*U*h[0] + 6*q[0]*U*Ls - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
 
-                self.field[3, maskV1] = eta * power(s3_1[maskV1], n)
-                self.field[3, maskV2] = eta * power(s3_2[maskV2], n)
-
-                self.field[4, maskU1] = eta * power(s4_1[maskU1], n)
-                self.field[4, maskU2] = eta * power(s4_2[maskU2], n)
-
+                self.field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2
+                                         + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                                        + ((U*q[0] - 3*q[1])*h[0] ** 2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                           + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[2])*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
             else:
                 # all other types than 'full' consider slip only at the top surface
                 self.field[3] = -2*(6*q[0]*Ls*V + 2*q[0]*V*h[0] - 6*q[2]*Ls - 3*h[0]*q[2])*eta/(h[0]*q[0]*(4*Ls + h[0]))
                 self.field[4] = -2*(6*q[0]*Ls*U + 2*q[0]*U*h[0] - 6*q[1]*Ls - 3*h[0]*q[1])*eta/(h[0]*q[0]*(4*Ls + h[0]))
 
+    def set_PowerLaw(self, q, h, bound):
+        """Set method for power law stress tensor components.
 
-def power(base, exponent, mode='real'):
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Field of conserved variables.
+        h : numpy.ndarray
+            Field of height and height gradients.
+        bound : str
+            Flag for bottom or top wall.
 
-    complex_base = np.ones_like(base, dtype=complex)
-    complex_base *= base
+        """
 
+        U = self.geometry['U']
+        V = self.geometry['V']
+        eta = self.material["shear"]
+
+        n = self.n
+
+        u_mean = q[1] / q[0]
+        v_mean = q[2] / q[0]
+
+        zmaxu, zmaxv = self.approximate_zmax(U, V, u_mean, v_mean)
+
+        zmaxu *= h[0]
+        zmaxv *= h[0]
+
+        U_crit = u_mean * (1 + 2 * n) / (1 + n)
+        V_crit = v_mean * (1 + 2 * n) / (1 + n)
+
+        # case 1: U <= U_crit; V <= V_crit
+        maskU1 = U <= U_crit
+        maskV1 = V <= V_crit
+
+        # case 2: U > U_crit; V > V_crit
+        maskU2 = U > U_crit
+        maskV2 = V > V_crit
+
+        if bound == "top":
+            # case 1
+            s0_1 = -2 * ((1+2*n)*power(-zmaxu+h[0], 1/n)*(q[0]*U*zmaxu-q[1]*h[0])*h[1]) / (n*q[0]*(power(zmaxu, 2+1/n)
+                                                                                                   + power(-zmaxu+h[0], 2+1/n)))
+
+            s1_1 = -2 * ((1+2*n)*power(-zmaxv+h[0], 1/n)*(q[0]*V*zmaxv-q[2]*h[0])*h[2]) / (n*q[0]*(power(zmaxv, 2+1/n)
+                                                                                                   + power(-zmaxv+h[0], 2+1/n)))
+
+            s3_1 = ((1+2*n)*power(-zmaxv+h[0], 1/n)*(q[0]*V*zmaxv-q[2]*h[0]))/(n*q[0]*(power(zmaxv, 2+1/n)+power(-zmaxv+h[0], 2+1/n)))
+
+            s4_1 = ((1+2*n)*power(-zmaxu+h[0], 1/n)*(q[0]*U*zmaxu-q[1]*h[0]))/(n*q[0]*(power(zmaxu, 2+1/n)+power(-zmaxu+h[0], 2+1/n)))
+
+            s5_u1 = -s4_1 * h[2]
+            s5_v1 = -s3_1 * h[1]
+
+            # case 2
+            s0_2 = -2*((1+2*n)*(q[1]-U*q[0])*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n)) *
+                       (power(zmaxu, 2+1/n)*n-power(zmaxu - h[0], 1+1/n)
+                        * (zmaxu*n+(1+n)*h[0]))*h[1])/(q[0]*(n*power(zmaxu-h[0], 2+1/n)
+                                                             + power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0]))**2)
+
+            s1_2 = -2*((1+2*n)*(q[2]-V*q[0])*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n)) *
+                       (power(zmaxv, 2+1/n)*n-power(zmaxv - h[0], 1+1/n)
+                        * (zmaxv*n+(1+n)*h[0]))*h[2])/(q[0]*(n*power(zmaxv-h[0], 2+1/n)
+                                                             + power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0]))**2)
+
+            s3_2 = ((1+1/n)*(1+2*n)*(q[2]-V*q[0])*power(zmaxv-h[0], 1/n)*h[0]) / \
+                (q[0]*(n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
+
+            s4_2 = ((1+1/n)*(1+2*n)*(q[1]-U*q[0])*power(zmaxu-h[0], 1/n)*h[0]) / \
+                (q[0]*(n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
+
+            s5_u2 = (1+2*n)/q[0]*(-(((1+2*n)*(q[1]-U*q[0])*(power(zmaxu, 1+1/n)
+                                                            - power(zmaxu-h[0], 1+1/n))**2 * h[0]*h[2]) /
+                                    (n*power(zmaxu-h[0], 2+1/n) + power(zmaxu, 1+1/n)*(-zmaxu * n+(1+2*n)*h[0]))**2)
+                                  + ((q[1]-U*q[0])*(power(zmaxu, 1+1/n)-power(zmaxu-h[0], 1+1/n))*h[2]) /
+                                  (n*power(zmaxu-h[0], 2+1/n)+power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
+
+            s5_v2 = (1+2*n)/q[0]*(-(((1+2*n)*(q[2]-V*q[0])*(power(zmaxv, 1+1/n)
+                                                            - power(zmaxv-h[0], 1+1/n))**2 * h[0]*h[1]) /
+                                    (n*power(zmaxv-h[0], 2+1/n) + power(zmaxv, 1+1/n)*(-zmaxv * n+(1+2*n)*h[0]))**2)
+                                  + ((q[2]-V*q[0])*(power(zmaxv, 1+1/n)-power(zmaxv-h[0], 1+1/n))*h[1]) /
+                                  (n*power(zmaxv-h[0], 2+1/n)+power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
+
+            self.field[0, maskU1] = eta * power(s0_1[maskU1], n)
+            self.field[0, maskU2] = eta * power(s0_2[maskU2], n)
+
+            self.field[1, maskV1] = eta * power(s1_1[maskV1], n)
+            self.field[1, maskV2] = eta * power(s1_2[maskV2], n)
+
+            self.field[3, maskV1] = eta * power(s3_1[maskV1], n)
+            self.field[3, maskV2] = eta * power(s3_2[maskV2], n)
+
+            self.field[4, maskU1] = eta * power(s4_1[maskU1], n)
+            self.field[4, maskU2] = eta * power(s4_2[maskU2], n)
+
+            self.field[5, maskU1] = eta * power(s5_u1[maskU1], n)
+            self.field[5, maskU2] = eta * power(s5_u2[maskU2], n)
+
+            self.field[5, maskV1] += eta * power(s5_v1[maskV1], n)
+            self.field[5, maskV2] += eta * power(s5_v2[maskV2], n)
+
+        elif bound == "bottom":
+            # case 1:
+            s3_1 = -(((1+2*n)*power(zmaxv, 1/n)*(q[0]*V*zmaxv-q[2]*h[0]))/(n*q[0]*(power(zmaxv, 2+1/n)+power(-zmaxv+h[0], 2+1/n))))
+
+            s4_1 = -(((1+2*n)*power(zmaxu, 1/n)*(q[0]*U*zmaxu-q[1]*h[0]))/(n*q[0]*(power(zmaxu, 2+1/n)+power(-zmaxu+h[0], 2+1/n))))
+
+            # case 2:
+            s3_2 = (power(zmaxv, 1/n)*(1+1/n)*(1+2*n)*(q[2]-V*q[0])*h[0]) / (q[0]*(n*power(zmaxv-h[0], 2+1/n) +
+                                                                                   power(zmaxv, 1+1/n)*(-zmaxv*n+(1+2*n)*h[0])))
+
+            s4_2 = (power(zmaxu, 1/n)*(1+1/n)*(1+2*n)*(q[1]-U*q[0])*h[0]) / (q[0]*(n*power(zmaxu-h[0], 2+1/n) +
+                                                                                   power(zmaxu, 1+1/n)*(-zmaxu*n+(1+2*n)*h[0])))
+
+            self.field[3, maskV1] = eta * power(s3_1[maskV1], n)
+            self.field[3, maskV2] = eta * power(s3_2[maskV2], n)
+
+            self.field[4, maskU1] = eta * power(s4_1[maskU1], n)
+            self.field[4, maskU2] = eta * power(s4_2[maskU2], n)
+
+    def approximate_zmax(self, U, V, Um, Vm):
+        """Approximate the location of maximum velocity in z-direction to compute the power law stresses.
+        Exact values have been found numerically for both cases, but a good approximation
+        is given by a hyperbola with vertical asymptote at jx/rho = U/2 (Couette profile).
+
+        Parameters
+        ----------
+        U : float
+            Sliding velocity of the lower surface in x-direction.
+        V : float
+            Sliding velocity of the lower surface in y-direction.
+        Um : numpy.ndarray
+            Array of mean velocities in x-direction (jx/rho).
+        Vm : numpy.ndarray
+            Array of mean velocities in y-direction (jy/rho).
+
+        Returns
+        -------
+        numpy.ndarray
+            Nondimensional z-coordinate of velocity maximum in x-direction
+        numpy.ndarray
+            Nondimensional z-coordinate of velocity maximum in y-direction
+        """
+
+        a = 0.5
+        bu = -U / (12 * self.n)
+        cu = U / 2
+
+        bv = -V / (12 * self.n)
+        cv = V / 2
+
+        if V == 0:
+            zmaxv = np.ones_like(Vm) * 0.5
+        else:
+            zmaxv = a + bv / (Vm - cv)
+
+        if U == 0:
+            zmaxu = np.ones_like(Um) * 0.5
+        else:
+            zmaxu = a + bu / (Um - cu)
+
+        return zmaxu, zmaxv
+
+
+def power(base, exponent):
+
+    complex_base = base.astype('complex128')
     result = np.float_power(complex_base, exponent)
 
     return result.real
