@@ -317,6 +317,14 @@ class Material:
                         mu_inf = 0.
 
                     return mu_inf + (mu0 - mu_inf) * (1 + (lam * shear_rate)**a)**((N - 1) / a)
+
+                elif self.material["thinning"] == "PL":
+                    shear_rate = np.sqrt(U**2 + V**2) / height
+                    flow_consistency_index = self.material["shear"]
+                    flow_behavior_index = self.material["n"]
+
+                    return flow_consistency_index * shear_rate**(flow_behavior_index - 1)
+
                 else:
                     return mu0
             else:

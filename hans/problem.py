@@ -805,6 +805,9 @@ class Problem:
                 self.material["relax"] = float(self.material["relax"])
                 self.material["a"] = float(self.material["a"])
                 self.material["N"] = float(self.material["N"])
+            elif self.material["thinning"] == "PL":
+                self.material["shear"] = float(self.material["shear"])
+                self.material["n"] = float(self.material["n"])
 
         if "PLindex" in self.material.keys():
             self.material["PLindex"] = float(self.material["PLindex"])
