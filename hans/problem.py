@@ -188,6 +188,11 @@ class Problem:
                     self._write_mode = 3
                     break
 
+                # NaN detected
+                if self.q.isnan > 0:
+                    self._write_mode = 4
+                    break
+
                 if i % writeInterval == 0:
                     self.write_to_netcdf(i, nc, mode=self._write_mode)
                     if rank == 0:
@@ -420,20 +425,21 @@ class Problem:
         print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
         if mode == 1:
-            print(f"\nSolution has converged after {i:d} steps. Output written to: {self.outpath}", flush=True)
+            print(f"\nSolution has converged after {i:d} steps.", flush=True)
         elif mode == 2:
-            print(f"\nNo convergence within {i: d} steps.", end=" ", flush=True)
-            print(f"Stopping criterion: maximum time {self.numerics['maxT']: .1e} s reached.", flush=True)
-            print(f"Output written to: {self.outpath}", flush=True)
+            print(f"\nNo convergence within {i: d} steps. Stopping criterion: \
+maximum time {self.numerics['maxT']: .1e} s reached.", flush=True)
         elif mode == 3:
-            print(f"\nNo convergence within {i: d} steps.", end=" ", flush=True)
-            print(f"Stopping criterion: maximum number of iterations reached.", flush=True)
-            print(f"Output written to: {self.outpath}", flush=True)
+            print(f"\nNo convergence within {i: d} steps. Stopping criterion: \
+maximum number of iterations reached.", flush=True)
         elif mode == 4:
-            print(f"Execution stopped. Output written to: {self.outpath}", flush=True)
+            print(f"Nan detetcted in solution. Execution stopped.", flush=True)
+        elif mode == 5:
+            print(f"Execution stopped.", flush=True)
 
         if mode > 0:
             walltime = datetime.now() - self.tStart
+            print(f"Output written to: {self.outpath}", flush=True)
             print(f"Total wall clock time: {str(walltime).split('.')[0]}", end=" ", flush=True)
             print(f"(Performance: {i/walltime.total_seconds(): .2f} steps/s", end=" ", flush=True)
             print(f"on {self.q.comm.dims[0]} x {self.q.comm.dims[1]} MPI grid)", flush=True)
@@ -486,7 +492,7 @@ class Problem:
         """
 
         if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
-            self._write_mode = 4
+            self._write_mode = 5
 
     def plot(self, writeInterval):
         """

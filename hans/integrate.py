@@ -136,6 +136,14 @@ class ConservedField(VectorField):
 
         return recvbuf[0]
 
+    @property
+    def isnan(self):
+        local_nans = np.sum(np.isnan(self.inner))
+        recvbuf = np.empty(1, dtype=int)
+        self.comm.Allreduce(local_nans, recvbuf, op=MPI.SUM)
+
+        return recvbuf[0]
+
     def update(self, i):
         """
         Wrapper function for the explicit time update of the solution field.
