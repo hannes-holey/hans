@@ -426,6 +426,12 @@ class SymStressField3D(TensorField):
         else:
             zmaxu = a + bu / (Um - cu)
 
+        # upper and lower bound for asymptotic behavior
+        zmaxu = np.minimum(zmaxu, 1e5)
+        zmaxu = np.maximum(zmaxu, -1e5)
+        zmaxv = np.minimum(zmaxv, 1e5)
+        zmaxv = np.maximum(zmaxv, -1e5)
+
         return zmaxu, zmaxv
 
 
