@@ -103,12 +103,19 @@ class GapHeight(VectorField):
             cp = self.geometry['c']
             lp = self.geometry['l']
             wp = self.geometry['w']
+            tw = self.geometry['t']
 
             self.field[0] = h1 + (h2 - h1) / (Lx) * xx
 
             xmask = np.logical_and(xx > cp, xx <= cp + lp)
             ymask = np.logical_and(yy > (Ly - wp) / 2., yy <= (Ly + wp) / 2.)
             xymask = np.logical_and(xmask, ymask)
+
+            xt1_mask = np.logical_and(xx > cp - tw, xx <= cp)
+            xt2_mask = np.logical_and(xx > cp + lp, xx <= cp + lp + tw)
+
+            self.field[0, xt1_mask] += (xx[xt1_mask] - cp + tw) * hp / tw
+            self.field[0, xt2_mask] += -(xx[xt2_mask] - cp - lp - tw) * hp / tw
 
             self.field[0, xymask] += hp
 

@@ -668,6 +668,19 @@ maximum number of iterations reached.", flush=True)
             self.geometry["c"] = float(self.geometry['c'])
             self.geometry["l"] = float(self.geometry['l'])
             self.geometry["w"] = float(self.geometry['w'])
+
+            try:
+                self.geometry["t"] = float(self.geometry["t"])
+            except KeyError:
+                self.geometry["t"] = 0.
+
+            try:
+                assert 2 * self.geometry["t"] + self.geometry["l"] + self.geometry["c"] <= self.disc["Lx"]
+                assert self.geometry["w"] <= self.disc["Ly"]
+            except AssertionError:
+                print("Size of the pocket is larger than the domain. Abort.")
+                abort()
+
         elif self.geometry["type"] in ["half_sine", "half_sine_squared"]:
             self.geometry["h0"] = float(self.geometry['h0'])
             self.geometry["amp"] = float(self.geometry['amp'])
