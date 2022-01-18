@@ -830,6 +830,10 @@ maximum number of iterations reached.", flush=True)
 
         if "PLindex" in self.material.keys():
             self.material["PLindex"] = float(self.material["PLindex"])
+            if "PLmethod" in self.material.keys():
+                self.material["PLmethod"] = self.material["PLmethod"]
+            else:
+                self.material["PLmethod"] = "exact"
 
     def check_surface(self):
         """
