@@ -518,9 +518,9 @@ def zmax_nleq_case1(zmax, n, un):
     """
 
     # Case1
-    return power(((1+n))/((power(-zmax, 1+1/n)
-                           + power(1. - zmax, 1+1/n))), n) - power(((1+2*n)*(un - zmax))/(power(zmax, 2+1/n)
-                                                                                          + power(1. - zmax, 2+1/n)), n)
+    return power((1+n)/(n * (-power(zmax, 1+1/n)
+                             + power(1. - zmax, 1+1/n))), n) - power(((1+2*n)*(un - zmax))/(n*(power(zmax, 2+1/n)
+                                                                                               + power(1. - zmax, 2+1/n))), n)
 
 
 def zmax_nleq_case2(zmax, n, un):
