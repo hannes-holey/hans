@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ from hans.integrate import ConservedField
 
 class Problem:
 
-    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic):
+    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic, roughness):
         """
         Collects all information about a single problem
         and contains the methods to run a simulation, based on the problem defintiion."
@@ -62,9 +62,10 @@ class Problem:
             Contains material parameters.
         surface : dict
             Contains surface parameters.
-        restart_file : str
-            Filename of the netCDF file, from which simulation is restarted.
-
+        ic : dict
+            Contains initial conditions.
+        roughness : dict
+            Contains roughness parameters.
         """
 
         self.options = options
@@ -75,6 +76,7 @@ class Problem:
         self.material = material
         self.surface = surface
         self.ic = ic
+        self.roughness = roughness
 
         self.sanity_checks()
 
@@ -82,10 +84,12 @@ class Problem:
 
         self.check_options()
         self.check_disc()
-        self.check_geo()
-        self.check_num()
-        self.check_mat()
+        self.check_geometry()
+        self.check_numerics()
+        self.check_material()
         self.check_bc()
+        if self.roughness is not None:
+            self.check_roughness()
         if self.ic is not None:
             self.check_ic()
         if self.surface is not None:
@@ -137,6 +141,7 @@ class Problem:
                                 self.material,
                                 self.numerics,
                                 self.surface,
+                                self.roughness,
                                 q_init=q_init,
                                 t_init=t_init)
 
@@ -367,6 +372,10 @@ class Problem:
 
             if self.ic is not None:
                 categories["ic"] = self.ic
+
+            if self.roughness is not None:
+                roughness_noNone = {k: v for k, v in self.roughness.items() if v is not None}
+                categories["roughness"] = roughness_noNone
 
             # reset modified input dictionaries
             bc["x0"] = "".join(bc["x0"])
@@ -871,6 +880,47 @@ maximum number of iterations reached.", flush=True)
                     self.ic["nwave"] = int(self.ic["nwave"])
                 else:
                     self.ic["nwave"] = 1
+
+    def check_roughness(self):
+        """
+        Sanity check for random roughness input.
+        """
+        print("Checking roughness parameters... ")
+
+        if "seed" in self.roughness.keys():
+            self.roughness["seed"] = int(self.roughness["seed"])
+        else:
+            self.roughness["seed"] = None
+        try:
+            self.roughness["Hurst"] = float(self.roughness["Hurst"])
+        except KeyError:
+            "Hurst exponent not given. Use default (0.8)."
+            self.roughness["Hurst"] = 0.8
+        try:
+            self.roughness["rolloff"] = float(self.roughness["rolloff"])
+        except KeyError:
+            "Rollof not given. Use default (1.0)"
+            self.roughness["rolloff"] = 1.0
+        try:
+            self.roughness["rmsHeight"] = float(self.roughness["rmsHeight"])
+        except KeyError:
+            self.roughness["rmsHeight"] = None
+        try:
+            self.roughness["rmsSlope"] = float(self.roughness["rmsSlope"])
+        except KeyError:
+            self.roughness["rmsSlope"] = None
+        try:
+            self.roughness["shortCutoff"] = float(self.roughness["shortCutoff"])
+        except KeyError:
+            self.roughness["shortCutoff"] = None
+        try:
+            self.roughness["longCutoff"] = float(self.roughness["longCutoff"])
+        except KeyError:
+            self.roughness["longCutoff"] = None
+
+        if self.roughness["rmsHeight"] is None and self.roughness["rmsSlope"] is None:
+            print('Neither rms height nor rms slope is defined! Abort.')
+            abort()
 
     def check_bc(self):
         """

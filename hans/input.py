@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -74,6 +74,11 @@ class Input:
             else:
                 surface = None
 
+            if "roughness" in inp.keys():
+                roughness = inp["roughness"]
+            else:
+                roughness = None
+
             if "IC" in inp.keys():
                 ic = inp["IC"]
             elif self.restartFile is not None:
@@ -90,6 +95,7 @@ class Input:
                               numerics,
                               material,
                               surface,
-                              ic)
+                              ic,
+                              roughness)
 
         return thisProblem

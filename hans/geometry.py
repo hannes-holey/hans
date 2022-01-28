@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,22 +24,45 @@ SOFTWARE.
 
 
 import numpy as np
+from mpi4py import MPI
+
 from hans.field import ScalarField, VectorField
 
 
 class GapHeight(VectorField):
 
-    def __init__(self, disc, geometry):
+    def __init__(self, disc, geometry, roughness=None):
 
         super().__init__(disc)
 
         self.geometry = geometry
         self.disc = disc
+        self.roughness = roughness
 
-        self.fill_analytic()
-        self.fill_gradients()
+        self.get_profile()
 
-    def fill_analytic(self):
+        if self.roughness is not None:
+            self.add_roughness()
+
+        self.get_gradients()
+
+    @property
+    def max_height(self):
+        local_max = np.amax(self.inner[0])
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_max, recvbuf, op=MPI.MAX)
+
+        return recvbuf[0]
+
+    @property
+    def min_height(self):
+        local_max = np.amin(self.inner[0])
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_max, recvbuf, op=MPI.MIN)
+
+        return recvbuf[0]
+
+    def get_profile(self):
 
         Lx = self.disc["Lx"]
         Ly = self.disc["Ly"]
@@ -137,13 +160,329 @@ class GapHeight(VectorField):
             mask = np.greater(xx, Lx / 2)
             self.field[0][mask] = h0
 
-    def fill_gradients(self):
+    def add_roughness(self):
+        """
+        Add periodic, self-affine random roughness profile on top of analytical profiles.
+        """
+
+        Nx = self.disc["Nx"]
+        Ny = self.disc["Ny"]
+
+        # periodic cartesian communicator
+        pcomm = self.get_2d_cart_comm(MPI.COMM_WORLD, (Nx, Ny),
+                                      periods=(True, True))
+
+        if pcomm.Get_rank() == 0:
+            seed = self.roughness["seed"]
+            hurst = self.roughness["Hurst"]
+            rolloff = self.roughness["rolloff"]
+            rms_height = self.roughness["rmsHeight"]
+            rms_slope = self.roughness["rmsSlope"]
+            short_cutoff = self.roughness["shortCutoff"]
+            long_cutoff = self.roughness["longCutoff"]
+
+            np.random.seed(seed)
+
+            topo = self.fourier_synthesis(hurst,
+                                          rms_height=rms_height,
+                                          rms_slope=rms_slope,
+                                          short_cutoff=short_cutoff,
+                                          long_cutoff=long_cutoff,
+                                          rolloff=rolloff)
+        else:
+            topo = np.empty((Nx, Ny), dtype=np.float64)
+
+        pcomm.Bcast(topo)
+
+        assert np.amin(topo) + self.min_height > 0
+
+        ng = self.disc["nghost"]
+        ngt = 2 * ng
+        topo_periodic = np.empty_like(self.field[0])
+        topo_periodic[ng:-ng, ng:-ng] = topo[self.without_ghost]
+
+        ls, ld = pcomm.Shift(0, -1)
+        rs, rd = pcomm.Shift(0, 1)
+        bs, bd = pcomm.Shift(1, -1)
+        ts, td = pcomm.Shift(1, 1)
+
+        # Send to left, receive from right
+        recvbuf = np.ascontiguousarray(topo_periodic[-ng:, :])
+        pcomm.Sendrecv(np.ascontiguousarray(topo_periodic[ng:ngt, :]), ld, recvbuf=recvbuf, source=ls)
+        # fill ghost buffer
+        topo_periodic[-ng:, :] = recvbuf
+
+        # Send to right, receive from left
+        recvbuf = np.ascontiguousarray(topo_periodic[:ng, :])
+        pcomm.Sendrecv(np.ascontiguousarray(topo_periodic[-ngt:-ng, :]), rd, recvbuf=recvbuf, source=rs)
+        topo_periodic[:ng, :] = recvbuf
+
+        # Send to bottom, receive from top
+        recvbuf = np.ascontiguousarray(topo_periodic[:, -ng:])
+        pcomm.Sendrecv(np.ascontiguousarray(topo_periodic[:, ng:ngt]), bd, recvbuf=recvbuf, source=bs)
+        # fill ghost buffer
+        topo_periodic[:, -ng:] = recvbuf
+
+        # Send to top, receive from bottom
+        recvbuf = np.ascontiguousarray(topo_periodic[:, :ng])
+        pcomm.Sendrecv(np.ascontiguousarray(topo_periodic[:, -ngt:-ng]), td, recvbuf=recvbuf, source=ts)
+        # fill ghost buffer
+        topo_periodic[:, :ng] = recvbuf
+
+        # add roughness
+        self.field[0] += topo_periodic
+
+    def get_gradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
 
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
         self.field[1:] = np.gradient(self.field[0], dx, dy, edge_order=2)
+
+    def fourier_synthesis(self, Hurst, rms_height=None, rms_slope=None,
+                          short_cutoff=None, long_cutoff=None, rolloff=1.0):
+        """
+        Create a self-affine, randomly rough surface using a Fourier filtering
+        algorithm. Adapted from https://github.com/ContactEngineering/SurfaceTopography.
+        The algorithm is described in:
+        Ramisetti et al., J. Phys.: Condens. Matter 23, 215004 (2011);
+        Jacobs, Junge, Pastewka, Surf. Topgogr.: Metrol. Prop. 5, 013001 (2017)
+
+        Parameters
+        ----------
+        Hurst : float
+            Hurst exponent.
+        rms_height : float
+            Root mean-squared height.
+        rms_slope : float
+            Root mean-squared slope.
+        short_cutoff : float
+            Short-wavelength cutoff.
+        long_cutoff : float
+            Long-wavelength cutoff.
+        rolloff : float
+            Value for the power-spectral density (PSD) below the long-wavelength
+            cutoff. This multiplies the value at the cutoff, i.e. unit will give a
+            PSD that is flat below the cutoff, zero will give a PSD that is
+            vanishes below cutoff. (Default: 1.0)
+
+        Returns
+        -------
+        np.array
+            Rough topography.
+        """
+
+        Lx = self.disc["Lx"]
+        Ly = self.disc["Ly"]
+        Nx = self.disc["Nx"]
+        Ny = self.disc["Ny"]
+
+        transpose = False
+
+        if Nx == 1 and Ny > 1:
+            grid_pts = (Ny,)
+            physical_sizes = (Ly,)
+        elif Ny == 1 and Nx > 1:
+            grid_pts = (Nx,)
+            physical_sizes = (Lx,)
+            transpose = True
+        else:
+            grid_pts = (Nx, Ny)
+            physical_sizes = (Lx, Ly)
+
+        if short_cutoff is not None:
+            q_max = 2 * np.pi / short_cutoff
+        else:
+            q_max = np.pi * np.min(np.asarray(grid_pts) / np.asarray(physical_sizes))
+
+        if long_cutoff is not None:
+            q_min = 2 * np.pi / long_cutoff
+        else:
+            q_min = None
+
+        fac = self.self_affine_prefactor(grid_pts, physical_sizes, Hurst, rms_height=rms_height,
+                                         rms_slope=rms_slope, short_cutoff=short_cutoff,
+                                         long_cutoff=long_cutoff)
+
+        if len(grid_pts) == 2:
+            nx, ny = grid_pts
+            sx, sy = physical_sizes
+            kny = ny // 2 + 1
+            kshape = (nx, kny)
+        else:
+            nx = 1
+            ny, = grid_pts
+            sx = 1
+            sy, = physical_sizes
+            kny = ny // 2 + 1
+            kshape = (kny,)
+
+        # Initialize arrays
+        rarr = np.empty((nx, ny), dtype=np.float64)
+        karr = np.empty(kshape, dtype=np.complex128)
+
+        # Creating Fourier representation
+        qy = 2*np.pi*np.arange(kny)/sy
+        for x in range(nx):
+            if x > nx//2:
+                qx = 2 * np.pi * (nx - x) / sx
+            else:
+                qx = 2 * np.pi * x / sx
+            q_sq = qx**2 + qy**2
+            if x == 0:
+                q_sq[0] = 1.
+            phase = np.exp(2 * np.pi * np.random.rand(kny) * 1j)
+            ran = fac * phase * np.random.normal(size=kny)  # amplitudes are normal distributed
+
+            if len(kshape) == 2:
+                karr[x, :] = ran * q_sq ** (-(1 + Hurst) / 2)
+                karr[x, q_sq > q_max ** 2] = 0.
+            else:
+                karr[:] = ran * q_sq ** (-(0.5 + Hurst) / 2)
+                karr[q_sq > q_max ** 2] = 0.
+
+            if q_min is not None:
+                mask = q_sq < q_min**2
+                if len(kshape) == 2:
+                    karr[x, mask] = rolloff * ran[mask] * q_min ** (-(1 + Hurst))
+                else:
+                    karr[mask] = rolloff * ran[mask] * q_min ** (-(0.5 + Hurst))
+
+        # Inverse FFT
+        if len(kshape) == 2:
+            for iy in [0, -1] if ny % 2 == 0 else [0]:
+                # Enforce symmetry
+                if nx % 2 == 0:
+                    karr[0, iy] = np.real(karr[0, iy])
+                    karr[nx // 2, iy] = np.real(karr[nx // 2, iy])
+                    karr[1:nx // 2, iy] = karr[-1:nx // 2:-1, iy].conj()
+                else:
+                    karr[0, iy] = np.real(karr[0, iy])
+                    karr[1:nx // 2 + 1, iy] = karr[-1:nx // 2:-1, iy].conj()
+            self._irfft2(karr, rarr)
+        else:
+            karr[0] = np.real(karr[0])
+            rarr[:] = np.fft.irfft(karr, n=ny)
+
+        # Shift to zero mean
+        rarr -= np.mean(rarr)
+
+        if transpose:
+            return rarr.T
+        else:
+            return rarr
+
+    def self_affine_prefactor(self, grid_pts, physical_sizes, Hurst, rms_height=None,
+                              rms_slope=None, short_cutoff=None, long_cutoff=None):
+        r"""
+        Compute prefactor :math:`C_0` for the power-spectrum density of an ideal
+        self-affine topography given by
+
+        .. math ::
+
+            C(q) = C_0 q^{-2-2H}
+
+        for two-dimensional topography maps and
+
+        .. math ::
+
+            C(q) = C_0 q^{-1-2H}
+
+        for one-dimensional line scans. Here :math:`H` is the Hurst exponent.
+
+        Note:
+        In the 2D case:
+
+        .. math ::
+
+            h^2_{rms} = \frac{1}{2 \pi} \int_{0}^{\infty} q C^{iso}(q) dq
+
+        whereas in the 1D case:
+
+        .. math ::
+
+            h^2_{rms} = \frac{1}{\pi} \int_{0}^{\infty} C^{1D}(q) dq
+
+        See Equations (1) and (4) in [1].
+
+
+        Parameters
+        ----------
+        grid_pts : array_like
+            Resolution of the topography map or the line scan.
+        physical_sizes : array_like
+            Physical physical_sizes of the topography map or the line scan.
+        Hurst : float
+            Hurst exponent.
+        rms_height : float
+            Root mean-squared height.
+        rms_slope : float
+            Root mean-squared slope of the topography map or the line scan.
+        short_cutoff : float
+            Short-wavelength cutoff.
+        long_cutoff : float
+            Long-wavelength cutoff.
+
+        Returns
+        -------
+        prefactor : float
+            Prefactor :math:`\sqrt{C_0}`
+
+        References
+        -----------
+        [1]: Jacobs, Junge, Pastewka,
+        Surf. Topgogr.: Metrol. Prop. 5, 013001 (2017)
+
+        """
+
+        grid_pts = np.asarray(grid_pts)
+        physical_sizes = np.asarray(physical_sizes)
+
+        if short_cutoff is not None:
+            q_max = 2 * np.pi / short_cutoff
+        else:
+            q_max = np.pi * np.min(grid_pts / physical_sizes)
+
+        if long_cutoff is not None:
+            q_min = 2 * np.pi / long_cutoff
+        else:
+            q_min = 2 * np.pi * np.max(1 / physical_sizes)
+
+        area = np.prod(physical_sizes)
+
+        if rms_height is not None:
+            # Assuming no rolloff region
+            fac = 2 * rms_height / np.sqrt(q_min**(-2 * Hurst) -
+                                           q_max**(-2 * Hurst)) * np.sqrt(Hurst * np.pi)
+        elif rms_slope is not None:
+            fac = 2 * rms_slope / np.sqrt(q_max**(2 - 2 * Hurst) -
+                                          q_min**(2 - 2 * Hurst)) * np.sqrt((1 - Hurst) * np.pi)
+        else:
+            # This is already caught in sanity checks
+            raise ValueError('Neither rms height nor rms slope is defined!')
+
+        return fac * np.prod(grid_pts) / np.sqrt(area)
+
+    def _irfft2(self, karr, rarr):
+        """
+        Inverse 2d real-to-complex FFT.
+
+        Parameters
+        ----------
+        karr : array_like
+            Fourier-space representation
+        rarr : array_like
+            Real-space representation
+        """
+        nrows, ncolumns = karr.shape
+        for i in range(ncolumns):
+            karr[:, i] = np.fft.ifft(karr[:, i])
+        for i in range(nrows):
+            if rarr.shape[1] % 2 == 0:
+                rarr[i, :] = np.fft.irfft(karr[i, :])
+            else:
+                rarr[i, :] = np.fft.irfft(karr[i, :], n=rarr.shape[1])
 
 
 class SlipLength(ScalarField):

@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,8 @@ from hans.material import Material
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, bc, geometry, material, numerics, surface, q_init=None, t_init=None):
+    def __init__(self, disc, bc, geometry, material, numerics, surface, roughness,
+                 q_init=None, t_init=None):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
         and the methods to update them. Derived from VectorField.
@@ -53,6 +54,8 @@ class ConservedField(VectorField):
             numerics parameters
         surface : dict
             surface parameters
+        roughness : dict
+            roughness parameters
         q_init : np.array
             Inital field in case of a restart (the default is None)
         t_init : tuple
@@ -66,9 +69,10 @@ class ConservedField(VectorField):
         self.bc = bc
         self.material = material
         self.numerics = numerics
+        self.roughness = roughness
 
         # initialize gap height and slip length field
-        self.height = GapHeight(disc, geometry)
+        self.height = GapHeight(disc, geometry, roughness)
         self.slip_length = SlipLength(disc, surface)
 
         # intialize field and time
