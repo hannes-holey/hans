@@ -643,7 +643,7 @@ maximum number of iterations reached.", flush=True)
         else:
             self.disc["dy"] = self.disc["Ly"] / self.disc["Ny"]
 
-    def check_geo(self):
+    def check_geometry(self):
         """
         Sanity check for geometry input.
         """
@@ -686,7 +686,7 @@ maximum number of iterations reached.", flush=True)
             self.geometry["amp"] = float(self.geometry['amp'])
             self.geometry["num"] = float(self.geometry['num'])
 
-    def check_num(self):
+    def check_numerics(self):
         """
         Sanity check for numerics options.
         """
@@ -762,7 +762,7 @@ maximum number of iterations reached.", flush=True)
         else:
             self.disc["nghost"] = 1
 
-    def check_mat(self):
+    def check_material(self):
         """
         Sanity check on material settings.
         """
