@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,9 @@ setup(name='hans',
       include_package_data=True,
       scripts=['cli/plot1D_evolution.py',
                'cli/plot1D_last.py',
+               'cli/plot1D_height.py',
                'cli/plot2D_last.py',
+               'cli/plot2D_height.py',
                'cli/plot_scalar.py',
                'cli/read_config.py',
                'cli/animate1D.py',

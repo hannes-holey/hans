@@ -374,7 +374,7 @@ class Problem:
                 categories["ic"] = self.ic
 
             if self.roughness is not None:
-                roughness_noNone = {k: v for k, v in self.roughness.items() if v is not None}
+                roughness_noNone = {k: (v if v is not None else "None") for k, v in self.roughness.items()}
                 categories["roughness"] = roughness_noNone
 
             # reset modified input dictionaries

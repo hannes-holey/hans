@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ import netCDF4
 import numpy as np
 
 from hans.material import Material
+from hans.geometry import GapHeight
 
 
 class DatasetSelector:
@@ -125,7 +126,7 @@ class DatasetSelector:
 
                     if k == "p":
                         rho = np.array(data.variables["rho"][index])
-                        material = get_material_dict(data)
+                        material = get_input_dict(data, "material")
                         frame = Material(material).eos_pressure(rho)
                     else:
                         frame = np.array(data.variables[k][index])
@@ -143,7 +144,7 @@ class DatasetSelector:
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
-                    material = get_material_dict(data)
+                    material = get_input_dict(data, "material")
                     frame = Material(material).eos_pressure(rho)
                 else:
                     frame = np.array(data.variables[key][index])
@@ -184,7 +185,7 @@ class DatasetSelector:
 
                     if k == "p":
                         rho = np.array(data.variables["rho"][::freq])
-                        material = get_material_dict(data)
+                        material = get_input_dict(data, material)
                         frames = Material(material).eos_pressure(rho)
                     else:
                         frames = np.array(data.variables[k][::freq])
@@ -203,7 +204,7 @@ class DatasetSelector:
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][::freq])
-                    material = get_material_dict(data)
+                    material = get_input_dict(data, "material")
                     frames = Material(material).eos_pressure(rho)
                 else:
                     frames = np.array(data.variables[key][::freq])
@@ -260,7 +261,7 @@ class DatasetSelector:
                 for k in keys:
                     if k == "p":
                         rho = np.array(data.variables["rho"][index])
-                        material = get_material_dict(data)
+                        material = get_input_dict(data, "material")
                         frame = Material(material).eos_pressure(rho)
                     else:
                         frame = np.array(data.variables[k][index])
@@ -270,12 +271,67 @@ class DatasetSelector:
                 assert key in keys
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
-                    material = get_material_dict(data)
+                    material = get_input_dict(data, "material")
                     frame = Material(material).eos_pressure(rho)
                 else:
                     frame = np.array(data.variables[key][index])
 
                 out[filename][key] = frame
+
+        return out
+
+    def get_height(self):
+
+        out = {}
+
+        for filename, data in self.ds.items():
+
+            out[filename] = {}
+
+            disc = get_input_dict(data, "disc")
+            disc['pX'] = True
+            disc['pY'] = True
+            disc['nghost'] = 1
+
+            geometry = get_input_dict(data, "geometry")
+            roughness = get_input_dict(data, "roughness")
+            frame = GapHeight(disc, geometry, roughness)
+
+            out[filename] = frame.inner[0]
+
+        return out
+
+    def get_centerline_height(self, dir='x'):
+
+        out = {}
+
+        for filename, data in self.ds.items():
+
+            Lx = float(data.disc_Lx)
+            Ly = float(data.disc_Ly)
+            Nx = int(data.disc_Nx)
+            Ny = int(data.disc_Ny)
+
+            if dir == "x":
+                xdata = (np.arange(Nx) + 0.5) * Lx / Nx
+            elif dir == "y":
+                xdata = (np.arange(Ny) + 0.5) * Ly / Ny
+
+            out[filename] = {}
+
+            disc = get_input_dict(data, "disc")
+            disc['pX'] = True
+            disc['pY'] = True
+            disc['nghost'] = 1
+
+            geometry = get_input_dict(data, "geometry")
+            roughness = get_input_dict(data, "roughness")
+            frame = GapHeight(disc, geometry, roughness)
+
+            if dir == "x":
+                out[filename] = xdata, frame.centerline_x[0]
+            elif dir == "y":
+                out[filename] = xdata, frame.centerline_y[0]
 
         return out
 
@@ -296,7 +352,7 @@ class DatasetSelector:
                     out[filename][k] = {}
                     if key == "p":
                         rho = np.array(data.variables["rho"][::freq])
-                        material = get_material_dict(data)
+                        material = get_input_dict(data, "material")
                         frames = Material(material).eos_pressure(rho)
                     else:
                         frames = np.array(data.variables[k][::freq])
@@ -311,7 +367,7 @@ class DatasetSelector:
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][::freq])
-                    material = get_material_dict(data)
+                    material = get_input_dict(data, "material")
                     frames = Material(material).eos_pressure(rho)
                 else:
                     frames = np.array(data.variables[key][::freq])
@@ -341,5 +397,5 @@ def adaptiveLimits(ax):
     return ax
 
 
-def get_material_dict(data):
-    return {k.split("_")[-1]: v for k, v in dict(data.__dict__).items() if k.startswith("material")}
+def get_input_dict(data, category):
+    return {k.split("_")[-1]: (v if v != "None" else None) for k, v in dict(data.__dict__).items() if k.startswith(category)}
