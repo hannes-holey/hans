@@ -86,6 +86,8 @@ class ConservedField(VectorField):
             self.time = 0.
             self.dt = numerics["dt"]
 
+        self.eps = np.nan
+
         self.viscous_stress = SymStressField2D(disc, geometry, material, surface)
         self.upper_stress = SymStressField3D(disc, geometry, material, surface)
         self.lower_stress = SymStressField3D(disc, geometry, material, surface)

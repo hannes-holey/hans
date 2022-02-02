@@ -150,18 +150,19 @@ class Problem:
         # time stamp of simulation start time
         self.tStart = datetime.now()
 
+        i = 0
+        self._write_mode = 0
+
         # Header line for screen output
         if rank == 0:
             print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
+            self.write_to_stdout(i, mode=self._write_mode)
 
         if plot:
             # on-the-fly plotting
             self.plot(writeInterval)
         else:
             nc = self.init_netcdf(out_dir, out_name, rank)
-
-            i = 0
-            self._write_mode = 0
 
             while self._write_mode == 0:
 
@@ -391,6 +392,8 @@ class Problem:
                 for key, value in cat.items():
                     nc.setncattr(f"{name}_{key}", value)
 
+            self.write_to_netcdf(0, nc, mode=0)
+
         else:
             # append to existing netCDF file
             parallel = False
@@ -573,7 +576,7 @@ maximum number of iterations reached.", flush=True)
 
         ax = adaptiveLimits(ax)
 
-        if i % writeInterval == 0:
+        if i % writeInterval == 0 and i > 0:
             print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
     def check_options(self):
