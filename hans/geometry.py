@@ -39,12 +39,12 @@ class GapHeight(VectorField):
         self.disc = disc
         self.roughness = roughness
 
-        self.get_profile()
+        self.set_profile()
 
         if self.roughness is not None:
             self.add_roughness()
 
-        self.get_gradients()
+        self.set_gradients()
 
     @property
     def max_height(self):
@@ -62,7 +62,7 @@ class GapHeight(VectorField):
 
         return recvbuf[0]
 
-    def get_profile(self):
+    def set_profile(self):
 
         Lx = self.disc["Lx"]
         Ly = self.disc["Ly"]
@@ -232,7 +232,7 @@ class GapHeight(VectorField):
         # add roughness
         self.field[0] += topo_periodic
 
-    def get_gradients(self):
+    def set_gradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"
 
         dx = self.disc["dx"]
