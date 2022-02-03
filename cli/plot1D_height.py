@@ -27,6 +27,7 @@ SOFTWARE.
 
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
+import numpy as np
 
 from hans.plottools import DatasetSelector
 
@@ -35,6 +36,8 @@ def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
+    parser.add_argument('-s', '--save', dest="save", action="store_true", default=False,
+                        help="save height distribution as binary file in NumPy format (default: False)")
 
     return parser
 
@@ -51,11 +54,14 @@ if __name__ == "__main__":
     for fn, fdata in data.items():
         print("Plotting ", fn)
 
-        print(fdata)
         xdata, ydata = fdata
         ax.plot(xdata, ydata)
 
     ax.set_ylabel(r"Gap height  $h$")
     ax.set_xlabel(rf"Distance ${args.dir}$")
+
+    if args.save:
+        ofn = fn.rstrip('.nc') + f"_height_{args.dir}.npy"
+        np.save(ofn, ydata[:, None])
 
     plt.show()

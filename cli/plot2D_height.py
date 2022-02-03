@@ -29,6 +29,7 @@ from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tk
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import numpy as np
 
 from hans.plottools import DatasetSelector
 
@@ -36,6 +37,8 @@ from hans.plottools import DatasetSelector
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
+    parser.add_argument('-s', '--save', dest="save", action="store_true", default=False,
+                        help="save height distribution as binary file in NumPy format (default: False)")
 
     return parser
 
@@ -66,5 +69,9 @@ if __name__ == "__main__":
 
         ax.set_xlabel(r"$x/L_x$")
         ax.set_ylabel(r"$y/L_y$")
+
+        if args.save:
+            ofn = fn.rstrip('.nc') + "_height.npy"
+            np.save(ofn, fdata.T)
 
     plt.show()
