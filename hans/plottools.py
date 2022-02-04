@@ -108,7 +108,7 @@ class DatasetSelector:
         return list(self._ds.values())
 
     def get_metadata(self):
-        category_prefix = ["options", "disc", "bc", "geometry", "roughness", "ic", "numerics", "material"]
+        category_prefix = ["options", "disc", "bc", "geometry", "roughness", "ic", "numerics", "material", "surface"]
         out = []
         for f in self._ds.values():
             metadict = {}
