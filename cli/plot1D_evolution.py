@@ -27,6 +27,7 @@ SOFTWARE.
 
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
+import matplotlib.ticker as tk
 
 from hans.plottools import DatasetSelector
 
@@ -54,37 +55,40 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = DatasetSelector(args.path, mode="single")
+    fn, = files.get_filenames()
+    time, xdata, ydata = files.get_centerlines(key=args.key, freq=args.freq, dir=args.dir)[0]
+    print("Plotting ", fn)
 
     if args.key is None:
-        data = files.get_centerlines(freq=args.freq, dir=args.dir)
-        fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8))
+        fig, ax = plt.subplots(2, 2, sharex=True, figsize=(12.8, 9.6))
 
-        for fn, fdata in data.items():
-            ax[1, 0].set_xlabel(rf"Distance ${args.dir}$")
-            ax[1, 1].set_xlabel(rf"Distance ${args.dir}$")
-            maxT = max(fdata["rho"])
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
+        ax[1, 0].set_xlabel(rf"Distance ${args.dir}$")
+        ax[1, 1].set_xlabel(rf"Distance ${args.dir}$")
+        maxT = time[-1]
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
 
-            for (key, tdict), axis in zip(fdata.items(), ax.flat):
-                for time, (xdata, ydata) in tdict.items():
-                    axis.plot(xdata, ydata, color=cmap(time/maxT))
-                axis.set_ylabel(ylabels[key])
+        for key, axis in zip(ydata.keys(), ax.flat):
+            for i, t in enumerate(time):
+                axis.plot(xdata, ydata[key][i], color=cmap(t / maxT))
+            axis.set_ylabel(ylabels[key])
 
-            fig.colorbar(sm, ax=ax.ravel().tolist(), label='time $t$', extend='max')
+        fmt = tk.ScalarFormatter(useMathText=True)
+        fmt.set_powerlimits((0, 0))
+        fig.colorbar(sm, ax=ax.ravel().tolist(), format=fmt, label='time $t$', extend='max', orientation="horizontal", aspect=50, pad=0.1)
 
     else:
-        data = files.get_centerlines(key=args.key, freq=args.freq, dir=args.dir)
         fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
 
-        for fn, fdata in data.items():
-            maxT = max(fdata[args.key])
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
+        maxT = time[-1]
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=maxT))
 
-            for time, (xdata, ydata) in fdata[args.key].items():
-                ax.plot(xdata, ydata, color=cmap(time/maxT))
-                ax.set_ylabel(ylabels[args.key])
-                ax.set_xlabel(rf"Distance ${args.dir}$")
+        for i, t in enumerate(time):
+            ax.plot(xdata, ydata[i], color=cmap(t/maxT))
+            ax.set_ylabel(ylabels[args.key])
+            ax.set_xlabel(rf"Distance ${args.dir}$")
 
-            fig.colorbar(sm, ax=ax, label='time $t$', extend='max')
+        fmt = tk.ScalarFormatter(useMathText=True)
+        fmt.set_powerlimits((0, 0))
+        fig.colorbar(sm, ax=ax, format=fmt, label='time $t$', extend='max', orientation="horizontal", aspect=50, pad=0.1)
 
     plt.show()

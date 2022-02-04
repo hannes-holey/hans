@@ -36,6 +36,7 @@ def get_parser():
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
     parser.add_argument('-v', dest="key", default=None, choices=[None, "mass",
                                                                  "vmax", "vSound", "dt", "eps", "ekin"], help="variable (default: None)")
+    parser.add_argument('-f', dest="freq", type=int, default=1, help="plot frequency (default: 1)")
     return parser
 
 
@@ -52,33 +53,31 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = DatasetSelector(args.path)
+    fns = files.get_filenames()
+    data = files.get_scalar(key=args.key, freq=args.freq)
 
     if args.key is None:
-        data = files.get_scalar()
         fig, ax = plt.subplots(3, 2, sharex=True, figsize=(6.4, 7.2), tight_layout=True)
         ax[2, 0].set_xlabel(r"Time $t$")
         ax[2, 1].set_xlabel(r"Time $t$")
 
-        for fn, fdata in data.items():
+        for fn, (time, ydata) in zip(fns, data):
             print("Plotting ", fn)
-            for (key, (xdata, ydata)), axis in zip(fdata.items(), ax.flat):
-                axis.plot(xdata, ydata)
+            for key, axis in zip(ydata.keys(), ax.flat):
+                axis.plot(time, ydata[key])
                 axis.set_ylabel(ylabels[key])
 
                 if key == "eps":
                     axis.set_yscale("log")
 
     else:
-        data = files.get_scalar(args.key)
-
         fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
-        for fn, fdata in data.items():
-            print("Plotting ", fn)
-            xdata, ydata = fdata[args.key]
-            ax.plot(xdata, ydata)
-
         ax.set_ylabel(ylabels[args.key])
         ax.set_xlabel(rf"Time $t$")
+
+        for fn, (time, ydata) in zip(fns, data):
+            print("Plotting ", fn)
+            ax.plot(time, ydata)
 
         if args.key == "eps":
             ax.set_yscale("log")

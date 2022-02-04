@@ -48,30 +48,29 @@ if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
 
-    files = DatasetSelector(args.path)
+    files = DatasetSelector(args.path, mode="single")
+    fn, = files.get_filenames()
+    zdata, = files.get_height()
 
-    data = files.get_height()
+    fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
+    print("Plotting ", fn)
 
-    for fn, fdata in data.items():
-        fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
-        print("Plotting ", fn)
+    im = ax.imshow(zdata.T, extent=(0, 1, 0, 1))
 
-        im = ax.imshow(fdata.T, extent=(0, 1, 0, 1))
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
 
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.1)
+    fmt = tk.ScalarFormatter(useMathText=True)
+    fmt.set_powerlimits((0, 0))
 
-        fmt = tk.ScalarFormatter(useMathText=True)
-        fmt.set_powerlimits((0, 0))
+    cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
+    cbar.set_label(r"Gap height  $h$")
 
-        cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
-        cbar.set_label(r"Gap height  $h$")
+    ax.set_xlabel(r"$x/L_x$")
+    ax.set_ylabel(r"$y/L_y$")
 
-        ax.set_xlabel(r"$x/L_x$")
-        ax.set_ylabel(r"$y/L_y$")
-
-        if args.save:
-            ofn = fn.rstrip('.nc') + "_height.npy"
-            np.save(ofn, fdata.T)
+    if args.save:
+        ofn = fn.rstrip('.nc') + "_height.npy"
+        np.save(ofn, fdata.T)
 
     plt.show()

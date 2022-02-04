@@ -51,47 +51,43 @@ if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
 
-    files = DatasetSelector(args.path)
+    files = DatasetSelector(args.path, mode="single")
+    fn, = files.get_filenames()
+    zdata, = files.get_field(key=args.key)
+    print("Plotting ", fn)
 
     if args.key is None:
-        data = files.get_field()
+        fig, ax = plt.subplots(2, 2, sharex=True, figsize=(12.8, 9.6))
 
-        for fn, fdata in data.items():
-            fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8), tight_layout=True)
-            print("Plotting ", fn)
-            for (key, zdata), axis in zip(fdata.items(), ax.flat):
-                im = axis.imshow(zdata.T, extent=(0, 1, 0, 1))
+        for key, axis in zip(zdata.keys(), ax.flat):
+            im = axis.imshow(zdata[key].T, extent=(0, 1, 0, 1))
 
-                divider = make_axes_locatable(axis)
-                cax = divider.append_axes("right", size="5%", pad=0.1)
-
-                fmt = tk.ScalarFormatter(useMathText=True)
-                fmt.set_powerlimits((0, 0))
-
-                cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
-                cbar.set_label(ylabels[key])
-
-                axis.set_xlabel(r"$x/L_x$")
-                axis.set_ylabel(r"$y/L_y$")
-
-    else:
-        data = files.get_field(key=args.key)
-        for fn, fdata in data.items():
-            fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
-            print("Plotting ", fn)
-            zdata = fdata[args.key]
-            im = ax.imshow(zdata.T, extent=(0, 1, 0, 1))
-
-            divider = make_axes_locatable(ax)
+            divider = make_axes_locatable(axis)
             cax = divider.append_axes("right", size="5%", pad=0.1)
 
             fmt = tk.ScalarFormatter(useMathText=True)
             fmt.set_powerlimits((0, 0))
 
             cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
-            cbar.set_label(ylabels[args.key])
+            cbar.set_label(ylabels[key])
 
-            ax.set_xlabel(r"$x/L_x$")
-            ax.set_ylabel(r"$y/L_y$")
+            axis.set_xlabel(r"$x/L_x$")
+            axis.set_ylabel(r"$y/L_y$")
+
+    else:
+        fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
+        im = ax.imshow(zdata.T, extent=(0, 1, 0, 1))
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+
+        fmt = tk.ScalarFormatter(useMathText=True)
+        fmt.set_powerlimits((0, 0))
+
+        cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
+        cbar.set_label(ylabels[args.key])
+
+        ax.set_xlabel(r"$x/L_x$")
+        ax.set_ylabel(r"$y/L_y$")
 
     plt.show()

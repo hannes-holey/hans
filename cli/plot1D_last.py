@@ -51,25 +51,23 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = DatasetSelector(args.path)
+    fns = files.get_filenames()
+    data = files.get_centerline(key=args.key, dir=args.dir)
 
     if args.key is None:
-        data = files.get_centerline(dir=args.dir)
         fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8), tight_layout=True)
         ax[1, 0].set_xlabel(rf"Distance ${args.dir}$")
         ax[1, 1].set_xlabel(rf"Distance ${args.dir}$")
 
-        for fn, fdata in data.items():
+        for fn, (xdata, ydata) in zip(fns, data):
             print("Plotting ", fn)
-            for (key, (xdata, ydata)), axis in zip(fdata.items(), ax.flat):
-                axis.plot(xdata, ydata)
+            for key, axis in zip(ydata.keys(), ax.flat):
+                axis.plot(xdata, ydata[key])
                 axis.set_ylabel(ylabels[key])
 
     else:
-        data = files.get_centerline(key=args.key, dir=args.dir)
         fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
-        for fn, fdata in data.items():
-            print("Plotting ", fn)
-            xdata, ydata = fdata[args.key]
+        for fn, (xdata, ydata) in zip(fns, data):
             ax.plot(xdata, ydata)
 
         ax.set_ylabel(ylabels[args.key])

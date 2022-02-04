@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     files = DatasetSelector(args.path)
 
-    for filename, data in files.ds.items():
+    for filename, data in files._ds.items():
 
         print(filename + ": \n" + 40 * "-")
         for name in data.ncattrs():

@@ -36,13 +36,13 @@ from hans.plottools import DatasetSelector, adaptiveLimits
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
-    parser.add_argument('-v', dest="key", default="p", choices=["rho", "p", "jx", "jy"], help="variable (default: p)")
+    parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
 
     return parser
 
 
-def update_line(i, A, t):
+def update_lines(i, A, t):
     """
     Updates the plot in animation
 
@@ -56,9 +56,16 @@ def update_line(i, A, t):
         contains time
     """
 
-    line[0].set_ydata(A[i][1])
-
-    adaptiveLimits(ax)
+    if type(A) is dict:
+        for ax, k in zip(fig.axes, A.keys()):
+            line, = ax.get_lines()
+            line.set_ydata(A[k][i])
+            adaptiveLimits(ax)
+    else:
+        ax, = fig.axes
+        line, = ax.get_lines()
+        line.set_ydata(A[i])
+        adaptiveLimits(ax)
 
     fig.suptitle("Time: {:.1g} s".format(t[i]))
 
@@ -74,26 +81,32 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = DatasetSelector(args.path, mode="single")
+    fn, = files.get_filenames()
+    time, xdata, ydata = files.get_centerlines(key=args.key, dir=args.dir)[0]
+    print("Animating ", fn)
 
-    data = files.get_centerlines(key=args.key, dir=args.dir)
+    if args.key is None:
+        fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8))
+        for key, axis in zip(ydata.keys(), ax.flat):
+            axis.plot(xdata, ydata[key][0])
+            axis.set_ylabel(ylabels[key])
 
-    for fn, fdata in data.items():
-        print("Animating ", fn)
+            # Adjust ticks
+            if args.dir == "x":
+                axis.set_xlabel(r'$x$')
+            elif args.dir == "y":
+                axis.set_xlabel(r'$y$')
+    else:
         fig, ax = plt.subplots(figsize=(6.4, 4.8))
-
-        t = list(fdata[args.key].keys())
-        A = list(fdata[args.key].values())
-
-        line = ax.plot(A[0][0], A[0][1])
+        ax.plot(xdata, ydata[0])
+        ax.set_ylabel(ylabels[args.key])
 
         # Adjust ticks
         if args.dir == "x":
-            ax.set_xlabel(r'$x/L_x$')
+            ax.set_xlabel(r'$x$')
         elif args.dir == "y":
-            ax.set_xlabel(r'$y/L_y$')
+            ax.set_xlabel(r'$y$')
 
-        ax.set_ylabel(ylabels[args.key])
-
-    ani = animation.FuncAnimation(fig, update_line, frames=len(A), fargs=(A, t), interval=100, repeat=True)
+    ani = animation.FuncAnimation(fig, update_lines, frames=len(time), fargs=(ydata, time), interval=100, repeat=True)
 
     plt.show()

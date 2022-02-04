@@ -39,12 +39,12 @@ from hans.plottools import DatasetSelector
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
-    parser.add_argument('-v', dest="key", default="p", choices=["rho", "p", "jx", "jy"], help="variable (default: p)")
+    parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: p)")
 
     return parser
 
 
-def update_grid(i, A, t):
+def update_grids(i, A, t):
     """
     Updates the plot in animation
 
@@ -58,10 +58,19 @@ def update_grid(i, A, t):
         contains time
     """
 
-    im.set_array(A[i].T)
+    if type(A) is dict:
+        for ax, k in zip(fig.axes, A.keys()):
+            im, = ax.get_images()
+            im.set_array(A[k][i].T)
+            if i > 0:
+                im.set_clim(vmin=np.amin(A[k][:i]), vmax=np.amax(A[k][:i]))
+    else:
+        ax = fig.axes[0]
+        im, = ax.get_images()
+        im.set_array(A[i].T)
 
-    if i > 0:
-        im.set_clim(vmin=np.amin(A[:i]), vmax=np.amax(A[:i]))
+        if i > 0:
+            im.set_clim(vmin=np.amin(A[:i]), vmax=np.amax(A[:i]))
 
     fig.suptitle("Time: {:.1g} s".format(t[i]))
 
@@ -77,17 +86,31 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = DatasetSelector(args.path, mode="single")
-    data = files.get_fields(key=args.key)
+    fn, = files.get_filenames()
+    time, zdata = files.get_fields(key=args.key)[0]
+    print("Animating ", fn)
 
-    for fn, fdata in data.items():
-        print("Animating ", fn)
+    if args.key is None:
+        fig, ax = plt.subplots(2, 2, figsize=(12.8, 9.6))
+        for key, axis in zip(zdata.keys(), ax.flat):
+            im = axis.imshow(zdata[key][0].T, extent=(0, 1, 0, 1))
+
+            # colorbar
+            divider = make_axes_locatable(axis)
+            cax = divider.append_axes("right", size="5%", pad=0.3)
+            fmt = tk.ScalarFormatter(useMathText=True)
+            fmt.set_powerlimits((0, 0))
+            cbar = plt.colorbar(im, cax=cax, format=fmt, orientation="vertical")
+            cbar.set_label(ylabels[key])
+
+            # set x-/y-labels
+            axis.set_xlabel(r'$x/L_x$')
+            axis.set_ylabel(r'$y/L_y$')
+    else:
         fig, ax = plt.subplots(figsize=(6.4, 4.8))
 
-        t = list(fdata[args.key].keys())
-        A = list(fdata[args.key].values())
-
         # initial plot
-        im = ax.imshow(A[0].T, extent=(0, 1, 0, 1))
+        im = ax.imshow(zdata[0].T, extent=(0, 1, 0, 1))
 
         # colorbar
         divider = make_axes_locatable(ax)
@@ -101,6 +124,6 @@ if __name__ == "__main__":
         ax.set_xlabel(r'$x/L_x$')
         ax.set_ylabel(r'$y/L_y$')
 
-        ani = animation.FuncAnimation(fig, update_grid, frames=len(A), fargs=(A, t), interval=100, repeat=True)
+    ani = animation.FuncAnimation(fig, update_grids, frames=len(time), fargs=(zdata, time), interval=100, repeat=True)
 
-        plt.show()
+    plt.show()

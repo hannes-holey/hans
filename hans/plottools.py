@@ -36,7 +36,7 @@ class DatasetSelector:
 
     def __init__(self, path, mode="select", fname=[]):
 
-        self.ds = self.get_files(path, mode=mode, fname=fname)
+        self._ds = self.get_files(path, mode=mode, fname=fname)
 
     def get_files(self, path, prefix="", mode="select", fname=[]):
         """
@@ -101,50 +101,83 @@ class DatasetSelector:
 
         return out
 
+    def get_filenames(self):
+        return list(self._ds.keys())
+
+    def get_NetCDF_Datasets(self):
+        return list(self._ds.values())
+
+    def get_metadata(self):
+        category_prefix = ["options", "disc", "bc", "geometry", "roughness", "ic", "numerics", "material"]
+        out = []
+        for f in self._ds.values():
+            metadict = {}
+            for cat in category_prefix:
+                catdict = self._generate_input_dict(f, cat)
+                if catdict is not None:
+                    metadict[cat] = catdict
+
+            metadict["info"] = {}
+            for info in ["restarts", "version"]:
+                metadict["info"].update({info: f.getncattr(info)})
+
+            out.append(metadict)
+
+        return out
+
+    def _generate_input_dict(self, data, category):
+        out = {(k.split("_")[-1]): (v if v != "None" else None) for k, v in dict(data.__dict__).items() if k.startswith(category)}
+
+        if len(out) > 0:
+            return out
+        else:
+            return None
+
+    def _get_grid(self, data):
+
+        Nx = int(data.disc_Nx)
+        Ny = int(data.disc_Ny)
+        Lx = float(data.disc_Lx)
+        Ly = float(data.disc_Ly)
+
+        return Nx, Ny, Lx, Ly
+
     def get_centerline(self, key=None, index=-1, dir='x'):
 
-        out = {}
-
+        out = []
         keys = ["rho", "p", "jx", "jy"]
 
-        for filename, data in self.ds.items():
+        for data in self._ds.values():
 
-            Lx = float(data.disc_Lx)
-            Ly = float(data.disc_Ly)
-            Nx = int(data.disc_Nx)
-            Ny = int(data.disc_Ny)
+            Nx, Ny, Lx, Ly = self._get_grid(data)
 
             if dir == "x":
                 xdata = (np.arange(Nx) + 0.5) * Lx / Nx
             elif dir == "y":
                 xdata = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            out[filename] = {}
-
             if key is None:
+                ydata = {}
                 for k in keys:
 
                     if k == "p":
                         rho = np.array(data.variables["rho"][index])
-                        material = get_input_dict(data, "material")
+                        material = self._generate_input_dict(data, "material")
                         frame = Material(material).eos_pressure(rho)
                     else:
                         frame = np.array(data.variables[k][index])
 
                     if dir == "x":
-                        ydata = frame[:, Ny // 2]
+                        ydata[k] = frame[:, Ny // 2]
                     elif dir == "y":
-                        ydata = frame[Nx // 2, :]
-
-                    out[filename][k] = (xdata, ydata)
+                        ydata[k] = frame[Nx // 2, :]
 
             else:
-
                 assert key in keys
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
-                    material = get_input_dict(data, "material")
+                    material = self._generate_input_dict(data, "material")
                     frame = Material(material).eos_pressure(rho)
                 else:
                     frame = np.array(data.variables[key][index])
@@ -153,21 +186,18 @@ class DatasetSelector:
                 elif dir == "y":
                     ydata = frame[Nx // 2, :]
 
-                out[filename][key] = (xdata, ydata)
+            out.append((xdata, ydata))
 
         return out
 
     def get_centerlines(self, key=None, freq=1, dir='x'):
 
-        out = {}
+        out = []
         keys = ["rho", "p", "jx", "jy"]
 
-        for filename, data in self.ds.items():
+        for data in self._ds.values():
 
-            Lx = float(data.disc_Lx)
-            Ly = float(data.disc_Ly)
-            Nx = int(data.disc_Nx)
-            Ny = int(data.disc_Ny)
+            Nx, Ny, Lx, Ly = self._get_grid(data)
 
             if dir == "x":
                 xdata = (np.arange(Nx) + 0.5) * Lx / Nx
@@ -176,204 +206,179 @@ class DatasetSelector:
 
             time = np.array(data.variables["time"][::freq])
 
-            out[filename] = {}
-
             if key is None:
-
+                ydata = {}
                 for k in keys:
-                    out[filename][k] = {}
 
                     if k == "p":
                         rho = np.array(data.variables["rho"][::freq])
-                        material = get_input_dict(data, material)
+                        material = self._generate_input_dict(data, "material")
                         frames = Material(material).eos_pressure(rho)
                     else:
                         frames = np.array(data.variables[k][::freq])
 
-                    for i, t in enumerate(time):
-                        if dir == "x":
-                            ydata = frames[i, :, Ny // 2]
-                        elif dir == "y":
-                            ydata = frames[i, Nx // 2, :]
-
-                        out[filename][k][t] = (xdata, ydata)
+                    if dir == "x":
+                        ydata[k] = frames[:, :, Ny // 2]
+                    elif dir == "y":
+                        ydata[k] = frames[:, Nx // 2, :]
 
             else:
                 assert key in keys
-                out[filename][key] = {}
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][::freq])
-                    material = get_input_dict(data, "material")
+                    material = self._generate_input_dict(data, "material")
                     frames = Material(material).eos_pressure(rho)
                 else:
                     frames = np.array(data.variables[key][::freq])
 
-                for i, t in enumerate(time):
-                    if dir == "x":
-                        ydata = frames[i, :, Ny // 2]
-                    elif dir == "y":
-                        ydata = frames[i, Nx // 2, :]
+                if dir == "x":
+                    ydata = frames[:, :, Ny // 2]
+                elif dir == "y":
+                    ydata = frames[:, Nx // 2, :]
 
-                    out[filename][key][t] = (xdata, ydata)
+            out.append((time, xdata, ydata))
 
         return out
 
     def get_scalar(self, key=None, freq=1):
 
-        out = {}
+        out = []
 
         keys = ["mass", "eps", "vSound", "vmax", "dt", "ekin"]
 
-        for filename, data in self.ds.items():
-            out[filename] = {}
+        for data in self._ds.values():
+
+            time = np.array(data.variables['time'])[::freq]
+
             if key is None:
+                ydata = {}
                 for k in keys:
-                    time = np.array(data.variables['time'])[::freq]
                     try:
-                        ydata = np.array(data.variables[k])[::freq]
+                        ydata[k] = np.array(data.variables[k])[::freq]
                     except KeyError:
-                        print(f"Scalar variable {k} not in {filename}.")
+                        print(f"Scalar variable {k} not existing.")
                         pass
-                    else:
-                        out[filename][k] = (time, ydata)
 
             else:
                 assert key in keys
                 time = np.array(data.variables['time'])[::freq]
                 ydata = np.array(data.variables[key])[::freq]
 
-                out[filename][key] = (time, ydata)
+            out.append((time, ydata))
 
         return out
 
     def get_field(self, key=None, index=-1):
 
-        out = {}
+        out = []
 
         keys = ["rho", "p", "jx", "jy"]
 
-        for filename, data in self.ds.items():
-
-            out[filename] = {}
+        for data in self._ds.values():
 
             if key is None:
+                zdata = {}
                 for k in keys:
                     if k == "p":
                         rho = np.array(data.variables["rho"][index])
-                        material = get_input_dict(data, "material")
-                        frame = Material(material).eos_pressure(rho)
+                        material = self._generate_input_dict(data, "material")
+                        zdata[k] = Material(material).eos_pressure(rho)
                     else:
-                        frame = np.array(data.variables[k][index])
-                    out[filename][k] = frame
+                        zdata[k] = np.array(data.variables[k][index])
 
             else:
                 assert key in keys
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
                     material = get_input_dict(data, "material")
-                    frame = Material(material).eos_pressure(rho)
+                    zdata = Material(material).eos_pressure(rho)
                 else:
-                    frame = np.array(data.variables[key][index])
+                    zdata = np.array(data.variables[key][index])
 
-                out[filename][key] = frame
+            out.append(zdata)
 
         return out
 
     def get_height(self):
 
-        out = {}
+        out = []
 
-        for filename, data in self.ds.items():
-
-            out[filename] = {}
-
-            disc = get_input_dict(data, "disc")
+        for data in self._ds.values():
+            disc = self._generate_input_dict(data, "disc")
             disc['pX'] = True
             disc['pY'] = True
             disc['nghost'] = 1
 
-            geometry = get_input_dict(data, "geometry")
-            roughness = get_input_dict(data, "roughness")
+            geometry = self._generate_input_dict(data, "geometry")
+            roughness = self._generate_input_dict(data, "roughness")
             frame = GapHeight(disc, geometry, roughness)
 
-            out[filename] = frame.inner[0]
+            out.append(frame.inner[0])
 
         return out
 
     def get_centerline_height(self, dir='x'):
 
-        out = {}
+        out = []
 
-        for filename, data in self.ds.items():
+        for data in self._ds.values():
 
-            Lx = float(data.disc_Lx)
-            Ly = float(data.disc_Ly)
-            Nx = int(data.disc_Nx)
-            Ny = int(data.disc_Ny)
+            Nx, Ny, Lx, Ly = self._get_grid(data)
 
             if dir == "x":
                 xdata = (np.arange(Nx) + 0.5) * Lx / Nx
             elif dir == "y":
                 xdata = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            out[filename] = {}
-
-            disc = get_input_dict(data, "disc")
+            disc = self._generate_input_dict(data, "disc")
             disc['pX'] = True
             disc['pY'] = True
             disc['nghost'] = 1
 
-            geometry = get_input_dict(data, "geometry")
-            roughness = get_input_dict(data, "roughness")
+            geometry = self._generate_input_dict(data, "geometry")
+            roughness = self._generate_input_dict(data, "roughness")
             frame = GapHeight(disc, geometry, roughness)
 
             if dir == "x":
-                out[filename] = xdata, frame.centerline_x[0]
+                ydata = frame.centerline_x[0]
             elif dir == "y":
-                out[filename] = xdata, frame.centerline_y[0]
+                ydata = frame.centerline_y[0]
+
+            out.append((xdata, ydata))
 
         return out
 
     def get_fields(self, key=None, freq=1):
 
-        out = {}
+        out = []
 
         keys = ["rho", "p", "jx", "jy"]
 
-        for filename, data in self.ds.items():
+        for data in self._ds.values():
 
             time = np.array(data.variables["time"][::freq])
 
-            out[filename] = {}
-
             if key is None:
+                zdata = {}
                 for k in keys:
-                    out[filename][k] = {}
-                    if key == "p":
+                    if k == "p":
                         rho = np.array(data.variables["rho"][::freq])
-                        material = get_input_dict(data, "material")
-                        frames = Material(material).eos_pressure(rho)
+                        material = self._generate_input_dict(data, "material")
+                        zdata[k] = Material(material).eos_pressure(rho)
                     else:
-                        frames = np.array(data.variables[k][::freq])
-
-                    for i, t in enumerate(time):
-                        out[filename][k][t] = frames[i]
-
+                        zdata[k] = np.array(data.variables[k][::freq])
             else:
                 assert key in keys
 
-                out[filename][key] = {}
-
                 if key == "p":
                     rho = np.array(data.variables["rho"][::freq])
-                    material = get_input_dict(data, "material")
-                    frames = Material(material).eos_pressure(rho)
+                    material = self._generate_input_dict(data, "material")
+                    zdata = Material(material).eos_pressure(rho)
                 else:
-                    frames = np.array(data.variables[key][::freq])
+                    zdata = np.array(data.variables[key][::freq])
 
-                for i, t in enumerate(time):
-                    out[filename][key][t] = frames[i]
+            out.append((time, zdata))
 
         return out
 
@@ -395,7 +400,3 @@ def adaptiveLimits(ax):
         a.set_ylim(y_min - offset(y_max, y_min), y_max + offset(y_max, y_min))
 
     return ax
-
-
-def get_input_dict(data, category):
-    return {k.split("_")[-1]: (v if v != "None" else None) for k, v in dict(data.__dict__).items() if k.startswith(category)}

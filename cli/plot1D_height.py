@@ -48,15 +48,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files = DatasetSelector(args.path)
-
     data = files.get_centerline_height(dir=args.dir)
-    fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
-    for fn, fdata in data.items():
-        print("Plotting ", fn)
+    fns = files.get_filenames()
 
-        xdata, ydata = fdata
+    fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
+
+    for fn, (xdata, ydata) in zip(fns, data):
+        print("Plotting ", fn)
         ax.plot(xdata, ydata)
 
+    ax.set_ylim(0.,)
     ax.set_ylabel(r"Gap height  $h$")
     ax.set_xlabel(rf"Distance ${args.dir}$")
 
