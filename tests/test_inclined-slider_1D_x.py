@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,17 +41,17 @@ def setup(tmpdir_factory):
 
     file = DatasetSelector("", mode="name", fname=[str(tmp_dir.join(os.path.basename(myTestProblem.outpath)))])
 
-    fdata = file.get_centerline()
+    data = file.get_centerline()
 
-    yield fdata
+    yield data
 
 
 def test_pressure(setup):
 
     p_ref = np.loadtxt(os.path.join("tests", "inclined-slider1D_ideal-gas_U50_s5.6e-4.dat"), unpack=True, usecols=(2,))
 
-    for data in setup.values():
-        p = data["p"][1]
+    for xdata, ydata in setup:
+        p = ydata["p"]
         np.testing.assert_almost_equal(p / 1e6, p_ref / 1e6, decimal=1)
 
 
@@ -59,6 +59,6 @@ def test_density(setup):
 
     rho_ref = np.loadtxt(os.path.join("tests", "inclined-slider1D_ideal-gas_U50_s5.6e-4.dat"), unpack=True, usecols=(1,))
 
-    for data in setup.values():
-        rho = data["rho"][1]
+    for xdata, ydata in setup:
+        rho = ydata["rho"]
         np.testing.assert_almost_equal(rho, rho_ref, decimal=1)

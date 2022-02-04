@@ -24,12 +24,11 @@ SOFTWARE.
 
 
 import os
-import netCDF4
 import numpy as np
 import pytest
 
 from hans.input import Input
-from hans.material import Material
+from hans.plottools import DatasetSelector
 
 
 @pytest.fixture(scope="session", params=["MC", "RK3", "LW"])
@@ -39,35 +38,44 @@ def setup(tmpdir_factory, request):
 
     myTestProblem = Input(config_file).getProblem()
     myTestProblem.numerics["integrator"] = request.param
-    material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
-    ds = netCDF4.Dataset(tmp_dir.join(os.path.basename(myTestProblem.outpath)))
-    rho_ref, p_ref = np.loadtxt(os.path.join("tests", "journal-bearing1D_eps0.7_incompressible.dat"), unpack=True)
+    ds = DatasetSelector(tmp_dir, mode="name", fname=[tmp_dir.join(os.path.basename(myTestProblem.outpath))])
 
-    yield ds, rho_ref, p_ref, material
+    data = ds.get_centerline(dir="y")[0]
+    mass = ds.get_scalar(key="mass")[0]
+
+    yield data, mass
 
 
 def test_pressure(setup):
-    ds, rho_ref, p_ref, material = setup
-    rho = np.array(ds.variables["rho"])[-1]
-    p = Material(material).eos_pressure(rho)
-    p = p[p.shape[0] // 2, :] / 1e6
+    p_ref = np.loadtxt(os.path.join("tests", "journal-bearing1D_eps0.7_incompressible.dat"), usecols=(1,))
+
+    data, _ = setup
+
+    xdata, ydata = data
+    p = ydata["p"] / 1e6
     p_ref /= 1e6
 
     np.testing.assert_almost_equal(p, p_ref, decimal=1)
 
 
 def test_density(setup):
-    ds, rho_ref, p_ref, material = setup
-    rho = np.array(ds.variables["rho"])[-1]
-    rho = rho[rho.shape[0] // 2, :]
+    rho_ref = np.loadtxt(os.path.join("tests", "journal-bearing1D_eps0.7_incompressible.dat"), usecols=(0,))
+
+    data, _ = setup
+
+    xdata, ydata = data
+    rho = ydata["rho"]
 
     np.testing.assert_almost_equal(rho, rho_ref, decimal=1)
 
 
 def test_massConservation(setup):
-    ds, rho_ref, p_ref, material = setup
-    mass = np.array(ds.variables["mass"])
+
+    _, data = setup
+
+    time, mass = data
+
     relDiff = abs(mass[-1] - mass[0]) / mass[0]
     assert relDiff < 0.001

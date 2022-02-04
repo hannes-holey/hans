@@ -1,5 +1,6 @@
 figure.titlesize            : 18
 figure.autolayout           : True
+figure.figsize              : 6.95, 4.3
 axes.labelsize              : 16
 axes.titlesize              : 16
 axes.linewidth              : 2

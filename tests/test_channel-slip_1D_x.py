@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright 2021 Hannes Holey
+Copyright 2021, 2022 Hannes Holey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,11 @@ SOFTWARE.
 
 
 import os
-import netCDF4
 import numpy as np
 import pytest
 
 from hans.input import Input
-from hans.material import Material
+from hans.plottools import DatasetSelector
 
 
 def p_channel_nondimensional(x, b):
@@ -48,26 +47,37 @@ def setup(tmpdir_factory, request):
 
     myTestProblem = Input(config_file).getProblem()
     myTestProblem.surface["lslip"] = request.param
-    material = myTestProblem.material
     myTestProblem.run(out_dir=tmp_dir)
 
-    ds = netCDF4.Dataset(tmp_dir.join(os.path.basename(myTestProblem.outpath)))
+    ds = DatasetSelector(tmp_dir, mode="name", fname=[tmp_dir.join(os.path.basename(myTestProblem.outpath))])
 
-    yield ds, material
+    data = ds.get_centerline(key="p")[0]
+    meta = ds.get_metadata()[0]
+
+    yield data, meta
 
 
 def test_pressure(setup):
 
-    ds, material = setup
-    rho = np.array(ds.variables["rho"])[-1]
+    data, meta = setup
+
+    x, p = data
+
+    Nx = meta["disc"]["Nx"]
+    Ny = meta["disc"]["Ny"]
+    Lx = meta["disc"]["Lx"]
+    lslip = meta["surface"]["lslip"]
+    h = meta["geometry"]["h1"]
+    eta = meta["material"]["shear"]
+    U = meta["geometry"]["U"]
 
     # reference solution
-    x = 2 * np.arange(100) / 100 + 1 / 100
-    b = float(ds.surface_lslip / ds.geometry_h1)
-    p_ref = p_channel_nondimensional(x, b)
+    xref = 2. * x / Lx
+    b = lslip / h
+    p_ref = p_channel_nondimensional(xref, b)
 
     kappa = 5 * b / (2 + 5 * b)
-    scalef = ds.geometry_h2**2 / (ds.material_shear * ds.geometry_U * ds.disc_Lx/2)
-    p = Material(material).eos_pressure(rho)[:, ds.disc_Ny // 2] * scalef / kappa
+    scalef = h**2 / (eta * U * Lx/2)
+    p *= scalef / kappa
 
     np.testing.assert_almost_equal(p, p_ref, decimal=2)
