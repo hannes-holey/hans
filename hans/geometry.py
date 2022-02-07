@@ -27,6 +27,7 @@ import numpy as np
 from mpi4py import MPI
 
 from hans.field import ScalarField, VectorField
+from hans.tools import abort
 
 
 class GapHeight(VectorField):
@@ -172,29 +173,47 @@ class GapHeight(VectorField):
         pcomm = self.get_2d_cart_comm(MPI.COMM_WORLD, (Nx, Ny),
                                       periods=(True, True))
 
-        if pcomm.Get_rank() == 0:
-            seed = self.roughness["seed"]
-            hurst = self.roughness["Hurst"]
-            rolloff = self.roughness["rolloff"]
-            rms_height = self.roughness["rmsHeight"]
-            rms_slope = self.roughness["rmsSlope"]
-            short_cutoff = self.roughness["shortCutoff"]
-            long_cutoff = self.roughness["longCutoff"]
+        topo = np.ones((Nx, Ny), dtype=np.float64) * 1e8
+        repeat = 0
+        repeat_limit = 100
 
-            np.random.seed(seed)
+        while abs(np.amin(topo)) > self.min_height:
+            if pcomm.Get_rank() == 0:
+                if repeat == 0:
+                    print("Generating random roughness ...")
+                    seed = self.roughness["seed"]
+                else:
+                    seed = None
 
-            topo = self.fourier_synthesis(hurst,
-                                          rms_height=rms_height,
-                                          rms_slope=rms_slope,
-                                          short_cutoff=short_cutoff,
-                                          long_cutoff=long_cutoff,
-                                          rolloff=rolloff)
+                np.random.seed(seed)
+
+                hurst = self.roughness["Hurst"]
+                rolloff = self.roughness["rolloff"]
+                rms_height = self.roughness["rmsHeight"]
+                rms_slope = self.roughness["rmsSlope"]
+                short_cutoff = self.roughness["shortCutoff"]
+                long_cutoff = self.roughness["longCutoff"]
+
+                topo = self.fourier_synthesis(hurst,
+                                              rms_height=rms_height,
+                                              rms_slope=rms_slope,
+                                              short_cutoff=short_cutoff,
+                                              long_cutoff=long_cutoff,
+                                              rolloff=rolloff)
+                repeat += 1
+
+                if repeat == repeat_limit:
+                    print(f"Could not generate valid topography. Abort!")
+                    abort()
         else:
-            topo = np.empty((Nx, Ny), dtype=np.float64)
+            if pcomm.Get_rank() == 0:
+                if repeat == 1:
+                    print(f"Roughness generation successfull!")
+                else:
+                    print(f"Roughness generation successfull (tried {repeat} seeds)!")
+                print(60 * "-")
 
         pcomm.Bcast(topo)
-
-        assert np.amin(topo) + self.min_height > 0
 
         ng = self.disc["nghost"]
         ngt = 2 * ng
