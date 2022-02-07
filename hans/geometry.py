@@ -205,6 +205,9 @@ class GapHeight(VectorField):
                 if repeat == repeat_limit:
                     print(f"Could not generate valid topography. Abort!")
                     abort()
+
+            pcomm.Bcast(topo)
+
         else:
             if pcomm.Get_rank() == 0:
                 if repeat == 1:
@@ -212,8 +215,6 @@ class GapHeight(VectorField):
                 else:
                     print(f"Roughness generation successfull (tried {repeat} seeds)!")
                 print(60 * "-")
-
-        pcomm.Bcast(topo)
 
         ng = self.disc["nghost"]
         ngt = 2 * ng
