@@ -241,9 +241,9 @@ class GapHeight(VectorField):
         else:
             if pcomm.Get_rank() == 0:
                 if repeat == 1:
-                    print("Roughness generation successfull!")
+                    print("Roughness generation successful!")
                 else:
-                    print(f"Roughness generation successfull (tried {repeat} seeds)!")
+                    print(f"Roughness generation successful (tried {repeat} seeds)!")
                 print(60 * "-")
 
         topo_periodic = self.roughness_pbc(topo, pcomm)
