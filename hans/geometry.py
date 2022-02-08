@@ -43,7 +43,10 @@ class GapHeight(VectorField):
         self.set_profile()
 
         if self.roughness is not None:
-            self.add_roughness()
+            if "file" in self.roughness.keys():
+                self.add_roughness_from_file()
+            else:
+                self.add_roughness()
 
         self.set_gradients()
 
@@ -161,6 +164,31 @@ class GapHeight(VectorField):
             mask = np.greater(xx, Lx / 2)
             self.field[0][mask] = h0
 
+    def add_roughness_from_file(self):
+
+        Nx = self.disc["Nx"]
+        Ny = self.disc["Ny"]
+
+        # periodic cartesian communicator
+        pcomm = self.get_2d_cart_comm(MPI.COMM_WORLD, (Nx, Ny),
+                                      periods=(True, True))
+
+        topo = np.load(self.roughness["file"])
+
+        if self.min_height < abs(np.amin(topo)):
+            if pcomm.Get_rank() == 0:
+                print("Rough topography not compatible with geometry. Abort!")
+                abort()
+
+        if topo.shape != (Nx, Ny):
+            if pcomm.Get_rank() == 0:
+                print(f"Shape mismatch. Expected ({Nx}, {Ny}), but imported topography has {topo.shape}. Abort!")
+                abort()
+
+        topo_periodic = self.roughness_pbc(topo, pcomm)
+
+        self.field[0] += topo_periodic
+
     def add_roughness(self):
         """
         Add periodic, self-affine random roughness profile on top of analytical profiles.
@@ -216,6 +244,13 @@ class GapHeight(VectorField):
                     print(f"Roughness generation successfull (tried {repeat} seeds)!")
                 print(60 * "-")
 
+        topo_periodic = self.roughness_pbc(topo, pcomm)
+
+        # add roughness
+        self.field[0] += topo_periodic
+
+    def roughness_pbc(self, topo, pcomm):
+
         ng = self.disc["nghost"]
         ngt = 2 * ng
         topo_periodic = np.empty_like(self.field[0])
@@ -249,8 +284,7 @@ class GapHeight(VectorField):
         # fill ghost buffer
         topo_periodic[:, :ng] = recvbuf
 
-        # add roughness
-        self.field[0] += topo_periodic
+        return topo_periodic
 
     def set_gradients(self):
         "gradients for a scalar field (1st entry), stored in 2nd (dx) and 3rd (dy) entry of vectorField"

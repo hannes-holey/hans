@@ -445,9 +445,9 @@ maximum time {self.numerics['maxT']: .1e} s reached.", flush=True)
             print(f"\nNo convergence within {i: d} steps. Stopping criterion: \
 maximum number of iterations reached.", flush=True)
         elif mode == 4:
-            print(f"Nan detetcted in solution. Execution stopped.", flush=True)
+            print("Nan detetcted in solution. Execution stopped.", flush=True)
         elif mode == 5:
-            print(f"Execution stopped.", flush=True)
+            print("Execution stopped.", flush=True)
 
         if mode > 0:
             walltime = datetime.now() - self.tStart
@@ -890,40 +890,41 @@ maximum number of iterations reached.", flush=True)
         """
         print("Checking roughness parameters... ")
 
-        if "seed" in self.roughness.keys():
-            self.roughness["seed"] = int(self.roughness["seed"])
-        else:
-            self.roughness["seed"] = None
-        try:
-            self.roughness["Hurst"] = float(self.roughness["Hurst"])
-        except KeyError:
-            "Hurst exponent not given. Use default (0.8)."
-            self.roughness["Hurst"] = 0.8
-        try:
-            self.roughness["rolloff"] = float(self.roughness["rolloff"])
-        except KeyError:
-            "Rollof not given. Use default (1.0)"
-            self.roughness["rolloff"] = 1.0
-        try:
-            self.roughness["rmsHeight"] = float(self.roughness["rmsHeight"])
-        except KeyError:
-            self.roughness["rmsHeight"] = None
-        try:
-            self.roughness["rmsSlope"] = float(self.roughness["rmsSlope"])
-        except KeyError:
-            self.roughness["rmsSlope"] = None
-        try:
-            self.roughness["shortCutoff"] = float(self.roughness["shortCutoff"])
-        except KeyError:
-            self.roughness["shortCutoff"] = None
-        try:
-            self.roughness["longCutoff"] = float(self.roughness["longCutoff"])
-        except KeyError:
-            self.roughness["longCutoff"] = None
+        if "file" not in self.roughness.keys():
+            try:
+                self.roughness["seed"] = int(self.roughness["seed"])
+            except KeyError:
+                self.roughness["seed"] = None
+            try:
+                self.roughness["Hurst"] = float(self.roughness["Hurst"])
+            except KeyError:
+                "Hurst exponent not given. Use default (0.8)."
+                self.roughness["Hurst"] = 0.8
+            try:
+                self.roughness["rolloff"] = float(self.roughness["rolloff"])
+            except KeyError:
+                "Rollof not given. Use default (1.0)"
+                self.roughness["rolloff"] = 1.0
+            try:
+                self.roughness["rmsHeight"] = float(self.roughness["rmsHeight"])
+            except KeyError:
+                self.roughness["rmsHeight"] = None
+            try:
+                self.roughness["rmsSlope"] = float(self.roughness["rmsSlope"])
+            except KeyError:
+                self.roughness["rmsSlope"] = None
+            try:
+                self.roughness["shortCutoff"] = float(self.roughness["shortCutoff"])
+            except KeyError:
+                self.roughness["shortCutoff"] = None
+            try:
+                self.roughness["longCutoff"] = float(self.roughness["longCutoff"])
+            except KeyError:
+                self.roughness["longCutoff"] = None
 
-        if self.roughness["rmsHeight"] is None and self.roughness["rmsSlope"] is None:
-            print('Neither rms height nor rms slope is defined! Abort.')
-            abort()
+            if self.roughness["rmsHeight"] is None and self.roughness["rmsSlope"] is None:
+                print('Neither rms height nor rms slope is defined! Abort.')
+                abort()
 
     def check_bc(self):
         """
