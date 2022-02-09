@@ -71,6 +71,6 @@ if __name__ == "__main__":
 
     if args.save:
         ofn = fn.rstrip('.nc') + "_height.npy"
-        np.save(ofn, fdata.T)
+        np.save(ofn, zdata.T)
 
     plt.show()
