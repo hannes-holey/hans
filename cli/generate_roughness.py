@@ -85,6 +85,11 @@ def get_parser():
                         default=1.0,
                         type=float,
                         help="Rolloff (default: 1.0)")
+    parser.add_argument('--seed',
+                        dest="seed",
+                        default=None,
+                        type=int,
+                        help="Random seed (default: None)")
     parser.add_argument('--plot',
                         dest="plot",
                         default=False,
@@ -111,6 +116,8 @@ if __name__ == "__main__":
 
     parser = get_parser()
     args = parser.parse_args()
+
+    np.random.seed(args.seed)
 
     topo = fourier_synthesis((args.Nx, args.Ny),
                              (args.Lx, args.Ly),
