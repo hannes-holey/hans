@@ -34,9 +34,9 @@ from hans.geometry import GapHeight
 
 class DatasetSelector:
 
-    def __init__(self, path, mode="select", fname=[]):
+    def __init__(self, path, mode="select", fname=[], prefix=""):
 
-        self._ds = self.get_files(path, mode=mode, fname=fname)
+        self._ds = self.get_files(path, prefix=prefix, mode=mode, fname=fname)
 
     def get_files(self, path, prefix="", mode="select", fname=[]):
         """
@@ -64,7 +64,7 @@ class DatasetSelector:
             Else, values are None.
         """
 
-        assert mode in ["single", "select", "all", "name"], f"mode must be 'single', select, 'all' or 'name'"
+        assert mode in ["single", "select", "all", "name"], "mode must be 'single', select, 'all' or 'name'"
 
         fileList = []
 
