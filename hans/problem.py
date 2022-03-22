@@ -255,6 +255,13 @@ class Problem:
                 q_init[2] += self.ic["amp"] * np.sin(k * xx)
                 t_init = (0., self.numerics["dt"])
 
+            elif self.ic["type"] == "random":
+                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+                q_init[0] += self.material["rho0"]
+                q_init[1] = np.random.normal(0., 1., size=(self.disc["Nx"], self.disc["Ny"]))
+                q_init[2] = np.random.normal(0., 1., size=(self.disc["Nx"], self.disc["Ny"]))
+                t_init = (0., self.numerics["dt"])
+
         return q_init, t_init
 
     def read_last_frame(self):
