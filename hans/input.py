@@ -80,12 +80,12 @@ class Input:
             else:
                 roughness = None
 
-            if "IC" in inp.keys():
-                ic = inp["IC"]
-            elif self.restartFile is not None:
+            if self.restartFile is not None:
                 ic = {}
                 ic["type"] = "restart"
                 ic["file"] = self.restartFile
+            elif "IC" in inp.keys():
+                ic = inp["IC"]
             else:
                 ic = None
 

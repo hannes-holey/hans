@@ -223,45 +223,37 @@ class Problem:
         """
 
         if self.ic is None:
+            # No ICs specified, fill with (rho0, 0, 0)
             q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
             q_init[0] += self.material["rho0"]
             t_init = (0., self.numerics["dt"])
+        elif self.ic["type"] == "restart":
+            # ICs read from last frame of restart file
+            q_init, t_init = self.read_last_frame()
         else:
-            # read last frame of restart file
-            if self.ic["type"] == "restart":
-                q_init, t_init = self.read_last_frame()
-            elif self.ic["type"] == "perturbation":
-                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
-                q_init[0] += self.material["rho0"]
-                t_init = (0., self.numerics["dt"])
+            # ICs as specified in config file
+            t_init = (0., self.numerics["dt"])
+            q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
+            q_init[0] = self.material["rho0"]
+            if self.ic["type"] == "perturbation":
                 q_init[0, self.disc["Nx"] // 2, self.disc["Ny"] // 2] *= self.ic["factor"]
             elif self.ic["type"] == "longitudinal_wave":
                 x = np.linspace(0 + self.disc["dx"]/2, self.disc["Lx"] - self.disc["dx"]/2, self.disc["Nx"])
                 y = np.linspace(0 + self.disc["dy"]/2, self.disc["Ly"] - self.disc["dy"]/2, self.disc["Ny"])
                 xx, yy = np.meshgrid(x, y, indexing="ij")
-
-                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
-                q_init[0] += self.material["rho0"]
                 k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[1] += self.ic["amp"] * np.sin(k * xx)
-                t_init = (0., self.numerics["dt"])
             elif self.ic["type"] == "shear_wave":
                 x = np.linspace(0 + self.disc["dx"]/2, self.disc["Lx"] - self.disc["dx"]/2, self.disc["Nx"])
                 y = np.linspace(0 + self.disc["dy"]/2, self.disc["Ly"] - self.disc["dy"]/2, self.disc["Ny"])
                 xx, yy = np.meshgrid(x, y, indexing="ij")
-
-                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
-                q_init[0] += self.material["rho0"]
                 k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[2] += self.ic["amp"] * np.sin(k * xx)
-                t_init = (0., self.numerics["dt"])
-
-            elif self.ic["type"] == "random":
-                q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
-                q_init[0] += self.material["rho0"]
-                q_init[1] = np.random.normal(0., 1., size=(self.disc["Nx"], self.disc["Ny"]))
-                q_init[2] = np.random.normal(0., 1., size=(self.disc["Nx"], self.disc["Ny"]))
-                t_init = (0., self.numerics["dt"])
+            elif self.ic["type"] == "random_flux":
+                q_init[1] = np.random.normal(0., self.ic["stdev"], size=(self.disc["Nx"], self.disc["Ny"]))
+                q_init[2] = np.random.normal(0., self.ic["stdev"], size=(self.disc["Nx"], self.disc["Ny"]))
+            elif self.ic["type"] == "random_density":
+                q_init[0] += np.random.normal(0., self.ic["stdev"], size=(self.disc["Nx"], self.disc["Ny"]))
 
         return q_init, t_init
 
@@ -891,6 +883,8 @@ maximum number of iterations reached.", flush=True)
                     self.ic["nwave"] = int(self.ic["nwave"])
                 else:
                     self.ic["nwave"] = 1
+            elif self.ic["type"].startswith("random"):
+                self.ic["stdev"] = float(self.ic["stdev"])
 
     def check_roughness(self):
         """
