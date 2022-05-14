@@ -235,6 +235,7 @@ class Problem:
             t_init = (0., self.numerics["dt"])
             q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
             q_init[0] = self.material["rho0"]
+
             if self.ic["type"] == "perturbation":
                 q_init[0, self.disc["Nx"] // 2, self.disc["Ny"] // 2] *= self.ic["factor"]
             elif self.ic["type"] == "longitudinal_wave":
@@ -249,11 +250,10 @@ class Problem:
                 xx, yy = np.meshgrid(x, y, indexing="ij")
                 k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[2] += self.ic["amp"] * np.sin(k * xx)
-            elif self.ic["type"] == "random_flux":
-                q_init[1] = np.random.normal(0., self.ic["stdev"], size=(self.disc["Nx"], self.disc["Ny"]))
-                q_init[2] = np.random.normal(0., self.ic["stdev"], size=(self.disc["Nx"], self.disc["Ny"]))
-            elif self.ic["type"] == "random_density":
-                q_init[0] += np.random.normal(0., self.ic["stdev"], size=(self.disc["Nx"], self.disc["Ny"]))
+            elif self.ic["type"] == "random":
+                q_init[0] += np.random.normal(0., self.ic["stdDens"], size=(self.disc["Nx"], self.disc["Ny"]))
+                q_init[1] = np.random.normal(0., self.ic["stdFlux"], size=(self.disc["Nx"], self.disc["Ny"]))
+                q_init[2] = np.random.normal(0., self.ic["stdFlux"], size=(self.disc["Nx"], self.disc["Ny"]))
 
         return q_init, t_init
 
@@ -883,8 +883,15 @@ maximum number of iterations reached.", flush=True)
                     self.ic["nwave"] = int(self.ic["nwave"])
                 else:
                     self.ic["nwave"] = 1
-            elif self.ic["type"].startswith("random"):
-                self.ic["stdev"] = float(self.ic["stdev"])
+            elif self.ic["type"] == "random":
+                try:
+                    self.ic["stdDens"] = float(self.ic["stdDens"])
+                except KeyError:
+                    self.ic["stdDens"] = 0.0
+                try:
+                    self.ic["stdFlux"] = float(self.ic["stdFlux"])
+                except KeyError:
+                    self.ic["stdFlux"] = 0.0
 
     def check_roughness(self):
         """
