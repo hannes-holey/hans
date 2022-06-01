@@ -85,7 +85,12 @@ class Material:
             K = self.material['K']
             n = self.material['n']
 
-            return K / n * ((rho / rho0)**n - 1) + P0
+            p = K / n * ((rho / rho0)**n - 1) + P0
+            if 'Pcav' in self.material.keys():
+                Pcav = self.material['Pcav']
+                return np.maximum(p, Pcav)
+            else:
+                return p
 
         # Cubic polynomial
         elif self.material['EOS'] == "cubic":
