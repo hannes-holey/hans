@@ -43,6 +43,8 @@ class Material:
             C1 = self.material['C1']
             C2 = self.material['C2']
 
+            assert np.all(rho < C2 * rho0), "Density too high for Dowson-Higginson EOS"
+
             p = P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
             if 'Pcav' in self.material.keys():
                 Pcav = self.material['Pcav']
