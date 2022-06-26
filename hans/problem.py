@@ -698,6 +698,10 @@ maximum number of iterations reached.", flush=True)
             self.geometry["amp"] = float(self.geometry['amp'])
             self.geometry["num"] = float(self.geometry['num'])
 
+        else:
+            print(f"'{self.geometry['type']}' geometry not implemented")
+            abort()
+
     def check_numerics(self):
         """
         Sanity check for numerics options.
