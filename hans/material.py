@@ -25,6 +25,8 @@
 
 import numpy as np
 
+from hans.tools import abort
+
 # global constants
 R = 8.314462618
 
@@ -43,7 +45,11 @@ class Material:
             C1 = self.material['C1']
             C2 = self.material['C2']
 
-            assert np.all(rho < C2 * rho0), "Density too high for Dowson-Higginson EOS"
+            try:
+                assert np.all(rho < C2 * rho0)
+            except AssertionError:
+                print("Density too high for Dowson-Higginson EOS")
+                abort()
 
             p = P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
             if 'Pcav' in self.material.keys():
