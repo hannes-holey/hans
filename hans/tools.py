@@ -27,7 +27,7 @@ import sys
 from mpi4py import MPI
 
 
-def abort(errcode=0):
+def abort(errcode=1):
     if MPI.COMM_WORLD.Get_size() == 1:
         sys.exit(errcode)
     else:
