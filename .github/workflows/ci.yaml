@@ -19,37 +19,47 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v2
 
-    - name: Deploy
-      uses: exuanbo/actions-deploy-gist@v1
-      # uses: actions/checkout@v3
+    - name: Install MPI
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openmpi-bin libopenmpi-dev
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
       with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install requirements
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install setuptools
+        python -m pip install -r requirements.txt
+
+    - name: Install hans
+      run: |
+        sudo python3 setup.py install
+
+    - name: Test with pytest
+      run: |
+        coverage run --source=. -m pytest
+        TOTAL=$(coverage report | awk 'END{print $4}' | sed 's/%//')
+
+        if (( $(echo "$TOTAL <= 50" | bc -l) )) ; then
+            COLOR=red
+        elif (( $(echo "$TOTAL > 80" | bc -l) )); then
+            COLOR=green
+        else
+            COLOR=orange
+        fi
+
+        curl "https://img.shields.io/badge/covarege-$TOTAL%25-$COLOR" > badge.svg
+
+    - name: Upload coverage badge
+      uses: exuanbo/actions-deploy-gist@v1
+        with:
         token: ${{ secrets.GIST_SECRET }}
         gist_id: fac7fa61e1899b1e74b3bab598fe6513
         file_path: badge.svg
-
-    # - name: Install MPI
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install -y openmpi-bin libopenmpi-dev
-    #
-    # - name: Set up Python
-    #   uses: actions/setup-python@v2
-    #   with:
-    #     python-version: ${{ matrix.python-version }}
-    #
-    # - name: Install requirements
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     python -m pip install setuptools
-    #     python -m pip install -r requirements.txt
-    #
-    # - name: Install hans
-    #   run: |
-    #     sudo python3 setup.py install
-    #
-    # - name: Test with pytest
-    #   run: |
-    #     pytest
 
   deploy:
     runs-on: ubuntu-latest
