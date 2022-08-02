@@ -57,6 +57,7 @@ jobs:
     - name: Upload coverage badge
       uses: exuanbo/actions-deploy-gist@v1
       with:
+        python-version: '3.9'
         token: ${{ secrets.GIST_SECRET }}
         gist_id: fac7fa61e1899b1e74b3bab598fe6513
         file_path: badge.svg
