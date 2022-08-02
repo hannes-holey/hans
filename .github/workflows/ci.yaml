@@ -41,7 +41,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        coverage run --source=. -m pytest
+        coverage run --source=. --omit=./setup.py,*/__*__.py -m pytest
         TOTAL=$(coverage report | awk 'END{print $4}' | sed 's/%//')
 
         if (( $(echo "$TOTAL <= 50" | bc -l) )) ; then
@@ -58,7 +58,6 @@ jobs:
       if: matrix.python-version == '3.9'
       uses: exuanbo/actions-deploy-gist@v1
       with:
-        python-version: '3.9'
         token: ${{ secrets.GIST_SECRET }}
         gist_id: fac7fa61e1899b1e74b3bab598fe6513
         file_path: badge.svg
