@@ -32,7 +32,7 @@ jobs:
     - name: Install requirements
       run: |
         python -m pip install --upgrade pip
-        python -m pip install setuptools
+        python -m pip install setuptools coverage
         python -m pip install -r requirements.txt
 
     - name: Install hans
@@ -55,6 +55,7 @@ jobs:
         curl "https://img.shields.io/badge/coverage-$TOTAL%25-$COLOR" > badge.svg
 
     - name: Upload coverage badge
+      if: matrix.python-version == '3.9'
       uses: exuanbo/actions-deploy-gist@v1
       with:
         python-version: '3.9'
