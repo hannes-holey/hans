@@ -43,6 +43,14 @@ jobs:
       run: |
         pytest
 
+    # uses: exuanbo/actions-deploy-gist@v1
+    - name: Deploy
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GIST_SECRET }}
+        gist_id: fac7fa61e1899b1e74b3bab598fe6513
+        file_path: badge.svg
+
   deploy:
     runs-on: ubuntu-latest
     needs: test
