@@ -52,7 +52,7 @@ jobs:
             COLOR=orange
         fi
 
-        curl "https://img.shields.io/badge/covarege-$TOTAL%25-$COLOR" > badge.svg
+        curl "https://img.shields.io/badge/coverage-$TOTAL%25-$COLOR" > badge.svg
 
     - name: Upload coverage badge
       uses: exuanbo/actions-deploy-gist@v1
