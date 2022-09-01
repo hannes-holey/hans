@@ -27,8 +27,13 @@ from setuptools import setup, find_packages
 with open("requirements.txt", "r") as fh:
     requirements = [line.strip() for line in fh]
 
+with open("README.md", "r") as rm:
+    long_description = rm.read()
+
 setup(name='hans',
       description='Height-Averaged Navier-Stokes (HANS) solver for 2D lubrication problems',
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       author='Hannes Holey',
       author_email='hannes.holey@kit.edu',
       url='http://github.com/hannes-holey/hans',
