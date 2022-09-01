@@ -239,14 +239,14 @@ class Problem:
             if self.ic["type"] == "perturbation":
                 q_init[0, self.disc["Nx"] // 2, self.disc["Ny"] // 2] *= self.ic["factor"]
             elif self.ic["type"] == "longitudinal_wave":
-                x = np.linspace(0 + self.disc["dx"]/2, self.disc["Lx"] - self.disc["dx"]/2, self.disc["Nx"])
-                y = np.linspace(0 + self.disc["dy"]/2, self.disc["Ly"] - self.disc["dy"]/2, self.disc["Ny"])
+                x = np.linspace(0 + self.disc["dx"] / 2, self.disc["Lx"] - self.disc["dx"] / 2, self.disc["Nx"])
+                y = np.linspace(0 + self.disc["dy"] / 2, self.disc["Ly"] - self.disc["dy"] / 2, self.disc["Ny"])
                 xx, yy = np.meshgrid(x, y, indexing="ij")
                 k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[1] += self.ic["amp"] * np.sin(k * xx)
             elif self.ic["type"] == "shear_wave":
-                x = np.linspace(0 + self.disc["dx"]/2, self.disc["Lx"] - self.disc["dx"]/2, self.disc["Nx"])
-                y = np.linspace(0 + self.disc["dy"]/2, self.disc["Ly"] - self.disc["dy"]/2, self.disc["Ny"])
+                x = np.linspace(0 + self.disc["dx"] / 2, self.disc["Lx"] - self.disc["dx"] / 2, self.disc["Nx"])
+                y = np.linspace(0 + self.disc["dy"] / 2, self.disc["Ly"] - self.disc["dy"] / 2, self.disc["Ny"])
                 xx, yy = np.meshgrid(x, y, indexing="ij")
                 k = 2. * np.pi / self.disc["Lx"] * self.ic["nwave"]
                 q_init[2] += self.ic["amp"] * np.sin(k * xx)
@@ -254,6 +254,24 @@ class Problem:
                 q_init[0] += np.random.normal(0., self.ic["stdDens"], size=(self.disc["Nx"], self.disc["Ny"]))
                 q_init[1] = np.random.normal(0., self.ic["stdFlux"], size=(self.disc["Nx"], self.disc["Ny"]))
                 q_init[2] = np.random.normal(0., self.ic["stdFlux"], size=(self.disc["Nx"], self.disc["Ny"]))
+            elif self.ic["type"] == "gauss1D":
+                x = np.linspace(0 + self.disc["dx"] / 2, self.disc["Lx"] - self.disc["dx"] / 2, self.disc["Nx"])
+                y = np.linspace(0 + self.disc["dy"] / 2, self.disc["Ly"] - self.disc["dy"] / 2, self.disc["Ny"])
+                xx, yy = np.meshgrid(x, y, indexing="ij")
+
+                # 1D centered Gaussian
+                mean = self.ic['mean']
+                stdev = self.ic['stdev']
+                lc = self.ic['cutoff']
+
+                # region inside cutoff
+                inner = np.logical_and(xx > mean - lc, xx < mean + lc)
+
+                p1D = np.exp(-(xx[inner] - mean)**2 / (2 * stdev**2)) / np.sqrt(2 * np.pi * stdev**2)
+                p1D -= np.amin(p1D)  # shift
+                p1D /= np.amax(p1D)  # rescale
+
+                q_init[0, inner] += p1D
 
         return q_init, t_init
 
@@ -896,6 +914,19 @@ maximum number of iterations reached.", flush=True)
                     self.ic["stdFlux"] = float(self.ic["stdFlux"])
                 except KeyError:
                     self.ic["stdFlux"] = 0.0
+            elif self.ic["type"] == "gauss1D":
+                try:
+                    self.ic["mean"] = float(self.ic["mean"])
+                except KeyError:
+                    self.ic["mean"] = float(self.disc["Lx"]) / 2
+                try:
+                    self.ic["stdev"] = float(self.ic["stdev"])
+                except KeyError:
+                    self.ic["stdev"] = float(self.disc["Lx"]) / 40
+                try:
+                    self.ic["cutoff"] = float(self.ic["cutoff"])
+                except KeyError:
+                    self.ic["cutoff"] = 12 * self.ic['stdev']
 
     def check_roughness(self):
         """
