@@ -27,6 +27,8 @@ import numpy as np
 
 from hans.tools import abort
 
+import GPy
+
 # global constants
 R = 8.314462618
 
@@ -311,15 +313,14 @@ class Material:
                 mu0 = self.material["shear"]
 
             if "thinning" in self.material.keys():
+                shear_rate = np.sqrt(U**2 + V**2) / height
                 if self.material["thinning"] == "Eyring":
                     tau0 = self.material["tau0"]
-                    shear_rate = np.sqrt(U**2 + V**2) / height
 
                     return tau0 / shear_rate * np.arcsinh(mu0 * shear_rate / tau0)
 
                 elif self.material["thinning"] == "Carreau":
 
-                    shear_rate = np.sqrt(U**2 + V**2) / height
                     lam = self.material["relax"]
                     a = self.material["a"]
                     N = self.material["N"]
@@ -332,12 +333,29 @@ class Material:
                     return mu_inf + (mu0 - mu_inf) * (1 + (lam * shear_rate)**a)**((N - 1) / a)
 
                 elif self.material["thinning"] == "PL":
-                    shear_rate = np.sqrt(U**2 + V**2) / height
                     flow_consistency_index = self.material["shear"]
                     flow_behavior_index = self.material["n"]
 
                     return flow_consistency_index * shear_rate**(flow_behavior_index - 1)
 
+                elif self.material["thinning"] == "GPR":
+
+                    m = self.material["model"]
+                    # rescale shear rate
+                    shear_rate /= 1e9
+
+                    mean, cov = m.predict(shear_rate, full_cov=True)
+
+                    # rescale posterior mean and covariance
+                    mean *= 1e-3
+                    cov *= 1e-6
+
+                    if self.material["sampling"] == "mean":
+                        return mean
+                    elif self.material["sampling"] == "random":
+                        np.random.seed(self.material["seed"])
+                        # FIXME: works only in 1D?
+                        return np.random.multivariate_normal(mean[:, 0], cov, 1).T
                 else:
                     return mu0
             else:

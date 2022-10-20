@@ -39,6 +39,8 @@ from hans.material import Material
 from hans.plottools import adaptiveLimits
 from hans.integrate import ConservedField
 
+from hans.gpr.shear_thinning import GPRegression
+
 
 class Problem:
 
@@ -376,15 +378,32 @@ class Problem:
             nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
             nc.setncattr("version", get_distribution('hans').version)
 
+            # Clean-up input dictionaries for NetCDF metadata
             disc = self.disc.copy()
+            del disc["nghost"]
+            del disc["pX"]
+            del disc["pY"]
+
             bc = self.bc.copy()
+            bc["x0"] = "".join(bc["x0"])
+            bc["x1"] = "".join(bc["x1"])
+            bc["y0"] = "".join(bc["y0"])
+            bc["y1"] = "".join(bc["y1"])
+
+            # TODO: GP model might work with to_dict method
+            material = self.material.copy()
+            material["model"] = self.material["model"].to_dict()
+
+            del material["model"]
+            # print(material["model"])
 
             categories = {"options": self.options,
-                          "disc": disc,
-                          "bc": bc,
+                          "disc": disc,                 # modified
+                          "bc": bc,                     # modified
                           "geometry": self.geometry,
                           "numerics": self.numerics,
-                          "material": self.material}
+                          "material": material          # modified
+                          }
 
             if self.surface is not None:
                 categories["surface"] = self.surface
@@ -395,16 +414,6 @@ class Problem:
             if self.roughness is not None:
                 roughness_noNone = {k: (v if v is not None else "None") for k, v in self.roughness.items()}
                 categories["roughness"] = roughness_noNone
-
-            # reset modified input dictionaries
-            bc["x0"] = "".join(bc["x0"])
-            bc["x1"] = "".join(bc["x1"])
-            bc["y0"] = "".join(bc["y0"])
-            bc["y1"] = "".join(bc["y1"])
-
-            del disc["nghost"]
-            del disc["pX"]
-            del disc["pY"]
 
             for name, cat in categories.items():
                 for key, value in cat.items():
@@ -861,6 +870,11 @@ maximum number of iterations reached.", flush=True)
             elif self.material["thinning"] == "PL":
                 self.material["shear"] = float(self.material["shear"])
                 self.material["n"] = float(self.material["n"])
+            elif self.material["thinning"] == "GPR":
+                self.material["model"] = GPRegression()
+                assert self.material["sampling"] in ["mean", "random"]
+                if self.material["sampling"] == "random":
+                    self.material["seed"] = np.random.randint(0, 2**32 - 1)
 
         if "PLindex" in self.material.keys():
             self.material["PLindex"] = float(self.material["PLindex"])
