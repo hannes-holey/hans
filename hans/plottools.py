@@ -291,7 +291,7 @@ class DatasetSelector:
                 assert key in keys
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
-                    material = get_input_dict(data, "material")
+                    material = self._generate_input_dict(data, "material")
                     zdata = Material(material).eos_pressure(rho)
                 else:
                     zdata = np.array(data.variables[key][index])
