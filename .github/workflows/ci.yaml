@@ -2,20 +2,12 @@ name: CI
 
 on: [push]
 
-
-  # push:
-  #   branches:
-  #     - master
-  #   tags:
-  #     - '*'
-
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9"]
-        # python-version: ["3.8", "3.9"]
+        python-version: ["3.8", "3.9", "3.10"]
     steps:
     - name: Checkout source
       uses: actions/checkout@v3
@@ -23,7 +15,7 @@ jobs:
     - name: Install MPI
       run: |
         sudo apt-get update
-        sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
+        sudo apt-get install -y openmpi-bin libopenmpi-dev
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -68,10 +60,10 @@ jobs:
     needs: test
     steps:
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 

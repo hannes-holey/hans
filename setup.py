@@ -54,7 +54,7 @@ setup(name='hans',
       test_suite='tests',
       tests_require=["pytest>=4"],
       install_requires=requirements,
-      python_requires=">=3.6",
+      python_requires=">=3.8",
       use_scm_version=True,
       setup_requires=['setuptools_scm>=3.5.0'],
       zip_safe=False)
