@@ -27,8 +27,6 @@ import numpy as np
 
 from hans.tools import abort
 
-import GPy
-
 # global constants
 R = 8.314462618
 
@@ -341,8 +339,13 @@ class Material:
                 elif self.material["thinning"] == "GPR":
 
                     m = self.material["model"]
+
                     # rescale shear rate
                     shear_rate /= 1e9
+
+                    nx, ny = shear_rate.shape
+
+                    shear_rate = shear_rate.flatten()[:, None]
 
                     mean, cov = m.predict(shear_rate, full_cov=True)
 
@@ -351,11 +354,18 @@ class Material:
                     cov *= 1e-6
 
                     if self.material["sampling"] == "mean":
-                        return mean
+                        return mean.reshape((nx, ny))
                     elif self.material["sampling"] == "random":
                         np.random.seed(self.material["seed"])
-                        # FIXME: works only in 1D?
-                        return np.random.multivariate_normal(mean[:, 0], cov, 1).T
+
+                        # sample = np.random.multivariate_normal(mean[:, 0], cov)
+                        # new in version 1.18.0
+                        # methods to compute factor matrix: svd, eigh, cholesky (increasing speed)
+                        rng = np.random.default_rng()
+                        sample = rng.multivariate_normal(mean[:, 0], cov, method="cholesky")
+
+                        return sample.reshape((nx, ny))
+
                 else:
                     return mu0
             else:
