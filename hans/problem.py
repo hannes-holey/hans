@@ -390,12 +390,12 @@ class Problem:
             bc["y0"] = "".join(bc["y0"])
             bc["y1"] = "".join(bc["y1"])
 
-            # TODO: GP model might work with to_dict method
             material = self.material.copy()
-            material["model"] = self.material["model"].to_dict()
 
-            del material["model"]
-            # print(material["model"])
+            if "model" in material.keys():
+                # TODO: write model information with to_dict method
+                # material["model"] = self.material["model"].to_dict()
+                del material["model"]
 
             categories = {"options": self.options,
                           "disc": disc,                 # modified
