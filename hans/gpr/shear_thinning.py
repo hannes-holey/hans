@@ -2,12 +2,10 @@ import GPy
 import numpy as np
 
 
-def GPRegression():
-    # TODO: read datafile from input
-    # datafile = self.material["data"]
+def GPRegression(file):
+
     # NOTE: training in 1/nanoseconds - mPas
-    datafile = '/home/hannes/data/2022-10_lubricin/data/saber_low-density.csv'
-    srate, visc, visc_err = np.loadtxt(datafile, delimiter=",", usecols=(0, 3, 4), unpack=True)
+    srate, visc, visc_err = np.loadtxt(file, delimiter=",", usecols=(0, 3, 4), unpack=True)
 
     # TODO: other input: homo/hetero, (un)fixed noise, kernel, prior, output (mean or sample) ...
 

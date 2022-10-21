@@ -871,8 +871,10 @@ maximum number of iterations reached.", flush=True)
                 self.material["shear"] = float(self.material["shear"])
                 self.material["n"] = float(self.material["n"])
             elif self.material["thinning"] == "GPR":
-                self.material["model"] = GPRegression()
+                assert os.path.exists(self.material["data"])
                 assert self.material["sampling"] in ["mean", "random"]
+
+                self.material["model"] = GPRegression(self.material["data"])
                 if self.material["sampling"] == "random":
                     self.material["seed"] = np.random.randint(0, 2**32 - 1)
 
