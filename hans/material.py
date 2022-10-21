@@ -338,33 +338,37 @@ class Material:
 
                 elif self.material["thinning"] == "GPR":
 
-                    m = self.material["model"]
+                    f = self.material["interp1d"]
 
-                    # rescale shear rate
-                    shear_rate /= 1e9
+                    return f(shear_rate)
 
-                    nx, ny = shear_rate.shape
-
-                    shear_rate = shear_rate.flatten()[:, None]
-
-                    mean, cov = m.predict(shear_rate, full_cov=True)
-
-                    # rescale posterior mean and covariance
-                    mean *= 1e-3
-                    cov *= 1e-6
-
-                    if self.material["sampling"] == "mean":
-                        return mean.reshape((nx, ny))
-                    elif self.material["sampling"] == "random":
-                        np.random.seed(self.material["seed"])
-
-                        # sample = np.random.multivariate_normal(mean[:, 0], cov)
-                        # new in version 1.18.0
-                        # methods to compute factor matrix: svd, eigh, cholesky (increasing speed)
-                        rng = np.random.default_rng()
-                        sample = rng.multivariate_normal(mean[:, 0], cov, method="cholesky")
-
-                        return sample.reshape((nx, ny))
+                    # m = self.material["model"]
+                    #
+                    # # rescale shear rate
+                    # shear_rate /= 1e9
+                    #
+                    # nx, ny = shear_rate.shape
+                    #
+                    # shear_rate = shear_rate.flatten()[:, None]
+                    #
+                    # mean, cov = m.predict(shear_rate, full_cov=True)
+                    #
+                    # # rescale posterior mean and covariance
+                    # mean *= 1e-3
+                    # cov *= 1e-6
+                    #
+                    # if self.material["sampling"] == "mean":
+                    #     return mean.reshape((nx, ny))
+                    # elif self.material["sampling"] == "random":
+                    #     np.random.seed(self.material["seed"])
+                    #
+                    #     # sample = np.random.multivariate_normal(mean[:, 0], cov)
+                    #     # new in version 1.18.0
+                    #     # methods to compute factor matrix: svd, eigh, cholesky (increasing speed)
+                    #     sample = rng.multivariate_normal(mean[:, 0], cov, method="cholesky")
+                    #     rng = np.random.default_rng()
+                    #
+                    #     return sample.reshape((nx, ny))
 
                 else:
                     return mu0

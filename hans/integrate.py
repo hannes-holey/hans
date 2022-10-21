@@ -31,6 +31,8 @@ from hans.stress import SymStressField2D, SymStressField3D
 from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
 
+from hans.gpr.shear_thinning import GPRegression, interpolate
+
 
 class ConservedField(VectorField):
 
@@ -92,6 +94,12 @@ class ConservedField(VectorField):
         self.upper_stress = SymStressField3D(disc, geometry, material, surface)
         self.lower_stress = SymStressField3D(disc, geometry, material, surface)
 
+        # interpolate shear thinning law
+        self.material["model"] = GPRegression(self.material["data"])
+        app_shear_rate = np.sqrt(geometry["U"]**2 + geometry["V"]**2) / self.height.field[0]
+
+        self.material["interp1d"] = interpolate(app_shear_rate, self.material)
+
     @property
     def mass(self):
         area = self.disc["dx"] * self.disc["dy"]
@@ -132,6 +140,13 @@ class ConservedField(VectorField):
         self.comm.Allreduce(local_vy_max, recvbuf, op=MPI.MAX)
 
         return recvbuf[0]
+
+    @property
+    def app_shear_rate(self):
+        U = self.material["U"]
+        V = self.material["V"]
+
+        local_sr = np.sqrt(U**2 + V**2) / self.height.inner[0]
 
     @property
     def ekin(self):

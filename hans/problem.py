@@ -39,8 +39,6 @@ from hans.material import Material
 from hans.plottools import adaptiveLimits
 from hans.integrate import ConservedField
 
-from hans.gpr.shear_thinning import GPRegression
-
 
 class Problem:
 
@@ -396,6 +394,7 @@ class Problem:
                 # TODO: write model information with to_dict method
                 # material["model"] = self.material["model"].to_dict()
                 del material["model"]
+                del material["interp1d"]
 
             categories = {"options": self.options,
                           "disc": disc,                 # modified
@@ -874,7 +873,7 @@ maximum number of iterations reached.", flush=True)
                 assert os.path.exists(self.material["data"])
                 assert self.material["sampling"] in ["mean", "random"]
 
-                self.material["model"] = GPRegression(self.material["data"])
+                # self.material["model"] = GPRegression(self.material["data"])
                 if self.material["sampling"] == "random":
                     self.material["seed"] = np.random.randint(0, 2**32 - 1)
 
