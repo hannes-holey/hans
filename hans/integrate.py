@@ -95,10 +95,11 @@ class ConservedField(VectorField):
         self.lower_stress = SymStressField3D(disc, geometry, material, surface)
 
         # interpolate shear thinning law
-        self.material["model"] = GPRegression(self.material["data"])
-        app_shear_rate = np.sqrt(geometry["U"]**2 + geometry["V"]**2) / self.height.field[0]
+        if "thinning" in self.material.keys() and self.material["thinning"] == "GPR":
+            self.material["model"] = GPRegression(self.material["data"])
+            app_shear_rate = np.sqrt(geometry["U"]**2 + geometry["V"]**2) / self.height.field[0]
 
-        self.material["interp1d"] = interpolate(app_shear_rate, self.material)
+            self.material["interp1d"] = interpolate(app_shear_rate, self.material)
 
     @property
     def mass(self):
