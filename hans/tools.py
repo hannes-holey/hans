@@ -1,5 +1,5 @@
 #
-# Copyright 2021 Hannes Holey
+# Copyright 2021-2022 Hannes Holey
 #
 # ### MIT License
 #
