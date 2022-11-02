@@ -143,13 +143,6 @@ class ConservedField(VectorField):
         return recvbuf[0]
 
     @property
-    def app_shear_rate(self):
-        U = self.material["U"]
-        V = self.material["V"]
-
-        local_sr = np.sqrt(U**2 + V**2) / self.height.inner[0]
-
-    @property
     def ekin(self):
         area = self.disc["dx"] * self.disc["dy"]
         local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0] * area)

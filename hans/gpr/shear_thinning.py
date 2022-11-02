@@ -29,7 +29,7 @@ from scipy.interpolate import interp1d
 def GPRegression(file):
 
     # NOTE: training in 1/nanoseconds - mPas
-    srate, visc, visc_err = np.loadtxt(file, delimiter=",", usecols=(0, 3, 4), unpack=True)
+    srate, visc, visc_err = np.loadtxt(file, delimiter=",", unpack=True)
 
     # TODO: other input: homo/hetero, (un)fixed noise, kernel, prior, output (mean or sample) ...
 
@@ -54,7 +54,7 @@ def interpolate(shear_rate, material):
     m = material["model"]
 
     # rescale shear rate
-    shear_rate /= 1e9
+    # shear_rate /= 1e9
 
     nx, ny = shear_rate.shape
 
@@ -63,8 +63,8 @@ def interpolate(shear_rate, material):
     mean, cov = m.predict(shear_rate, full_cov=True)
 
     # rescale posterior mean and covariance
-    mean *= 1e-3
-    cov *= 1e-6
+    # mean *= 1e-3
+    # cov *= 1e-6
 
     if material["sampling"] == "mean":
         out = mean[:, 0]
@@ -77,6 +77,7 @@ def interpolate(shear_rate, material):
         rng = np.random.default_rng()
         out = rng.multivariate_normal(mean[:, 0], cov, method="cholesky")
 
-    return interp1d(shear_rate[:, 0] * 1e9, out)
+    # rescale
+    # return interp1d(shear_rate[:, 0] * 1e9, out)
 
-    # return sample.reshape((nx, ny))
+    return interp1d(shear_rate[:, 0], out)
