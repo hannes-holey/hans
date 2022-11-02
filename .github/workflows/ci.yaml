@@ -30,7 +30,7 @@ jobs:
 
     - name: Install hans
       run: |
-        sudo python3 setup.py install
+        python3 setup.py install
 
     - name: Test with pytest
       run: |
@@ -47,8 +47,8 @@ jobs:
 
         curl "https://img.shields.io/badge/coverage-$TOTAL%25-$COLOR" > badge.svg
 
-    - name: Upload coverage badge
-      if: matrix.python-version == '3.9'
+    - name: Upload coverage badge   # for tagged versions only
+      if: matrix.python-version == '3.9' && startsWith(github.ref, 'refs/tags')
       uses: exuanbo/actions-deploy-gist@v1
       with:
         token: ${{ secrets.GIST_SECRET }}
