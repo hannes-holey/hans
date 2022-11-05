@@ -860,6 +860,7 @@ maximum number of iterations reached.", flush=True)
                 self.material["BF"] = float(self.material["BF"])
 
         if "thinning" in self.material.keys():
+            assert self.material["thinning"] in ["Eyring", "Carreau", "PL", "GPR"]
             if self.material["thinning"] == "Eyring":
                 self.material["tau0"] = float(self.material["tau0"])
             elif self.material["thinning"] == "Carreau":
