@@ -38,7 +38,7 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
 
     ylabels = {"mass": r"Mass $m$",
                "vmax": r"Max. velocity $v_\mathrm{max}$",
@@ -81,3 +81,7 @@ if __name__ == "__main__":
             ax.set_yscale("log")
 
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

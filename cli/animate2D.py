@@ -72,7 +72,7 @@ def update_grids(i, A, t):
     fig.suptitle("Time: {:.1g} s".format(t[i]))
 
 
-if __name__ == "__main__":
+def main():
 
     ylabels = {"rho": r"Density $\rho$",
                "p": r"Pressure $p$",
@@ -86,6 +86,8 @@ if __name__ == "__main__":
     fn, = files.get_filenames()
     time, zdata = files.get_fields(key=args.key)[0]
     print("Animating ", fn)
+
+    global fig, ax
 
     if args.key is None:
         fig, ax = plt.subplots(2, 2, figsize=(12.8, 9.6))
@@ -124,3 +126,7 @@ if __name__ == "__main__":
     ani = animation.FuncAnimation(fig, update_grids, frames=len(time), fargs=(zdata, time), interval=100, repeat=True)
 
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

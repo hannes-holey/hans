@@ -36,7 +36,7 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
 
     parser = get_parser()
     args = parser.parse_args()
@@ -49,3 +49,7 @@ if __name__ == "__main__":
         for name in data.ncattrs():
             print("{:20s}: {:>}".format(name, getattr(data, name)))
         print(40 * "-")
+
+
+if __name__ == "__main__":
+    main()

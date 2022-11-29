@@ -39,7 +39,7 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
 
     ylabels = {"rho": r"Density $\rho$",
                "p": r"Pressure $p$",
@@ -89,3 +89,7 @@ if __name__ == "__main__":
         ax.set_ylabel(r"$y/L_y$")
 
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

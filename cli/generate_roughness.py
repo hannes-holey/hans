@@ -110,8 +110,7 @@ def plot_surface(arr):
     plt.show()
 
 
-if __name__ == "__main__":
-
+def main():
     parser = get_parser()
     args = parser.parse_args()
 
@@ -132,3 +131,7 @@ if __name__ == "__main__":
 
     if args.plot:
         plot_surface(topo)
+
+
+if __name__ == "__main__":
+    main()

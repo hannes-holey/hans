@@ -2,22 +2,16 @@ name: CI
 
 on: [push]
 
-
-  # push:
-  #   branches:
-  #     - master
-  #   tags:
-  #     - '*'
-
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    # runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.6", "3.7", "3.8", "3.9"]
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install MPI
       run: |
@@ -25,19 +19,18 @@ jobs:
         sudo apt-get install -y openmpi-bin libopenmpi-dev
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install requirements
+    - name: Install build requirements
       run: |
         python -m pip install --upgrade pip
-        python -m pip install setuptools coverage
-        python -m pip install -r requirements.txt
+        python -m pip install --upgrade setuptools setuptools_scm coverage build pytest
 
     - name: Install hans
       run: |
-        sudo python3 setup.py install
+        pip install .
 
     - name: Test with pytest
       run: |
@@ -77,11 +70,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+          pip install setuptools wheel twine build
 
       - name: Package dist
         run: |
-          python setup.py sdist bdist_wheel
+          python3 -m build
 
       - name: Publish package on PyPI
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
