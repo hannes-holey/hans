@@ -39,7 +39,7 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
 
     ylabels = {"rho": r"Density $\rho$",
                "p": r"Pressure $p$",
@@ -89,3 +89,7 @@ if __name__ == "__main__":
         fig.colorbar(sm, ax=ax, format=fmt, label='time $t$', extend='max', orientation="horizontal", aspect=50, pad=0.1)
 
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

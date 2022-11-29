@@ -41,7 +41,7 @@ def get_parser():
     return parser
 
 
-if __name__ == "__main__":
+def main():
 
     parser = get_parser()
     args = parser.parse_args()
@@ -72,3 +72,7 @@ if __name__ == "__main__":
         np.save(ofn, zdata.T)
 
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

@@ -22,7 +22,6 @@
 # SOFTWARE.
 #
 
-
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -68,7 +67,7 @@ def update_lines(i, A, t):
     fig.suptitle("Time: {:.1g} s".format(t[i]))
 
 
-if __name__ == "__main__":
+def main():
 
     ylabels = {"rho": r"Density $\rho$",
                "p": r"Pressure $p$",
@@ -82,6 +81,8 @@ if __name__ == "__main__":
     fn, = files.get_filenames()
     time, xdata, ydata = files.get_centerlines(key=args.key, dir=args.dir)[0]
     print("Animating ", fn)
+
+    global fig, ax
 
     if args.key is None:
         fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8))
@@ -108,3 +109,7 @@ if __name__ == "__main__":
     ani = animation.FuncAnimation(fig, update_lines, frames=len(time), fargs=(ydata, time), interval=100, repeat=True)
 
     plt.show()
+
+
+if __name__ == "__main__":
+    main()
