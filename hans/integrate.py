@@ -433,8 +433,10 @@ class ConservedField(VectorField):
         if ls >= 0:
             self.field[:, -ng:, :] = recvbuf
         else:
-            self.field[x1 == "D", -1, :] = 2. * self.bc["rhox1"] - self.field[x1 == "D", -2, :]
-            self.field[x1 == "N", -1, :] = self.field[x1 == "N", -2, :]
+            if np.any(x1 == "D"):
+                self.field[x1 == "D", -1, :] = 2. * self.bc["rhox1"] - self.field[x1 == "D", -2, :]
+            if np.any(x1 == "N"):
+                self.field[x1 == "N", -1, :] = self.field[x1 == "N", -2, :]
 
         # Send to right, receive from left
         recvbuf = np.ascontiguousarray(self.field[:, :ng, :])
@@ -443,8 +445,10 @@ class ConservedField(VectorField):
         if rs >= 0:
             self.field[:, :ng, :] = recvbuf
         else:
-            self.field[x0 == "D", 0, :] = 2. * self.bc["rhox0"] - self.field[x0 == "D", 1, :]
-            self.field[x0 == "N", 0, :] = self.field[x0 == "N", 1, :]
+            if np.any(x0 == "D"):
+                self.field[x0 == "D", 0, :] = 2. * self.bc["rhox0"] - self.field[x0 == "D", 1, :]
+            if np.any(x0 == "N"):
+                self.field[x0 == "N", 0, :] = self.field[x0 == "N", 1, :]
 
         # Send to bottom, receive from top
         recvbuf = np.ascontiguousarray(self.field[:, :, -ng:])
@@ -453,8 +457,10 @@ class ConservedField(VectorField):
         if bs >= 0:
             self.field[:, :, -ng:] = recvbuf
         else:
-            self.field[y1 == "D", :, -1] = 2. * self.bc["rhoy1"] - self.field[y1 == "D", :, -2]
-            self.field[y1 == "N", :, -1] = self.field[y1 == "N", :, -2]
+            if np.any(y1 == "D"):
+                self.field[y1 == "D", :, -1] = 2. * self.bc["rhoy1"] - self.field[y1 == "D", :, -2]
+            if np.any(y1 == "N"):
+                self.field[y1 == "N", :, -1] = self.field[y1 == "N", :, -2]
 
         # Send to top, receive from bottom
         recvbuf = np.ascontiguousarray(self.field[:, :, :ng])
@@ -463,8 +469,10 @@ class ConservedField(VectorField):
         if ts >= 0:
             self.field[:, :, :ng] = recvbuf
         else:
-            self.field[y0 == "D", :, 0] = 2. * self.bc["rhoy0"] - self.field[y0 == "D", :, 1]
-            self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
+            if np.any(y0 == "D"):
+                self.field[y0 == "D", :, 0] = 2. * self.bc["rhoy0"] - self.field[y0 == "D", :, 1]
+            if np.any(y0 == "N"):
+                self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
 
     def get_source(self, q, h, Ls):
         """

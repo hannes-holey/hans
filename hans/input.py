@@ -491,6 +491,9 @@ class Input:
             if "px0" in bc.keys():
                 px0 = float(bc["px0"])
                 bc["rhox0"] = Material(material).eos_density(px0)
+            elif "rhox0" in bc.keys():
+                rhox0 = float(bc["rhox0"])
+                bc["rhox0"] = rhox0
             else:
                 bc["rhox0"] = material["rho0"]
 
@@ -498,6 +501,9 @@ class Input:
             if "px1" in bc.keys():
                 px1 = float(bc["px1"])
                 bc["rhox1"] = Material(material).eos_density(px1)
+            elif "rhox1" in bc.keys():
+                rhox1 = float(bc["rhox1"])
+                bc["rhox1"] = rhox1
             else:
                 bc["rhox1"] = material["rho0"]
 
@@ -505,6 +511,9 @@ class Input:
             if "py0" in bc.keys():
                 py0 = float(bc["py0"])
                 bc["rhoy0"] = Material(material).eos_density(py0)
+            elif "rhoy0" in bc.keys():
+                rhoy0 = float(bc["rhoy0"])
+                bc["rhoy0"] = rhoy0
             else:
                 bc["rhoy0"] = material["rho0"]
 
@@ -512,6 +521,9 @@ class Input:
             if "py1" in bc.keys():
                 py1 = float(bc["py1"])
                 bc["rhoy1"] = Material(material).eos_density(py1)
+            elif "rhoy1" in bc.keys():
+                rhoy1 = float(bc["rhoy1"])
+                bc["rhoy1"] = rhoy1
             else:
                 bc["rhoy1"] = material["rho0"]
 
