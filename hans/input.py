@@ -606,7 +606,7 @@ class Input:
 
         return roughness
 
-    def check_ic(self, ic, disc):
+    def sanitize_IC(self, ic, disc):
         """Sanitize initial conditions
 
         Parameters
