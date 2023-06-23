@@ -13,7 +13,7 @@ class GaussianProcess_stress:
     def __init__(self, h, dh, func, func_args, out_ids,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.]},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10}):
+                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True}):
 
         self.threshold = active_learning['threshold']
         self.func = func
@@ -80,32 +80,11 @@ class GaussianProcess_stress:
 
     def _build_model(self):
 
-        # self.set_solution(q)
-        # self.update_database(init_ids)
-
         X, Y = self._assemble_data()
         self.model = GPy.models.GPRegression(X, Y.T, self.kern)
         self._fix_noise(0.)
 
     def _fit(self):
-        if self.optimizer['restart']:
-            self._fit_restart()
-        else:
-            self._fit_simple()
-
-    def _fit_simple(self):
-
-        # Randomize hyperparameters parameters (lengthscale only)
-        l0 = self.kernel_dict['init_params'][1:]
-        self.kern.lengthscale = l0 * np.exp(np.random.normal(size=3))
-        # self.kern.variance *= np.exp(np.random.normal(size=1))
-        # self.model.likelihood.variance *= np.exp(np.random.normal(size=1))
-
-        self._build_model()
-
-        self.model.optimize('bfgs', max_iters=100)
-
-    def _fit_restart(self, verbose=True):
 
         l0 = self.kernel_dict['init_params'][1:]  # [1e-5, 1e-2, 100.]
 
@@ -135,8 +114,8 @@ class GaussianProcess_stress:
                 best_model = self.model.copy()
                 best_mll = np.copy(current_mll)
 
-            if verbose:
-                print(f'Step {self.alstep:4d} | DB size {self.dbsize:3d} | Optimize {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}',
+            if self.optimizer['verbose']:
+                print(f'Wall {self.out_ids[0]:1d} | DB size {self.dbsize:3d} | Optimize {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}',
                       flush=True, end=end[i == num_restarts-1])
 
         self.model = best_model

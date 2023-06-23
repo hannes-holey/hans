@@ -86,6 +86,12 @@ class Input:
             else:
                 roughness = None
 
+            if "gp" in inp.keys():
+                # TODO: sanitize GP input
+                gp = self.sanitize_gp(inp["gp"])
+            else:
+                gp = None
+
             if self.restartFile is not None:
                 ic = {"type": "restart", "file": self.restartFile}
             elif "IC" in inp.keys():
@@ -104,7 +110,8 @@ class Input:
                               material,
                               surface,
                               ic,
-                              roughness)
+                              roughness,
+                              gp)
 
         return thisProblem
 
@@ -668,3 +675,21 @@ class Input:
                     ic["cutoff"] = 12 * ic['stdev']
 
         return ic
+
+    def sanitize_gp(self, gp):
+        print("Checking GP parameters... ")
+        gp['tol'] = float(gp['tol'])
+        gp['l_h'] = float(gp['l_h'])
+        gp['l_rho'] = float(gp['l_rho'])
+        gp['l_j'] = float(gp['l_j'])
+        gp['var'] = float(gp['var'])
+        gp['num_restarts'] = int(gp['num_restarts'])
+        gp['verbose'] = int(gp['verbose'])
+
+        try:
+            assert gp['tol'] < gp['var']
+        except AssertionError:
+            print('Uncertainty threshold is larger than initial kernel variance. Setting var = 2 * tol.')
+            gp['var'] = 2. * gp['tol']
+
+        return gp

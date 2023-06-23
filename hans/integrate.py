@@ -35,7 +35,7 @@ from hans.tools import abort
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, bc, geometry, material, numerics, surface, roughness,
+    def __init__(self, disc, bc, geometry, material, numerics, surface, roughness, gp,
                  q_init=None, t_init=None):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
@@ -93,10 +93,10 @@ class ConservedField(VectorField):
         self.viscous_stress = SymStressField2D(disc, geometry, material, surface)
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
-        self.upper_stress = SymStressField3D(disc, geometry, material, surface)
+        self.upper_stress = SymStressField3D(disc, geometry, material, surface, gp)
         self.upper_stress.init_gp(self.height.field, self.field, 1)
 
-        self.lower_stress = SymStressField3D(disc, geometry, material, surface)
+        self.lower_stress = SymStressField3D(disc, geometry, material, surface, gp)
         self.lower_stress.init_gp(self.height.field, self.field, 0)
 
         # abort()

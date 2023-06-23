@@ -41,7 +41,7 @@ from hans.integrate import ConservedField
 
 class Problem:
 
-    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic, roughness):
+    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic, roughness, gp):
         """
         Collects all information about a single problem
         and contains the methods to run a simulation, based on the problem defintiion."
@@ -77,6 +77,7 @@ class Problem:
         self.surface = surface
         self.ic = ic
         self.roughness = roughness
+        self.gp = gp
 
     def run(self, out_dir="data", out_name=None, plot=False):
         """
@@ -122,6 +123,7 @@ class Problem:
                                 self.numerics,
                                 self.surface,
                                 self.roughness,
+                                self.gp,
                                 q_init=q_init,
                                 t_init=t_init)
 
@@ -370,6 +372,9 @@ class Problem:
 
             if self.ic is not None:
                 categories["ic"] = self.ic
+
+            if self.gp is not None:
+                categories["gp"] = self.gp
 
             if self.roughness is not None:
                 roughness_noNone = {k: (v if v is not None else "None") for k, v in self.roughness.items()}
