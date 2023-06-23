@@ -30,6 +30,7 @@ from hans.field import VectorField
 from hans.stress import SymStressField2D, SymStressField3D
 from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
+from hans.tools import abort
 
 
 class ConservedField(VectorField):
@@ -88,9 +89,17 @@ class ConservedField(VectorField):
 
         self.eps = np.nan
 
+        # Avg stress (xx, yy, xy)
         self.viscous_stress = SymStressField2D(disc, geometry, material, surface)
+
+        # Wall stress (xx, yy, zz, yz, xz, xy)
         self.upper_stress = SymStressField3D(disc, geometry, material, surface)
+        self.upper_stress.init_gp(self.height.field, self.field, 1)
+
         self.lower_stress = SymStressField3D(disc, geometry, material, surface)
+        self.lower_stress.init_gp(self.height.field, self.field, 0)
+
+        # abort()
 
     @property
     def mass(self):
