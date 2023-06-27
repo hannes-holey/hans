@@ -99,7 +99,8 @@ class ConservedField(VectorField):
         self.lower_stress = SymStressField3D(disc, geometry, material, surface, gp)
         self.lower_stress.init_gp(self.height.field, self.field, 0)
 
-        # abort()
+        self.eos = Material(self.material, gp)
+        self.eos.init_gp(self.field)
 
     @property
     def mass(self):
@@ -112,7 +113,7 @@ class ConservedField(VectorField):
 
     @property
     def vSound(self):
-        local_vSound = Material(self.material).eos_sound_speed(self.inner[0])
+        local_vSound = self.eos.eos_sound_speed(self.inner[0])
         recvbuf = np.empty(1, dtype=float)
         self.comm.Allreduce(local_vSound, recvbuf, op=MPI.MAX)
 
@@ -578,7 +579,7 @@ class ConservedField(VectorField):
 
         """
 
-        p = Material(self.material).eos_pressure(q[0])
+        p = self.eos.eos_pressure(q[0])
         inertialess = bool(self.numerics["stokes"])
 
         F = np.zeros_like(q)

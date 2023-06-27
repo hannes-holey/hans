@@ -27,9 +27,7 @@ from scipy.optimize import fsolve
 
 from hans.field import VectorField, TensorField
 from hans.material import Material
-from hans.gp import GaussianProcess_stress
-
-from GPy.models import GPRegression
+from hans.gp import GP_stress
 
 
 class SymStressField2D(VectorField):
@@ -204,7 +202,8 @@ class SymStressField3D(TensorField):
         self.material = material
         self.surface = surface
 
-        self.gp = gp
+        # self.gp = gp
+        self.gp = None
 
         try:
             self.n = self.material["PLindex"]
@@ -234,10 +233,13 @@ class SymStressField3D(TensorField):
             q = sol[:, :, 1]
 
             active_learning = {'max_iter': self.disc['Nx'], 'threshold': self.gp['tol']}
-            kernel_dict = {'type': 'Mat32', 'init_params': [self.gp['var'], self.gp['l_h'], self.gp['l_rho'], self.gp['l_j']]}
+            kernel_dict = {'type': 'Mat32',
+                           'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
+                           'ARD': True}
+
             optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
 
-            self.GP = GaussianProcess_stress(h, dh, self.gp_wall_stress, {}, [wall], active_learning, kernel_dict, optimizer)
+            self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [wall], active_learning, kernel_dict, optimizer)
 
             init_ids = [1, ]
 

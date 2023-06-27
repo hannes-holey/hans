@@ -26,6 +26,7 @@
 import numpy as np
 
 from hans.tools import abort
+from hans.gp import GP_pressure
 
 # global constants
 R = 8.314462618
@@ -33,11 +34,46 @@ R = 8.314462618
 
 class Material:
 
-    def __init__(self, material):
+    def __init__(self, material, gp=None):
         self.material = material
+
+        self.gp = gp
+        # self.gp = None
+
+        self.ncalls = 0
+
+    def init_gp(self, sol):
+
+        if self.gp is not None:
+            active_learning = {'max_iter': 200, 'threshold': self.gp['ptol']}
+            kernel_dict = {'type': 'Mat32', 'init_params': [self.gp['pvar'], self.gp['lrho']], 'ARD': False}
+            optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
+
+            self.GP = GP_pressure(self.exact_pressure, {}, active_learning, kernel_dict, optimizer)
+
+            q = sol[0, :, 1]
+            init_ids = [1, ]
+
+            # Initialize
+            self.GP.setup(q, init_ids)
 
     def eos_pressure(self, rho):
 
+        if self.gp is None:  # or self.ncalls < 400:
+            p = self.exact_pressure(rho)
+        else:
+            # In contrast to viscous stress, pressure is not stored internally but just returned.
+            # There are four calls to the EOS within one time step.
+            # We want to perform an active learning step only once.
+            if self.ncalls % 4 == 0:
+                self.GP.active_learning_step(rho)
+            p, cov = self.GP.predict()
+
+        self.ncalls += 1
+
+        return p
+
+    def exact_pressure(self, rho):
         # Dowson-Higginson (with cavitation)
         if self.material['EOS'] == "DH":
             rho0 = self.material['rho0']

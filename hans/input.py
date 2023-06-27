@@ -678,11 +678,21 @@ class Input:
 
     def sanitize_gp(self, gp):
         print("Checking GP parameters... ")
-        gp['tol'] = float(gp['tol'])
-        gp['l_h'] = float(gp['l_h'])
-        gp['l_rho'] = float(gp['l_rho'])
-        gp['l_j'] = float(gp['l_j'])
+
+        # lengthscales
+        gp['lh'] = float(gp['lh'])
+        gp['lrho'] = float(gp['lrho'])
+        gp['lj'] = float(gp['lj'])
+
+        # variances
         gp['var'] = float(gp['var'])
+        gp['pvar'] = float(gp['pvar'])
+
+        # tolerances (var)
+        gp['tol'] = float(gp['tol'])
+        gp['ptol'] = float(gp['ptol'])
+
+        # misc
         gp['num_restarts'] = int(gp['num_restarts'])
         gp['verbose'] = int(gp['verbose'])
 
@@ -691,5 +701,11 @@ class Input:
         except AssertionError:
             print('Uncertainty threshold is larger than initial kernel variance. Setting var = 2 * tol.')
             gp['var'] = 2. * gp['tol']
+
+        try:
+            assert gp['ptol'] < gp['pvar']
+        except AssertionError:
+            print('Uncertainty threshold (pressure) is larger than initial kernel variance. Setting pvar = 2 * ptol.')
+            gp['pvar'] = 2. * gp['ptol']
 
         return gp
