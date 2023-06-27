@@ -202,8 +202,8 @@ class SymStressField3D(TensorField):
         self.material = material
         self.surface = surface
 
-        # self.gp = gp
-        self.gp = None
+        self.gp = gp
+        # self.gp = None
 
         try:
             self.n = self.material["PLindex"]
