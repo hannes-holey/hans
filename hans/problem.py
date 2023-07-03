@@ -190,6 +190,12 @@ class Problem:
             if rank == 0:
                 self.write_to_stdout(i, mode=self._write_mode)
 
+            # Delete GP objects (and thereby close files)
+            if self.gp is not None:
+
+                del self.q.wall_stress.GP
+                del self.q.eos.GP
+
     def get_initial_conditions(self):
         """
         Return the initial field given by last frame of restart file
@@ -207,6 +213,8 @@ class Problem:
             # No ICs specified, fill with (rho0, 0, 0)
             q_init = np.zeros((3, self.disc["Nx"], self.disc["Ny"]))
             q_init[0] += self.material["rho0"]
+            q_init[1] += self.material["rho0"] * self.geometry['U'] / 2.
+            q_init[2] += self.material["rho0"] * self.geometry['V'] / 2.
             t_init = (0., self.numerics["dt"])
         elif self.ic["type"] == "restart":
             # ICs read from last frame of restart file

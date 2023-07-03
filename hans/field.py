@@ -263,3 +263,18 @@ class TensorField(Field):
 
         """
         super().__init__(disc, 6)
+
+
+class DoubleTensorField(Field):
+    """Symmetric tensor field derived from Field base class."""
+
+    def __init__(self, disc):
+        """Constructor.
+
+        Parameters
+        ----------
+        disc : dict
+            Discretization parameters.
+
+        """
+        super().__init__(disc, 12)

@@ -31,6 +31,8 @@ class GaussianProcess:
 
     __metaclass__ = abc.ABCMeta
 
+    name: str
+
     def __init__(self, input_dim, active_dim, func, func_args,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
@@ -56,8 +58,15 @@ class GaussianProcess:
             self.kern.variance = kernel_dict['init_params'][0]
             self.kern.lengthscale = kernel_dict['init_params'][1:active_dim+1]
 
+        self.step = 0
         self.dbsize = 0
-        self.alstep = 0
+        self.history = []
+
+        self.file = open(f'gp_{self.name}.out', 'a+')
+
+    def __del__(self):
+        self.model.save_model(f'gp_{self.name}.json', compress=True)
+        self.file.close()
 
     def setup(self, q, init_ids):
         self._set_solution(q)
@@ -98,7 +107,20 @@ class GaussianProcess:
             else:
                 break
 
-        self.alstep += 1
+        self._write_history()
+        self.step += 1
+
+    def _write_history(self):
+
+        per_step = [self.step, self.dbsize]
+        for param in self.kern.param_array:
+            per_step.append(param)
+
+        per_step = [str(item) for item in per_step]
+
+        out_str = " ".join(per_step) + '\n'
+
+        self.file.write(out_str)
 
     def _build_model(self):
 
@@ -135,7 +157,7 @@ class GaussianProcess:
 
             if self.optimizer['verbose']:
                 to_stdout = f'DB size {self.dbsize:3d} | '
-                to_stdout += f'Optimize {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
+                to_stdout += f'Fit ({self.name}) {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
                 print(to_stdout, flush=True, end=end[i == num_restarts-1])
 
         self.model = best_model
@@ -170,6 +192,8 @@ class GaussianProcess:
 
 
 class GP_stress(GaussianProcess):
+
+    name = 'shear'
 
     def __init__(self, h, dh, func, func_args, out_ids,
                  active_learning={'max_iter': 10, 'threshold': .1},
@@ -228,6 +252,8 @@ class GP_stress(GaussianProcess):
 
 
 class GP_pressure(GaussianProcess):
+
+    name = 'press'
 
     def __init__(self, func, func_args,
                  active_learning={'max_iter': 10, 'threshold': .1},

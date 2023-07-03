@@ -25,7 +25,7 @@
 import numpy as np
 from scipy.optimize import fsolve
 
-from hans.field import VectorField, TensorField
+from hans.field import VectorField, TensorField, DoubleTensorField
 from hans.material import Material
 from hans.gp import GP_stress
 
@@ -211,6 +211,8 @@ class SymStressField3D(TensorField):
         except KeyError:
             self.PL = False
 
+        self.ncalls = 0
+
         # Saving and loading model consistently across python versions:
         # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
         # m_load.update_model(False)
@@ -294,10 +296,12 @@ class SymStressField3D(TensorField):
 
         if self.gp is not None:
 
-            self.GP.active_learning_step(q[:, :, 1])
+            if self.ncalls % 2 == 0:
+                self.GP.active_learning_step(q[:, :, 1])
             mean, cov = self.GP.predict()
 
             self.field[4] = mean[:, 0, None]
+            self.ncalls += 1
 
         else:
             U = self.geometry['U']
@@ -748,3 +752,304 @@ def power(base, exponent):
     result = np.float_power(complex_base, exponent)
 
     return result.real
+
+
+class WallStressField3D(DoubleTensorField):
+
+    def __init__(self, disc, geometry, material, surface=None, gp=None):
+        """This class contains all viscous stress tensor components
+        evaluated at the top and bottom respectively. Derived from TensorField.
+
+        Parameters
+        ----------
+        disc : dict
+            Discretization parameters.
+        geometry : dict
+            Geometry parameters.
+        material : dict
+            Material parameters.
+        surface : dict
+            Surface parameters (the default is None).
+
+        """
+
+        super().__init__(disc)
+
+        self.geometry = geometry
+        self.material = material
+        self.surface = surface
+
+        self.gp = gp
+        # self.gp = None
+
+        if "PLindex" in self.material.keys():
+            raise NotImplementedError
+
+        self.ncalls = 0
+
+        # Saving and loading model consistently across python versions:
+        # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
+        # m_load.update_model(False)
+        # m_load.initialize_parameter()
+        # m_load[:] = np.load('model_save.npy')
+        # m_load.update_model(True)
+        # self.model = m_load
+
+        # Pickle is inconsitent across python versions!
+        # self.model = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/shear_50000.0.json.zip')
+        # model_diag = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/diag_0.1.json.zip')
+
+    def init_gp(self, height, sol):
+
+        if self.gp is not None:
+
+            # 1D only (centerline)
+            h = height[0, :, 1]
+            dh = height[1, :, 1]
+            q = sol[:, :, 1]
+
+            active_learning = {'max_iter': self.disc['Nx'], 'threshold': self.gp['tol']}
+            kernel_dict = {'type': 'Mat32',
+                           'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
+                           'ARD': True}
+
+            optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
+
+            self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [0, 1], active_learning, kernel_dict, optimizer)
+
+            init_ids = [1, ]
+
+            # Initialize
+            self.GP.setup(q, init_ids)
+
+    @property
+    def lower(self):
+        return self.field[:6]
+
+    @property
+    def upper(self):
+        return self.field[6:]
+
+    def gp_wall_stress(self, q, h, Ls):
+
+        sb = self.get_bot(q, h, Ls)[4]
+        st = self.get_top(q, h, Ls)[4]
+
+        out = np.vstack([sb, st])
+
+        return out
+
+    def set(self, q, h, Ls):
+        """Wrapper function around set methods for wall stress tensor components.
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Field of conserved variables.
+        h : numpy.ndarray
+            Field of height and height gradients.
+        Ls : numpy.ndarray
+            Field of slip lengths.
+        bound : str
+            Flag for bottom or top wall.
+
+        """
+        self.set_Newton(q, h, Ls)
+
+    def set_Newton(self, q, h, Ls):
+        """Set method for Newtonian stress tensor components.
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Field of conserved variables.
+        h : numpy.ndarray
+            Field of height and height gradients.
+        Ls : numpy.ndarray
+            Field of slip lengths.
+        bound : str
+            Flag for bottom or top wall.
+
+        """
+
+        if self.gp is not None:
+
+            if self.ncalls % 2 == 0:
+                self.GP.active_learning_step(q[:, :, 1])
+
+            mean, cov = self.GP.predict()
+
+            self.field[4] = mean[:, 0, None]
+            self.field[10] = mean[:, 1, None]
+
+            self.ncalls += 1
+
+        else:
+            U = self.geometry['U']
+            V = self.geometry['V']
+            eta = Material(self.material).viscosity(U, V, q[0], h[0])
+            zeta = self.material['bulk']
+
+            v1 = zeta + 4 / 3 * eta
+            v2 = zeta - 2 / 3 * eta
+
+            if self.surface is None or self.surface["type"] == "full":
+                # all other types than 'full' consider slip only at the top surface
+
+                # Bottom: indices 0-5
+
+                self.field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                                     + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v1*h[1]
+                                    + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2)*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+                self.field[1] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                                     + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v2*h[1]
+                                    + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*(zeta + (4*eta)/3))*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+                self.field[2] = -2*v2*Ls*(((U*q[0] - 3*q[1])*h[0]**2
+                                           + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[1]
+                                          + ((V*q[0] - 3*q[2])*h[0] ** 2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                             + 6*Ls ** 2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+                self.field[3] = -2*(2*q[0]*V*h[0] + 6*q[0]*V*Ls - 3*h[0]*q[2] - 6*q[2]*Ls) * \
+                    eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+
+                self.field[4] = -2*(2*q[0]*U*h[0] + 6*q[0]*U*Ls - 3*h[0]*q[1] - 6*q[1]*Ls) * \
+                    eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+
+                self.field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2
+                                         + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                                        + ((U*q[0] - 3*q[1])*h[0] ** 2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                           + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[2])*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+                # Top wall: indices 6-11
+
+                self.field[6] = -2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v1*h[1]
+                                    + ((V*q[0] - 3*q[2]) * h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2) * (h[0] + Ls)/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+                self.field[7] = -2*(h[0] + Ls)*(((U*q[0] - 3*q[1])*h[0]**2
+                                                 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v2*h[1]
+                                                + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                                    + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v1) / (h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+                self.field[8] = -2*(h[0] + Ls)*v2*(((U*q[0] - 3*q[1])*h[0]**2
+                                                    + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*h[1]
+                                                   + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                                      + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+                self.field[9] = 2*(q[0]*V*h[0] - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+
+                self.field[10] = 2*(q[0]*U*h[0] - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+
+                self.field[11] = -2*eta*(h[0] + Ls)*(((V*q[0] - 3*q[2])*h[0]**2
+                                                      + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                                                     + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                                        + 6*Ls**2*(U*q[0] - 2*q[1]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+            else:
+                # all other types than 'full' consider slip only at the top surface
+
+                # Bottom: indices 0-5
+
+                self.field[3] = -2*(6*q[0]*Ls*V + 2*q[0]*V*h[0] - 6*q[2]*Ls - 3*h[0]*q[2])*eta/(h[0]*q[0]*(4*Ls + h[0]))
+                self.field[4] = -2*(6*q[0]*Ls*U + 2*q[0]*U*h[0] - 6*q[1]*Ls - 3*h[0]*q[1])*eta/(h[0]*q[0]*(4*Ls + h[0]))
+
+                # Top wall: indices 6-11
+
+                self.field[6] = (-6*v1*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
+                                 - 6*v2*h[2] * ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0]
+                                                + 6*Ls**2*(V*q[0] - q[2])))/(3*h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+                self.field[7] = (-6*v2*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
+                                 - 6*v1*h[2] * ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0]
+                                                + 6*Ls**2*(V*q[0] - q[2])))/(3*h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+                self.field[8] = -2*v2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1] +
+                                       h[2]*((V*q[0] - 3*q[2])*h[0]**2
+                                             + 3*Ls*(V*q[0] - 2*q[2])*h[0] + 6*Ls**2*(V*q[0] - q[2])))/(h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+                self.field[9] = 2*(V*q[0] - 3*q[2])*eta/(q[0]*(4*Ls + h[0]))
+
+                self.field[10] = 2*(U*q[0] - 3*q[1])*eta/(q[0]*(4*Ls + h[0]))
+
+                self.field[11] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0] + 6*Ls**2*(V*q[0] - q[2]))*h[1]
+                                         + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0]
+                                            + 6*Ls**2*(U*q[0] - q[1]))*h[2])/(h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+    def get_top(self, q, h, Ls):
+
+        U = self.geometry['U']
+        V = self.geometry['V']
+        eta = Material(self.material).viscosity(U, V, q[0], h[0])
+        zeta = self.material['bulk']
+
+        v1 = zeta + 4 / 3 * eta
+        v2 = zeta - 2 / 3 * eta
+
+        field = np.zeros((6,)+q.shape[1:])
+
+        # all other types than 'full' consider slip only at the top surface
+        field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v1*h[1]
+                       + ((V*q[0] - 3*q[2]) * h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2) * (h[0] + Ls)/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+        field[1] = -2*(h[0] + Ls)*(((U*q[0] - 3*q[1])*h[0]**2
+                                    + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v2*h[1]
+                                   + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                      + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v1) / (h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+        field[2] = -2*(h[0] + Ls)*v2*(((U*q[0] - 3*q[1])*h[0]**2
+                                       + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*h[1]
+                                      + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                         + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+        field[3] = 2*(q[0]*V*h[0] - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+
+        field[4] = 2*(q[0]*U*h[0] - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+
+        field[5] = -2*eta*(h[0] + Ls)*(((V*q[0] - 3*q[2])*h[0]**2
+                                        + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                                       + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                          + 6*Ls**2*(U*q[0] - 2*q[1]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+        return field
+
+    def get_bot(self, q, h, Ls):
+
+        U = self.geometry['U']
+        V = self.geometry['V']
+        eta = Material(self.material).viscosity(U, V, q[0], h[0])
+        zeta = self.material['bulk']
+
+        v1 = zeta + 4 / 3 * eta
+        v2 = zeta - 2 / 3 * eta
+
+        field = np.zeros((6,)+q.shape[1:])
+
+        field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                        + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v1*h[1]
+                       + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2)*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+        field[1] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                        + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v2*h[1]
+                       + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*(zeta + (4*eta)/3))*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+        field[2] = -2*v2*Ls*(((U*q[0] - 3*q[1])*h[0]**2
+                              + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[1]
+                             + ((V*q[0] - 3*q[2])*h[0] ** 2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                + 6*Ls ** 2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+        field[3] = -2*(2*q[0]*V*h[0] + 6*q[0]*V*Ls - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+
+        field[4] = -2*(2*q[0]*U*h[0] + 6*q[0]*U*Ls - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+
+        field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2
+                            + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                           + ((U*q[0] - 3*q[1])*h[0] ** 2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                              + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[2])*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+        return field

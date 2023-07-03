@@ -27,7 +27,7 @@ import numpy as np
 from mpi4py import MPI
 
 from hans.field import VectorField
-from hans.stress import SymStressField2D, SymStressField3D
+from hans.stress import SymStressField2D, SymStressField3D, WallStressField3D
 from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
 from hans.tools import abort
@@ -93,11 +93,15 @@ class ConservedField(VectorField):
         self.viscous_stress = SymStressField2D(disc, geometry, material, surface)
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
-        self.upper_stress = SymStressField3D(disc, geometry, material, surface, gp)
-        self.upper_stress.init_gp(self.height.field, self.field, 1)
+        # self.upper_stress = SymStressField3D(disc, geometry, material, surface, gp)
+        # self.upper_stress.init_gp(self.height.field, self.field, 1)
 
-        self.lower_stress = SymStressField3D(disc, geometry, material, surface, gp)
-        self.lower_stress.init_gp(self.height.field, self.field, 0)
+        # self.lower_stress = SymStressField3D(disc, geometry, material, surface, gp)
+        # self.lower_stress.init_gp(self.height.field, self.field, 0)
+
+        # Wall stress (xx, yy, zz, yz, xz, xy)
+        self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
+        self.wall_stress.init_gp(self.height.field, self.field)
 
         self.eos = Material(self.material, gp)
         self.eos.init_gp(self.field)
@@ -505,8 +509,11 @@ class ConservedField(VectorField):
         """
 
         self.viscous_stress.set(q, h, Ls)
-        self.upper_stress.set(q, h, Ls, "top")
-        self.lower_stress.set(q, h, Ls, "bottom")
+
+        # self.upper_stress.set(q, h, Ls, "top")
+        # self.lower_stress.set(q, h, Ls, "bottom")
+
+        self.wall_stress.set(q, h, Ls)
 
         stress = self.viscous_stress.field
 
@@ -516,21 +523,21 @@ class ConservedField(VectorField):
         out[0] = (-q[1] * h[1] - q[2] * h[2]) / h[0]
 
         if bool(self.numerics["stokes"]):
-            out[1] = ((stress[0] - self.upper_stress.field[0]) * h[1] +
-                      (stress[2] - self.upper_stress.field[5]) * h[2] +
-                      self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
+            out[1] = ((stress[0] - self.wall_stress.upper[0]) * h[1] +
+                      (stress[2] - self.wall_stress.upper[5]) * h[2] +
+                      self.wall_stress.upper[4] - self.wall_stress.lower[4]) / h[0]
 
-            out[2] = ((stress[2] - self.upper_stress.field[5]) * h[1] +
-                      (stress[1] - self.upper_stress.field[1]) * h[2] +
-                      self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
+            out[2] = ((stress[2] - self.wall_stress.upper[5]) * h[1] +
+                      (stress[1] - self.wall_stress.upper[1]) * h[2] +
+                      self.wall_stress.upper[3] - self.wall_stress.lower[3]) / h[0]
         else:
-            out[1] = ((q[1] * q[1] / q[0] + stress[0] - self.upper_stress.field[0]) * h[1] +
-                      (q[1] * q[2] / q[0] + stress[2] - self.upper_stress.field[5]) * h[2] +
-                      self.upper_stress.field[4] - self.lower_stress.field[4]) / h[0]
+            out[1] = ((q[1] * q[1] / q[0] + stress[0] - self.wall_stress.upper[0]) * h[1] +
+                      (q[1] * q[2] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[2] +
+                      self.wall_stress.upper[4] - self.wall_stress.lower[4]) / h[0]
 
-            out[2] = ((q[2] * q[1] / q[0] + stress[2] - self.upper_stress.field[5]) * h[1] +
-                      (q[2] * q[2] / q[0] + stress[1] - self.upper_stress.field[1]) * h[2] +
-                      self.upper_stress.field[3] - self.lower_stress.field[3]) / h[0]
+            out[2] = ((q[2] * q[1] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[1] +
+                      (q[2] * q[2] / q[0] + stress[1] - self.wall_stress.upper[1]) * h[2] +
+                      self.wall_stress.upper[3] - self.wall_stress.lower[3]) / h[0]
 
         return out
 
