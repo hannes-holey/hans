@@ -53,7 +53,7 @@ class GaussianProcess:
         self.noise = noise
 
         # Initial training data
-        self.Xtrain = np.empty((input_dim, 0))
+        self.Xtrain = np.empty((active_dim, 0))
 
         self.kern = GPy.kern.Matern32(active_dim, ARD=kernel_dict['ARD'])
 
@@ -78,9 +78,6 @@ class GaussianProcess:
 
     def predict(self):
         Xtest = self._get_solution()
-
-        if Xtest.ndim == 1:
-            Xtest = Xtest[:, None]
 
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
 
@@ -131,8 +128,7 @@ class GaussianProcess:
 
     def _build_model(self):
 
-        X, Y = self._assemble_data()
-        self.model = GPy.models.GPRegression(X, Y.T, self.kern)
+        self.model = GPy.models.GPRegression(self.Xtrain.T, self.Ytrain.T, self.kern)
         self._fix_noise()
 
     def _fit(self):
@@ -179,14 +175,6 @@ class GaussianProcess:
         self.sol = q
 
     @abc.abstractmethod
-    def _assemble_data(self):
-        """
-        Assemble training data.
-        Note: The input of func (the function to evaluate) may be different
-        of the GP input
-        """
-
-    @abc.abstractmethod
     def _get_solution(self):
         """
         Assemble test data
@@ -213,7 +201,7 @@ class GP_stress(GaussianProcess):
         self.dh = dh
         self.out_ids = out_ids
 
-        self.Ynoise = np.empty((len(out_ids), 0))
+        self.Ytrain = np.empty((len(out_ids), 0))
 
         super().__init__(4, 3, func, func_args, active_learning, kernel_dict, optimizer, noise)
 
@@ -231,32 +219,22 @@ class GP_stress(GaussianProcess):
         except TypeError:
             size = 1
 
-        H0_train, H1_train, Q0_train, Q1_train = self.Xtrain
-
         Xsol = self._get_solution()
 
-        H0_train = np.hstack([H0_train, np.array(Xsol[next_id, 0])])
-        H1_train = np.hstack([H1_train, np.ones(size) * self.dh[0]])
-        Q0_train = np.hstack([Q0_train, np.array(Xsol[next_id, 1])])
-        Q1_train = np.hstack([Q1_train, np.array(Xsol[next_id, 2])])
+        H = np.vstack([np.array(Xsol[next_id, 0]), np.ones(size) * self.dh[0], np.zeros(size)])
+        Q = np.vstack([np.array(Xsol[next_id, 1]), np.array(Xsol[next_id, 2]), np.zeros(size)])
 
-        self.Xtrain = np.vstack([H0_train, H1_train, Q0_train, Q1_train])
+        Y_new = self.func(Q, H, 0., **self.func_args)
+        Y_new += np.random.normal(0, np.sqrt(self.noise['variance']), size=(2, size))
 
-        self.Ynoise = np.hstack((self.Ynoise, np.random.normal(0, np.sqrt(self.noise['variance']), size=(2, size))))
+        X_new = Xsol[next_id].T
+        if X_new.ndim == 1:
+            X_new = X_new[:, None]
+
+        self.Xtrain = np.hstack([self.Xtrain, X_new])
+        self.Ytrain = np.hstack([self.Ytrain, Y_new])
 
         self.dbsize += size
-
-    def _assemble_data(self):
-        H0_train, H1_train, Q0_train, Q1_train = self.Xtrain
-        H = np.vstack([H0_train, H1_train, np.zeros_like(H1_train)])
-        Q = np.vstack([Q0_train, Q1_train, np.zeros_like(Q1_train)])
-
-        X = np.vstack([H0_train, Q0_train, Q1_train]).T
-        Y = self.func(Q, H, 0., **self.func_args)
-
-        Y += self.Ynoise
-
-        return X, Y
 
 
 class GP_pressure(GaussianProcess):
@@ -269,13 +247,13 @@ class GP_pressure(GaussianProcess):
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
-        self.Ynoise = np.empty((1, 0))
+        self.Ytrain = np.empty((1, 0))
 
         super().__init__(1, 1, func, func_args, active_learning, kernel_dict, optimizer, noise)
 
     def _get_solution(self):
 
-        return self.sol
+        return self.sol[:, None]
 
     def _update_database(self, next_id):
 
@@ -284,26 +262,17 @@ class GP_pressure(GaussianProcess):
         except TypeError:
             size = 1
 
-        if self.Xtrain.shape[1] == 0:
-            Q0_train = self.Xtrain[0]
-        else:
-            Q0_train = self.Xtrain[:, 0]
-
         Xsol = self._get_solution()
 
-        Q0_train = np.hstack([Q0_train, Xsol[next_id]])
+        X_new = Xsol[next_id].T
 
-        self.Xtrain = np.vstack([Q0_train]).T
+        if X_new.ndim == 1:
+            X_new = X_new[:, None]
 
-        self.Ynoise = np.hstack((self.Ynoise, np.random.normal(0, np.sqrt(self.noise['variance']), size=(1, size))))
+        Y_new = self.func(X_new, **self.func_args)
+        Y_new += np.random.normal(0, np.sqrt(self.noise['variance']), size=(1, size))
+
+        self.Xtrain = np.hstack([self.Xtrain, X_new])
+        self.Ytrain = np.hstack([self.Ytrain, Y_new])
 
         self.dbsize += size
-
-    def _assemble_data(self):
-
-        X = self.Xtrain
-
-        Y = self.func(X, **self.func_args).T
-        Y += self.Ynoise
-
-        return X, Y

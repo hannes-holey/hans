@@ -855,7 +855,7 @@ class WallStressField3D(DoubleTensorField):
 
         if self.gp is not None:
 
-            if self.ncalls % 2 == 0 and self.ncalls > 0:
+            if self.ncalls % 2 == 0:
                 self.GP.active_learning_step(q[:, :, 1])
 
             mean, cov = self.GP.predict()
