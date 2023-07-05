@@ -812,10 +812,11 @@ class WallStressField3D(DoubleTensorField):
             kernel_dict = {'type': 'Mat32',
                            'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
                            'ARD': True}
-
+            noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['sns']}
             optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
 
-            self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [0, 1], active_learning, kernel_dict, optimizer)
+            self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [0, 1],
+                                active_learning, kernel_dict, optimizer, noise)
 
             init_ids = [1, ]
 
@@ -840,7 +841,7 @@ class WallStressField3D(DoubleTensorField):
         return out
 
     def set(self, q, h, Ls):
-        """Wrapper function around set methods for wall stress tensor components.
+        """Setter method for wall stress tensor components.
 
         Parameters
         ----------
@@ -850,31 +851,11 @@ class WallStressField3D(DoubleTensorField):
             Field of height and height gradients.
         Ls : numpy.ndarray
             Field of slip lengths.
-        bound : str
-            Flag for bottom or top wall.
-
-        """
-        self.set_Newton(q, h, Ls)
-
-    def set_Newton(self, q, h, Ls):
-        """Set method for Newtonian stress tensor components.
-
-        Parameters
-        ----------
-        q : numpy.ndarray
-            Field of conserved variables.
-        h : numpy.ndarray
-            Field of height and height gradients.
-        Ls : numpy.ndarray
-            Field of slip lengths.
-        bound : str
-            Flag for bottom or top wall.
-
         """
 
         if self.gp is not None:
 
-            if self.ncalls % 2 == 0:
+            if self.ncalls % 2 == 0 and self.ncalls > 0:
                 self.GP.active_learning_step(q[:, :, 1])
 
             mean, cov = self.GP.predict()
@@ -885,98 +866,8 @@ class WallStressField3D(DoubleTensorField):
             self.ncalls += 1
 
         else:
-            U = self.geometry['U']
-            V = self.geometry['V']
-            eta = Material(self.material).viscosity(U, V, q[0], h[0])
-            zeta = self.material['bulk']
-
-            v1 = zeta + 4 / 3 * eta
-            v2 = zeta - 2 / 3 * eta
-
-            if self.surface is None or self.surface["type"] == "full":
-                # all other types than 'full' consider slip only at the top surface
-
-                # Bottom: indices 0-5
-
-                self.field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2
-                                     + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v1*h[1]
-                                    + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2)*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
-
-                self.field[1] = -2*(((U*q[0] - 3*q[1])*h[0]**2
-                                     + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v2*h[1]
-                                    + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*(zeta + (4*eta)/3))*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
-
-                self.field[2] = -2*v2*Ls*(((U*q[0] - 3*q[1])*h[0]**2
-                                           + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[1]
-                                          + ((V*q[0] - 3*q[2])*h[0] ** 2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                             + 6*Ls ** 2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
-
-                self.field[3] = -2*(2*q[0]*V*h[0] + 6*q[0]*V*Ls - 3*h[0]*q[2] - 6*q[2]*Ls) * \
-                    eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
-
-                self.field[4] = -2*(2*q[0]*U*h[0] + 6*q[0]*U*Ls - 3*h[0]*q[1] - 6*q[1]*Ls) * \
-                    eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
-
-                self.field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2
-                                         + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
-                                        + ((U*q[0] - 3*q[1])*h[0] ** 2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
-                                           + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[2])*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
-
-                # Top wall: indices 6-11
-
-                self.field[6] = -2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v1*h[1]
-                                    + ((V*q[0] - 3*q[2]) * h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                       + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2) * (h[0] + Ls)/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
-
-                self.field[7] = -2*(h[0] + Ls)*(((U*q[0] - 3*q[1])*h[0]**2
-                                                 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v2*h[1]
-                                                + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                                    + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v1) / (h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
-
-                self.field[8] = -2*(h[0] + Ls)*v2*(((U*q[0] - 3*q[1])*h[0]**2
-                                                    + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*h[1]
-                                                   + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                                      + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
-
-                self.field[9] = 2*(q[0]*V*h[0] - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
-
-                self.field[10] = 2*(q[0]*U*h[0] - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
-
-                self.field[11] = -2*eta*(h[0] + Ls)*(((V*q[0] - 3*q[2])*h[0]**2
-                                                      + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
-                                                     + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
-                                                        + 6*Ls**2*(U*q[0] - 2*q[1]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
-            else:
-                # all other types than 'full' consider slip only at the top surface
-
-                # Bottom: indices 0-5
-
-                self.field[3] = -2*(6*q[0]*Ls*V + 2*q[0]*V*h[0] - 6*q[2]*Ls - 3*h[0]*q[2])*eta/(h[0]*q[0]*(4*Ls + h[0]))
-                self.field[4] = -2*(6*q[0]*Ls*U + 2*q[0]*U*h[0] - 6*q[1]*Ls - 3*h[0]*q[1])*eta/(h[0]*q[0]*(4*Ls + h[0]))
-
-                # Top wall: indices 6-11
-
-                self.field[6] = (-6*v1*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
-                                 - 6*v2*h[2] * ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0]
-                                                + 6*Ls**2*(V*q[0] - q[2])))/(3*h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
-
-                self.field[7] = (-6*v2*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
-                                 - 6*v1*h[2] * ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0]
-                                                + 6*Ls**2*(V*q[0] - q[2])))/(3*h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
-
-                self.field[8] = -2*v2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1] +
-                                       h[2]*((V*q[0] - 3*q[2])*h[0]**2
-                                             + 3*Ls*(V*q[0] - 2*q[2])*h[0] + 6*Ls**2*(V*q[0] - q[2])))/(h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
-
-                self.field[9] = 2*(V*q[0] - 3*q[2])*eta/(q[0]*(4*Ls + h[0]))
-
-                self.field[10] = 2*(U*q[0] - 3*q[1])*eta/(q[0]*(4*Ls + h[0]))
-
-                self.field[11] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0] + 6*Ls**2*(V*q[0] - q[2]))*h[1]
-                                         + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0]
-                                            + 6*Ls**2*(U*q[0] - q[1]))*h[2])/(h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+            self.field[:6] = self.get_bot(q, h, Ls)
+            self.field[6:] = self.get_top(q, h, Ls)
 
     def get_top(self, q, h, Ls):
 
@@ -990,29 +881,52 @@ class WallStressField3D(DoubleTensorField):
 
         field = np.zeros((6,)+q.shape[1:])
 
-        # all other types than 'full' consider slip only at the top surface
-        field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v1*h[1]
-                       + ((V*q[0] - 3*q[2]) * h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2) * (h[0] + Ls)/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+        if self.surface is None or self.surface["type"] == "full":
 
-        field[1] = -2*(h[0] + Ls)*(((U*q[0] - 3*q[1])*h[0]**2
-                                    + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v2*h[1]
-                                   + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                      + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v1) / (h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+            # all other types than 'full' consider slip only at the top surface
+            field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v1*h[1]
+                           + ((V*q[0] - 3*q[2]) * h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                              + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2) * (h[0] + Ls)/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
 
-        field[2] = -2*(h[0] + Ls)*v2*(((U*q[0] - 3*q[1])*h[0]**2
-                                       + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*h[1]
-                                      + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                         + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+            field[1] = -2*(h[0] + Ls)*(((U*q[0] - 3*q[1])*h[0]**2
+                                        + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*v2*h[1]
+                                       + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v1) / (h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
 
-        field[3] = 2*(q[0]*V*h[0] - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+            field[2] = -2*(h[0] + Ls)*v2*(((U*q[0] - 3*q[1])*h[0]**2
+                                           + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls**2*(U*q[0] - 2*q[1]))*h[1]
+                                          + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                             + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
 
-        field[4] = 2*(q[0]*U*h[0] - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+            field[3] = 2*(q[0]*V*h[0] - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
 
-        field[5] = -2*eta*(h[0] + Ls)*(((V*q[0] - 3*q[2])*h[0]**2
-                                        + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
-                                       + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
-                                          + 6*Ls**2*(U*q[0] - 2*q[1]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+            field[4] = 2*(q[0]*U*h[0] - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0]**2 + 8*Ls*h[0] + 12*Ls**2))
+
+            field[5] = -2*eta*(h[0] + Ls)*(((V*q[0] - 3*q[2])*h[0]**2
+                                            + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                                           + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                              + 6*Ls**2*(U*q[0] - 2*q[1]))*h[2])/(h[0]*(h[0] + 2*Ls)**2*q[0]*(h[0] + 6*Ls))
+
+        else:
+            field[0] = (-6*v1*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
+                        - 6*v2*h[2] * ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - q[2])))/(3*h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+            field[1] = (-6*v2*((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1]
+                        - 6*v1*h[2] * ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0]
+                                       + 6*Ls**2*(V*q[0] - q[2])))/(3*h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+            field[2] = -2*v2*(((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0] + 6*Ls**2*(U*q[0] - q[1]))*h[1] +
+                              h[2]*((V*q[0] - 3*q[2])*h[0]**2
+                                    + 3*Ls*(V*q[0] - 2*q[2])*h[0] + 6*Ls**2*(V*q[0] - q[2])))/(h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
+
+            field[3] = 2*(V*q[0] - 3*q[2])*eta/(q[0]*(4*Ls + h[0]))
+
+            field[4] = 2*(U*q[0] - 3*q[1])*eta/(q[0]*(4*Ls + h[0]))
+
+            field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 2*q[2])*h[0] + 6*Ls**2*(V*q[0] - q[2]))*h[1]
+                               + ((U*q[0] - 3*q[1])*h[0]**2 + 3*Ls*(U*q[0] - 2*q[1])*h[0]
+                                  + 6*Ls**2*(U*q[0] - q[1]))*h[2])/(h[0]*(4*Ls + h[0])*q[0]*(Ls + h[0]))
 
         return field
 
@@ -1028,28 +942,34 @@ class WallStressField3D(DoubleTensorField):
 
         field = np.zeros((6,)+q.shape[1:])
 
-        field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2
-                        + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v1*h[1]
-                       + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2)*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+        if self.surface is None or self.surface["type"] == "full":
 
-        field[1] = -2*(((U*q[0] - 3*q[1])*h[0]**2
-                        + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v2*h[1]
-                       + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                          + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*(zeta + (4*eta)/3))*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+            field[0] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                            + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v1*h[1]
+                           + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                              + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*v2)*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
 
-        field[2] = -2*v2*Ls*(((U*q[0] - 3*q[1])*h[0]**2
-                              + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[1]
-                             + ((V*q[0] - 3*q[2])*h[0] ** 2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
-                                + 6*Ls ** 2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+            field[1] = -2*(((U*q[0] - 3*q[1])*h[0]**2
+                            + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*v2*h[1]
+                           + ((V*q[0] - 3*q[2])*h[0]**2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                              + 6*Ls**2*(V*q[0] - 2*q[2]))*h[2]*(zeta + (4*eta)/3))*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
 
-        field[3] = -2*(2*q[0]*V*h[0] + 6*q[0]*V*Ls - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+            field[2] = -2*v2*Ls*(((U*q[0] - 3*q[1])*h[0]**2
+                                  + 3*Ls*(U*q[0] - 4*q[1])*h[0] + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[1]
+                                 + ((V*q[0] - 3*q[2])*h[0] ** 2 + 3*Ls*(V*q[0] - 4*q[2])*h[0]
+                                    + 6*Ls ** 2*(V*q[0] - 2*q[2]))*h[2])/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
 
-        field[4] = -2*(2*q[0]*U*h[0] + 6*q[0]*U*Ls - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+            field[3] = -2*(2*q[0]*V*h[0] + 6*q[0]*V*Ls - 3*h[0]*q[2] - 6*q[2]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
 
-        field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2
-                            + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
-                           + ((U*q[0] - 3*q[1])*h[0] ** 2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
-                              + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[2])*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+            field[4] = -2*(2*q[0]*U*h[0] + 6*q[0]*U*Ls - 3*h[0]*q[1] - 6*q[1]*Ls)*eta/(q[0]*(h[0] ** 2 + 8*Ls*h[0] + 12*Ls ** 2))
+
+            field[5] = -2*eta*(((V*q[0] - 3*q[2])*h[0]**2
+                                + 3*Ls*(V*q[0] - 4*q[2])*h[0] + 6*Ls**2*(V*q[0] - 2*q[2]))*h[1]
+                               + ((U*q[0] - 3*q[1])*h[0] ** 2 + 3*Ls*(U*q[0] - 4*q[1])*h[0]
+                                  + 6*Ls ** 2*(U*q[0] - 2*q[1]))*h[2])*Ls/(h[0]*(h[0] + 2*Ls) ** 2*q[0]*(h[0] + 6*Ls))
+
+        else:
+            field[3] = -2*(6*q[0]*Ls*V + 2*q[0]*V*h[0] - 6*q[2]*Ls - 3*h[0]*q[2])*eta/(h[0]*q[0]*(4*Ls + h[0]))
+            field[4] = -2*(6*q[0]*Ls*U + 2*q[0]*U*h[0] - 6*q[1]*Ls - 3*h[0]*q[1])*eta/(h[0]*q[0]*(4*Ls + h[0]))
 
         return field

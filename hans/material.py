@@ -48,8 +48,9 @@ class Material:
             active_learning = {'max_iter': 200, 'threshold': self.gp['ptol']}
             kernel_dict = {'type': 'Mat32', 'init_params': [self.gp['pvar'], self.gp['lrho']], 'ARD': False}
             optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
+            noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['snp']}
 
-            self.GP = GP_pressure(self.exact_pressure, {}, active_learning, kernel_dict, optimizer)
+            self.GP = GP_pressure(self.exact_pressure, {}, active_learning, kernel_dict, optimizer, noise)
 
             q = sol[0, :, 1]
             init_ids = [1, ]
@@ -66,7 +67,7 @@ class Material:
             # There are four calls to the EOS within one time step.
             # We want to perform an active learning step only once.
             if self.ncalls % 4 == 0:
-                self.GP.active_learning_step(rho)
+                self.GP.active_learning_step(rho[:, 1])
             p, cov = self.GP.predict()
 
         self.ncalls += 1

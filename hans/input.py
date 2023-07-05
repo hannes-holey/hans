@@ -692,6 +692,21 @@ class Input:
         gp['tol'] = float(gp['tol'])
         gp['ptol'] = float(gp['ptol'])
 
+        try:
+            gp['sns'] = float(gp['sns'])
+        except KeyError:
+            gp['sns'] = 0.
+
+        try:
+            gp['snp'] = float(gp['snp'])
+        except KeyError:
+            gp['snp'] = 0.
+
+        try:
+            gp['fix'] = int(gp['fix'])
+        except KeyError:
+            gp['fix'] = 1
+
         # misc
         gp['num_restarts'] = int(gp['num_restarts'])
         gp['verbose'] = int(gp['verbose'])

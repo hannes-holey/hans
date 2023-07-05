@@ -36,9 +36,10 @@ class GaussianProcess:
     def __init__(self, input_dim, active_dim, func, func_args,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True}):
+                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
+                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
-        self.threshold = active_learning['threshold']
+        # self.threshold = active_learning['threshold']
         self.func = func
         self.func_args = func_args
         self.input_dim = input_dim
@@ -48,6 +49,8 @@ class GaussianProcess:
         self.optimizer = optimizer
         self.active_learning = active_learning
         self.maxvar = np.inf
+
+        self.noise = noise
 
         # Initial training data
         self.Xtrain = np.empty((input_dim, 0))
@@ -75,7 +78,11 @@ class GaussianProcess:
 
     def predict(self):
         Xtest = self._get_solution()
-        mean, cov = self.model.predict(Xtest, full_cov=True)
+
+        if Xtest.ndim == 1:
+            Xtest = Xtest[:, None]
+
+        mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
 
         self.maxvar = np.amax(np.diag(cov))
 
@@ -126,7 +133,7 @@ class GaussianProcess:
 
         X, Y = self._assemble_data()
         self.model = GPy.models.GPRegression(X, Y.T, self.kern)
-        self._fix_noise(0.)
+        self._fix_noise()
 
     def _fit(self):
 
@@ -162,10 +169,11 @@ class GaussianProcess:
 
         self.model = best_model
 
-    def _fix_noise(self, noise_variance):
+    def _fix_noise(self):
 
-        self.model.Gaussian_noise.variance = noise_variance
-        self.model.Gaussian_noise.variance.fix()
+        if self.noise['fixed']:
+            self.model.Gaussian_noise.variance = self.noise['variance']
+            self.model.Gaussian_noise.variance.fix()
 
     def _set_solution(self, q):
         self.sol = q
@@ -198,18 +206,16 @@ class GP_stress(GaussianProcess):
     def __init__(self, h, dh, func, func_args, out_ids,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True}):
-
-        # if out_ids[0] == 0:
-        #     self.name = 'Lower wall'
-        # elif out_ids[0] == 1:
-        #     self.name = 'Upper wall'
+                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
+                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
         self.h = h
         self.dh = dh
         self.out_ids = out_ids
 
-        super().__init__(4, 3, func, func_args, active_learning, kernel_dict, optimizer)
+        self.Ynoise = np.empty((len(out_ids), 0))
+
+        super().__init__(4, 3, func, func_args, active_learning, kernel_dict, optimizer, noise)
 
     def _get_solution(self):
         """
@@ -236,6 +242,8 @@ class GP_stress(GaussianProcess):
 
         self.Xtrain = np.vstack([H0_train, H1_train, Q0_train, Q1_train])
 
+        self.Ynoise = np.hstack((self.Ynoise, np.random.normal(0, np.sqrt(self.noise['variance']), size=(2, size))))
+
         self.dbsize += size
 
     def _assemble_data(self):
@@ -245,8 +253,8 @@ class GP_stress(GaussianProcess):
 
         X = np.vstack([H0_train, Q0_train, Q1_train]).T
         Y = self.func(Q, H, 0., **self.func_args)
-        indices = [index in self.out_ids for index in range(Y.shape[0])]
-        Y = Y[indices]
+
+        Y += self.Ynoise
 
         return X, Y
 
@@ -258,9 +266,12 @@ class GP_pressure(GaussianProcess):
     def __init__(self, func, func_args,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-2, ], 'ARD': False},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True}):
+                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
+                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
-        super().__init__(1, 1, func, func_args, active_learning, kernel_dict, optimizer)
+        self.Ynoise = np.empty((1, 0))
+
+        super().__init__(1, 1, func, func_args, active_learning, kernel_dict, optimizer, noise)
 
     def _get_solution(self):
 
@@ -284,6 +295,8 @@ class GP_pressure(GaussianProcess):
 
         self.Xtrain = np.vstack([Q0_train]).T
 
+        self.Ynoise = np.hstack((self.Ynoise, np.random.normal(0, np.sqrt(self.noise['variance']), size=(1, size))))
+
         self.dbsize += size
 
     def _assemble_data(self):
@@ -291,5 +304,6 @@ class GP_pressure(GaussianProcess):
         X = self.Xtrain
 
         Y = self.func(X, **self.func_args).T
+        Y += self.Ynoise
 
         return X, Y
