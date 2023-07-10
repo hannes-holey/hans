@@ -176,6 +176,12 @@ class Problem:
                     self._write_mode = 3
                     break
 
+                # GP stuck
+                if self.q.eps > 1e-3 and (self.q.wall_stress.gp.dbsize > 100
+                                          or self.q.eos.gp.dbsize > 100):
+                    self._write_mode = 3
+                    break
+
                 # NaN detected
                 if self.q.isnan > 0:
                     self._write_mode = 4
