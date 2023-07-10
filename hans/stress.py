@@ -23,6 +23,7 @@
 #
 
 import numpy as np
+from unittest.mock import Mock
 from scipy.optimize import fsolve
 
 from hans.field import VectorField, TensorField, DoubleTensorField
@@ -822,6 +823,9 @@ class WallStressField3D(DoubleTensorField):
 
             # Initialize
             self.GP.setup(q, init_ids)
+        else:
+            self.GP = Mock()
+            self.GP.dbsize = 0
 
     @property
     def lower(self):

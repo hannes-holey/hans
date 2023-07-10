@@ -24,6 +24,7 @@
 
 
 import numpy as np
+from unittest.mock import Mock
 
 from hans.tools import abort
 from hans.gp import GP_pressure
@@ -57,6 +58,9 @@ class Material:
 
             # Initialize
             self.GP.setup(q, init_ids)
+        else:
+            self.GP = Mock()
+            self.GP.dbsize = 0
 
     def eos_pressure(self, rho):
 
