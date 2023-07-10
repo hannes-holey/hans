@@ -150,6 +150,31 @@ class Material:
 
             return a * rho**3 + b * rho**2 + c * rho + d
 
+        elif self.material['EOS'] == "BWR":
+
+            T = self.material['T']
+            x = self.material['params']
+
+            gamma = 3.
+
+            p = rho * T +\
+                rho**2 * (x[0] * T + x[1] * np.sqrt(T) + x[2] + x[3] / T + x[4] / T**2) +\
+                rho**3 * (x[5] * T + x[6] + x[7] / T + x[8] / T**2) +\
+                rho**4 * (x[9] * T + x[10] + x[11] / T) +\
+                rho**5 * x[12] +\
+                rho**6 * (x[13] / T + x[14] / T**2) +\
+                rho**7 * (x[15] / T) +\
+                rho**8 * (x[16] / T + x[17] / T**2) +\
+                rho**9 * (x[18] / T**2) +\
+                np.exp(-gamma * rho**2) * (rho**3 * (x[19] / T**2 + x[20] / T**3) +
+                                           rho**5 * (x[21] / T**2 + x[22] / T**4) +
+                                           rho**7 * (x[23] / T**2 + x[24] / T**3) +
+                                           rho**9 * (x[25] / T**2 + x[26] / T**4) +
+                                           rho**11 * (x[27] / T**2 + x[28] / T**3) +
+                                           rho**13 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4))
+
+            return p
+
         # Cavitation model Bayada and Chupin, J. Trib. 135, 2013
         elif self.material['EOS'].startswith("Bayada"):
             c_l = self.material["cl"]
@@ -279,6 +304,38 @@ class Material:
             c = self.material['c']
 
             c_squared = 3 * a * rho**2 + 2 * b * rho + c
+
+        elif self.material['EOS'] == "BWR":
+
+            T = self.material['T']
+            x = self.material['params']
+
+            gamma = 3.
+
+            exp_prefac = (rho**3 * (x[19] / T**2 + x[20] / T**3) +
+                          rho**5 * (x[21] / T**2 + x[22] / T**4) +
+                          rho**7 * (x[23] / T**2 + x[24] / T**3) +
+                          rho**9 * (x[25] / T**2 + x[26] / T**4) +
+                          rho**11 * (x[27] / T**2 + x[28] / T**3) +
+                          rho**13 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4))
+
+            D_exp_prefac = (3. * rho**2 * (x[19] / T**2 + x[20] / T**3) +
+                            5. * rho**4 * (x[21] / T**2 + x[22] / T**4) +
+                            7. * rho**6 * (x[23] / T**2 + x[24] / T**3) +
+                            9. * rho**8 * (x[25] / T**2 + x[26] / T**4) +
+                            11. * rho**10 * (x[27] / T**2 + x[28] / T**3) +
+                            13. * rho**12 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4))
+
+            c_squared = T + 2. * rho * (x[0] * T + x[1] * np.sqrt(T) + x[2] + x[3] / T + x[4] / T**2) +\
+                3. * rho**2 * (x[5] * T + x[6] + x[7] / T + x[8] / T**2) +\
+                4. * rho**3 * (x[9] * T + x[10] + x[11] / T) +\
+                5. * rho**4 * x[12] +\
+                6. * rho**5 * (x[13] / T + x[14] / T**2) +\
+                7. * rho**6 * (x[15] / T) +\
+                8. * rho**7 * (x[16] / T + x[17] / T**2) +\
+                9. * rho**8 * (x[18] / T**2) +\
+                np.exp(-gamma * rho**2) * D_exp_prefac -\
+                2. * rho * gamma * np.exp(-gamma * rho**2) * exp_prefac
 
         # Cavitation model Bayada and Chupin, J. Trib. 135, 2013
         elif self.material['EOS'].startswith("Bayada"):
