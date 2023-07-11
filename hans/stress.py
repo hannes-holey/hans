@@ -809,7 +809,7 @@ class WallStressField3D(DoubleTensorField):
             dh = height[1, :, 1]
             q = sol[:, :, 1]
 
-            active_learning = {'max_iter': self.disc['Nx'], 'threshold': self.gp['tol']}
+            active_learning = {'max_iter': self.disc['Nx'], 'threshold': self.gp['tol'], 'start': self.gp['start']}
             kernel_dict = {'type': 'Mat32',
                            'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
                            'ARD': True}

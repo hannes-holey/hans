@@ -747,6 +747,11 @@ class Input:
         except KeyError:
             gp['fix'] = 1
 
+        try:
+            gp['start'] = int(gp['start'])
+        except KeyError:
+            gp['start'] = 20
+
         # misc
         gp['num_restarts'] = int(gp['num_restarts'])
         gp['verbose'] = int(gp['verbose'])

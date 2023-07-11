@@ -34,7 +34,7 @@ class GaussianProcess:
     name: str
 
     def __init__(self, input_dim, active_dim, func, func_args,
-                 active_learning={'max_iter': 10, 'threshold': .1},
+                 active_learning={'max_iter': 10, 'threshold': .1, 'start': 20},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
@@ -87,9 +87,9 @@ class GaussianProcess:
 
     def active_learning_step(self, q):
 
-        self._set_solution(q)
+        if self.step > self.active_learning['start']:
 
-        if self.step > 0:
+            self._set_solution(q)
             new_ids = []
             for i in range(self.active_learning['max_iter']):
 
