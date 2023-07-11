@@ -89,27 +89,29 @@ class GaussianProcess:
 
         self._set_solution(q)
 
-        new_ids = []
-        for i in range(self.active_learning['max_iter']):
+        if self.step > 0:
+            new_ids = []
+            for i in range(self.active_learning['max_iter']):
 
-            mean, cov = self.predict()
+                mean, cov = self.predict()
 
-            if self.maxvar > self.active_learning['threshold']:
-                # AL
-                xnext = np.argsort(np.diag(cov))
-                aid = -1
-                next_id = xnext[aid]
-
-                while next_id in new_ids:
-                    aid -= 1
+                if self.maxvar > self.active_learning['threshold']:
+                    # AL
+                    xnext = np.argsort(np.diag(cov))
+                    aid = -1
                     next_id = xnext[aid]
 
-                self._update_database(next_id)
-                new_ids.append(next_id)
-                self._fit()
+                    while next_id in new_ids:
+                        aid -= 1
+                        next_id = xnext[aid]
 
-            else:
-                break
+                    self._update_database(next_id)
+                    new_ids.append(next_id)
+
+                    self._fit()
+
+                else:
+                    break
 
         self._write_history()
         self.step += 1

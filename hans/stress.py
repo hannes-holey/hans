@@ -819,7 +819,7 @@ class WallStressField3D(DoubleTensorField):
             self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [0, 1],
                                 active_learning, kernel_dict, optimizer, noise)
 
-            init_ids = [1, ]
+            init_ids = [1, -2]
 
             # Initialize
             self.GP.setup(q, init_ids)
