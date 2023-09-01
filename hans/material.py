@@ -39,11 +39,10 @@ class Material:
         self.material = material
 
         self.gp = gp
-        # self.gp = None
 
         self.ncalls = 0
 
-    def init_gp(self, sol):
+    def init_gp(self, sol, db):
 
         if self.gp is not None:
             active_learning = {'max_iter': 200, 'threshold': self.gp['ptol'], 'start': self.gp['start']}
@@ -51,34 +50,35 @@ class Material:
             optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
             noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['snp']}
 
-            self.GP = GP_pressure(self.exact_pressure, {}, active_learning, kernel_dict, optimizer, noise)
-
-            q = sol[0, :, 1]
-            init_ids = [1, -2]
+            self.GP = GP_pressure(db, active_learning, kernel_dict, optimizer, noise)
 
             # Initialize
+            q = sol[:, :, 1]  # 1D only
+            init_ids = [1, -2]
             self.GP.setup(q, init_ids)
         else:
             self.GP = Mock()
             self.GP.dbsize = 0
 
-    def eos_pressure(self, rho):
+    def get_pressure(self, q):
 
         if self.gp is None:  # or self.ncalls < 400:
-            p = self.exact_pressure(rho)
+            p = self.eos_pressure(q[0])
         else:
             # In contrast to viscous stress, pressure is not stored internally but just returned.
             # There are four calls to the EOS within one time step.
             # We want to perform an active learning step only once.
             if self.ncalls % 4 == 0:
-                self.GP.active_learning_step(rho[:, 1])
+                # Active learning needs full q, in order to write into global DB
+                self.GP.active_learning_step(q[:, :, 1])
+
             p, cov = self.GP.predict()
 
         self.ncalls += 1
 
         return p
 
-    def exact_pressure(self, rho):
+    def eos_pressure(self, rho):
         # Dowson-Higginson (with cavitation)
         if self.material['EOS'] == "DH":
             rho0 = self.material['rho0']

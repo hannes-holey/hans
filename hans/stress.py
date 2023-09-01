@@ -800,14 +800,9 @@ class WallStressField3D(DoubleTensorField):
         # self.model = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/shear_50000.0.json.zip')
         # model_diag = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/diag_0.1.json.zip')
 
-    def init_gp(self, height, sol):
+    def init_gp(self, sol, db):
 
         if self.gp is not None:
-
-            # 1D only (centerline)
-            h = height[0, :, 1]
-            dh = height[1, :, 1]
-            q = sol[:, :, 1]
 
             active_learning = {'max_iter': self.disc['Nx'], 'threshold': self.gp['tol'], 'start': self.gp['start']}
             kernel_dict = {'type': 'Mat32',
@@ -816,12 +811,11 @@ class WallStressField3D(DoubleTensorField):
             noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['sns']}
             optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
 
-            self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [0, 1],
-                                active_learning, kernel_dict, optimizer, noise)
-
-            init_ids = [1, -2]
+            self.GP = GP_stress(db, active_learning, kernel_dict, optimizer, noise)
 
             # Initialize
+            q = sol[:, :, 1]  # 1D only (centerline)
+            init_ids = [1, -2]
             self.GP.setup(q, init_ids)
         else:
             self.GP = Mock()
@@ -837,8 +831,8 @@ class WallStressField3D(DoubleTensorField):
 
     def gp_wall_stress(self, q, h, Ls):
 
-        sb = self.get_bot(q, h, Ls)[4]
-        st = self.get_top(q, h, Ls)[4]
+        sb = self.get_bot(q, h, Ls)  # [4]
+        st = self.get_top(q, h, Ls)  # [4]
 
         out = np.vstack([sb, st])
 

@@ -33,27 +33,24 @@ class GaussianProcess:
 
     name: str
 
-    def __init__(self, input_dim, active_dim, func, func_args,
+    def __init__(self, active_dim, db, Xmask, Ymask,  # func, func_args,
                  active_learning={'max_iter': 10, 'threshold': .1, 'start': 20},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
-        # self.threshold = active_learning['threshold']
-        self.func = func
-        self.func_args = func_args
-        self.input_dim = input_dim
+        self.Xmask = Xmask
+        self.Ymask = Ymask
+
         self.active_dim = active_dim
+        self.db = db
 
         self.kernel_dict = kernel_dict
         self.optimizer = optimizer
         self.active_learning = active_learning
-        self.maxvar = np.inf
-
         self.noise = noise
 
-        # Initial training data
-        self.Xtrain = np.empty((active_dim, 0))
+        self.maxvar = np.inf
 
         self.kern = GPy.kern.Matern32(active_dim, ARD=kernel_dict['ARD'])
 
@@ -62,14 +59,18 @@ class GaussianProcess:
             self.kern.lengthscale = kernel_dict['init_params'][1:active_dim+1]
 
         self.step = 0
-        self.dbsize = 0
         self.history = []
 
+        # TODO: check if file exists, delete and overwrite // OR: append to netcdf
         self.file = open(f'gp_{self.name}.out', 'a+')
 
     def __del__(self):
         self.model.save_model(f'gp_{self.name}.json', compress=True)
         self.file.close()
+
+    @property
+    def dbsize(self):
+        return self.db.Xtrain.shape[1]
 
     def setup(self, q, init_ids):
         self._set_solution(q)
@@ -77,8 +78,7 @@ class GaussianProcess:
         self._build_model()
 
     def predict(self):
-        Xtest = self._get_solution()
-
+        Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
 
         self.maxvar = np.amax(np.diag(cov))
@@ -130,7 +130,9 @@ class GaussianProcess:
 
     def _build_model(self):
 
-        self.model = GPy.models.GPRegression(self.Xtrain.T, self.Ytrain.T, self.kern)
+        self.model = GPy.models.GPRegression(self.db.Xtrain[self.Xmask, :].T,
+                                             self.db.Ytrain[self.Ymask, :].T,
+                                             self.kern)
         self._fix_noise()
 
     def _fit(self):
@@ -176,16 +178,26 @@ class GaussianProcess:
     def _set_solution(self, q):
         self.sol = q
 
-    @abc.abstractmethod
     def _get_solution(self):
-        """
-        Assemble test data
-        """
+        return self.sol
+
+    def _update_database(self, next_id):
+
+        Xsol = self._get_solution()
+
+        X_new = Xsol[:, next_id]
+
+        if X_new.ndim == 1:
+            X_new = X_new[:, None]
+
+        self.db.update_inputs(X_new, next_id)
+        self.db.update_outputs(X_new, next_id)
+        self.db.remove_duplicates()
 
     @abc.abstractmethod
-    def _update_database(self, next_id):
+    def _get_test_input():
         """
-        Update training data
+        Assemble test input data
         """
 
 
@@ -193,88 +205,127 @@ class GP_stress(GaussianProcess):
 
     name = 'shear'
 
-    def __init__(self, h, dh, func, func_args, out_ids,
+    def __init__(self, db,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
-        self.h = h
-        self.dh = dh
-        self.out_ids = out_ids
+        Xmask = 6 * [False]
+        Xmask[0] = True
+        Xmask[3] = True
+        Xmask[4] = True
 
-        self.Ytrain = np.empty((len(out_ids), 0))
+        Ymask = 13 * [False]
+        Ymask[5] = True
+        Ymask[11] = True
 
-        super().__init__(4, 3, func, func_args, active_learning, kernel_dict, optimizer, noise)
+        super().__init__(3, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
 
-    def _get_solution(self):
+    def _get_test_input(self):
         """
-        Format raw solution for function evaluation.
+        Test data as input for GP prediction.
+        Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        return np.vstack([self.h, self.sol[0], self.sol[1]]).T
-
-    def _update_database(self, next_id):
-
-        try:
-            size = len(next_id)
-        except TypeError:
-            size = 1
-
-        Xsol = self._get_solution()
-
-        H = np.vstack([np.array(Xsol[next_id, 0]), np.ones(size) * self.dh[0], np.zeros(size)])
-        Q = np.vstack([np.array(Xsol[next_id, 1]), np.array(Xsol[next_id, 2]), np.zeros(size)])
-
-        Y_new = self.func(Q, H, 0., **self.func_args)
-        Y_new += np.random.normal(0, np.sqrt(self.noise['variance']), size=(2, size))
-
-        X_new = Xsol[next_id].T
-        if X_new.ndim == 1:
-            X_new = X_new[:, None]
-
-        self.Xtrain = np.hstack([self.Xtrain, X_new])
-        self.Ytrain = np.hstack([self.Ytrain, Y_new])
-
-        self.dbsize += size
+        return np.vstack([self.db.h[0, :, 1], self.sol[0], self.sol[1]]).T
 
 
 class GP_pressure(GaussianProcess):
 
     name = 'press'
 
-    def __init__(self, func, func_args,
+    def __init__(self, db,
                  active_learning={'max_iter': 10, 'threshold': .1},
                  kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-2, ], 'ARD': False},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
-        self.Ytrain = np.empty((1, 0))
+        # self.Ytrain = np.empty((1, 0))
 
-        super().__init__(1, 1, func, func_args, active_learning, kernel_dict, optimizer, noise)
+        Xmask = 6 * [False]
+        Xmask[3] = True
 
-    def _get_solution(self):
+        Ymask = 13 * [False]
+        Ymask[0] = True
 
-        return self.sol[:, None]
+        super().__init__(1, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
 
-    def _update_database(self, next_id):
+    def _get_test_input(self):
+        """
+        Test data as input for GP prediction:
+        For pressure, only density is required
+        """
 
-        try:
-            size = len(next_id)
-        except TypeError:
-            size = 1
+        Xtest = self.sol[0]
+        if Xtest.ndim == 1:
+            Xtest = Xtest[:, None]
 
-        Xsol = self._get_solution()
+        return Xtest
 
-        X_new = Xsol[next_id].T
 
-        if X_new.ndim == 1:
-            X_new = X_new[:, None]
+class Database:
 
-        Y_new = self.func(X_new, **self.func_args)
-        Y_new += np.random.normal(0, np.sqrt(self.noise['variance']), size=(1, size))
+    def __init__(self, height, eos_func, tau_func, gp):
 
-        self.Xtrain = np.hstack([self.Xtrain, X_new])
-        self.Ytrain = np.hstack([self.Ytrain, Y_new])
+        self.eos_func = eos_func
+        self.tau_func = tau_func
 
-        self.dbsize += size
+        self.h = height
+
+        self.gp = gp
+
+        input_dim = 6
+        # h, dh_dx, dh_dy, rho, jx, jy
+
+        output_dim = 13
+        # p, tau_lower (6), tau_upper (6)
+
+        self.Xtrain = np.empty((input_dim, 0))
+        self.Ytrain = np.empty((output_dim, 0))
+
+    def update_inputs(self, Qnew, next_id):
+
+        Hnew = self.gap_height(next_id)
+        Xnew = np.vstack([Hnew, Qnew])
+
+        self.Xtrain = np.hstack([self.Xtrain, Xnew])
+
+    def update_outputs(self, Qnew, next_id):
+
+        eos_input_mask = [False, False, False, True, False, False]
+        eos_output_mask = [True] + 12 * [False]
+
+        Hnew = self.gap_height(next_id)
+
+        Hnew = self.h[:, next_id, 1]
+        if Hnew.ndim == 1:
+            Hnew = Hnew[:, None]
+
+        Xnew = np.vstack([Hnew, Qnew])
+        Ynew = np.zeros((13, Xnew.shape[1]))
+
+        pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
+        snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(12, Xnew.shape[1]))
+
+        Ynew[eos_output_mask, :] = self.eos_func(Xnew[eos_input_mask, :]) + pnoise
+
+        visc_input_mask_h = 3 * [True] + 3 * [False]
+        visc_input_mask_q = 3 * [False] + 3 * [True]
+        visc_output_mask = [False] + 12 * [True]
+
+        Ynew[visc_output_mask, :] = self.tau_func(Xnew[visc_input_mask_q, :], Xnew[visc_input_mask_h, :], 0.) + snoise
+
+        self.Ytrain = np.hstack([self.Ytrain, Ynew])
+
+    def gap_height(self, next_id):
+
+        Hnew = self.h[:, next_id, 1]
+        if Hnew.ndim == 1:
+            Hnew = Hnew[:, None]
+
+        return Hnew
+
+    def remove_duplicates(self):
+        self.Xtrain, unique_indices = np.unique(self.Xtrain, axis=1, return_index=True)
+        self.Ytrain = self.Ytrain[:, unique_indices]

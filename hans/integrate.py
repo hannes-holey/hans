@@ -32,6 +32,8 @@ from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
 from hans.tools import abort
 
+from hans.gp import Database
+
 
 class ConservedField(VectorField):
 
@@ -101,10 +103,25 @@ class ConservedField(VectorField):
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
         self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
-        self.wall_stress.init_gp(self.height.field, self.field)
-
+        # Equation of state
         self.eos = Material(self.material, gp)
-        self.eos.init_gp(self.field)
+
+        # Initalize global training database
+        self.db = Database(self.height.field, self.eos.eos_pressure, self.wall_stress.gp_wall_stress, gp)
+
+        # Initialize GPs for pressure and wall stress
+        gp_wall = True
+        gp_eos = True
+
+        if gp_wall:
+            self.wall_stress.init_gp(self.field, self.db)
+        else:
+            self.wall_stress.gp = None
+
+        if gp_eos:
+            self.eos.init_gp(self.field, self.db)
+        else:
+            self.eos.gp = None
 
     @property
     def mass(self):
@@ -586,7 +603,7 @@ class ConservedField(VectorField):
 
         """
 
-        p = self.eos.eos_pressure(q[0])
+        p = self.eos.get_pressure(q)
         inertialess = bool(self.numerics["stokes"])
 
         F = np.zeros_like(q)
