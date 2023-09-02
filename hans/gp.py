@@ -22,9 +22,16 @@
 # SOFTWARE.
 #
 
+from hans.tools import abort
 import abc
 import GPy
 import numpy as np
+
+import os
+from ruamel.yaml import YAML
+from dateutil.relativedelta import relativedelta
+from getpass import getuser
+from datetime import datetime, date
 
 
 class GaussianProcess:
@@ -74,10 +81,18 @@ class GaussianProcess:
 
     def setup(self, q, init_ids):
         self._set_solution(q)
-        self._update_database(init_ids)
-        self._build_model()
+
+        if self.dbsize == 0:
+            self._update_database(init_ids)
+
+        self._fit()
 
     def predict(self):
+
+        # Check if dbsize changed and refit
+        if self.last_fit_dbsize != self.dbsize:
+            self._fit()
+
         Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
 
@@ -135,6 +150,8 @@ class GaussianProcess:
                                              self.kern)
         self._fix_noise()
 
+        self.last_fit_dbsize = self.dbsize
+
     def _fit(self):
 
         l0 = self.kernel_dict['init_params'][1:self.active_dim + 1]
@@ -190,9 +207,7 @@ class GaussianProcess:
         if X_new.ndim == 1:
             X_new = X_new[:, None]
 
-        self.db.update_inputs(X_new, next_id)
-        self.db.update_outputs(X_new, next_id)
-        self.db.remove_duplicates()
+        self.db.update(X_new, next_id)
 
     @abc.abstractmethod
     def _get_test_input():
@@ -281,28 +296,61 @@ class Database:
         output_dim = 13
         # p, tau_lower (6), tau_upper (6)
 
-        self.Xtrain = np.empty((input_dim, 0))
-        self.Ytrain = np.empty((output_dim, 0))
+        yaml = YAML()
 
-    def update_inputs(self, Qnew, next_id):
+        self.file_list = []
+
+        if bool(self.gp['db']):
+            Xtrain = []
+            Ytrain = []
+
+            files = [os.path.join('db', f) for f in os.listdir('db')]
+
+            if len(files) > 0:
+                for file in files:
+                    with open(file, 'r') as instream:
+                        rm = yaml.load(instream)
+
+                    Xtrain.append(rm['X'])
+                    Ytrain.append(rm['Y'])
+
+                self.Xtrain = np.array(Xtrain).T
+                self.Ytrain = np.array(Ytrain).T
+            else:
+                self.Xtrain = np.empty((input_dim, 0))
+                self.Ytrain = np.empty((output_dim, 0))
+        else:
+            self.Xtrain = np.empty((input_dim, 0))
+            self.Ytrain = np.empty((output_dim, 0))
+
+    def update(self, Qnew, next_id):
+        self._update_inputs(Qnew, next_id)
+
+    def _update_inputs(self, Qnew, next_id):
 
         Hnew = self.gap_height(next_id)
         Xnew = np.vstack([Hnew, Qnew])
 
+        # Find duplicates, there's a better way to do this for sure.
+        # np.unique seems not an option, becaue it also sorts
+        mask = Xnew.shape[1] * [True]
+        for i in range(Xnew.shape[1]):
+            for j in range(self.Xtrain.shape[1]):
+                if np.allclose(Xnew[:, i], self.Xtrain[:, j]):
+                    mask[i] = False
+                    break
+
+        Xnew = Xnew[:, mask]
+
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
-    def update_outputs(self, Qnew, next_id):
+        self._update_outputs(Xnew)
+
+    def _update_outputs(self, Xnew):
 
         eos_input_mask = [False, False, False, True, False, False]
         eos_output_mask = [True] + 12 * [False]
 
-        Hnew = self.gap_height(next_id)
-
-        Hnew = self.h[:, next_id, 1]
-        if Hnew.ndim == 1:
-            Hnew = Hnew[:, None]
-
-        Xnew = np.vstack([Hnew, Qnew])
         Ynew = np.zeros((13, Xnew.shape[1]))
 
         pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
@@ -316,7 +364,57 @@ class Database:
 
         Ynew[visc_output_mask, :] = self.tau_func(Xnew[visc_input_mask_q, :], Xnew[visc_input_mask_h, :], 0.) + snoise
 
+        self.write_readme(Xnew, Ynew)
+
         self.Ytrain = np.hstack([self.Ytrain, Ynew])
+
+    def write_readme(self, Xnew, Ynew):
+
+        readme_template = """
+        project: Multiscale Simulation of Lubrication
+        description: Dummy README to store training data  
+        owners:
+          - name: Hannes Holey
+            email: hannes.holey@kit.edu
+            username: hannes
+            orcid: 0000-0002-4547-8791
+        funders:
+          - organization: Deutsche Forschungsgemeinschaft (DFG)
+            program: Graduiertenkolleg
+            code: GRK 2450
+        creation_date: DATE
+        expiration_date: EXPIRATION_DATE
+        software_packages:
+          - name: LAMMPS
+            version: version
+            website: https://lammps.sandia.gov/
+            repository: https://github.com/lammps/lammps
+        """
+
+        yaml = YAML()
+        yaml.explicit_start = True
+        yaml.indent(mapping=4, sequence=4, offset=2)
+        metadata = yaml.load(readme_template)
+
+        # Update metadata
+        metadata["owners"][0].update(dict(username=getuser()))
+        metadata["creation_date"] = date.today()
+        metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
+        # metadata["software_packages"][0]["version"] = lammps.__version__
+
+        # write a README
+        for i in range(Xnew.shape[1]):
+
+            num = self.Ytrain.shape[1] + i
+
+            X = [float(item) for item in Xnew[:, i]]
+            Y = [float(item) for item in Ynew[:, i]]
+
+            metadata['X'] = X
+            metadata['Y'] = Y
+
+            with open(os.path.join('db', f'README-{num}.yml'), 'w') as outfile:
+                yaml.dump(metadata, outfile)
 
     def gap_height(self, next_id):
 
@@ -325,7 +423,3 @@ class Database:
             Hnew = Hnew[:, None]
 
         return Hnew
-
-    def remove_duplicates(self):
-        self.Xtrain, unique_indices = np.unique(self.Xtrain, axis=1, return_index=True)
-        self.Ytrain = self.Ytrain[:, unique_indices]
