@@ -22,16 +22,19 @@
 # SOFTWARE.
 #
 
-from hans.tools import abort
 import abc
 import GPy
 import numpy as np
-
 import os
+import dtoolcore
 from ruamel.yaml import YAML
 from dateutil.relativedelta import relativedelta
 from getpass import getuser
+from socket import gethostname
 from datetime import datetime, date
+from dtool_lookup_api import query
+
+from hans.tools import progressbar
 
 
 class GaussianProcess:
@@ -210,10 +213,11 @@ class GaussianProcess:
         self.db.update(X_new, next_id)
 
     @abc.abstractmethod
-    def _get_test_input():
+    def _get_test_input(self):
         """
         Assemble test input data
         """
+        raise NotImplementedError
 
 
 class GP_stress(GaussianProcess):
@@ -285,9 +289,7 @@ class Database:
 
         self.eos_func = eos_func
         self.tau_func = tau_func
-
         self.h = height
-
         self.gp = gp
 
         input_dim = 6
@@ -296,30 +298,66 @@ class Database:
         output_dim = 13
         # p, tau_lower (6), tau_upper (6)
 
-        yaml = YAML()
+        if bool(self.gp['remote']):
+            self._init_remote(input_dim, output_dim)
+        else:
+            self._init_local(input_dim, output_dim)
 
-        self.file_list = []
+    def _init_remote(self, input_dim, output_dim):
+        # uses dtool_lookup_server configuration from your dtool config
+        query_dict = {"readme.description": {"$regex": "Dummy"}}
+        remote_ds_list = query(query_dict)
 
-        if bool(self.gp['db']):
+        remote_ds = [dtoolcore.DataSet.from_uri(ds['uri'])
+                     for ds in progressbar(remote_ds_list,
+                                           prefix="Loading remote datasets based on dtool query: ")]
+
+        if len(remote_ds) > 0:
+
+            yaml = YAML()
             Xtrain = []
             Ytrain = []
 
-            files = [os.path.join('db', f) for f in os.listdir('db')]
+            for ds in remote_ds:
+                readme_string = ds.get_readme_content()
+                rm = yaml.load(readme_string)
 
-            if len(files) > 0:
-                for file in files:
-                    with open(file, 'r') as instream:
-                        rm = yaml.load(instream)
+                Xtrain.append(rm['X'])
+                Ytrain.append(rm['Y'])
 
-                    Xtrain.append(rm['X'])
-                    Ytrain.append(rm['Y'])
-
-                self.Xtrain = np.array(Xtrain).T
-                self.Ytrain = np.array(Ytrain).T
-            else:
-                self.Xtrain = np.empty((input_dim, 0))
-                self.Ytrain = np.empty((output_dim, 0))
+            self.Xtrain = np.array(Xtrain).T
+            self.Ytrain = np.array(Ytrain).T
         else:
+            print("No matching dtool datasets found. Start with empty database.")
+            self.Xtrain = np.empty((input_dim, 0))
+            self.Ytrain = np.empty((output_dim, 0))
+
+    def _init_local(self, input_dim, output_dim):
+        # All datsets in local directory
+
+        # Python 3.9+
+        # str.removeprefix (prefix = f'file://{gethostname()}')
+        readme_list = [os.path.join(os.sep, *ds.uri.split(os.sep)[3:], 'README.yml')
+                       for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
+
+        if len(readme_list) > 0:
+            print(f"Loading {len(readme_list)} remote datasets based on dtool query.")
+
+            yaml = YAML()
+            Xtrain = []
+            Ytrain = []
+
+            for readme in readme_list:
+                with open(readme, 'r') as instream:
+                    rm = yaml.load(instream)
+
+                Xtrain.append(rm['X'])
+                Ytrain.append(rm['Y'])
+
+            self.Xtrain = np.array(Xtrain).T
+            self.Ytrain = np.array(Ytrain).T
+        else:
+            print("No matching dtool datasets found. Start with empty database.")
             self.Xtrain = np.empty((input_dim, 0))
             self.Ytrain = np.empty((output_dim, 0))
 
@@ -331,16 +369,19 @@ class Database:
         Hnew = self.gap_height(next_id)
         Xnew = np.vstack([Hnew, Qnew])
 
+        # Only compare height, density and mass flux
+        input_mask = [True, False, False, True, True, False]
+        train_mask = Xnew.shape[1] * [True]
+
         # Find duplicates, there's a better way to do this for sure.
         # np.unique seems not an option, becaue it also sorts
-        mask = Xnew.shape[1] * [True]
         for i in range(Xnew.shape[1]):
             for j in range(self.Xtrain.shape[1]):
-                if np.allclose(Xnew[:, i], self.Xtrain[:, j]):
-                    mask[i] = False
+                if np.allclose(Xnew[input_mask, i], self.Xtrain[input_mask, j]):
+                    train_mask[i] = False
                     break
 
-        Xnew = Xnew[:, mask]
+        Xnew = Xnew[:, train_mask]
 
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
@@ -348,31 +389,48 @@ class Database:
 
     def _update_outputs(self, Xnew):
 
+        Ynew = np.zeros((13, Xnew.shape[1]))
+
+        # EOS
         eos_input_mask = [False, False, False, True, False, False]
         eos_output_mask = [True] + 12 * [False]
-
-        Ynew = np.zeros((13, Xnew.shape[1]))
 
         pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
         snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(12, Xnew.shape[1]))
 
+        # TODO: replace with run MD & post-processing
         Ynew[eos_output_mask, :] = self.eos_func(Xnew[eos_input_mask, :]) + pnoise
 
+        # Viscous stress
         visc_input_mask_h = 3 * [True] + 3 * [False]
         visc_input_mask_q = 3 * [False] + 3 * [True]
         visc_output_mask = [False] + 12 * [True]
 
+        # TODO: replace with run MD & post-processing
         Ynew[visc_output_mask, :] = self.tau_func(Xnew[visc_input_mask_q, :], Xnew[visc_input_mask_h, :], 0.) + snoise
 
-        self.write_readme(Xnew, Ynew)
+        for i in range(Xnew.shape[1]):
+
+            num = self.Ytrain.shape[1] + i
+
+            base_uri = self.gp['local']
+            # TODO: unique name
+            ds_name = f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_dataset-{num}'
+
+            proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)
+            self.write_readme(Xnew[:, i], Ynew[:, i], os.path.join(base_uri, ds_name))
+            proto_ds.freeze()
+
+            if self.gp['remote']:
+                dtoolcore.copy(proto_ds.uri, self.gp['storage'])
 
         self.Ytrain = np.hstack([self.Ytrain, Ynew])
 
-    def write_readme(self, Xnew, Ynew):
+    def write_readme(self, Xnew, Ynew, path):
 
         readme_template = """
         project: Multiscale Simulation of Lubrication
-        description: Dummy README to store training data  
+        description: Dummy README to store training data
         owners:
           - name: Hannes Holey
             email: hannes.holey@kit.edu
@@ -402,19 +460,16 @@ class Database:
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
         # metadata["software_packages"][0]["version"] = lammps.__version__
 
-        # write a README
-        for i in range(Xnew.shape[1]):
+        out_fname = os.path.join(path, 'README.yml')
 
-            num = self.Ytrain.shape[1] + i
+        X = [float(item) for item in Xnew]
+        Y = [float(item) for item in Ynew]
 
-            X = [float(item) for item in Xnew[:, i]]
-            Y = [float(item) for item in Ynew[:, i]]
+        metadata['X'] = X
+        metadata['Y'] = Y
 
-            metadata['X'] = X
-            metadata['Y'] = Y
-
-            with open(os.path.join('db', f'README-{num}.yml'), 'w') as outfile:
-                yaml.dump(metadata, outfile)
+        with open(out_fname, 'w') as outfile:
+            yaml.dump(metadata, outfile)
 
     def gap_height(self, next_id):
 

@@ -733,6 +733,25 @@ class Input:
         gp['ptol'] = float(gp['ptol'])
 
         try:
+            gp['remote'] = int(gp['remote'])
+        except KeyError:
+            gp['remote'] = 0
+
+        try:
+            gp['local'] = gp['local']
+        except KeyError:
+            gp['local'] = '/tmp/dtool/'
+
+        # remote storage backend
+        if gp['remote'] == 1:
+            try:
+                gp['storage'] = gp['storage']
+            except KeyError:
+                gp['storage'] = 's3://test-bucket'
+
+        # TODO: query
+
+        try:
             gp['sns'] = float(gp['sns'])
         except KeyError:
             gp['sns'] = 0.
@@ -750,11 +769,17 @@ class Input:
         try:
             gp['start'] = int(gp['start'])
         except KeyError:
-            gp['start'] = 20
+            gp['start'] = 1
 
-        # misc
-        gp['num_restarts'] = int(gp['num_restarts'])
-        gp['verbose'] = int(gp['verbose'])
+        try:
+            gp['num_restarts'] = int(gp['num_restarts'])
+        except KeyError:
+            gp['num_restarts'] = 10
+
+        try:
+            gp['verbose'] = int(gp['verbose'])
+        except KeyError:
+            gp['verbose'] = 1
 
         try:
             assert gp['tol'] < gp['var']
