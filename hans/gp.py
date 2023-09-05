@@ -69,13 +69,13 @@ class GaussianProcess:
             self.kern.lengthscale = kernel_dict['init_params'][1:active_dim+1]
 
         self.step = 0
-        self.history = []
 
-        # TODO: check if file exists, delete and overwrite // OR: append to netcdf
-        self.file = open(f'gp_{self.name}.out', 'a+')
+        self._init_outfile()
 
     def __del__(self):
         self.model.save_model(f'gp_{self.name}.json', compress=True)
+
+        self._write_history()
         self.file.close()
 
     @property
@@ -131,17 +131,23 @@ class GaussianProcess:
                 else:
                     break
 
-        self._write_history()
         self.step += 1
+
+    def _init_outfile(self):
+
+        fname = f'gp_{self.name}.out'
+        if os.path.exists(fname):
+            os.remove(fname)
+        self.file = open(fname, 'w')
+        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*]\n")
 
     def _write_history(self):
 
         per_step = [self.step, self.dbsize]
-        for param in self.kern.param_array:
-            per_step.append(param)
+        [per_step.append(param) for param in self.kern.param_array]
 
-        per_step = [str(item) for item in per_step]
-
+        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 1) * ["{:8e}"]
+        per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 
         self.file.write(out_str)
@@ -188,6 +194,8 @@ class GaussianProcess:
                 print(to_stdout, flush=True, end=end[i == num_restarts-1])
 
         self.model = best_model
+
+        self._write_history()
 
     def _fix_noise(self):
 
@@ -341,7 +349,7 @@ class Database:
                        for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
 
         if len(readme_list) > 0:
-            print(f"Loading {len(readme_list)} remote datasets based on dtool query.")
+            print(f"Loading {len(readme_list)} local datasets in '{self.gp['local']}'.")
 
             yaml = YAML()
             Xtrain = []
