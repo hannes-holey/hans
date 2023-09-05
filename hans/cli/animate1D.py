@@ -35,6 +35,7 @@ def get_parser():
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
     parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
+    parser.add_argument('-s', '--save', dest="save", action="store_true", default=False, help="Save to 'out.mp4'")
 
     return parser
 
@@ -64,7 +65,7 @@ def update_lines(i, A, t):
         line.set_ydata(A[i])
         adaptiveLimits(ax)
 
-    fig.suptitle("Time: {:.1g} s".format(t[i]))
+    fig.suptitle("Time: {:.1g}".format(t[i]))
 
 
 def main():
@@ -85,7 +86,7 @@ def main():
     global fig, ax
 
     if args.key is None:
-        fig, ax = plt.subplots(2, 2, sharex=True, figsize=(6.4, 4.8))
+        fig, ax = plt.subplots(2, 2, sharex=True, figsize=(12, 9))
         for key, axis in zip(ydata.keys(), ax.flat):
             axis.plot(xdata, ydata[key][0])
             axis.set_ylabel(ylabels[key])
@@ -107,6 +108,11 @@ def main():
             ax.set_xlabel(r'$y$')
 
     ani = animation.FuncAnimation(fig, update_lines, frames=len(time), fargs=(ydata, time), interval=100, repeat=True)
+
+    if args.save:
+        Writer = animation.writers['ffmpeg']
+        writer = Writer(fps=30, codec='libx264', extra_args=['-pix_fmt', 'yuv420p', '-crf', '25'])
+        ani.save("out.mp4", writer=writer)
 
     plt.show()
 
