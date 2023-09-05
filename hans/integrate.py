@@ -91,36 +91,21 @@ class ConservedField(VectorField):
 
         self.eps = np.nan
 
-        # Avg stress (xx, yy, xy)
+        # Avg stress (xx, yy, xy) -- no GP
         self.viscous_stress = SymStressField2D(disc, geometry, material, surface)
-
-        # Wall stress (xx, yy, zz, yz, xz, xy)
-        # self.upper_stress = SymStressField3D(disc, geometry, material, surface, gp)
-        # self.upper_stress.init_gp(self.height.field, self.field, 1)
-
-        # self.lower_stress = SymStressField3D(disc, geometry, material, surface, gp)
-        # self.lower_stress.init_gp(self.height.field, self.field, 0)
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
         self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
         # Equation of state
         self.eos = Material(self.material, gp)
 
-        # Initalize global training database
-        self.db = Database(self.height.field, self.eos.eos_pressure, self.wall_stress.gp_wall_stress, gp)
-
-        # Initialize GPs for pressure and wall stress
-        gp_wall = True
-        gp_eos = True
-
-        if gp_wall:
+        if gp is not None:
+            # Initalize global training database
+            self.db = Database(self.height.field, self.eos.eos_pressure, self.wall_stress.gp_wall_stress, gp)
             self.wall_stress.init_gp(self.field, self.db)
-        else:
-            self.wall_stress.gp = None
-
-        if gp_eos:
             self.eos.init_gp(self.field, self.db)
         else:
+            self.wall_stress.gp = None
             self.eos.gp = None
 
     @property

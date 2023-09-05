@@ -177,8 +177,7 @@ class Problem:
                     break
 
                 # GP stuck
-                if self.q.eps > 1e-3 and (self.q.wall_stress.GP.dbsize > 100
-                                          or self.q.eos.GP.dbsize > 100):
+                if self.q.eps > 1e-3 and i > 5000:
                     self._write_mode = 3
                     break
 
