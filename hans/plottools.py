@@ -126,7 +126,7 @@ class DatasetSelector:
         return out
 
     def _generate_input_dict(self, data, category):
-        out = {(k.split("_")[-1]): (v if v != "None" else None) for k, v in dict(data.__dict__).items() if k.startswith(category)}
+        out = {(k.split("_")[-1]): (v if str(v) != "None" else None) for k, v in dict(data.__dict__).items() if k.startswith(category)}
 
         if len(out) > 0:
             return out
