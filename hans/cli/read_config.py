@@ -47,7 +47,7 @@ def main():
 
         print(filename + ": \n" + 40 * "-")
         for name in data.ncattrs():
-            print("{:20s}: {:>}".format(name, getattr(data, name)))
+            print("{:20s}: {:>}".format(name, str(getattr(data, name))))
         print(40 * "-")
 
 
