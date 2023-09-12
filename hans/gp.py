@@ -196,6 +196,7 @@ class GaussianProcess:
         self.model = best_model
 
         self._write_history()
+        self.model.save_model(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.json'), compress=True)
 
     def _fix_noise(self):
 
@@ -342,6 +343,9 @@ class Database:
 
     def _init_local(self, input_dim, output_dim):
         # All datsets in local directory
+
+        if not os.path.exists(self.gp['local']):
+            os.makedirs(self.gp['local'])
 
         # Python 3.9+
         # str.removeprefix (prefix = f'file://{gethostname()}')
