@@ -35,6 +35,7 @@ from datetime import datetime, date
 from dtool_lookup_api import query
 
 from hans.tools import progressbar
+from hans.md.mpi import mpi_run
 
 
 class GaussianProcess:
@@ -403,33 +404,59 @@ class Database:
 
         Ynew = np.zeros((13, Xnew.shape[1]))
 
-        # EOS
+        # EOS masks
         eos_input_mask = [False, False, False, True, False, False]
         eos_output_mask = [True] + 12 * [False]
 
+        # Artificial noise
         pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
         snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(12, Xnew.shape[1]))
 
-        # TODO: replace with run MD & post-processing
-        Ynew[eos_output_mask, :] = self.eos_func(Xnew[eos_input_mask, :]) + pnoise
-
-        # Viscous stress
+        # Viscous stress masks
         visc_input_mask_h = 3 * [True] + 3 * [False]
         visc_input_mask_q = 3 * [False] + 3 * [True]
         visc_output_mask = [False] + 12 * [True]
 
-        # TODO: replace with run MD & post-processing
-        Ynew[visc_output_mask, :] = self.tau_func(Xnew[visc_input_mask_q, :], Xnew[visc_input_mask_h, :], 0.) + snoise
-
         for i in range(Xnew.shape[1]):
 
             num = self.Ytrain.shape[1] + i
-
             base_uri = self.gp['local']
-            # TODO: unique name
             ds_name = f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_dataset-{num}'
+            proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)  # TODO: unique name
+            proto_datapath = os.path.join(base_uri, ds_name, 'data')
 
-            proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)
+            kw_args = dict(gap_height=Xnew[0, i],
+                           vWall=0.12,  # TODO: not hard-coded
+                           density=Xnew[3, i],
+                           mass_flux=Xnew[4, i],
+                           slabfile="slab111-S.lammps")
+
+            # Run MD with fixed number of cores in proto dataset
+            nworker = 3
+            wdir = os.getcwd()
+            os.chdir(proto_datapath)
+
+            # Run
+            mpi_run(nworker, kw_args)
+
+            # Get stress
+            step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
+            press = np.mean(pL_t + pU_t) / 2.
+            tauL = np.mean(tauL_t)
+            tauU = np.mean(tauU_t)
+
+            os.chdir(wdir)
+
+            # TODO: replace with post-processing
+            # Ynew[eos_output_mask, i] = self.eos_func(Xnew[eos_input_mask, i]) + pnoise[:, i]
+            Ynew[0, i] = press
+
+            # TODO: replace with post-processing
+            # Ynew[visc_output_mask, i, None] = self.tau_func(Xnew[visc_input_mask_q, i, None],
+            #                                                 Xnew[visc_input_mask_h, i, None], 0.) + snoise[:, i, None]
+            Ynew[5, i] = tauL
+            Ynew[11, i] = tauU
+
             self.write_readme(Xnew[:, i], Ynew[:, i], os.path.join(base_uri, ds_name))
             proto_ds.freeze()
 
