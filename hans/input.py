@@ -749,6 +749,12 @@ class Input:
             except KeyError:
                 gp['storage'] = 's3://test-bucket'
 
+        # TODO: may need new category for MD parameters
+        try:
+            gp['ncpu'] = int(gp['ncpu'])
+        except KeyError:
+            gp['ncpu'] = 2
+
         # TODO: query
 
         try:
