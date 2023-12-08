@@ -432,7 +432,7 @@ class Database:
                            slabfile="slab111-S.lammps")
 
             # Run MD with fixed number of cores in proto dataset
-            nworker = 3
+            nworker = self.gp['ncpu']
             wdir = os.getcwd()
             os.chdir(proto_datapath)
 

@@ -8,13 +8,13 @@
 variable		temp equal 1.
 variable 		ndensAr equal ${input_dens} # 0.8 # 0.96 # 0.845
 
-variable   		cutoff equal 2.5
+variable   		cutoff equal 4.5
 
 # TIME
 variable		dt equal 0.005
-variable    	tinit equal 10000
-variable    	ttherm equal 10000
-variable		tsample equal 20000
+variable    	tinit equal 25000
+variable    	ttherm equal 25000
+variable		tsample equal 50000
 
 
 # LJ PARAMETERS
