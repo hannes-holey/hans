@@ -34,7 +34,7 @@ from socket import gethostname
 from datetime import datetime, date
 from dtool_lookup_api import query
 
-from hans.tools import progressbar
+from hans.tools import progressbar, bordered_text, abort
 from hans.md.mpi import mpi_run
 
 
@@ -120,11 +120,17 @@ class GaussianProcess:
                     aid = -1
                     next_id = xnext[aid]
 
-                    while next_id in new_ids:
-                        aid -= 1
+                    while self._similarity_check(next_id):
+                        aid -= -1
                         next_id = xnext[aid]
 
+                    # while next_id in new_ids:
+                    #     aid -= 1
+                    #     next_id = xnext[aid]
+
+                    
                     self._update_database(next_id)
+                    
                     new_ids.append(next_id)
 
                     self._fit()
@@ -164,7 +170,14 @@ class GaussianProcess:
 
     def _fit(self):
 
-        l0 = self.kernel_dict['init_params'][1:self.active_dim + 1]
+        # if init:
+        #     # use initial lengthscales at the beginningstart 
+        #     l0 = self.kernel_dict['init_params'][1:self.active_dim + 1]
+        # else:
+        #     # use previous ones
+        
+        l0 = np.copy(self.kern.param_array[1:])
+        print(l0)
 
         self._build_model()
 
@@ -196,6 +209,8 @@ class GaussianProcess:
 
         self.model = best_model
 
+        print(self.kern.param_array)
+
         self._write_history()
         self.model.save_model(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.json'), compress=True)
 
@@ -210,6 +225,39 @@ class GaussianProcess:
 
     def _get_solution(self):
         return self.sol
+
+    def _similarity_check(self, next_id):
+
+        Xsol = self._get_solution()
+
+        X_new = Xsol[:, next_id]
+
+        if X_new.ndim == 1:
+            X_new = X_new[:, None]
+
+        Hnew = self.db.gap_height(next_id)
+        Xnew = np.vstack([Hnew, X_new])
+
+        # Only compare height, density and mass flux
+        input_mask = [True, False, False, True, True, False]
+
+        out = False
+
+        print(f'GP_{self.name} requests new input: ', Xnew[input_mask, 0])
+
+        for i in range(Xnew.shape[1]):
+            for j in range(self.db.Xtrain.shape[1]):
+
+                var = self.kern.variance
+                similarity = (self.kern.K(Xnew[input_mask, i, None].T, self.db.Xtrain[input_mask, j, None].T) / var)[0][0]
+
+                if similarity > 0.98:
+                    print(f'DB entry {j} {self.db.Xtrain[input_mask, j]} is too similar ({similarity}). Skip!')
+                    out = True
+                    break
+        
+        return out
+
 
     def _update_database(self, next_id):
 
@@ -266,31 +314,35 @@ class GP_pressure(GaussianProcess):
 
     def __init__(self, db,
                  active_learning={'max_iter': 10, 'threshold': .1},
-                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-2, ], 'ARD': False},
+                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
 
         # self.Ytrain = np.empty((1, 0))
 
         Xmask = 6 * [False]
+        Xmask[0] = True
         Xmask[3] = True
+        Xmask[4] = True
 
         Ymask = 13 * [False]
         Ymask[0] = True
 
-        super().__init__(1, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+        super().__init__(3, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
 
     def _get_test_input(self):
         """
         Test data as input for GP prediction:
-        For pressure, only density is required
+        For pressure, only density is required (not with MD!)
         """
 
-        Xtest = self.sol[0]
-        if Xtest.ndim == 1:
-            Xtest = Xtest[:, None]
+        return np.vstack([self.db.h[0, :, 1], self.sol[0], self.sol[1]]).T
 
-        return Xtest
+        # Xtest = self.sol[0]
+        # if Xtest.ndim == 1:
+        #     Xtest = Xtest[:, None]
+
+        # return Xtest
 
 
 class Database:
@@ -382,19 +434,19 @@ class Database:
         Hnew = self.gap_height(next_id)
         Xnew = np.vstack([Hnew, Qnew])
 
-        # Only compare height, density and mass flux
-        input_mask = [True, False, False, True, True, False]
-        train_mask = Xnew.shape[1] * [True]
+        # # Only compare height, density and mass flux
+        # input_mask = [True, False, False, True, True, False]
+        # train_mask = Xnew.shape[1] * [True]
 
         # Find duplicates, there's a better way to do this for sure.
         # np.unique seems not an option, becaue it also sorts
-        for i in range(Xnew.shape[1]):
-            for j in range(self.Xtrain.shape[1]):
-                if np.allclose(Xnew[input_mask, i], self.Xtrain[input_mask, j]):
-                    train_mask[i] = False
-                    break
+        # for i in range(Xnew.shape[1]):
+        #     for j in range(self.Xtrain.shape[1]):
+        #         if np.allclose(Xnew[input_mask, i], self.Xtrain[input_mask, j]):
+        #             train_mask[i] = False
+        #             break
 
-        Xnew = Xnew[:, train_mask]
+        # Xnew = Xnew[:, train_mask]
 
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
@@ -435,6 +487,17 @@ class Database:
             nworker = self.gp['ncpu']
             wdir = os.getcwd()
             os.chdir(proto_datapath)
+
+            
+            text = f"""Run next MD simulation in:
+{proto_datapath}
+---
+Gap height: {Xnew[0, i]}
+Mass density: {Xnew[3, i]}
+Mass flux: {Xnew[4, i]}
+"""
+
+            print(bordered_text(text))
 
             # Run
             mpi_run(nworker, kw_args)
@@ -517,3 +580,4 @@ class Database:
             Hnew = Hnew[:, None]
 
         return Hnew
+

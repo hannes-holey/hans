@@ -46,7 +46,7 @@ class Material:
 
         if self.gp is not None:
             active_learning = {'max_iter': 200, 'threshold': self.gp['ptol'], 'start': self.gp['start']}
-            kernel_dict = {'type': 'Mat32', 'init_params': [self.gp['pvar'], self.gp['lrho']], 'ARD': False}
+            kernel_dict = {'type': 'Mat32', 'init_params': [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj']], 'ARD': True}
             optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
             noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['snp']}
 

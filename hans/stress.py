@@ -244,7 +244,7 @@ class SymStressField3D(TensorField):
 
             self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [wall], active_learning, kernel_dict, optimizer)
 
-            init_ids = [1, ]
+            init_ids = [self.disc['Nx'] // 4, self.disc['Nx'] // 2, 3 * self.disc['Nx'] // 4]
 
             # Initialize
             self.GP.setup(q, init_ids)
@@ -815,7 +815,10 @@ class WallStressField3D(DoubleTensorField):
 
             # Initialize
             q = sol[:, :, 1]  # 1D only (centerline)
-            init_ids = [1, -2]
+
+            Nstart = 4
+            init_ids = np.arange(0, self.disc['Nx'], self.disc['Nx'] // (Nstart + 1))[1:]
+            
             self.GP.setup(q, init_ids)
         else:
             self.GP = Mock()

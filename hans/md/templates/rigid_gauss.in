@@ -12,9 +12,9 @@ variable   		cutoff equal 4.5
 
 # TIME
 variable		dt equal 0.005
-variable    	tinit equal 25000
-variable    	ttherm equal 25000
-variable		tsample equal 50000
+variable    	tinit equal 50000
+variable    	ttherm equal 100000
+variable		tsample equal 500000
 
 
 # LJ PARAMETERS
