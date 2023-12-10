@@ -70,6 +70,7 @@ class GaussianProcess:
             self.kern.lengthscale = kernel_dict['init_params'][1:active_dim+1]
 
         self.step = 0
+        self.counter = -1
 
         self._init_outfile()
 
@@ -106,37 +107,43 @@ class GaussianProcess:
 
     def active_learning_step(self, q):
 
-        if self.step > self.active_learning['start']:
+        # intervals = np.array([0, 10, 20, 30, 40])
+        # thresholds = [1., 0.1, 0.01, 0.001, 0.001]
 
-            self._set_solution(q)
-            new_ids = []
-            for i in range(self.active_learning['max_iter']):
+        if self.step < self.active_learning['start']:
+            # Linear interpolation from zero to target value for first couple of steps
+            tstart = 1.
+            threshold = tstart - self.step * (tstart - self.active_learning['threshold']) / self.active_learning['start']
+        else:
+            threshold = self.active_learning['threshold']
+            # threshold = thresholds[np.sum(self.step > intervals) - 1]
 
-                mean, cov = self.predict()
+        self._set_solution(q)
 
-                if self.maxvar > self.active_learning['threshold']:
-                    # AL
-                    xnext = np.argsort(np.diag(cov))
-                    aid = -1
+        for i in range(self.active_learning['max_iter']):
+
+            self.counter -= 1
+            mean, cov = self.predict()
+
+            if self.maxvar > threshold and self.counter < 0:
+                # AL
+                xnext = np.argsort(np.diag(cov))
+                aid = -1
+                next_id = xnext[aid]
+
+                while self._similarity_check(next_id) and aid > -len(xnext) // 2:
+                    aid -= -1
                     next_id = xnext[aid]
+            
+                # Refit
+                self._update_database(next_id)
+                self._fit()
 
-                    while self._similarity_check(next_id):
-                        aid -= -1
-                        next_id = xnext[aid]
+                # Wait for 1 step before next fit
+                self.counter = 1
 
-                    # while next_id in new_ids:
-                    #     aid -= 1
-                    #     next_id = xnext[aid]
-
-                    
-                    self._update_database(next_id)
-                    
-                    new_ids.append(next_id)
-
-                    self._fit()
-
-                else:
-                    break
+            else:
+                break
 
         self.step += 1
 
@@ -177,7 +184,7 @@ class GaussianProcess:
         #     # use previous ones
         
         l0 = np.copy(self.kern.param_array[1:])
-        print(l0)
+        print(self.kern.param_array)
 
         self._build_model()
 
@@ -205,6 +212,7 @@ class GaussianProcess:
             if self.optimizer['verbose']:
                 to_stdout = f'DB size {self.dbsize:3d} | '
                 to_stdout += f'Fit ({self.name}) {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
+                to_stdout += f' | Maximum variance: {self.maxvar:3g}'
                 print(to_stdout, flush=True, end=end[i == num_restarts-1])
 
         self.model = best_model
@@ -251,7 +259,7 @@ class GaussianProcess:
                 var = self.kern.variance
                 similarity = (self.kern.K(Xnew[input_mask, i, None].T, self.db.Xtrain[input_mask, j, None].T) / var)[0][0]
 
-                if similarity > 0.98:
+                if np.isclose(similarity, 1.):
                     print(f'DB entry {j} {self.db.Xtrain[input_mask, j]} is too similar ({similarity}). Skip!')
                     out = True
                     break
@@ -477,48 +485,51 @@ class Database:
             proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)  # TODO: unique name
             proto_datapath = os.path.join(base_uri, ds_name, 'data')
 
-            kw_args = dict(gap_height=Xnew[0, i],
-                           vWall=0.12,  # TODO: not hard-coded
-                           density=Xnew[3, i],
-                           mass_flux=Xnew[4, i],
-                           slabfile="slab111-S.lammps")
+            if bool(self.gp['lmp']):
+                kw_args = dict(gap_height=Xnew[0, i],
+                               vWall=0.12,  # TODO: not hard-coded
+                               density=Xnew[3, i],
+                               mass_flux=Xnew[4, i],
+                               slabfile="slab111-S.lammps")
 
-            # Run MD with fixed number of cores in proto dataset
-            nworker = self.gp['ncpu']
-            wdir = os.getcwd()
-            os.chdir(proto_datapath)
+                # Run MD with fixed number of cores in proto dataset
+                nworker = self.gp['ncpu']
+                wdir = os.getcwd()
+                os.chdir(proto_datapath)
 
-            
-            text = f"""Run next MD simulation in:
-{proto_datapath}
----
-Gap height: {Xnew[0, i]}
-Mass density: {Xnew[3, i]}
-Mass flux: {Xnew[4, i]}
-"""
+                
+                text = f"""Run next MD simulation in:
+    {proto_datapath}
+    ---
+    Gap height: {Xnew[0, i]}
+    Mass density: {Xnew[3, i]}
+    Mass flux: {Xnew[4, i]}
+    """
 
-            print(bordered_text(text))
+                print(bordered_text(text))
 
-            # Run
-            mpi_run(nworker, kw_args)
+                # Run
+                mpi_run(nworker, kw_args)
 
-            # Get stress
-            step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
-            press = np.mean(pL_t + pU_t) / 2.
-            tauL = np.mean(tauL_t)
-            tauU = np.mean(tauU_t)
+                # Get stress
+                step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
+                press = np.mean(pL_t + pU_t) / 2.
+                tauL = np.mean(tauL_t)
+                tauU = np.mean(tauU_t)
 
-            os.chdir(wdir)
+                os.chdir(wdir)
 
-            # TODO: replace with post-processing
-            # Ynew[eos_output_mask, i] = self.eos_func(Xnew[eos_input_mask, i]) + pnoise[:, i]
-            Ynew[0, i] = press
+                Ynew[0, i] = press
+                Ynew[5, i] = tauL
+                Ynew[11, i] = tauU
 
-            # TODO: replace with post-processing
-            # Ynew[visc_output_mask, i, None] = self.tau_func(Xnew[visc_input_mask_q, i, None],
-            #                                                 Xnew[visc_input_mask_h, i, None], 0.) + snoise[:, i, None]
-            Ynew[5, i] = tauL
-            Ynew[11, i] = tauU
+            else:
+
+                Ynew[eos_output_mask, i] = self.eos_func(Xnew[eos_input_mask, i]) + pnoise[:, i]
+                
+                Ynew[visc_output_mask, i, None] = self.tau_func(Xnew[visc_input_mask_q, i, None],
+                                                             Xnew[visc_input_mask_h, i, None], 0.) + snoise[:, i, None]
+
 
             self.write_readme(Xnew[:, i], Ynew[:, i], os.path.join(base_uri, ds_name))
             proto_ds.freeze()

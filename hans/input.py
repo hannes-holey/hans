@@ -751,6 +751,11 @@ class Input:
 
         # TODO: may need new category for MD parameters
         try:
+            gp['lmp'] = int(gp['lmp'])
+        except KeyError:
+            gp['lmp'] = 1
+
+        try:
             gp['ncpu'] = int(gp['ncpu'])
         except KeyError:
             gp['ncpu'] = 2
