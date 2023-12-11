@@ -816,8 +816,8 @@ class WallStressField3D(DoubleTensorField):
             # Initialize
             q = sol[:, :, 1]  # 1D only (centerline)
 
-            Nstart = 4
-            init_ids = np.arange(0, self.disc['Nx'], self.disc['Nx'] // (Nstart + 1))[1:]
+            Ninit = self.gp['Ninit']
+            init_ids = np.arange(0, self.disc['Nx'], self.disc['Nx'] // (Ninit + 1))[1:]
             
             self.GP.setup(q, init_ids)
         else:

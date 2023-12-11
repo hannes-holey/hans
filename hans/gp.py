@@ -119,31 +119,67 @@ class GaussianProcess:
             # threshold = thresholds[np.sum(self.step > intervals) - 1]
 
         self._set_solution(q)
+        mean, cov = self.predict()
 
-        for i in range(self.active_learning['max_iter']):
+        while self.maxvar > threshold:
+            success = False
 
-            self.counter -= 1
-            mean, cov = self.predict()
-
-            if self.maxvar > threshold and self.counter < 0:
-                # AL
-                xnext = np.argsort(np.diag(cov))
-                aid = -1
-                next_id = xnext[aid]
-
-                while self._similarity_check(next_id) and aid > -len(xnext) // 2:
-                    aid -= -1
-                    next_id = xnext[aid]
+            # sort indices with increasing variance
+            xnext = np.argsort(np.diag(cov))
             
-                # Refit
-                self._update_database(next_id)
+            # try to find a point not too close to previous ones
+            for x in xnext[::-1]:
+                if not(self._similarity_check(x)):
+                    # Refit
+                    self._update_database(x)
+                    self._fit()
+                    mean, cov = self.predict()
+                    success = True
+                    break
+
+            if not(success):
+                # If not possible, use the max variance point anyways
+                self._update_database(xnext[-1])
                 self._fit()
+                mean, cov = self.predict()
+    
+            # Wait for 1 step before next fit
+            # self.counter = 1
+            # AL
+            # aid = -1
+            # next_id = xnext[aid]
 
-                # Wait for 1 step before next fit
-                self.counter = 1
+        # self.counter -= 1
+        # for i in range(self.active_learning['max_iter']):
 
-            else:
-                break
+        #     mean, cov = self.predict()
+
+        #     if self.maxvar > threshold and self.counter < 0:
+        #         # AL
+        #         xnext = np.argsort(np.diag(cov))
+        #         aid = -1
+        #         next_id = xnext[aid]
+
+        #         for x in xnext[::-1]:
+        #             if not(self._similarity_check(x)):
+        #                 # Refit
+        #                 self._update_database(next_id)
+        #                 self._fit()
+    
+        #                 # Wait for 1 step before next fit
+        #                 self.counter = 1
+        #             else:
+        #                 pass
+
+        #         # while self._similarity_check(next_id) and aid > -len(xnext) // 2:
+        #         #     aid -= -1
+        #         #     next_id = xnext[aid]
+            
+        #         # # Refit
+        #         # self._update_database(next_id)
+        #         # self._fit()
+        #     else:
+        #         break
 
         self.step += 1
 
@@ -183,9 +219,8 @@ class GaussianProcess:
         # else:
         #     # use previous ones
         
-        l0 = np.copy(self.kern.param_array[1:])
-        print(self.kern.param_array)
-
+        l0 = np.copy(self.kern.param_array[:])
+        
         self._build_model()
 
         best_mll = np.inf
@@ -197,8 +232,9 @@ class GaussianProcess:
         for i in range(num_restarts):
 
             try:
-                # Randomize hyperparameters parameters (lengthscale only)
-                self.kern.lengthscale = l0 * np.exp(np.random.normal(size=self.active_dim))
+                # Randomize hyperparameters parameters
+                self.kern.lengthscale = l0[1:] * np.exp(np.random.normal(size=self.active_dim))
+                self.kern.variance = l0[0] * np.exp(np.random.normal())
                 self.model.optimize('bfgs', max_iters=100)
             except np.linalg.LinAlgError:
                 print('LinAlgError: Skip optimization step')
@@ -217,7 +253,7 @@ class GaussianProcess:
 
         self.model = best_model
 
-        print(self.kern.param_array)
+        # print(self.kern.param_array)
 
         self._write_history()
         self.model.save_model(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.json'), compress=True)

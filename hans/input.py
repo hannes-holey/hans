@@ -756,6 +756,11 @@ class Input:
             gp['lmp'] = 1
 
         try:
+            gp['Ninit'] = int(gp['Ninit'])
+        except KeyError:
+            gp['Ninit'] = 4
+
+        try:
             gp['ncpu'] = int(gp['ncpu'])
         except KeyError:
             gp['ncpu'] = 2
