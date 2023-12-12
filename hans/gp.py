@@ -188,7 +188,7 @@ class GaussianProcess:
         fname = f'gp_{self.name}.out'
         if os.path.exists(fname):
             os.remove(fname)
-        self.file = open(fname, 'w')
+        self.file = open(fname, 'w', buffering=1)
         self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*]\n")
 
     def _write_history(self):
