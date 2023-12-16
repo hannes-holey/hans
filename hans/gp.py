@@ -87,7 +87,9 @@ class GaussianProcess:
     def setup(self, q, init_ids):
         self._set_solution(q)
 
-        if self.dbsize == 0:
+        if self.dbsize < len(init_ids):
+            print(self.dbsize, init_ids, len(init_ids), self.name)
+
             self._update_database(init_ids)
 
         self._fit()

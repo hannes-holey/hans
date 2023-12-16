@@ -817,7 +817,7 @@ class WallStressField3D(DoubleTensorField):
             q = sol[:, :, 1]  # 1D only (centerline)
 
             Ninit = self.gp['Ninit']
-            init_ids = np.arange(0, self.disc['Nx'], self.disc['Nx'] // (Ninit + 1))[1:]
+            init_ids = np.arange(0, self.disc['Nx'], self.disc['Nx'] // (Ninit + 1))[1:-1]
             
             self.GP.setup(q, init_ids)
         else:
@@ -854,7 +854,7 @@ class WallStressField3D(DoubleTensorField):
             Field of slip lengths.
         """
 
-        if self.gp is not None:
+        if self.gp is not None and self.ncalls > 2 * self.gp['start']:
 
             if self.ncalls % 2 == 0:
                 self.GP.active_learning_step(q[:, :, 1])
@@ -869,6 +869,7 @@ class WallStressField3D(DoubleTensorField):
         else:
             self.field[:6] = self.get_bot(q, h, Ls)
             self.field[6:] = self.get_top(q, h, Ls)
+            self.ncalls += 1
 
     def get_top(self, q, h, Ls):
 

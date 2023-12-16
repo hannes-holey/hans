@@ -62,9 +62,7 @@ class Material:
 
     def get_pressure(self, q):
 
-        if self.gp is None:  # or self.ncalls < 400:
-            p = self.eos_pressure(q[0])
-        else:
+        if self.gp is not None and self.ncalls > 4 * self.gp['start']:
             # In contrast to viscous stress, pressure is not stored internally but just returned.
             # There are four calls to the EOS within one time step.
             # We want to perform an active learning step only once.
@@ -73,6 +71,9 @@ class Material:
                 self.GP.active_learning_step(q[:, :, 1])
 
             p, cov = self.GP.predict()
+        else:
+            p = self.eos_pressure(q[0])
+
 
         self.ncalls += 1
 
