@@ -35,7 +35,7 @@ variable		epsWW equal ${epsAu}/${epsAr}
 variable		sigFW equal (1.0+v_sigWW)/2
 variable		epsFW equal sqrt(v_epsWW)
 
-variable 		gapheight equal ${input_gap}/${sigAr}
+variable 		gapheight equal ${input_gap}
 
 #############
 
