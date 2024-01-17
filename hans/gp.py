@@ -93,6 +93,7 @@ class GaussianProcess:
             self._initialize_database()
 
         self._fit()
+        self._write_history()
 
     def predict(self, skips=0):
 
