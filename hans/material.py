@@ -45,17 +45,29 @@ class Material:
     def init_gp(self, sol, db):
 
         if self.gp is not None:
-            active_learning = {'max_iter': 200, 'threshold': self.gp['ptol'], 'start': self.gp['start']}
-            kernel_dict = {'type': 'Mat32', 'init_params': [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj']], 'ARD': True}
-            optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
-            noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['snp']}
+            active_learning = {'max_iter': 200,
+                               'threshold': self.gp['ptol'],
+                               'start': self.gp['start'],
+                               'Ninit': self.gp['Ninit'],
+                               'sampling': self.gp['sampling']}
+
+            kernel_dict = {'type': 'Mat32',
+                           'init_params': [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
+                           'ARD': True}
+
+            optimizer = {'type': 'bfgs',
+                         'num_restarts': self.gp['num_restarts'],
+                         'verbose': bool(self.gp['verbose'])}
+
+            noise = {'type': 'Gaussian',
+                     'fixed': bool(self.gp['fix']),
+                     'variance': self.gp['snp']}
 
             self.GP = GP_pressure(db, active_learning, kernel_dict, optimizer, noise)
 
             # Initialize
             q = sol[:, :, 1]  # 1D only
-            init_ids = [1, -2]
-            self.GP.setup(q, init_ids)
+            self.GP.setup(q)
         else:
             self.GP = Mock()
             self.GP.dbsize = 0
@@ -68,12 +80,11 @@ class Material:
             # We want to perform an active learning step only once.
             if self.ncalls % 4 == 0:
                 # Active learning needs full q, in order to write into global DB
-                self.GP.active_learning_step(q[:, :, 1])
-
-            p, cov = self.GP.predict()
+                p, cov = self.GP.active_learning_step(q[:, :, 1])
+            else:
+                p, cov = self.GP.predict()
         else:
             p = self.eos_pressure(q[0])
-
 
         self.ncalls += 1
 

@@ -804,22 +804,29 @@ class WallStressField3D(DoubleTensorField):
 
         if self.gp is not None:
 
-            active_learning = {'max_iter': self.disc['Nx'], 'threshold': self.gp['tol'], 'start': self.gp['start']}
+            active_learning = {'max_iter': self.disc['Nx'],
+                               'threshold': self.gp['tol'],
+                               'start': self.gp['start'],
+                               'Ninit': self.gp['Ninit'],
+                               'sampling': self.gp['sampling']}
+
             kernel_dict = {'type': 'Mat32',
                            'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
                            'ARD': True}
-            noise = {'type': 'Gaussian',  'fixed': bool(self.gp['fix']), 'variance': self.gp['sns']}
-            optimizer = {'type': 'bfgs', 'num_restarts': self.gp['num_restarts'], 'verbose': bool(self.gp['verbose'])}
+
+            noise = {'type': 'Gaussian', 
+                     'fixed': bool(self.gp['fix']), 
+                     'variance': self.gp['sns']}
+
+            optimizer = {'type': 'bfgs',
+                         'num_restarts': self.gp['num_restarts'],
+                         'verbose': bool(self.gp['verbose'])}
 
             self.GP = GP_stress(db, active_learning, kernel_dict, optimizer, noise)
 
             # Initialize
             q = sol[:, :, 1]  # 1D only (centerline)
-
-            Ninit = self.gp['Ninit']
-            init_ids = np.arange(0, self.disc['Nx'], self.disc['Nx'] // (Ninit + 1))[1:-1]
-            
-            self.GP.setup(q, init_ids)
+            self.GP.setup(q)        
         else:
             self.GP = Mock()
             self.GP.dbsize = 0
@@ -857,9 +864,9 @@ class WallStressField3D(DoubleTensorField):
         if self.gp is not None and self.ncalls > 2 * self.gp['start']:
 
             if self.ncalls % 2 == 0:
-                self.GP.active_learning_step(q[:, :, 1])
-
-            mean, cov = self.GP.predict()
+                mean, cov = self.GP.active_learning_step(q[:, :, 1])
+            else:
+                mean, cov = self.GP.predict()
 
             self.field[4] = mean[:, 0, None]
             self.field[10] = mean[:, 1, None]

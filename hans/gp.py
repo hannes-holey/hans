@@ -33,6 +33,8 @@ from getpass import getuser
 from socket import gethostname
 from datetime import datetime, date
 from dtool_lookup_api import query
+from scipy.stats import qmc
+
 
 from hans.tools import progressbar, bordered_text, abort
 from hans.md.mpi import mpi_run
@@ -45,7 +47,7 @@ class GaussianProcess:
     name: str
 
     def __init__(self, active_dim, db, Xmask, Ymask,  # func, func_args,
-                 active_learning={'max_iter': 10, 'threshold': .1, 'start': 20},
+                 active_learning={'max_iter': 10, 'threshold': .1, 'start': 20, 'Ninit': 5, 'sampling': 'lhc'},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
@@ -84,41 +86,37 @@ class GaussianProcess:
     def dbsize(self):
         return self.db.Xtrain.shape[1]
 
-    def setup(self, q, init_ids):
+    def setup(self, q):
         self._set_solution(q)
 
-        if self.dbsize < len(init_ids):
-            print(self.dbsize, init_ids, len(init_ids), self.name)
-
-            self._update_database(init_ids)
+        if self.dbsize < self.active_learning['Ninit']:    
+            self._initialize_database()
 
         self._fit()
 
     def predict(self):
 
+        refit = False
         # Check if dbsize changed and refit
         if self.last_fit_dbsize != self.dbsize:
+            print(f'GP_{self.name}')
+            print(f'Max. variance before fit: {self.maxvar:.3e}')
             self._fit()
+            refit = True
 
         Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
 
         self.maxvar = np.amax(np.diag(cov))
+        if refit:
+            print(f'Max. variance after fit: {self.maxvar:.3e}')
+            print('')
 
         return mean, cov
 
     def active_learning_step(self, q):
-
-        # intervals = np.array([0, 10, 20, 30, 40])
-        # thresholds = [1., 0.1, 0.01, 0.001, 0.001]
-
-        if self.step < self.active_learning['start']:
-            # Linear interpolation from zero to target value for first couple of steps
-            tstart = 1.
-            threshold = tstart - self.step * (tstart - self.active_learning['threshold']) / self.active_learning['start']
-        else:
-            threshold = self.active_learning['threshold']
-            # threshold = thresholds[np.sum(self.step > intervals) - 1]
+        
+        threshold = self.active_learning['threshold']    
 
         self._set_solution(q)
         mean, cov = self.predict()
@@ -132,9 +130,8 @@ class GaussianProcess:
             # try to find a point not too close to previous ones
             for x in xnext[::-1]:
                 if not(self._similarity_check(x)):
-                    # Refit
+                    # Add to training data
                     self._update_database(x)
-                    self._fit()
                     mean, cov = self.predict()
                     success = True
                     break
@@ -145,45 +142,9 @@ class GaussianProcess:
                 self._fit()
                 mean, cov = self.predict()
     
-            # Wait for 1 step before next fit
-            # self.counter = 1
-            # AL
-            # aid = -1
-            # next_id = xnext[aid]
-
-        # self.counter -= 1
-        # for i in range(self.active_learning['max_iter']):
-
-        #     mean, cov = self.predict()
-
-        #     if self.maxvar > threshold and self.counter < 0:
-        #         # AL
-        #         xnext = np.argsort(np.diag(cov))
-        #         aid = -1
-        #         next_id = xnext[aid]
-
-        #         for x in xnext[::-1]:
-        #             if not(self._similarity_check(x)):
-        #                 # Refit
-        #                 self._update_database(next_id)
-        #                 self._fit()
-    
-        #                 # Wait for 1 step before next fit
-        #                 self.counter = 1
-        #             else:
-        #                 pass
-
-        #         # while self._similarity_check(next_id) and aid > -len(xnext) // 2:
-        #         #     aid -= -1
-        #         #     next_id = xnext[aid]
-            
-        #         # # Refit
-        #         # self._update_database(next_id)
-        #         # self._fit()
-        #     else:
-        #         break
-
         self.step += 1
+
+        return mean, cov
 
     def _init_outfile(self):
 
@@ -214,27 +175,25 @@ class GaussianProcess:
         self.last_fit_dbsize = self.dbsize
 
     def _fit(self):
+    
+        # Use initial kernel parameters if:
+        # [database is small, likelihood is low, time step is low, ...]
+        if self.dbsize < 10:
+            l0 = self.kernel_dict['init_params'][:]
+        else: 
+            l0 = np.copy(self.kern.param_array[:])
 
-        # if init:
-        #     # use initial lengthscales at the beginningstart 
-        #     l0 = self.kernel_dict['init_params'][1:self.active_dim + 1]
-        # else:
-        #     # use previous ones
-        
-        l0 = np.copy(self.kern.param_array[:])
-        
         self._build_model()
 
         best_mll = np.inf
         best_model = self.model
 
-        end = {True: '\n', False: '\r'}
         num_restarts = self.optimizer['num_restarts']
 
         for i in range(num_restarts):
 
             try:
-                # Randomize hyperparameters parameters
+                # Randomize hyperparameters
                 self.kern.lengthscale = l0[1:] * np.exp(np.random.normal(size=self.active_dim))
                 self.kern.variance = l0[0] * np.exp(np.random.normal())
                 self.model.optimize('bfgs', max_iters=100)
@@ -249,16 +208,15 @@ class GaussianProcess:
 
             if self.optimizer['verbose']:
                 to_stdout = f'DB size {self.dbsize:3d} | '
-                to_stdout += f'Fit ({self.name}) {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
-                to_stdout += f' | Maximum variance: {self.maxvar:3g}'
-                print(to_stdout, flush=True, end=end[i == num_restarts-1])
+                to_stdout += f'Fit {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
+                print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
 
         self.model = best_model
 
-        # print(self.kern.param_array)
-
         self._write_history()
         self.model.save_model(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.json'), compress=True)
+
+
 
     def _fix_noise(self):
 
@@ -289,8 +247,6 @@ class GaussianProcess:
 
         out = False
 
-        print(f'GP_{self.name} requests new input: ', Xnew[input_mask, 0])
-
         for i in range(Xnew.shape[1]):
             for j in range(self.db.Xtrain.shape[1]):
 
@@ -304,6 +260,10 @@ class GaussianProcess:
         
         return out
 
+    def _initialize_database(self):
+
+        Xsol = self._get_solution()
+        self.db.sampling(Xsol, self.active_learning['Ninit'], self.active_learning['sampling'])
 
     def _update_database(self, next_id):
 
@@ -475,24 +435,74 @@ class Database:
     def update(self, Qnew, next_id):
         self._update_inputs(Qnew, next_id)
 
+
+    def sampling(self, Q, Ninit, sampling='lhc'):
+        """Build initial database with different sampling strategies.
+        
+        Select points in two-dimensional space (gap height, flux) to
+        initialize training database. Choose between random, latin hypercube, 
+        and Sobol sampling.
+
+
+        Parameters
+        ----------
+        Q : [type]
+            [description]
+        Ninit : [type]
+            [description]
+        """
+
+        h_bounds = [np.amin(self.h), np.amax(self.h)] 
+        j_bounds = [0., 2. * np.mean(Q[1, :])]
+
+        l_bounds = [np.amin(self.h), 0.0]
+        u_bounds = [np.amax(self.h), 2. *  np.mean(Q[1, :])]
+
+        # Sampling 
+        if sampling == 'random':
+            h_init = h_bounds[0] + np.random.random_sample([Ninit,]) * (h_bounds[1] - h_bounds[0])
+            jx_init = j_bounds[0] + np.random.random_sample([Ninit,]) * (j_bounds[1] - j_bounds[0])
+        elif sampling == 'lhc':
+            
+            sampler = qmc.LatinHypercube(d=2)
+            sample = sampler.random(n=Ninit)
+            
+            scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
+            h_init = scaled_samples[:, 0]
+            jx_init = scaled_samples[:, 1]
+
+        elif sampling == 'sobol':
+            sampler = qmc.Sobol(d=2)
+
+            m = int(np.log2(Ninit))
+            if int(2**m) != Ninit:
+                m = int(np.ceil(np.log2(Ninit)))
+                print(f'Sample size should be a power of 2 for Sobol sampling. Use Ninit={2**m}.')
+            sample = sampler.random_base2(m=m)
+            
+            scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
+            h_init = scaled_samples[:, 0]
+            jx_init = scaled_samples[:, 1]
+    
+        # Remaining inputs (constant)
+        rho_init = np.ones_like(jx_init) * np.mean(Q[0, :])
+        jy_init = np.zeros_like(jx_init)
+        h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])
+        h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
+
+        # Assemble
+        Hnew = np.vstack([h_init, h_gradx_init, h_grady_init])  
+        Qnew = np.vstack([rho_init, jx_init, jy_init])
+
+        Xnew = np.vstack([Hnew, Qnew])
+        self.Xtrain = np.hstack([self.Xtrain, Xnew])
+
+        self._update_outputs(Xnew)
+
     def _update_inputs(self, Qnew, next_id):
 
         Hnew = self.gap_height(next_id)
         Xnew = np.vstack([Hnew, Qnew])
-
-        # # Only compare height, density and mass flux
-        # input_mask = [True, False, False, True, True, False]
-        # train_mask = Xnew.shape[1] * [True]
-
-        # Find duplicates, there's a better way to do this for sure.
-        # np.unique seems not an option, becaue it also sorts
-        # for i in range(Xnew.shape[1]):
-        #     for j in range(self.Xtrain.shape[1]):
-        #         if np.allclose(Xnew[input_mask, i], self.Xtrain[input_mask, j]):
-        #             train_mask[i] = False
-        #             break
-
-        # Xnew = Xnew[:, train_mask]
 
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 

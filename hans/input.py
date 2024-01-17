@@ -761,6 +761,11 @@ class Input:
             gp['Ninit'] = 4
 
         try:
+            gp['sampling'] = gp['sampling']
+        except KeyError:
+            gp['sampling'] = 'lhc'
+
+        try:
             gp['ncpu'] = int(gp['ncpu'])
         except KeyError:
             gp['ncpu'] = 2
