@@ -94,12 +94,13 @@ class GaussianProcess:
 
         self._fit()
 
-    def predict(self):
+    def predict(self, skips=0):
 
         refit = False
         # Check if dbsize changed and refit
         if self.last_fit_dbsize != self.dbsize:
-            print(f'GP_{self.name}')
+            print('')
+            print(f'GP_{self.name}' + (f': (skipped {skips+1} inputs)' if skips > 0 else ':'))
             print(f'Max. variance before fit: {self.maxvar:.3e}')
             self._fit()
             refit = True
@@ -125,23 +126,22 @@ class GaussianProcess:
             success = False
 
             # sort indices with increasing variance
-            xnext = np.argsort(np.diag(cov))
+            xnext = np.argsort(np.diag(cov))[1:-1]
             
             # try to find a point not too close to previous ones
-            for x in xnext[::-1]:
+            for i, x in enumerate(xnext[::-1]):
                 if not(self._similarity_check(x)):
                     # Add to training data
                     self._update_database(x)
-                    mean, cov = self.predict()
+                    mean, cov = self.predict(skips=i)
                     success = True
-                    break
+                    break        
 
             if not(success):
                 # If not possible, use the max variance point anyways
                 self._update_database(xnext[-1])
-                self._fit()
-                mean, cov = self.predict()
-    
+                mean, cov = self.predict(skips=i)
+
         self.step += 1
 
         return mean, cov
@@ -152,14 +152,15 @@ class GaussianProcess:
         if os.path.exists(fname):
             os.remove(fname)
         self.file = open(fname, 'w', buffering=1)
-        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*]\n")
+        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar\n")
 
     def _write_history(self):
 
         per_step = [self.step, self.dbsize]
         [per_step.append(param) for param in self.kern.param_array]
+        per_step.append(self.maxvar)
 
-        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 1) * ["{:8e}"]
+        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 2) * ["{:8e}"]
         per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 
@@ -230,35 +231,30 @@ class GaussianProcess:
     def _get_solution(self):
         return self.sol
 
-    def _similarity_check(self, next_id):
+    def _similarity_check(self, index):
 
         Xsol = self._get_solution()
 
-        X_new = Xsol[:, next_id]
+        X_new = Xsol[:, index, None]
 
-        if X_new.ndim == 1:
-            X_new = X_new[:, None]
-
-        Hnew = self.db.gap_height(next_id)
+        Hnew = self.db.gap_height(index)
         Xnew = np.vstack([Hnew, X_new])
 
         # Only compare height, density and mass flux
         input_mask = [True, False, False, True, True, False]
 
-        out = False
+        similar_point_exists = False
 
-        for i in range(Xnew.shape[1]):
-            for j in range(self.db.Xtrain.shape[1]):
+        for j in range(self.db.Xtrain.shape[1]):
 
-                var = self.kern.variance
-                similarity = (self.kern.K(Xnew[input_mask, i, None].T, self.db.Xtrain[input_mask, j, None].T) / var)[0][0]
+            var = self.kern.variance
+            similarity = (self.kern.K(Xnew[input_mask, 0, None].T, self.db.Xtrain[input_mask, j, None].T) / var)[0][0]
 
-                if np.isclose(similarity, 1.):
-                    print(f'DB entry {j} {self.db.Xtrain[input_mask, j]} is too similar ({similarity}). Skip!')
-                    out = True
-                    break
-        
-        return out
+            if np.isclose(similarity, 1.):
+                similar_point_exists = True
+                break
+    
+        return similar_point_exists
 
     def _initialize_database(self):
 
