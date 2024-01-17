@@ -107,9 +107,10 @@ class GaussianProcess:
 
         Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
-
         self.maxvar = np.amax(np.diag(cov))
+        
         if refit:
+            self._write_history()
             print(f'Max. variance after fit: {self.maxvar:.3e}')
             print('')
 
@@ -213,10 +214,7 @@ class GaussianProcess:
                 print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
 
         self.model = best_model
-
-        self._write_history()
         self.model.save_model(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.json'), compress=True)
-
 
 
     def _fix_noise(self):
