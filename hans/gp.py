@@ -154,15 +154,16 @@ class GaussianProcess:
         if os.path.exists(fname):
             os.remove(fname)
         self.file = open(fname, 'w', buffering=1)
-        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar\n")
+        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar nmll\n")
 
     def _write_history(self):
 
         per_step = [self.step, self.dbsize]
         [per_step.append(param) for param in self.kern.param_array]
         per_step.append(self.maxvar)
+        per_step.append(-self.model.log_likelihood())
 
-        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 2) * ["{:8e}"]
+        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 2) * ["{:8e}"] + ["{:+8e}"]
         per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 
@@ -181,7 +182,7 @@ class GaussianProcess:
     
         # Use initial kernel parameters if:
         # [database is small, likelihood is low, time step is low, ...]
-        if self.dbsize < 10:
+        if self.dbsize < self.active_learning['Ninit'] + 5:
             l0 = self.kernel_dict['init_params'][:]
         else: 
             l0 = np.copy(self.kern.param_array[:])
@@ -447,16 +448,16 @@ class Database:
             [description]
         """
 
-        h_bounds = [np.amin(self.h), np.amax(self.h)] 
-        j_bounds = [0., 2. * np.mean(Q[1, :])]
+        # h_bounds = [np.amin(self.h[0]), np.amax(self.h[0])] 
+        # j_bounds = [0., 2. * np.mean(Q[1, :])]
 
-        l_bounds = [np.amin(self.h), 0.0]
-        u_bounds = [np.amax(self.h), 2. *  np.mean(Q[1, :])]
+        l_bounds = [np.amin(self.h[0]), 0.0]
+        u_bounds = [np.amax(self.h[0]), 2. *  np.mean(Q[1, :])]
 
         # Sampling 
         if sampling == 'random':
-            h_init = h_bounds[0] + np.random.random_sample([Ninit,]) * (h_bounds[1] - h_bounds[0])
-            jx_init = j_bounds[0] + np.random.random_sample([Ninit,]) * (j_bounds[1] - j_bounds[0])
+            h_init = l_bounds[0] + np.random.random_sample([Ninit,]) * (u_bounds[1] - l_bounds[0])
+            jx_init = l_bounds[1] + np.random.random_sample([Ninit,]) * (u_bounds[1] - l_bounds[0])
         elif sampling == 'lhc':
             
             sampler = qmc.LatinHypercube(d=2)
