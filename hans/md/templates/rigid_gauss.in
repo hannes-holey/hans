@@ -8,7 +8,7 @@
 variable		temp equal 1.
 variable 		ndensAr equal ${input_dens} # 0.8 # 0.96 # 0.845
 
-variable   		cutoff equal 4.5
+variable   		cutoff equal 2.5
 
 # TIME
 variable		dt equal 0.005
