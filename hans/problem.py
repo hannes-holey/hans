@@ -197,9 +197,9 @@ class Problem:
 
             # Delete GP objects (and thereby close files)
             if self.gp is not None:
-
                 del self.q.wall_stress.GP
                 del self.q.eos.GP
+                # TODO: Delete database and trigger writing of all datasets
 
     def get_initial_conditions(self):
         """

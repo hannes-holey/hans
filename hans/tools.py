@@ -25,7 +25,7 @@
 
 import sys
 from mpi4py import MPI
-
+import numpy as np
 
 def abort(errcode=1):
     if MPI.COMM_WORLD.Get_size() == 1:
@@ -55,3 +55,10 @@ def bordered_text(text):
         res.append('│' + (s + ' ' * width)[:width] + '│')
     res.append('└' + '─' * width + '┘')
     return '\n'.join(res)
+
+def power(base, exponent):
+
+    complex_base = base.astype('complex128')
+    result = np.float_power(complex_base, exponent)
+
+    return result.real
