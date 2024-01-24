@@ -1,5 +1,5 @@
 #
-# Copyright 2019, 2023 Hannes Holey
+# Copyright 2019, 2024 Hannes Holey
 #           2019 Andrea Codrignani
 #
 # ### MIT License
