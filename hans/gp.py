@@ -605,7 +605,6 @@ Mass flux: {Xnew[4, i]}
           - active_dims: [0, 3, 4]
           - out_dims_1: [0]
           - out_dims_2: [5, 11]
-
         """
 
         yaml = YAML()
