@@ -23,14 +23,21 @@ def run(system, cmdargs):
         run_slab(**cmdargs)
 
 
-def run_slab(gap_height=50., vWall=0.12, density=0.8, mass_flux=0.08, slabfile='slab111-S.lammps'):
+def run_slab(gap_height=50., vWall=0.12, density=0.8, mass_flux=0.08, slabfile='slab111-S-R.lammps'):
 
     nargs = ["-log", "log.lammps"]
 
     lmp = lammps(cmdargs=nargs)
 
-    tmpdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
+    assert lmp.has_package('EXTRA-FIX'), "Lammps needs to be compiled with package 'EXTRA-FIX'"
+
+    # TODO: Other useful checks, might add here or somewhere else
+    # lmp.has_mpi4py
+    # lmp.has_mpi_support
+
+    tmpdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates', 'rigid')
     slabfile = os.path.join(tmpdir, slabfile)
+    inputfile = os.path.join(tmpdir, "rigid_gauss.in")
 
     # set variables
     lmp.command(f'variable input_gap equal {gap_height}')
@@ -39,18 +46,8 @@ def run_slab(gap_height=50., vWall=0.12, density=0.8, mass_flux=0.08, slabfile='
     lmp.command(f'variable input_vWall equal {vWall}')
     lmp.command(f'variable slabfile index {slabfile}')
 
-    # lmp.command(f'variable Natoms equal {Natoms}')
-    # lmp.command(f'variable dt equal {dt}')
-    # lmp.command(f'variable tsample equal {tsample}')
-    # lmp.command(f'variable tequi equal {tequi}')
-
-    # run
-    tmpdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
-    lmp.file(os.path.join(tmpdir, "rigid_gauss.in"))
-
-    # lmp.file(os.path.join(tmpdir, "01-lj_setup.in"))
-    # lmp.file(os.path.join(tmpdir, "02-lj_equi.in"))
-    # lmp.file(os.path.join(tmpdir, "03-lj_sample.in"))
+    # run LAMMPS
+    lmp.file(inputfile)
 
 
 def run_lj(temp=2., dens=0.452, Natoms=1000, Rcut=5., dt=0.005, tequi=10000, tsample=100000, logfile="log.lammps"):

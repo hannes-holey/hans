@@ -27,6 +27,7 @@ import GPy
 import numpy as np
 import os
 import dtoolcore
+import lammps
 from ruamel.yaml import YAML
 from dateutil.relativedelta import relativedelta
 from getpass import getuser
@@ -89,7 +90,7 @@ class GaussianProcess:
     def setup(self, q):
         self._set_solution(q)
 
-        if self.dbsize < self.active_learning['Ninit']:    
+        if self.dbsize < self.active_learning['Ninit']:
             self._initialize_database()
 
         self._fit()
@@ -109,7 +110,7 @@ class GaussianProcess:
         Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
         self.maxvar = np.amax(np.diag(cov))
-        
+
         if refit:
             self._write_history()
             print(f'Max. variance after fit: {self.maxvar:.3e}')
@@ -118,8 +119,8 @@ class GaussianProcess:
         return mean, cov
 
     def active_learning_step(self, q):
-        
-        threshold = self.active_learning['threshold']    
+
+        threshold = self.active_learning['threshold']
 
         self._set_solution(q)
         mean, cov = self.predict()
@@ -129,7 +130,7 @@ class GaussianProcess:
 
             # sort indices with increasing variance
             xnext = np.argsort(np.diag(cov))[1:-1]
-            
+
             # try to find a point not too close to previous ones
             for i, x in enumerate(xnext[::-1]):
                 if not(self._similarity_check(x)):
@@ -137,7 +138,7 @@ class GaussianProcess:
                     self._update_database(x)
                     mean, cov = self.predict(skips=i)
                     success = True
-                    break        
+                    break
 
             if not(success):
                 # If not possible, use the max variance point anyways
@@ -179,12 +180,12 @@ class GaussianProcess:
         self.last_fit_dbsize = self.dbsize
 
     def _fit(self):
-    
+
         # Use initial kernel parameters if:
         # [database is small, likelihood is low, time step is low, ...]
         if self.dbsize < self.active_learning['Ninit'] + 5:
             l0 = self.kernel_dict['init_params'][:]
-        else: 
+        else:
             l0 = np.copy(self.kern.param_array[:])
 
         self._build_model()
@@ -216,8 +217,19 @@ class GaussianProcess:
                 print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
 
         self.model = best_model
-        self.model.save_model(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.json'), compress=True)
+        self.model.save_model(os.path.join(self.db.gp['local'],
+                                           f'gp_{self.name}-{self.dbsize}.json'), compress=True)
 
+        # Also save parameters as numpy array.
+        # This is more consistent across python versions (avoids pickle)
+        np.save(f'gp_{self.name}-{self.dbsize}.npy', self.model.param_array)
+
+        # To load it later:
+        # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
+        # m_load.update_model(False)
+        # m_load.initialize_parameter()
+        # m_load[:] = np.load('model_save.npy')
+        # m_load.update_model(True)
 
     def _fix_noise(self):
 
@@ -253,7 +265,7 @@ class GaussianProcess:
             if np.isclose(similarity, 1.):
                 similar_point_exists = True
                 break
-    
+
         return similar_point_exists
 
     def _initialize_database(self):
@@ -369,6 +381,7 @@ class Database:
 
     def _init_remote(self, input_dim, output_dim):
         # uses dtool_lookup_server configuration from your dtool config
+        # TODO: Possibility to pass a txtfile w/ uuids or query string
         query_dict = {"readme.description": {"$regex": "Dummy"}}
         remote_ds_list = query(query_dict)
 
@@ -431,10 +444,9 @@ class Database:
     def update(self, Qnew, next_id):
         self._update_inputs(Qnew, next_id)
 
-
     def sampling(self, Q, Ninit, sampling='lhc'):
         """Build initial database with different sampling strategies.
-        
+
         Select points in two-dimensional space (gap height, flux) to
         initialize training database. Choose between random, latin hypercube, 
         and Sobol sampling.
@@ -448,21 +460,19 @@ class Database:
             [description]
         """
 
-        # h_bounds = [np.amin(self.h[0]), np.amax(self.h[0])] 
-        # j_bounds = [0., 2. * np.mean(Q[1, :])]
-
+        # Bounds for quasi random sampling of initial database
         l_bounds = [np.amin(self.h[0]), 0.0]
-        u_bounds = [np.amax(self.h[0]), 2. *  np.mean(Q[1, :])]
+        u_bounds = [np.amax(self.h[0]), 2. * np.mean(Q[1, :])]
 
-        # Sampling 
+        # Sampling
         if sampling == 'random':
-            h_init = l_bounds[0] + np.random.random_sample([Ninit,]) * (u_bounds[1] - l_bounds[0])
-            jx_init = l_bounds[1] + np.random.random_sample([Ninit,]) * (u_bounds[1] - l_bounds[0])
+            h_init = l_bounds[0] + np.random.random_sample([Ninit, ]) * (u_bounds[1] - l_bounds[0])
+            jx_init = l_bounds[1] + np.random.random_sample([Ninit, ]) * (u_bounds[1] - l_bounds[0])
         elif sampling == 'lhc':
-            
+
             sampler = qmc.LatinHypercube(d=2)
             sample = sampler.random(n=Ninit)
-            
+
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
             h_init = scaled_samples[:, 0]
             jx_init = scaled_samples[:, 1]
@@ -475,11 +485,11 @@ class Database:
                 m = int(np.ceil(np.log2(Ninit)))
                 print(f'Sample size should be a power of 2 for Sobol sampling. Use Ninit={2**m}.')
             sample = sampler.random_base2(m=m)
-            
+
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
             h_init = scaled_samples[:, 0]
             jx_init = scaled_samples[:, 1]
-    
+
         # Remaining inputs (constant)
         rho_init = np.ones_like(jx_init) * np.mean(Q[0, :])
         jy_init = np.zeros_like(jx_init)
@@ -487,7 +497,7 @@ class Database:
         h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
 
         # Assemble
-        Hnew = np.vstack([h_init, h_gradx_init, h_grady_init])  
+        Hnew = np.vstack([h_init, h_gradx_init, h_grady_init])
         Qnew = np.vstack([rho_init, jx_init, jy_init])
 
         Xnew = np.vstack([Hnew, Qnew])
@@ -508,27 +518,15 @@ class Database:
 
         Ynew = np.zeros((13, Xnew.shape[1]))
 
-        # EOS masks
-        eos_input_mask = [False, False, False, True, False, False]
-        eos_output_mask = [True] + 12 * [False]
-
-        # Artificial noise
-        pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
-        snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(12, Xnew.shape[1]))
-
-        # Viscous stress masks
-        visc_input_mask_h = 3 * [True] + 3 * [False]
-        visc_input_mask_q = 3 * [False] + 3 * [True]
-        visc_output_mask = [False] + 12 * [True]
-
         for i in range(Xnew.shape[1]):
 
             num = self.Ytrain.shape[1] + i
             base_uri = self.gp['local']
-            ds_name = f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_dataset-{num}'
-            proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)  # TODO: unique name
+            ds_name = f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_dataset-{num:03}'
+            proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)
             proto_datapath = os.path.join(base_uri, ds_name, 'data')
 
+            # Run LAMMPS...
             if bool(self.gp['lmp']):
                 kw_args = dict(gap_height=Xnew[0, i],
                                vWall=0.12,  # TODO: not hard-coded
@@ -541,14 +539,12 @@ class Database:
                 wdir = os.getcwd()
                 os.chdir(proto_datapath)
 
-                
-                text = f"""Run next MD simulation in:
-    {proto_datapath}
-    ---
-    Gap height: {Xnew[0, i]}
-    Mass density: {Xnew[3, i]}
-    Mass flux: {Xnew[4, i]}
-    """
+                text = f"""Run next MD simulation in: {proto_datapath}
+---
+Gap height: {Xnew[0, i]}
+Mass density: {Xnew[3, i]}
+Mass flux: {Xnew[4, i]}
+"""
 
                 print(bordered_text(text))
 
@@ -567,13 +563,10 @@ class Database:
                 Ynew[5, i] = tauL
                 Ynew[11, i] = tauU
 
+            # ... or use a (possibly noisy) constitutive law
             else:
-
-                Ynew[eos_output_mask, i] = self.eos_func(Xnew[eos_input_mask, i]) + pnoise[:, i]
-                
-                Ynew[visc_output_mask, i, None] = self.tau_func(Xnew[visc_input_mask_q, i, None],
-                                                             Xnew[visc_input_mask_h, i, None], 0.) + snoise[:, i, None]
-
+                Ynew[0, i] = self.eos_func(Xnew[3:, i]) + pnoise[:, i]
+                Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
 
             self.write_readme(Xnew[:, i], Ynew[:, i], os.path.join(base_uri, ds_name))
             proto_ds.freeze()
@@ -587,7 +580,7 @@ class Database:
 
         readme_template = """
         project: Multiscale Simulation of Lubrication
-        description: Dummy README to store training data
+        description: Automatically generated MD run of confined fluid for multiscale simulations
         owners:
           - name: Hannes Holey
             email: hannes.holey@kit.edu
@@ -604,6 +597,15 @@ class Database:
             version: version
             website: https://lammps.sandia.gov/
             repository: https://github.com/lammps/lammps
+        MD:
+          - cutoff: 2.5
+          - temp: 1.0
+          - vel_wall: 0.12
+        GP:
+          - active_dims: [0, 3, 4]
+          - out_dims_1: [0]
+          - out_dims_2: [5, 11]
+
         """
 
         yaml = YAML()
@@ -615,7 +617,7 @@ class Database:
         metadata["owners"][0].update(dict(username=getuser()))
         metadata["creation_date"] = date.today()
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
-        # metadata["software_packages"][0]["version"] = lammps.__version__
+        metadata["software_packages"][0]["version"] = str(lammps.__version__)
 
         out_fname = os.path.join(path, 'README.yml')
 
@@ -635,4 +637,3 @@ class Database:
             Hnew = Hnew[:, None]
 
         return Hnew
-
