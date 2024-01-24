@@ -532,7 +532,7 @@ class Database:
                                vWall=0.12,  # TODO: not hard-coded
                                density=Xnew[3, i],
                                mass_flux=Xnew[4, i],
-                               slabfile="slab111-S.lammps")
+                               slabfile="slab111-S-R.lammps")
 
                 # Run MD with fixed number of cores in proto dataset
                 nworker = self.gp['ncpu']
