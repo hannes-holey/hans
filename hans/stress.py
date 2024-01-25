@@ -29,7 +29,7 @@ from hans.field import VectorField, TensorField, DoubleTensorField
 from hans.material import Material
 from hans.special.powerlaw_fluid import solve_zmax, approximate_zmax
 from hans.tools import power
-from hans.gp import GP_stress
+from hans.multiscale.gp import GP_stress
 
 
 class SymStressField2D(VectorField):

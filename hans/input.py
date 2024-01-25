@@ -76,28 +76,15 @@ class Input:
             bc, disc = self.sanitize_BC(inp['BC'], disc, material)
 
             # Optional inputs
-            if "surface" in inp.keys():
-                surface = self.sanitize_surface(inp["surface"])
-            else:
-                surface = None
+            surface = self.sanitize_surface(inp["surface"]) if "surface" in inp.keys() else None
+            roughness = self.sanitize_roughness(inp["roughness"]) if "roughness" in inp.keys() else None
+            gp = self.sanitize_gp(inp["gp"]) if 'gp' in inp.keys() else None
+            md = self.sanitize_md(inp["md"]) if 'md' in inp.keys() else None
 
-            if "roughness" in inp.keys():
-                roughness = self.sanitize_roughness(inp["roughness"])
+            if self.restartFile is None:
+                ic = self.sanitize_IC(inp["IC"], disc) if "IC" in inp.keys() else None
             else:
-                roughness = None
-
-            if "gp" in inp.keys():
-                # TODO: sanitize GP input
-                gp = self.sanitize_gp(inp["gp"])
-            else:
-                gp = None
-
-            if self.restartFile is not None:
                 ic = {"type": "restart", "file": self.restartFile}
-            elif "IC" in inp.keys():
-                ic = self.sanitize_IC(inp["IC"], disc)
-            else:
-                ic = None
 
             print("Sanity checks completed. Start simulation!")
             print(60 * "-")
@@ -111,7 +98,8 @@ class Input:
                               surface,
                               ic,
                               roughness,
-                              gp)
+                              gp,
+                              md)
 
         return thisProblem
 
@@ -131,51 +119,34 @@ class Input:
 
         print("Checking discretization... ")
 
-        try:
-            disc["Nx"] = int(disc['Nx'])
-            assert disc["Nx"] > 0
-        except KeyError:
-            print("***Number of grid cells Nx not specified. Abort.")
-            abort()
-        except AssertionError:
-            print("***Number of grid cells Nx must be larger than zero. Abort")
-            abort()
+        mandatory_keys = ['Nx', 'Ny']
+        optional_keys = ['Lx', 'dx', 'Ly', 'dy']
 
-        try:
-            disc["Ny"] = int(disc['Ny'])
-            assert disc["Ny"] > 0
-        except KeyError:
-            print("***Number of grid cells 'Ny' not specified. Abort.")
-            abort()
-        except AssertionError:
-            print("***Number of grid cells 'Ny' must be larger than zero. Abort")
-            abort()
+        # Check for Nx, Ny
+        assert np.sum([key in disc.keys() for key in mandatory_keys]) == 2
 
-        try:
-            disc["Lx"] = float(disc["Lx"])
-        except KeyError:
-            try:
-                disc["dx"] = float(disc["dx"])
-            except KeyError:
-                print("At least two of 'Nx' 'Lx', 'dx' must be given. Abort.")
-                abort()
-            else:
-                disc["Lx"] = disc["dx"] * disc["Nx"]
+        disc['Nx'] = int(disc['Nx'])
+        disc['Ny'] = int(disc['Ny'])
+
+        assert disc['Nx'] > 0
+        assert disc['Ny'] > 0
+
+        # Check for the rest
+        keys_in_input = np.array([key in disc.keys() for key in optional_keys])
+        assert np.sum(keys_in_input[:2]) >= 1
+        assert np.sum(keys_in_input[2:]) >= 1
+
+        if keys_in_input[0]:
+            disc['Lx'] = float(disc['Lx'])
+            disc['dx'] = float(disc["Lx"]) / disc['Nx']
         else:
-            disc["dx"] = disc["Lx"] / disc["Nx"]
+            disc['Lx'] = float(disc["dx"]) * disc['Nx']
 
-        try:
-            disc["Ly"] = float(disc["Ly"])
-        except KeyError:
-            try:
-                disc["dy"] = float(disc["dy"])
-            except KeyError:
-                print("At least two of 'Ny' 'Ly', 'dy' must be given. Abort.")
-                abort()
-            else:
-                disc["Ly"] = disc["dy"] * disc["Ny"]
+        if keys_in_input[2]:
+            disc['Ly'] = float(disc['Ly'])
+            disc['dy'] = float(disc["Ly"]) / disc['Ny']
         else:
-            disc["dy"] = disc["Ly"] / disc["Ny"]
+            disc['Ly'] = float(disc["dy"]) * disc['Ny']
 
         return disc
 
@@ -195,22 +166,16 @@ class Input:
         """
         print("Checking I/O options... ")
 
-        try:
-            writeInterval = int(options["writeInterval"])
-            assert writeInterval > 0
-        except KeyError:
-            print("***Output interval not given, fallback to 1000")
-            options["writeInterval"] = 1000
-        except AssertionError:
-            try:
-                assert writeInterval != 0
-            except AssertionError:
-                print("***Output interval is zero. fallback to 1000")
-                options["writeInterval"] = 1000
+
+        keys = ['writeInterval']
+        types = [int]
+        defaults = [1000]
+        
+        for k, t, d in zip(keys, types, defaults):
+            if k in options.keys():
+                options[k] = abs(t(options[k]))
             else:
-                print("***Output interval is negative. Converting to positive value.")
-                writeInterval *= -1
-                options["writeInterval"] = writeInterval
+                options[k] = d
 
         return options
 
@@ -384,37 +349,35 @@ class Input:
         print("Checking material options... ")
 
         if material["EOS"] == "DH":
-            material["rho0"] = float(material["rho0"])
-            material["P0"] = float(material["P0"])
-            material["C1"] = float(material["C1"])
-            material["C2"] = float(material["C2"])
+            keys = ['rho0', 'P0', 'C1', 'C2']
+            types = [float, float, float, float]
+            material = check_input(material, keys, types)
+
         elif material["EOS"] == "PL":
-            material["rho0"] = float(material["rho0"])
-            material["P0"] = float(material["P0"])
-            material["alpha"] = float(material['alpha'])
+            keys = ['rho0', 'P0', 'alpha']
+            types = [float, float, float]
+            material = check_input(material, keys, types)
+            
         elif material["EOS"] == "vdW":
-            material["M"] = float(material['M'])
-            material["T"] = float(material['T0'])
-            material["a"] = float(material['a'])
-            material["b"] = float(material['b'])
+            keys = ['M', 'T0', 'a', 'b']
+            types = [float, float, float, float]
+            material = check_input(material, keys, types)
+            
         elif material["EOS"] == "Tait":
-            material["rho0"] = float(material["rho0"])
-            material["P0"] = float(material["P0"])
-            material["K"] = float(material['K'])
-            material["n"] = float(material['n'])
+            keys = ['rho0', 'P0', 'K', 'n']
+            types = [float, float, float, float]
+            material = check_input(material, keys, types)
+
         elif material["EOS"] == "cubic":
-            material["a"] = float(material['a'])
-            material["b"] = float(material['b'])
-            material["c"] = float(material['c'])
-            material["d"] = float(material['d'])
+            keys = ['a', 'b', 'c', 'd']
+            types = [float, float, float, float]
+            material = check_input(material, keys, types)
+            
         elif material["EOS"].startswith("Bayada"):
-            material["cl"] = float(material["cl"])
-            material["cv"] = float(material["cv"])
-            material["rhol"] = float(material["rhol"])
-            material["rhov"] = float(material["rhov"])
-            material["shear"] = float(material["shear"])
-            material["shearv"] = float(material["shearv"])
-            material["rhov"] = float(material["rhov"])
+            keys = ['cl', 'cv', 'rhol', 'rhov', 'shear', 'shearv', 'rhov']
+            types = [float, float, float, float, float, float, float]
+            material = check_input(material, keys, types)
+
         elif material['EOS'] == 'BWR':
             material['T'] = float(material['T'])
             # Parameters: Johnson et al., Mol. Phys. 78 (1993)
@@ -524,55 +487,32 @@ class Input:
         assert len(bc["y0"]) == 3
         assert len(bc["y1"]) == 3
 
-        if "P" in bc["x0"] and "P" in bc["x1"]:
-            disc["pX"] = 1
-        else:
-            disc["pX"] = 0
-
-        if "P" in bc["y0"] and "P" in bc["y1"]:
-            disc["pY"] = 1
-        else:
-            disc["pY"] = 0
+        disc['pX'] = int("P" in bc["x0"] and "P" in bc["x1"])
+        disc['pY'] = int("P" in bc["y0"] and "P" in bc["y1"])
 
         if "D" in bc["x0"]:
             if "px0" in bc.keys():
-                px0 = float(bc["px0"])
-                bc["rhox0"] = Material(material).eos_density(px0)
-            elif "rhox0" in bc.keys():
-                rhox0 = float(bc["rhox0"])
-                bc["rhox0"] = rhox0
+                bc["rhox0"] = Material(material).eos_density(float(bc["px0"]))
             else:
-                bc["rhox0"] = material["rho0"]
+                bc["rhox0"] = float(bc["rhox0"]) if 'rhox0' in bc.keys() else material["rho0"]
 
         if "D" in bc["x1"]:
             if "px1" in bc.keys():
-                px1 = float(bc["px1"])
-                bc["rhox1"] = Material(material).eos_density(px1)
-            elif "rhox1" in bc.keys():
-                rhox1 = float(bc["rhox1"])
-                bc["rhox1"] = rhox1
+                bc["rhox1"] = Material(material).eos_density(float(bc["px1"]))
             else:
-                bc["rhox1"] = material["rho0"]
+                bc["rhox1"] = float(bc["rhox1"]) if 'rhox1' in bc.keys() else material['rho0']
 
         if "D" in bc["y0"]:
             if "py0" in bc.keys():
-                py0 = float(bc["py0"])
-                bc["rhoy0"] = Material(material).eos_density(py0)
-            elif "rhoy0" in bc.keys():
-                rhoy0 = float(bc["rhoy0"])
-                bc["rhoy0"] = rhoy0
+                bc["rhoy0"] = Material(material).eos_density(float(bc["py0"]))
             else:
-                bc["rhoy0"] = material["rho0"]
+                bc["rhoy0"] = float(bc["rhoy0"]) if 'rhoy0' in bc.keys() else material["rho0"]
 
         if "D" in bc["y1"]:
             if "py1" in bc.keys():
-                py1 = float(bc["py1"])
-                bc["rhoy1"] = Material(material).eos_density(py1)
-            elif "rhoy1" in bc.keys():
-                rhoy1 = float(bc["rhoy1"])
-                bc["rhoy1"] = rhoy1
+                bc["rhoy1"] = Material(material).eos_density(float(bc["py1"]))
             else:
-                bc["rhoy1"] = material["rho0"]
+                bc["rhoy1"] = float(bc["rhoy1"]) if 'rhoy1' in bc.keys() else material['rho0']
 
         assert np.all((bc["x0"] == "P") == (bc["x1"] == "P")), "Inconsistent boundary conditions (x)"
         assert np.all((bc["y0"] == "P") == (bc["y1"] == "P")), "Inconsistent boundary conditions (y)"
@@ -719,99 +659,52 @@ class Input:
     def sanitize_gp(self, gp):
         print("Checking GP parameters... ")
 
-        # lengthscales
-        gp['lh'] = float(gp['lh'])
-        gp['lrho'] = float(gp['lrho'])
-        gp['lj'] = float(gp['lj'])
+        # Kernel hyperparameter and tolerances
+        mandatory_keys = ['lh', 'lrho', 'lj', 'var', 'pvar', 'tol', 'ptol']
+        mandatory_types = len(mandatory_keys) * [float]
+        gp = check_input(gp, mandatory_keys, mandatory_types)        
 
-        # variances
-        gp['var'] = float(gp['var'])
-        gp['pvar'] = float(gp['pvar'])
+        assert gp['tol'] < gp['var']
+        assert gp['ptol'] < gp['pvar']
 
-        # tolerances (var)
-        gp['tol'] = float(gp['tol'])
-        gp['ptol'] = float(gp['ptol'])
+        # Noise and optimizer
+        optional_gp_keys = ['sns', 'snp', 'fix', 'start', 'num_restarts', 'verbose']
+        optional_gp_types = 2 * [float] + 4 * [int]
+        optional_gp_defaults = [0., 0., 0, 1, 10, 1]
+        gp = check_input(gp, optional_gp_keys, optional_gp_types, optional_gp_defaults)
 
-        try:
-            gp['remote'] = int(gp['remote'])
-        except KeyError:
-            gp['remote'] = 0
+        # DB stuff
+        optional_db_keys = ['remote', 'local', 'storage', 'Ninit', 'sampling']
+        optional_db_types = [int, str, str, int, str]
+        optional_db_defaults = [0, '/tmp/dtool/', 's3://test-bucket', 3, 'lhc']
 
-        try:
-            gp['local'] = gp['local']
-        except KeyError:
-            gp['local'] = '/tmp/dtool/'
-
-        # remote storage backend
-        if gp['remote'] == 1:
-            try:
-                gp['storage'] = gp['storage']
-            except KeyError:
-                gp['storage'] = 's3://test-bucket'
-
-        # TODO: may need new category for MD parameters
-        try:
-            gp['lmp'] = int(gp['lmp'])
-        except KeyError:
-            gp['lmp'] = 1
-
-        try:
-            gp['Ninit'] = int(gp['Ninit'])
-        except KeyError:
-            gp['Ninit'] = 4
-
-        try:
-            gp['sampling'] = gp['sampling']
-        except KeyError:
-            gp['sampling'] = 'lhc'
-
-        try:
-            gp['ncpu'] = int(gp['ncpu'])
-        except KeyError:
-            gp['ncpu'] = 2
-
-        # TODO: query
-
-        try:
-            gp['sns'] = float(gp['sns'])
-        except KeyError:
-            gp['sns'] = 0.
-
-        try:
-            gp['snp'] = float(gp['snp'])
-        except KeyError:
-            gp['snp'] = 0.
-
-        try:
-            gp['fix'] = int(gp['fix'])
-        except KeyError:
-            gp['fix'] = 1
-
-        try:
-            gp['start'] = int(gp['start'])
-        except KeyError:
-            gp['start'] = 1
-
-        try:
-            gp['num_restarts'] = int(gp['num_restarts'])
-        except KeyError:
-            gp['num_restarts'] = 10
-
-        try:
-            gp['verbose'] = int(gp['verbose'])
-        except KeyError:
-            gp['verbose'] = 1
-
-        try:
-            assert gp['tol'] < gp['var']
-        except AssertionError:
-            print('Uncertainty threshold is larger than initial kernel variance. Setting var = 2 * tol.')
-            gp['var'] = 2. * gp['tol']
-
-        try:
-            assert gp['ptol'] < gp['pvar']
-        except AssertionError:
-            print('Uncertainty threshold (pressure) is larger than initial kernel variance. Setting pvar = 2 * ptol.')
-            gp['pvar'] = 2. * gp['ptol']
+        gp = check_input(gp, optional_db_keys, optional_db_types, optional_db_defaults)
 
         return gp
+
+    def sanitize_md(self, md):
+        print("Checking MD parameters... ")
+
+        keys = ['ncpu', 'infile', 'wallfile', 'cutoff', 'temp', 'vWall']
+        types = [int, str, str, float, float, float]
+
+        md = check_input(md, keys, types)
+
+        return md
+
+
+def check_input(params, keys, types, defaults=None):
+
+    if defaults is None:
+        assert np.all([key in params.keys() for key in keys])
+        for k, t in zip(keys, types):
+            if k in params.keys():
+                params[k] = t(params[k])
+    else:
+        for k, t, d in zip(keys, types, defaults):
+            if k in params.keys():
+                params[k] = t(params[k])
+            else:
+                params[k] = d
+
+    return params

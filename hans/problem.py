@@ -41,7 +41,7 @@ from hans.integrate import ConservedField
 
 class Problem:
 
-    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic, roughness, gp):
+    def __init__(self, options, disc, bc, geometry, numerics, material, surface, ic, roughness, gp, md):
         """
         Collects all information about a single problem
         and contains the methods to run a simulation, based on the problem defintiion."
@@ -78,6 +78,7 @@ class Problem:
         self.ic = ic
         self.roughness = roughness
         self.gp = gp
+        self.md = md
 
     def run(self, out_dir="data", out_name=None, plot=False):
         """
@@ -124,6 +125,7 @@ class Problem:
                                 self.surface,
                                 self.roughness,
                                 self.gp,
+                                self.md,
                                 q_init=q_init,
                                 t_init=t_init)
 
@@ -389,6 +391,9 @@ class Problem:
             if self.gp is not None:
                 categories["gp"] = self.gp
 
+            if self.md is not None:
+                categories['md'] = self.md
+
             if self.roughness is not None:
                 roughness_noNone = {k: (v if v is not None else "None") for k, v in self.roughness.items()}
                 categories["roughness"] = roughness_noNone
@@ -501,6 +506,8 @@ maximum number of iterations reached.", flush=True)
         nc.variables["eps"][step] = self.q.eps
         nc.variables["ekin"][step] = self.q.ekin
 
+        # TODO: scalar quantities from GP
+
         if mode > 0:
             nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             nc.close()
@@ -582,7 +589,7 @@ maximum number of iterations reached.", flush=True)
         """
 
         self.q.update(i)
-        fig.suptitle('time = {:.2f} ns'.format(self.q.time * 1e9))
+        fig.suptitle('time = {:.3g}'.format(self.q.time))
 
         ax[0, 0].lines[0].set_ydata(self.q.centerline_x[1])
         ax[0, 1].lines[0].set_ydata(self.q.centerline_x[2])

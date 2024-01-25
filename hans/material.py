@@ -27,7 +27,7 @@ import numpy as np
 from unittest.mock import Mock
 
 from hans.tools import abort
-from hans.gp import GP_pressure
+from hans.multiscale.gp import GP_pressure
 
 # global constants
 R = 8.314462618

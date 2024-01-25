@@ -1,5 +1,4 @@
 #
-# Copyright 2023-2024 Hannes Holey
 #
 # ### MIT License
 #
@@ -22,8 +21,47 @@
 # SOFTWARE.
 #
 import os
+import sys
+from mpi4py import MPI
 import numpy as np
 from lammps import lammps, formats
+
+def main():
+
+    comm = MPI.Comm.Get_parent().Merge()
+
+    comm.Barrier()
+
+    assert comm != MPI.COMM_NULL
+
+    kw_args = None
+    kw_args = comm.bcast(kw_args, root=0)
+
+    run(sys.argv[1], kw_args)
+
+    comm.Barrier()
+    comm.Free()
+
+
+def mpirun(system, kw_args, nworker):
+
+    worker_file = os.path.abspath(__file__)
+
+    sub_comm = MPI.COMM_SELF.Spawn(sys.executable,
+                                   args=[worker_file, system],
+                                   maxprocs=nworker)
+
+    common_comm = sub_comm.Merge()
+    common_comm.Barrier()
+
+    if common_comm.Get_rank() == 0:
+        kw_args = kw_args
+
+    kw_args = common_comm.bcast(kw_args, root=0)
+
+    # Wait for MD to complete and free spawned communicator
+    common_comm.Barrier()
+    common_comm.Free()
 
 
 def run(system, cmdargs):
@@ -46,7 +84,12 @@ def run(system, cmdargs):
         run_slab(**cmdargs)
 
 
-def run_slab(gap_height=50., vWall=0.12, density=0.8, mass_flux=0.08, slabfile='slab111-S-R.lammps'):
+def run_slab(gap_height=50.,
+             vWall=0.12,
+             density=0.8,
+             mass_flux=0.08,
+             inputfile='in.lmp',
+             wallfile='wall.lmp'):
 
     nargs = ["-log", "log.lammps"]
 
@@ -58,16 +101,12 @@ def run_slab(gap_height=50., vWall=0.12, density=0.8, mass_flux=0.08, slabfile='
     # lmp.has_mpi4py
     # lmp.has_mpi_support
 
-    tmpdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates', 'rigid')
-    slabfile = os.path.join(tmpdir, slabfile)
-    inputfile = os.path.join(tmpdir, "rigid_gauss.in")
-
     # set variables
     lmp.command(f'variable input_gap equal {gap_height}')
     lmp.command(f'variable input_flux equal {mass_flux}')
     lmp.command(f'variable input_dens equal {density}')
     lmp.command(f'variable input_vWall equal {vWall}')
-    lmp.command(f'variable slabfile index {slabfile}')
+    lmp.command(f'variable slabfile index {wallfile}')
 
     # run LAMMPS
     lmp.file(inputfile)
@@ -128,52 +167,6 @@ def run_lj(temp=2., dens=0.452, Natoms=1000, Rcut=5., dt=0.005, tequi=10000, tsa
     lmp.file(os.path.join(tmpdir, "03-lj_sample.in"))
 
 
-# def run_pentane(temp=303., dens=720., Nmol=400, Rcut=10., dt=1., tequi=10000, tsample=10000, logfile="log.lammps"):
-#     """Run n-pentane  system in LAMMPS. All quantities in real units.
-
-#     Parameters
-#     ----------
-#     T : float
-#         Temperature (K) (the default is 303.).
-#     dens : type
-#         Mass density (kg/m³) (the default is 720.).
-#     Nmol : type
-#         Number of molecules (the default is 400).
-#     Rcut : type
-#         Cutoff radius (Angstrom) (the default is 10.).
-#     dt : type
-#         Timestep (fs) (the default is 1.).
-#     tequi : int
-#         Eqilibration steps (the default is 10000).
-#     tsample : int
-#         Sampling steps (the default is 100000).
-#     logfile : str
-#         Name of the log file. If None, fallback to LAMMPS default 'log.lammps' (the default is None).
-
-#     """
-
-#     nargs = ["-log", logfile]
-
-#     lmp = lammps(cmdargs=nargs)
-
-#     # set variables
-#     lmp.command(variable_equal("temp", temp))
-#     lmp.command(variable_equal("rho", dens))
-#     lmp.command(variable_equal("cutoff", Rcut))
-#     lmp.command(variable_equal("nMol", Nmol))
-#     lmp.command(variable_equal("dt", dt))
-#     lmp.command(variable_equal("tsample", tsample))
-#     lmp.command(variable_equal("tequi", tequi))
-
-#     tmpdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'templates')
-#     lmp.command(f"variable molfile index {os.path.join(tmpdir, 'pentane.mol')}")
-
-#     # run
-#     lmp.file(os.path.join(tmpdir, "01-pen_setup.in"))
-#     lmp.file(os.path.join(tmpdir, "02-pen_equi.in"))
-#     lmp.file(os.path.join(tmpdir, "03-pen_sample.in"))
-
-
 # def extract_thermo(logfile):
 #     """Extract thermodyanmic output.
 
@@ -190,3 +183,9 @@ def run_lj(temp=2., dens=0.452, Natoms=1000, Rcut=5., dt=0.005, tequi=10000, tsa
 #     """
 #     log = formats.LogFile(logfile)
 #     return [run for run in log.runs]
+
+
+if __name__ == "__main__":
+    # main is called by an individual spawned process for parallel MD runs
+    main()
+

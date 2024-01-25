@@ -32,13 +32,12 @@ from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
 from hans.tools import abort
 from hans.special.flux_limiter import TVD_MC_correction
-
-from hans.gp import Database
+from hans.multiscale.db import Database
 
 
 class ConservedField(VectorField):
 
-    def __init__(self, disc, bc, geometry, material, numerics, surface, roughness, gp,
+    def __init__(self, disc, bc, geometry, material, numerics, surface, roughness, gp, md,
                  q_init=None, t_init=None):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
@@ -60,6 +59,10 @@ class ConservedField(VectorField):
             surface parameters
         roughness : dict
             roughness parameters
+        gp : dict
+            Gaussian process parameters
+        md : dict
+            Molecular dynamics parameters
         q_init : np.array
             Inital field in case of a restart (the default is None)
         t_init : tuple
@@ -97,14 +100,18 @@ class ConservedField(VectorField):
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
         self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
+        
         # Equation of state
         self.eos = Material(self.material, gp)
 
         if gp is not None:
             # Initalize global training database
-            self.db = Database(self.height.field, self.eos.eos_pressure, self.wall_stress.gp_wall_stress, gp)
-            self.wall_stress.init_gp(self.field, self.db)
-            self.eos.init_gp(self.field, self.db)
+            db = Database(gp, md, self.height.field,
+                          self.eos.eos_pressure,  # only w/o lammps
+                          self.wall_stress.gp_wall_stress) # only w/o lammps
+            
+            self.wall_stress.init_gp(self.field, db)
+            self.eos.init_gp(self.field, db)
         else:
             self.wall_stress.gp = None
             self.eos.gp = None
