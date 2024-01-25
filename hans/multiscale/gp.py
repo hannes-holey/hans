@@ -35,7 +35,7 @@ class GaussianProcess:
     name: str
 
     def __init__(self, active_dim, db, Xmask, Ymask,
-                 active_learning={'max_iter': 10, 'threshold': .1, 'start': 20, 'Ninit': 5, 'sampling': 'lhc'},
+                 active_learning={'max_iter': 10, 'threshold': .1, 'alpha': 0.05, 'start': 20, 'Ninit': 5, 'sampling': 'lhc'},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
                  noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
@@ -97,6 +97,7 @@ class GaussianProcess:
         Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
         self.maxvar = np.amax(np.diag(cov))
+        self.meandiff = np.amax(mean) - np.amin(mean)
 
         if refit:
             self._write_history()
@@ -107,7 +108,7 @@ class GaussianProcess:
 
     def active_learning_step(self, q):
 
-        threshold = self.active_learning['threshold']
+        threshold = max(self.active_learning['threshold'], (self.active_learning['alpha'] * self.meandiff)**2)
 
         self._set_solution(q)
         mean, cov = self.predict()

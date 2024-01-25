@@ -166,11 +166,10 @@ class Input:
         """
         print("Checking I/O options... ")
 
-
         keys = ['writeInterval']
         types = [int]
         defaults = [1000]
-        
+
         for k, t, d in zip(keys, types, defaults):
             if k in options.keys():
                 options[k] = abs(t(options[k]))
@@ -357,12 +356,12 @@ class Input:
             keys = ['rho0', 'P0', 'alpha']
             types = [float, float, float]
             material = check_input(material, keys, types)
-            
+
         elif material["EOS"] == "vdW":
             keys = ['M', 'T0', 'a', 'b']
             types = [float, float, float, float]
             material = check_input(material, keys, types)
-            
+
         elif material["EOS"] == "Tait":
             keys = ['rho0', 'P0', 'K', 'n']
             types = [float, float, float, float]
@@ -372,7 +371,7 @@ class Input:
             keys = ['a', 'b', 'c', 'd']
             types = [float, float, float, float]
             material = check_input(material, keys, types)
-            
+
         elif material["EOS"].startswith("Bayada"):
             keys = ['cl', 'cv', 'rhol', 'rhov', 'shear', 'shearv', 'rhov']
             types = [float, float, float, float, float, float, float]
@@ -660,9 +659,9 @@ class Input:
         print("Checking GP parameters... ")
 
         # Kernel hyperparameter and tolerances
-        mandatory_keys = ['lh', 'lrho', 'lj', 'var', 'pvar', 'tol', 'ptol']
+        mandatory_keys = ['lh', 'lrho', 'lj', 'var', 'pvar', 'tol', 'ptol', 'alpha']
         mandatory_types = len(mandatory_keys) * [float]
-        gp = check_input(gp, mandatory_keys, mandatory_types)        
+        gp = check_input(gp, mandatory_keys, mandatory_types)
 
         assert gp['tol'] < gp['var']
         assert gp['ptol'] < gp['pvar']

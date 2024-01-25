@@ -49,6 +49,7 @@ class Material:
                                'threshold': self.gp['ptol'],
                                'start': self.gp['start'],
                                'Ninit': self.gp['Ninit'],
+                               'alpha': self.gp['alpha'],
                                'sampling': self.gp['sampling']}
 
             kernel_dict = {'type': 'Mat32',

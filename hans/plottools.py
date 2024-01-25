@@ -34,11 +34,11 @@ from hans.geometry import GapHeight
 
 class DatasetSelector:
 
-    def __init__(self, path, mode="select", fname=[], prefix=""):
+    def __init__(self, path, mode="select", fname=[], prefix="", silent=False):
 
-        self._ds = self.get_files(path, prefix=prefix, mode=mode, fname=fname)
+        self._ds = self.get_files(path, prefix=prefix, mode=mode, fname=fname, silent=silent)
 
-    def get_files(self, path, prefix="", mode="select", fname=[]):
+    def get_files(self, path, prefix="", mode="select", fname=[], silent=False):
         """
         Select netCDF data files for plotting.
 
@@ -66,6 +66,8 @@ class DatasetSelector:
 
         assert mode in ["single", "select", "all", "name"], "mode must be 'single', select, 'all' or 'name'"
 
+        silent = silent if mode == 'all' else False
+
         fileList = []
 
         for root, dirs, files in os.walk(path, topdown=False):
@@ -76,10 +78,12 @@ class DatasetSelector:
         fileList = sorted(fileList)
 
         if mode != "name":
-            print("Available files:")
+            if not silent:
+                print("Available files:")
             for i, file in enumerate(fileList):
                 date = time.strftime('%d/%m/%Y %H:%M', time.localtime(os.path.getmtime(file)))
-                print(f"{i:3d}: {file:<50} {date}")
+                if not silent:
+                    print(f"{i:3d}: {file:<50} {date}")
 
         if mode == "single":
             mask = [int(input("Enter file key: "))]

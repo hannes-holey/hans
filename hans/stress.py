@@ -594,8 +594,6 @@ class SymStressField3D(TensorField):
             self.field[4, maskU2] = eta * power(s4_2[maskU2], n)
 
 
-
-
 class WallStressField3D(DoubleTensorField):
 
     def __init__(self, disc, geometry, material, surface=None, gp=None):
@@ -649,14 +647,15 @@ class WallStressField3D(DoubleTensorField):
                                'threshold': self.gp['tol'],
                                'start': self.gp['start'],
                                'Ninit': self.gp['Ninit'],
+                               'alpha': self.gp['alpha'],
                                'sampling': self.gp['sampling']}
 
             kernel_dict = {'type': 'Mat32',
                            'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
                            'ARD': True}
 
-            noise = {'type': 'Gaussian', 
-                     'fixed': bool(self.gp['fix']), 
+            noise = {'type': 'Gaussian',
+                     'fixed': bool(self.gp['fix']),
                      'variance': self.gp['sns']}
 
             optimizer = {'type': 'bfgs',
@@ -667,7 +666,7 @@ class WallStressField3D(DoubleTensorField):
 
             # Initialize
             q = sol[:, :, 1]  # 1D only (centerline)
-            self.GP.setup(q)        
+            self.GP.setup(q)
         else:
             self.GP = Mock()
             self.GP.dbsize = 0
