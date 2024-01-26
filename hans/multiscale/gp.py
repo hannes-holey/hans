@@ -52,6 +52,7 @@ class GaussianProcess:
         self.noise = noise
 
         self.maxvar = np.inf
+        self.tol = active_learning['threshold']
 
         self.kern = GPy.kern.Matern32(active_dim, ARD=kernel_dict['ARD'])
 
@@ -97,7 +98,8 @@ class GaussianProcess:
         Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
         self.maxvar = np.amax(np.diag(cov))
-        self.meandiff = np.amax(mean) - np.amin(mean)
+        meandiff = np.amax(mean) - np.amin(mean)
+        self.tol = max(self.active_learning['threshold'], (self.active_learning['alpha'] * meandiff)**2)
 
         if refit:
             self._write_history()
@@ -108,12 +110,10 @@ class GaussianProcess:
 
     def active_learning_step(self, q):
 
-        threshold = max(self.active_learning['threshold'], (self.active_learning['alpha'] * self.meandiff)**2)
-
         self._set_solution(q)
         mean, cov = self.predict()
 
-        while self.maxvar > threshold:
+        while self.maxvar > self.tol:
             success = False
 
             # sort indices with increasing variance
@@ -143,16 +143,17 @@ class GaussianProcess:
         if os.path.exists(fname):
             os.remove(fname)
         self.file = open(fname, 'w', buffering=1)
-        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar nmll\n")
+        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar tol nmll\n")
 
     def _write_history(self):
 
         per_step = [self.step, self.dbsize]
         [per_step.append(param) for param in self.kern.param_array]
         per_step.append(self.maxvar)
+        per_step.append(self.tol)
         per_step.append(-self.model.log_likelihood())
 
-        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 2) * ["{:8e}"] + ["{:+8e}"]
+        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 4) * ["{:8e}"]
         per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 
