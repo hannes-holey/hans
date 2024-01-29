@@ -172,10 +172,16 @@ class GaussianProcess:
 
         # Use initial kernel parameters if:
         # [database is small, likelihood is low, time step is low, ...]
-        if self.dbsize < self.active_learning['Ninit'] + 5:
-            l0 = self.kernel_dict['init_params'][:]
-        else:
-            l0 = np.copy(self.kern.param_array[:])
+        # if self.dbsize < self.active_learning['Ninit'] + 5:
+        #     l0 = self.kernel_dict['init_params'][:]
+        # else:
+        #     l0 = np.copy(self.kern.param_array[:])
+
+        # Initial guess hyperparameters
+        l0 = np.ones(self.active_dim + 1)
+        l0[0] = self.tol
+        Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
+        l0[1:] = np.maximum(Xrange, 1e-5)
 
         self._build_model()
 
@@ -273,7 +279,7 @@ class GaussianProcess:
 
         self.db.update(X_new, next_id)
 
-    @abc.abstractmethod
+    @ abc.abstractmethod
     def _get_test_input(self):
         """
         Assemble test input data
