@@ -61,7 +61,7 @@ class GaussianProcess:
             self.kern.lengthscale = kernel_dict['init_params'][1:active_dim+1]
 
         self.step = 0
-        self.counter = -1
+        self.wait = -1
 
         self._init_outfile()
 
@@ -113,7 +113,10 @@ class GaussianProcess:
         self._set_solution(q)
         mean, cov = self.predict()
 
-        while self.maxvar > self.tol:
+        counter = 0
+        self.wait -= 1
+
+        while self.maxvar > self.tol and self.wait <= 0:
             success = False
 
             # sort indices with increasing variance
@@ -132,6 +135,11 @@ class GaussianProcess:
                 # If not possible, use the max variance point anyways
                 self._update_database(xnext[-1])
                 mean, cov = self.predict(skips=i)
+
+            counter += 1
+            if counter == 5:
+                self.wait = 10
+                print(f'Active learning seems to stall. Wait for {self.wait} steps...')
 
         self.step += 1
 
