@@ -26,7 +26,7 @@ from scipy.optimize import fsolve
 from hans.tools import power
 
 
-def solve_zmax(self, U, V, um, vm, n):
+def solve_zmax(U, V, um, vm, n):
     """Calculate the location of maximum velocity in z-direction to compute the power law stresses.
 
     Parameters
@@ -88,7 +88,8 @@ def solve_zmax(self, U, V, um, vm, n):
 
     return zmaxu, zmaxv
 
-def approximate_zmax(self, U, V, Um, Vm, n):
+
+def approximate_zmax(U, V, Um, Vm, n):
     """Approximate the location of maximum velocity in z-direction to compute the power law stresses.
     Exact values have been found numerically for both cases, but a good approximation
     is given by a hyperbola with vertical asymptote at jx/rho = U/2 (Couette profile).
