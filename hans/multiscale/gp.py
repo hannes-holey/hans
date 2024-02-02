@@ -90,7 +90,7 @@ class GaussianProcess:
         # Check if dbsize changed and refit
         if self.last_fit_dbsize != self.dbsize:
             print('')
-            print(f'GP_{self.name}' + (f': (skipped {skips+1} inputs)' if skips > 0 else ':'))
+            print(f'Step {self.step} - GP_{self.name}' + (f': (skipped {skips+1} inputs)' if skips > 0 else ':'))
             print(f'Max. variance before fit: {self.maxvar:.3e}')
             self._fit()
             refit = True
@@ -113,7 +113,9 @@ class GaussianProcess:
         self._set_solution(q)
         mean, cov = self.predict()
 
+        # TODO: in input
         counter = 0
+        maxcount = 5
         self.wait -= 1
 
         while self.maxvar > self.tol and self.wait <= 0:
@@ -126,6 +128,7 @@ class GaussianProcess:
             for i, x in enumerate(xnext[::-1]):
                 if not(self._similarity_check(x)):
                     # Add to training data
+                    print(f'Active learning: GP_{self.name} in step {self.step + 1} ({(counter + 1)}/{maxcount})...')
                     self._update_database(x)
                     mean, cov = self.predict(skips=i)
                     success = True
@@ -137,7 +140,7 @@ class GaussianProcess:
                 mean, cov = self.predict(skips=i)
 
             counter += 1
-            if counter == 5:
+            if counter == maxcount:
                 self.wait = 10
                 print(f'Active learning seems to stall. Wait for {self.wait} steps...')
 
@@ -157,11 +160,12 @@ class GaussianProcess:
 
         per_step = [self.step, self.dbsize]
         [per_step.append(param) for param in self.kern.param_array]
+        per_step.append(self.model.Gaussian_noise.variance[0])
         per_step.append(self.maxvar)
         per_step.append(self.tol)
         per_step.append(-self.model.log_likelihood())
 
-        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 4) * ["{:8e}"]
+        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 5) * ["{:8e}"]
         per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 

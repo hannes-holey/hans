@@ -454,7 +454,7 @@ class Problem:
             Writing mode (0: normal, 1: converged, 2: max time, 3: execution stopped).
 
         """
-        print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
+        print(f"# {i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
         if mode == 1:
             print(f"\nSolution has converged after {i:d} steps.", flush=True)
@@ -507,6 +507,21 @@ maximum number of iterations reached.", flush=True)
         nc.variables["ekin"][step] = self.q.ekin
 
         # TODO: scalar quantities from GP
+
+        if bool(self.options['writeRestart']):
+            with Dataset(f"{self.outpath.rstrip('.nc')}_restart.nc", "w") as dst:
+                # copy global attributes all at once via dictionary
+                dst.setncatts(nc.__dict__)
+                # copy dimensions
+                for name, dimension in nc.dimensions.items():
+                    dst.createDimension(
+                        name, (len(dimension) if not dimension.isunlimited() else None))
+                # copy all file data except for the excluded
+                for name, variable in nc.variables.items():
+                    x = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst[name][:] = nc[name][:]
+                    # copy variable attributes all at once via dictionary
+                    dst[name].setncatts(nc[name].__dict__)
 
         if mode > 0:
             nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))

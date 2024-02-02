@@ -166,9 +166,9 @@ class Input:
         """
         print("Checking I/O options... ")
 
-        keys = ['writeInterval']
-        types = [int]
-        defaults = [1000]
+        keys = ['writeInterval', 'writeRestart']
+        types = [int, int]
+        defaults = [1000, 0]
 
         for k, t, d in zip(keys, types, defaults):
             if k in options.keys():
