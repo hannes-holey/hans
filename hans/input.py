@@ -550,7 +550,7 @@ class Input:
 
         return surface
 
-    def check_roughness(self, roughness):
+    def sanitize_roughness(self, roughness):
         """Sanitize roughness settings
 
         Parameters
