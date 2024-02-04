@@ -33,7 +33,7 @@ from dtool_lookup_api import query
 from scipy.stats import qmc
 
 
-from hans.tools import progressbar, bordered_text, abort
+from hans.tools import progressbar, bordered_text
 from hans.multiscale.md import run, mpirun
 
 
@@ -124,8 +124,8 @@ class Database:
             self.Xtrain = np.empty((input_dim, 0))
             self.Ytrain = np.empty((output_dim, 0))
 
-    def update(self, Qnew, next_id):
-        self._update_inputs(Qnew, next_id)
+    def update(self, Qnew, ix, iy):
+        self._update_inputs(Qnew, ix, iy)
 
     def sampling(self, Q, Ninit, sampling='lhc'):
         """Build initial database with different sampling strategies.
@@ -159,6 +159,7 @@ class Database:
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
             h_init = scaled_samples[:, 0]
             jx_init = scaled_samples[:, 1]
+            # jy_init = scaled_samples[:, 2]
 
         elif sampling == 'sobol':
             sampler = qmc.Sobol(d=2)
@@ -188,9 +189,9 @@ class Database:
 
         self._update_outputs(Xnew)
 
-    def _update_inputs(self, Qnew, next_id):
+    def _update_inputs(self, Qnew, ix, iy):
 
-        Hnew = self.gap_height(next_id)
+        Hnew = self.gap_height(ix, iy)
         Xnew = np.vstack([Hnew, Qnew])
 
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
@@ -211,7 +212,7 @@ class Database:
 
             # Run LAMMPS...
             if self.md is not None:
-                
+
                 # Run MD with fixed number of cores in proto dataset
                 nworker = self.md['ncpu']
                 basedir = os.getcwd()
@@ -222,7 +223,6 @@ class Database:
                                mass_flux=Xnew[4, i],
                                wallfile=os.path.join(basedir, self.md['wallfile']),
                                inputfile=os.path.join(basedir, self.md['infile']))
-
 
                 text = f"""Run next MD simulation in: {proto_datapath}
 ---
@@ -235,7 +235,7 @@ Mass flux: {Xnew[4, i]}
 
                 # Run
                 os.chdir(proto_datapath)
-                
+
                 if self.md['ncpu'] > 1:
                     mpirun('slab', kw_args, nworker)
                 else:
@@ -308,7 +308,7 @@ Mass flux: {Xnew[4, i]}
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
         metadata["software_packages"][0]["version"] = str(lammps.__version__)
         if self.md is not None:
-            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall']}        
+            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall']}
 
         out_fname = os.path.join(path, 'README.yml')
 
@@ -321,9 +321,9 @@ Mass flux: {Xnew[4, i]}
         with open(out_fname, 'w') as outfile:
             yaml.dump(metadata, outfile)
 
-    def gap_height(self, next_id):
+    def gap_height(self, ix, iy=1):
 
-        Hnew = self.h[:, next_id, 1]
+        Hnew = self.h[:, ix, iy]
         if Hnew.ndim == 1:
             Hnew = Hnew[:, None]
 

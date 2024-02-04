@@ -26,6 +26,7 @@ import abc
 import GPy
 import numpy as np
 import os
+from copy import deepcopy
 
 
 class GaussianProcess:
@@ -33,6 +34,7 @@ class GaussianProcess:
     __metaclass__ = abc.ABCMeta
 
     name: str
+    ndim: int
 
     def __init__(self, active_dim, db, Xmask, Ymask,
                  active_learning={'max_iter': 10, 'threshold': .1, 'alpha': 0.05, 'start': 20, 'Ninit': 5, 'sampling': 'lhc'},
@@ -76,6 +78,9 @@ class GaussianProcess:
         return self.db.Xtrain.shape[1]
 
     def setup(self, q):
+        nx, ny = q.shape[1:]
+        self.rshape = (nx, ny if ny > 3 else 1)
+
         self._set_solution(q)
 
         if self.dbsize < self.active_learning['Ninit']:
@@ -96,8 +101,9 @@ class GaussianProcess:
             refit = True
 
         Xtest = self._get_test_input()
-        mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
-        self.maxvar = np.amax(np.diag(cov))
+        mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
+
+        self.maxvar = np.amax(cov)
         meandiff = np.amax(mean) - np.amin(mean)
         self.tol = max(self.active_learning['threshold'], (self.active_learning['alpha'] * meandiff)**2)
 
@@ -106,7 +112,10 @@ class GaussianProcess:
             print(f'Max. variance after fit: {self.maxvar:.3e}')
             print('')
 
-        return mean, cov
+        if self.ndim == 1:
+            return mean.T[:, :, np.newaxis], cov
+        else:
+            return np.transpose(mean.reshape(*self.rshape, -1), (2, 0, 1)), cov
 
     def active_learning_step(self, q):
 
@@ -122,21 +131,26 @@ class GaussianProcess:
             success = False
 
             # sort indices with increasing variance
-            xnext = np.argsort(np.diag(cov))[1:-1]
+            xnext = np.argsort(np.diag(cov))
+            _, nx, ny = mean.shape
 
             # try to find a point not too close to previous ones
             for i, x in enumerate(xnext[::-1]):
-                if not(self._similarity_check(x)):
+
+                ix, iy = np.unravel_index(x, (nx, ny))
+
+                if not(self._similarity_check(ix, iy)):
                     # Add to training data
                     print(f'Active learning: GP_{self.name} in step {self.step + 1} ({(counter + 1)}/{maxcount})...')
-                    self._update_database(x)
+                    self._update_database(ix, iy)
                     mean, cov = self.predict(skips=i)
                     success = True
                     break
 
             if not(success):
                 # If not possible, use the max variance point anyways
-                self._update_database(xnext[-1])
+                ix, iy = np.unravel_index(xnext[-1], (nx, ny))
+                self._update_database(ix, iy)
                 mean, cov = self.predict(skips=i)
 
             counter += 1
@@ -182,18 +196,16 @@ class GaussianProcess:
 
     def _fit(self):
 
-        # Use initial kernel parameters if:
-        # [database is small, likelihood is low, time step is low, ...]
-        # if self.dbsize < self.active_learning['Ninit'] + 5:
-        #     l0 = self.kernel_dict['init_params'][:]
-        # else:
-        #     l0 = np.copy(self.kern.param_array[:])
-
         # Initial guess hyperparameters
         l0 = np.ones(self.active_dim + 1)
         l0[0] = self.tol
-        Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
-        l0[1:] = np.maximum(Xrange, 1e-5)
+
+        if self.active_dim == 3:
+            Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
+            l0[1:] = np.maximum(Xrange, [1., 1e-3, 1.])
+        elif self.active_dim == 4:
+            Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4, 5]]
+            l0[1:] = np.maximum(Xrange, [1., 1e-3, 1., 1.])
 
         self._build_model()
 
@@ -244,30 +256,22 @@ class GaussianProcess:
             self.model.Gaussian_noise.variance = self.noise['variance']
             self.model.Gaussian_noise.variance.fix()
 
-    def _set_solution(self, q):
-        self.sol = q
+    # def _get_solution(self):
+    #     return self.sol
 
-    def _get_solution(self):
-        return self.sol
+    def _similarity_check(self, ix, iy=1):
 
-    def _similarity_check(self, index):
+        X_new = self.sol[:, ix, iy, None]
+        Hnew = self.db.gap_height(ix, iy)
 
-        Xsol = self._get_solution()
-
-        X_new = Xsol[:, index, None]
-
-        Hnew = self.db.gap_height(index)
         Xnew = np.vstack([Hnew, X_new])
-
-        # Only compare height, density and mass flux
-        input_mask = [True, False, False, True, True, False]
 
         similar_point_exists = False
 
         for j in range(self.db.Xtrain.shape[1]):
 
             var = self.kern.variance
-            similarity = (self.kern.K(Xnew[input_mask, 0, None].T, self.db.Xtrain[input_mask, j, None].T) / var)[0][0]
+            similarity = (self.kern.K(Xnew[self.Xmask, 0, None].T, self.db.Xtrain[self.Xmask, j, None].T) / var)[0][0]
 
             if np.isclose(similarity, 1.):
                 similar_point_exists = True
@@ -277,19 +281,19 @@ class GaussianProcess:
 
     def _initialize_database(self):
 
-        Xsol = self._get_solution()
-        self.db.sampling(Xsol, self.active_learning['Ninit'], self.active_learning['sampling'])
+        # Xsol = self._get_solution()
+        self.db.sampling(self.sol,
+                         self.active_learning['Ninit'],
+                         self.active_learning['sampling'])
 
-    def _update_database(self, next_id):
+    def _update_database(self, ix, iy):
 
-        Xsol = self._get_solution()
-
-        X_new = Xsol[:, next_id]
+        X_new = self.sol[:, ix, iy]
 
         if X_new.ndim == 1:
             X_new = X_new[:, None]
 
-        self.db.update(X_new, next_id)
+        self.db.update(X_new, ix, iy)
 
     @ abc.abstractmethod
     def _get_test_input(self):
@@ -298,9 +302,14 @@ class GaussianProcess:
         """
         raise NotImplementedError
 
+    def _set_solution(self, q):
+
+        raise NotImplementedError
+
 
 class GP_stress(GaussianProcess):
 
+    ndim = 1
     name = 'shear'
 
     def __init__(self, db,
@@ -328,9 +337,55 @@ class GP_stress(GaussianProcess):
 
         return np.vstack([self.db.h[0, :, 1], self.sol[0], self.sol[1]]).T
 
+    def _set_solution(self, q):
+        self.sol = q[:, :, 1]
+
+
+class GP_stress2D(GaussianProcess):
+
+    ndim = 2
+    name = 'shear'
+
+    def __init__(self, db,
+                 active_learning={'max_iter': 10, 'threshold': .1},
+                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
+                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
+                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+
+        Xmask = 6 * [False]
+        Xmask[0] = True
+        Xmask[3] = True
+        Xmask[4] = True
+        Xmask[5] = True
+
+        Ymask = 13 * [False]
+        Ymask[4] = True
+        Ymask[5] = True
+        Ymask[10] = True
+        Ymask[11] = True
+
+        super().__init__(4, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+
+    def _get_test_input(self):
+        """
+        Test data as input for GP prediction.
+        Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
+        """
+
+        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
+
+        return Xtest
+
+    def _set_solution(self, q):
+
+        self.sol = deepcopy(q)
+        self.sol[2] *= np.sign(q[2])
+
 
 class GP_pressure(GaussianProcess):
 
+    ndim = 1
     name = 'press'
 
     def __init__(self, db,
@@ -356,5 +411,48 @@ class GP_pressure(GaussianProcess):
         Test data as input for GP prediction:
         For pressure, only density is required (not with MD!)
         """
-
         return np.vstack([self.db.h[0, :, 1], self.sol[0], self.sol[1]]).T
+
+    def _set_solution(self, q):
+        self.sol = q[:, :, 1]
+
+
+class GP_pressure2D(GaussianProcess):
+
+    ndim = 2
+    name = 'press'
+
+    def __init__(self, db,
+                 active_learning={'max_iter': 10, 'threshold': .1},
+                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
+                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
+                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+
+        # self.Ytrain = np.empty((1, 0))
+
+        Xmask = 6 * [False]
+        Xmask[0] = True
+        Xmask[3] = True
+        Xmask[4] = True
+        Xmask[5] = True
+
+        Ymask = 13 * [False]
+        Ymask[0] = True
+
+        super().__init__(4, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+
+    def _get_test_input(self):
+        """
+        Test data as input for GP prediction:
+        For pressure, only density is required (not with MD!)
+        """
+
+        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
+
+        return Xtest
+
+    def _set_solution(self, q):
+
+        self.sol = deepcopy(q)
+        self.sol[2] *= np.sign(q[2])

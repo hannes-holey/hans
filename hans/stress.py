@@ -29,7 +29,7 @@ from hans.field import VectorField, TensorField, DoubleTensorField
 from hans.material import Material
 from hans.special.powerlaw_fluid import solve_zmax, approximate_zmax
 from hans.tools import power
-from hans.multiscale.gp import GP_stress
+from hans.multiscale.gp import GP_stress, GP_stress2D
 
 
 class SymStressField2D(VectorField):
@@ -639,7 +639,7 @@ class WallStressField3D(DoubleTensorField):
         # self.model = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/shear_50000.0.json.zip')
         # model_diag = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/diag_0.1.json.zip')
 
-    def init_gp(self, sol, db):
+    def init_gp(self, q, db):
 
         if self.gp is not None:
 
@@ -651,7 +651,7 @@ class WallStressField3D(DoubleTensorField):
                                'sampling': self.gp['sampling']}
 
             kernel_dict = {'type': 'Mat32',
-                           'init_params': [self.gp['var'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
+                           'init_params': None,
                            'ARD': True}
 
             noise = {'type': 'Gaussian',
@@ -662,10 +662,15 @@ class WallStressField3D(DoubleTensorField):
                          'num_restarts': self.gp['num_restarts'],
                          'verbose': bool(self.gp['verbose'])}
 
-            self.GP = GP_stress(db, active_learning, kernel_dict, optimizer, noise)
+            if q.shape[-1] > 3:
+                # 2D
+                self.GP = GP_stress2D(db, active_learning, kernel_dict, optimizer, noise)
+                # q = sol[:, :, :]  # 1D only
+            else:
+                # 1D
+                self.GP = GP_stress(db, active_learning, kernel_dict, optimizer, noise)
+                # q = sol[:, :, 1]
 
-            # Initialize
-            q = sol[:, :, 1]  # 1D only (centerline)
             self.GP.setup(q)
         else:
             self.GP = Mock()
@@ -704,12 +709,15 @@ class WallStressField3D(DoubleTensorField):
         if self.gp is not None and self.ncalls > 2 * self.gp['start']:
 
             if self.ncalls % 2 == 0:
-                mean, cov = self.GP.active_learning_step(q[:, :, 1])
+                mean, cov = self.GP.active_learning_step(q)
             else:
                 mean, cov = self.GP.predict()
 
-            self.field[4] = mean[:, 0, None]
-            self.field[10] = mean[:, 1, None]
+            if self.GP.ndim == 2:
+                mean[0] *= np.sign(q[2])
+                mean[2] *= np.sign(q[2])
+
+            self.field[self.GP.Ymask[1:]] = mean
 
             self.ncalls += 1
 

@@ -27,7 +27,7 @@ import numpy as np
 from unittest.mock import Mock
 
 from hans.tools import abort
-from hans.multiscale.gp import GP_pressure
+from hans.multiscale.gp import GP_pressure, GP_pressure2D
 
 # global constants
 R = 8.314462618
@@ -42,7 +42,7 @@ class Material:
 
         self.ncalls = 0
 
-    def init_gp(self, sol, db):
+    def init_gp(self, q, db):
 
         if self.gp is not None:
             active_learning = {'max_iter': 200,
@@ -53,7 +53,7 @@ class Material:
                                'sampling': self.gp['sampling']}
 
             kernel_dict = {'type': 'Mat32',
-                           'init_params': [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj']],
+                           'init_params': None,  # [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj'],  self.gp['lj']],
                            'ARD': True}
 
             optimizer = {'type': 'bfgs',
@@ -64,10 +64,14 @@ class Material:
                      'fixed': bool(self.gp['fix']),
                      'variance': self.gp['snp']}
 
-            self.GP = GP_pressure(db, active_learning, kernel_dict, optimizer, noise)
+            if q.shape[-1] > 3:
+                # 2D
+                self.GP = GP_pressure2D(db, active_learning, kernel_dict, optimizer, noise)
+            else:
+                # 1D
+                self.GP = GP_pressure(db, active_learning, kernel_dict, optimizer, noise)
 
             # Initialize
-            q = sol[:, :, 1]  # 1D only
             self.GP.setup(q)
         else:
             self.GP = Mock()
@@ -81,9 +85,11 @@ class Material:
             # We want to perform an active learning step only once.
             if self.ncalls % 4 == 0:
                 # Active learning needs full q, in order to write into global DB
-                p, cov = self.GP.active_learning_step(q[:, :, 1])
+                p, cov = self.GP.active_learning_step(q)
             else:
                 p, cov = self.GP.predict()
+
+            p = p[0]
         else:
             p = self.eos_pressure(q[0])
 

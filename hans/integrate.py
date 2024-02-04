@@ -100,7 +100,7 @@ class ConservedField(VectorField):
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
         self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
-        
+
         # Equation of state
         self.eos = Material(self.material, gp)
 
@@ -108,8 +108,8 @@ class ConservedField(VectorField):
             # Initalize global training database
             db = Database(gp, md, self.height.field,
                           self.eos.eos_pressure,  # only w/o lammps
-                          self.wall_stress.gp_wall_stress) # only w/o lammps
-            
+                          self.wall_stress.gp_wall_stress)  # only w/o lammps
+
             self.wall_stress.init_gp(self.field, db)
             self.eos.init_gp(self.field, db)
         else:
