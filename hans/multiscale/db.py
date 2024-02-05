@@ -246,16 +246,35 @@ Mass flux: {Xnew[4, i]}
                 proto_ds.put_item(os.path.join(basedir, self.md['infile']), os.path.basename(self.md['infile']))
 
                 # Get stress
-                step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
-                press = np.mean(pL_t + pU_t) / 2.
-                tauL = np.mean(tauL_t)
-                tauU = np.mean(tauU_t)
+                md_data = np.loadtxt('stress_wall.dat', unpack=True)
 
+                if md_data.shape[1] == 5:
+                    # 1D
+                    # step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
+                    press = np.mean(md_data[:, 1] + md_data[:, 3]) / 2.
+                    tauL = np.mean(md_data[:, 2])
+                    tauU = np.mean(md_data[:, 4])
+                
+                    Ynew[0, i] = press
+                    Ynew[5, i] = tauL
+                    Ynew[11, i] = tauU
+
+                elif md_data.shape[1] == 7:
+                    # 2D
+                    # step, pL_t, tauxzL_t, pU_t, tauxzU_t, tauyzL_t, tauyzU_t = np.loadtxt('stress_wall.dat', unpack=True)
+                    press = np.mean(md_data[:, 1] + md_data[:, 3]) / 2.
+                    tauxzL = np.mean(md_data[:, 2])
+                    tauxzU = np.mean(md_data[:, 4])
+                    tauyzL = np.mean(md_data[:, 5])
+                    tauyzU = np.mean(md_data[:, 6])
+
+                    Ynew[0, i] = press
+                    Ynew[4, i] = tauyzL
+                    Ynew[5, i] = tauxzL
+                    Ynew[10, i] = tauyzU
+                    Ynew[11, i] = tauxzU
+                
                 os.chdir(basedir)
-
-                Ynew[0, i] = press
-                Ynew[5, i] = tauL
-                Ynew[11, i] = tauU
 
             # ... or use a (possibly noisy) constitutive law
             else:
