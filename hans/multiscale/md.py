@@ -88,7 +88,8 @@ def run(system, cmdargs):
 def run_slab(gap_height=50.,
              vWall=0.12,
              density=0.8,
-             mass_flux=0.08,
+             mass_flux_x=0.08,
+             mass_flux_y=0.0,
              inputfile='in.lmp',
              wallfile='wall.lmp'):
 
@@ -104,10 +105,11 @@ def run_slab(gap_height=50.,
 
     # set variables
     lmp.command(f'variable input_gap equal {gap_height}')
-    lmp.command(f'variable input_flux equal {mass_flux}')
+    lmp.command(f'variable input_fluxX equal {mass_flux_x}')
     lmp.command(f'variable input_dens equal {density}')
     lmp.command(f'variable input_vWall equal {vWall}')
     lmp.command(f'variable slabfile index {wallfile}')
+    lmp.command(f'variable input_fluxY equal {mass_flux_y}')
 
     # run LAMMPS
     lmp.file(inputfile)

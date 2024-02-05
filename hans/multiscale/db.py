@@ -226,15 +226,16 @@ class Database:
                 kw_args = dict(gap_height=Xnew[0, i],
                                vWall=self.md['vWall'],
                                density=Xnew[3, i],
-                               mass_flux=Xnew[4, i],
+                               mass_flux_x=Xnew[4, i],
+                               mass_flux_y=Xnew[5, i],
                                wallfile=os.path.join(basedir, self.md['wallfile']),
                                inputfile=os.path.join(basedir, self.md['infile']))
 
                 text = f"""Run next MD simulation in: {proto_datapath}
 ---
-Gap height: {Xnew[0, i]}
-Mass density: {Xnew[3, i]}
-Mass flux: {Xnew[4, i]}
+Gap height: {Xnew[0, i]:.5f}
+Mass density: {Xnew[3, i]:.5f}
+Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
 """
 
                 print(bordered_text(text))

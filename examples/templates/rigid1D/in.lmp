@@ -1,7 +1,7 @@
 # STATE POINT
 
 # variable 	input_gap equal 50.
-# variable 	input_flux equal 0.08
+# variable 	input_fluxX equal 0.08
 # variable 	input_dens equal 0.8
 # variable 	input_vWall equal 0.12
 
