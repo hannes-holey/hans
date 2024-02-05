@@ -75,7 +75,7 @@ class GaussianProcess:
 
     @property
     def dbsize(self):
-        return self.db.Xtrain.shape[1]
+        return self.db.size
 
     def setup(self, q):
         nx, ny = q.shape[1:]

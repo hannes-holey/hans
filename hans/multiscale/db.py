@@ -62,6 +62,10 @@ class Database:
         np.save('Xtrain.npy', self.Xtrain)
         np.save('Ytrain.npy', self.Ytrain)
 
+    @property
+    def size(self):
+        return self.Xtrain.shape[1]
+
     def _init_remote(self, input_dim, output_dim):
         # uses dtool_lookup_server configuration from your dtool config
         # TODO: Possibility to pass a txtfile w/ uuids or query string
@@ -143,18 +147,20 @@ class Database:
             [description]
         """
 
+        Nsample = Ninit - self.size
+
         # Bounds for quasi random sampling of initial database
         l_bounds = [np.amin(self.h[0]), 0.0]
         u_bounds = [np.amax(self.h[0]), 2. * np.mean(Q[1, :])]
 
         # Sampling
         if sampling == 'random':
-            h_init = l_bounds[0] + np.random.random_sample([Ninit, ]) * (u_bounds[1] - l_bounds[0])
-            jx_init = l_bounds[1] + np.random.random_sample([Ninit, ]) * (u_bounds[1] - l_bounds[0])
+            h_init = l_bounds[0] + np.random.random_sample([Nsample, ]) * (u_bounds[1] - l_bounds[0])
+            jx_init = l_bounds[1] + np.random.random_sample([Nsample, ]) * (u_bounds[1] - l_bounds[0])
         elif sampling == 'lhc':
 
             sampler = qmc.LatinHypercube(d=2)
-            sample = sampler.random(n=Ninit)
+            sample = sampler.random(n=Nsample)
 
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
             h_init = scaled_samples[:, 0]
@@ -164,9 +170,9 @@ class Database:
         elif sampling == 'sobol':
             sampler = qmc.Sobol(d=2)
 
-            m = int(np.log2(Ninit))
-            if int(2**m) != Ninit:
-                m = int(np.ceil(np.log2(Ninit)))
+            m = int(np.log2(Nsample))
+            if int(2**m) != Nsample:
+                m = int(np.ceil(np.log2(Nsample)))
                 print(f'Sample size should be a power of 2 for Sobol sampling. Use Ninit={2**m}.')
             sample = sampler.random_base2(m=m)
 
