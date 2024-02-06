@@ -134,20 +134,18 @@ variable		vCOM equal ${input_fluxY}*(lx*ly*v_gap)/mass(fluid)
 velocity		fluid set v_uCOM v_vCOM 0. sum no units box 	
 
 # 2nd equilibration (Nose-Hoover)
-fix             1 fluid nve # temp ${temp} ${temp} $(100.0*dt)
+fix             1 fluid nve
 fix 			2 solid nve
 fix 			2a therm langevin ${temp} ${temp} $(100.0*dt) 435623
 fix 			3 frozen store/force
 fix 			4 frozen setforce 0. 0. 0.
 fix 			5 fluid flow/gauss 1 1 0
 
-compute			thermotemp_partial therm temp/partial 0 1 0
-fix_modify 		2a temp thermotemp_partial
+# Subtract COM velocity from wall atoms for thermostatting 
+compute			thermotemp_wall therm temp/com
+fix_modify 		2a temp thermotemp_wall
 
 run 			${ttherm}
-
-# unfix 			1
-
 reset_timestep 	0
 
 ###############
@@ -203,13 +201,6 @@ variable		shearyzU equal c_forceU[2]/(lx*ly)
 
 variable 		pressW equal (v_pressL+v_pressU)/2.
 	
-# variable 		pressLsq equal v_pressL*v_pressL
-# variable		pressUsq equal v_pressU*v_pressU
-# variable		pressWsq equal v_pressW*v_pressW
-# 	
-# variable 		shearLsq equal v_shearL*v_shearL
-# variable 		shearUsq equal v_shearU*v_shearU
-
 # Averaged outputs
 # Z-PROFILES
 fix				avedens fluid ave/chunk 5 100 500 cchunk density/number ave running overwrite file dens_profile.dat
@@ -222,10 +213,6 @@ fix 			avebinT fluid ave/time 5 100 500 c_binpressT mode vector ave running over
 # MEAN STRESS
 fix 			avewall all ave/time 5 100 500 v_pressL v_shearxzL v_pressU v_shearxzU v_shearyzL v_shearyzU file stress_wall.dat 
 fix 			avecenter fluid ave/time 5 100 500 c_centerpress[*] file press_center.dat
-
-# STRESS FLUCTUATIONS
-# fix 			avewallsq all ave/time 5 100 500 v_pressLsq v_shearLsq v_pressUsq v_shearUsq v_pressWsq file stress_sq_wall.dat 
-# fix 			avecentersq fluid ave/time 5 100 500 v_pcentersq file press_sq_center.dat
 
 dump        	1 all custom 5000 out.xyz type id x y z
 
