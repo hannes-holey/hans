@@ -27,10 +27,9 @@ import numpy as np
 from mpi4py import MPI
 
 from hans.field import VectorField
-from hans.stress import SymStressField2D, SymStressField3D, WallStressField3D
+from hans.stress import SymStressField2D, WallStressField3D
 from hans.geometry import GapHeight, SlipLength
 from hans.material import Material
-from hans.tools import abort
 from hans.special.flux_limiter import TVD_MC_correction
 from hans.multiscale.db import Database
 
@@ -95,8 +94,8 @@ class ConservedField(VectorField):
 
         self.eps = np.nan
 
-        # Avg stress (xx, yy, xy) -- no GP
-        self.viscous_stress = SymStressField2D(disc, geometry, material, surface)
+        # Avg stress (xx, yy, xy) -- not used in GP runs, is small anyways
+        self.viscous_stress = SymStressField2D(disc, geometry, material, surface, gp)
 
         # Wall stress (xx, yy, zz, yz, xz, xy)
         self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
