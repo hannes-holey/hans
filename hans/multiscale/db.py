@@ -253,7 +253,7 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                 proto_ds.put_item(os.path.join(basedir, self.md['infile']), os.path.basename(self.md['infile']))
 
                 # Get stress
-                md_data = np.loadtxt('stress_wall.dat', unpack=True)
+                md_data = np.loadtxt('stress_wall.dat')
 
                 if md_data.shape[1] == 5:
                     # 1D
@@ -261,7 +261,7 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     press = np.mean(md_data[:, 1] + md_data[:, 3]) / 2.
                     tauL = np.mean(md_data[:, 2])
                     tauU = np.mean(md_data[:, 4])
-                
+
                     Ynew[0, i] = press
                     Ynew[5, i] = tauL
                     Ynew[11, i] = tauU
@@ -280,7 +280,7 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[5, i] = tauxzL
                     Ynew[10, i] = tauyzU
                     Ynew[11, i] = tauxzU
-                
+
                 os.chdir(basedir)
 
             # ... or use a (possibly noisy) constitutive law
