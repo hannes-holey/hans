@@ -131,9 +131,9 @@ velocity		freezeL set v_input_vWall 0. 0. units box
 variable 		gap equal bound(fluid,zmax)-bound(fluid,zmin)
 variable		uCOM equal ${input_fluxX}*(lx*ly*v_gap)/mass(fluid) 			
 variable		vCOM equal ${input_fluxY}*(lx*ly*v_gap)/mass(fluid) 			
-velocity		fluid set v_uCOM v_vCOM 0. sum no units box 	
+velocity		fluid set v_uCOM v_vCOM 0. sum yes units box 	
 
-# 2nd equilibration (Nose-Hoover)
+# 2nd equilibration (Langevin walls)
 fix             1 fluid nve
 fix 			2 solid nve
 fix 			2a therm langevin ${temp} ${temp} $(100.0*dt) 435623
