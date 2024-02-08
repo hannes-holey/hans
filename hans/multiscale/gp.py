@@ -101,7 +101,7 @@ class GaussianProcess:
             refit = True
 
         Xtest = self._get_test_input()
-        mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
+        mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
 
         self.maxvar = np.amax(cov)
         meandiff = np.amax(mean) - np.amin(mean)
