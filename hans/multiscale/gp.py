@@ -101,7 +101,7 @@ class GaussianProcess:
             refit = True
 
         Xtest = self._get_test_input()
-        mean, cov = self.model.predict_noiseless(Xtest, full_cov=True)
+        mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
 
         self.maxvar = np.amax(cov)
         meandiff = np.amax(mean) - np.amin(mean)
@@ -131,7 +131,7 @@ class GaussianProcess:
             success = False
 
             # sort indices with increasing variance
-            xnext = np.argsort(np.diag(cov))
+            xnext = np.argsort(cov[:, 0])
             _, nx, ny = mean.shape
 
             # try to find a point not too close to previous ones
