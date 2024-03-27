@@ -38,6 +38,7 @@ jobs:
         repository: 'lammps'
 
     - name: Build LAMMPS
+      run: |
         cd lammps/src
         make yes-MOLECULE
         make yes-KSPACE
