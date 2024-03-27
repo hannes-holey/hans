@@ -139,7 +139,7 @@ class GaussianProcess:
 
                 ix, iy = np.unravel_index(x, (nx, ny))
 
-                if not(self._similarity_check(ix, iy)):
+                if not self._similarity_check(ix, iy):
                     # Add to training data
                     print(f'Active learning: GP_{self.name} in step {self.step + 1} ({(counter + 1)}/{maxcount})...')
                     self._update_database(ix, iy)
@@ -147,7 +147,7 @@ class GaussianProcess:
                     success = True
                     break
 
-            if not(success):
+            if not success:
                 # If not possible, use the max variance point anyways
                 ix, iy = np.unravel_index(xnext[-1], (nx, ny))
                 self._update_database(ix, iy)
