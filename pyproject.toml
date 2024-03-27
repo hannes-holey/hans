@@ -48,3 +48,7 @@ plot2D_height = "hans.cli:plot2D_height.main"
 plot2D_last = "hans.cli:plot2D_last.main"
 plot_scalar = "hans.cli:plot_scalar.main"
 read_config = "hans.cli:read_config.main"
+
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = ["tests"]
