@@ -39,14 +39,16 @@ jobs:
 
     - name: Build LAMMPS
       run: |
+        WDIR=$(pwd)
         cd lammps/src
-        make yes-MOLECULE
-        make yes-KSPACE
-        make yes-MANYBODY
+      # make yes-MOLECULE
+      # make yes-KSPACE
+      # make yes-MANYBODY
         make yes-EXTRA-FIX
 
         make mode=shared mpi
         make install-python
+        cd $WDIR
 
     - name: Install hans
       run: |
