@@ -24,7 +24,10 @@
 import os
 import numpy as np
 import dtoolcore
-import lammps
+try:
+    import lammps
+except ImportError:
+    pass
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from getpass import getuser
