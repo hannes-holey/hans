@@ -25,7 +25,11 @@ import os
 import sys
 from mpi4py import MPI
 import numpy as np
-from lammps import lammps, formats
+try:
+    from lammps import lammps, formats
+except ImportError:
+    pass
+
 
 def main():
 
@@ -191,4 +195,3 @@ def run_lj(temp=2., dens=0.452, Natoms=1000, Rcut=5., dt=0.005, tequi=10000, tsa
 if __name__ == "__main__":
     # main is called by an individual spawned process for parallel MD runs
     main()
-
