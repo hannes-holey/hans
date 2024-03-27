@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
     - name: Checkout source
       uses: actions/checkout@v4
@@ -25,8 +25,27 @@ jobs:
 
     - name: Install build requirements
       run: |
+        sudo apt-get install git
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools setuptools_scm coverage build pytest
+
+    - name: Clone LAMMPS
+      uses: GuillaumeFalourd/clone-github-repo-action@v2.3
+      with:
+        depth: 1
+        branch: 'develop'
+        owner: 'lammps'
+        repository: 'lammps'
+
+    - name: Build LAMMPS
+        cd lammps/src
+        make yes-MOLECULE
+        make yes-KSPACE
+        make yes-MANYBODY
+        make yes-EXTRA-FIX
+
+        make mode=shared mpi
+        make install-python
 
     - name: Install hans
       run: |
