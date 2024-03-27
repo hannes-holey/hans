@@ -12,6 +12,10 @@ Packaged versions can be installed via
 ```
 pip install hans
 ```
+Multiscale simulations require a working installation of [LAMMPS](https://www.lammps.org/#gsc.tab=0). 
+New molecular dynamics runs are triggered using the Python interface of LAMMPS. 
+Therefore LAMMPS has to be build as a shared library.
+Please follow the installation instructions of [LAMMPS](https://docs.lammps.org/Python_install.html).
 
 ## Examples
 Run from the command line with
