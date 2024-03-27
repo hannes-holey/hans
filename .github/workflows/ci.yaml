@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install MPI
       run: |
@@ -19,7 +19,7 @@ jobs:
         sudo apt-get install -y openmpi-bin libopenmpi-dev
 
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -48,7 +48,7 @@ jobs:
         curl "https://img.shields.io/badge/coverage-$TOTAL%25-$COLOR" > badge.svg
 
     - name: Upload coverage badge
-      if: matrix.python-version == '3.9'
+      if: matrix.python-version == '3.12'
       uses: exuanbo/actions-deploy-gist@v1
       with:
         token: ${{ secrets.GIST_SECRET }}
