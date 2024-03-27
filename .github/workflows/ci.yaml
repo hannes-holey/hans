@@ -49,7 +49,7 @@ jobs:
 
     - name: Install hans
       run: |
-        pip install .
+        pip install .[tests,multiscale]
 
     - name: Test with pytest
       run: |
