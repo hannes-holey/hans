@@ -30,7 +30,7 @@ from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from datetime import datetime
-from pkg_resources import get_distribution
+from importlib import metadata
 import numpy as np
 import shutil
 
@@ -370,7 +370,7 @@ class Problem:
 
             # write metadata
             nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
-            nc.setncattr("version", get_distribution('hans').version)
+            nc.setncattr("version", metadata.version('hans'))
 
             disc = self.disc.copy()
             bc = self.bc.copy()
