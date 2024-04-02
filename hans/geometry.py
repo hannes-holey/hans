@@ -164,6 +164,16 @@ class GapHeight(VectorField):
             mask = np.greater(xx, Lx / 2)
             self.field[0][mask] = h0
 
+        elif self.geometry["type"] == "asperity":
+            h0 = self.geometry['hmin']
+            h1 = self.geometry['hmax']
+            cx = Lx / 2.
+            cy = Ly / 2.
+            bx = np.pi / Lx
+            by = np.pi / Ly
+
+            self.field[0] = h1 - (h1 - h0) * np.cos(bx * (xx - cx)) * np.cos(by * (yy - cy))
+
     def add_roughness_from_file(self):
 
         Nx = self.disc["Nx"]
