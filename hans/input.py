@@ -670,9 +670,9 @@ class Input:
         assert gp['ptol'] < gp['pvar']
 
         # Noise and optimizer
-        optional_gp_keys = ['sns', 'snp', 'fix', 'start', 'num_restarts', 'verbose']
-        optional_gp_types = 2 * [float] + 4 * [int]
-        optional_gp_defaults = [0., 0., 0, 1, 10, 1]
+        optional_gp_keys = ['sns', 'snp', 'fix', 'start', 'num_restarts', 'verbose', 'heteroscedastic']
+        optional_gp_types = 2 * [float] + 5 * [int]
+        optional_gp_defaults = [0., 0., 0, 1, 10, 1, 0]
         gp = check_input(gp, optional_gp_keys, optional_gp_types, optional_gp_defaults)
 
         # DB stuff

@@ -103,10 +103,6 @@ def run_slab(gap_height=50.,
 
     assert lmp.has_package('EXTRA-FIX'), "Lammps needs to be compiled with package 'EXTRA-FIX'"
 
-    # TODO: Other useful checks, might add here or somewhere else
-    # lmp.has_mpi4py
-    # lmp.has_mpi_support
-
     # set variables
     lmp.command(f'variable input_gap equal {gap_height}')
     lmp.command(f'variable input_fluxX equal {mass_flux_x}')

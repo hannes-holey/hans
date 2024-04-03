@@ -116,6 +116,7 @@ class Database:
             yaml = YAML()
             Xtrain = []
             Ytrain = []
+            Yerr = []
 
             for readme in readme_list:
                 with open(readme, 'r') as instream:
@@ -124,12 +125,24 @@ class Database:
                 Xtrain.append(rm['X'])
                 Ytrain.append(rm['Y'])
 
+                if self.gp['heteroscedastic']:
+                    if 'Yerr' in rm.keys():
+                        Yerr.append(rm['Yerr'])
+                    else:
+                        Yerr.append([0., 0.])
+
             self.Xtrain = np.array(Xtrain).T
             self.Ytrain = np.array(Ytrain).T
+            if self.gp["heteroscedastic"]:
+                self.Yerr = np.array(Yerr).T
+
         else:
             print("No matching dtool datasets found. Start with empty database.")
             self.Xtrain = np.empty((input_dim, 0))
             self.Ytrain = np.empty((output_dim, 0))
+
+            if self.gp['heteroscedastic']:
+                self.Yerr = np.empty((2, 0))
 
     def update(self, Qnew, ix, iy):
         self._update_inputs(Qnew, ix, iy)
@@ -211,6 +224,12 @@ class Database:
 
         Ynew = np.zeros((13, Xnew.shape[1]))
 
+        # In current version of heteroscedastic multi-output GP (single kernel):
+        # one error for normal and one for shear stress.
+        # Otherwise need individual kernels for tau_xy and tau_xy,
+        # and possibly correlations between outputs.
+        Yerrnew = np.zeros((2, Xnew.shape[1]))
+
         for i in range(Xnew.shape[1]):
 
             num = self.Ytrain.shape[1] + i + 1
@@ -269,6 +288,18 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[5, i] = tauL
                     Ynew[11, i] = tauU
 
+                    if self.gp['heteroscedastic']:
+                        Nblk = md_data.shape[0]
+
+                        pL_err = np.var(md_data[:, 1]) / Nblk
+                        pU_err = np.var(md_data[:, 3]) / Nblk
+
+                        tauxzL_err = np.var(md_data[:, 2]) / Nblk
+                        tauxzU_err = np.var(md_data[:, 4]) / Nblk
+
+                        Yerrnew[0, i] = (pL_err + pU_err) / 2.
+                        Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
+
                 elif md_data.shape[1] == 7:
                     # 2D
                     # step, pL_t, tauxzL_t, pU_t, tauxzU_t, tauyzL_t, tauyzU_t = np.loadtxt('stress_wall.dat', unpack=True)
@@ -284,17 +315,35 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[10, i] = tauyzU
                     Ynew[11, i] = tauxzU
 
+                    if self.gp['heteroscedastic']:
+                        Nblk = md_data.shape[0]
+
+                        pL_err = np.var(md_data[:, 1]) / Nblk
+                        pU_err = np.var(md_data[:, 3]) / Nblk
+
+                        tauxzL_err = np.var(md_data[:, 2]) / Nblk
+                        tauxzU_err = np.var(md_data[:, 4]) / Nblk
+                        tauyzL_err = np.var(md_data[:, 5]) / Nblk
+                        tauyzU_err = np.var(md_data[:, 6]) / Nblk
+
+                        Yerrnew[0, i] = (pL_err + pU_err) / 2.
+                        Yerrnew[1, i] = (tauxzL_err + tauxzU_err + tauyzL_err + tauyzU_err) / 4.
+
                 os.chdir(basedir)
 
             # ... or use a (possibly noisy) constitutive law
             else:
                 # Artificial noise
                 pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
-                snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(12, Xnew.shape[1]))
+                snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(1, Xnew.shape[1]))
                 Ynew[0, i] = self.eos_func(Xnew[3, i]) + pnoise[:, i]
                 Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
 
-            self.write_readme(Xnew[:, i], Ynew[:, i], os.path.join(base_uri, ds_name))
+                if self.gp['heteroscedastic']:
+                    Yerrnew[0, i] = self.gp['snp']
+                    Yerrnew[1, i] = self.gp['sns']
+
+            self.write_readme(os.path.join(base_uri, ds_name), Xnew[:, i], Ynew[:, i], Yerrnew[:, i])
 
             proto_ds.freeze()
 
@@ -302,8 +351,10 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                 dtoolcore.copy(proto_ds.uri, self.gp['storage'])
 
         self.Ytrain = np.hstack([self.Ytrain, Ynew])
+        if self.gp["heteroscedastic"]:
+            self.Yerr = np.hstack([self.Yerr, Yerrnew])
 
-    def write_readme(self, Xnew, Ynew, path):
+    def write_readme(self, path, Xnew, Ynew, Yerrnew):
 
         readme_template = """
         project: Multiscale Simulation of Lubrication
@@ -346,6 +397,9 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
 
         metadata['X'] = X
         metadata['Y'] = Y
+        if self.gp['heteroscedastic']:
+            Yerr = [float(item) for item in Yerrnew]
+            metadata['Yerr'] = Yerr
 
         with open(out_fname, 'w') as outfile:
             yaml.dump(metadata, outfile)

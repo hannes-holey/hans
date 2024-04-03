@@ -658,7 +658,8 @@ class WallStressField3D(DoubleTensorField):
 
             noise = {'type': 'Gaussian',
                      'fixed': bool(self.gp['fix']),
-                     'variance': self.gp['sns']}
+                     'variance': self.gp['sns'],
+                     'heteroscedastic': bool(self.gp['heteroscedastic'])}
 
             optimizer = {'type': 'bfgs',
                          'num_restarts': self.gp['num_restarts'],

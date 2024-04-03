@@ -62,7 +62,8 @@ class Material:
 
             noise = {'type': 'Gaussian',
                      'fixed': bool(self.gp['fix']),
-                     'variance': self.gp['snp']}
+                     'variance': self.gp['snp'],
+                     'heteroscedastic': bool(self.gp['heteroscedastic'])}
 
             if q.shape[-1] > 3:
                 # 2D

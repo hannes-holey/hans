@@ -40,7 +40,7 @@ class GaussianProcess:
                  active_learning={'max_iter': 10, 'threshold': .1, 'alpha': 0.05, 'start': 20, 'Ninit': 5, 'sampling': 'lhc'},
                  kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
                  optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
-                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+                 noise={'type': 'Gaussian',  'fixed': False, 'variance': 0., 'heteroscedastic': False}):
 
         self.Xmask = Xmask
         self.Ymask = Ymask
@@ -55,6 +55,10 @@ class GaussianProcess:
 
         self.maxvar = np.inf
         self.tol = active_learning['threshold']
+
+        self.heteroscedastic_noise = noise['heteroscedastic']
+        if self.heteroscedastic_noise:
+            assert noise['fixed']
 
         self.kern = GPy.kern.Matern32(active_dim, ARD=kernel_dict['ARD'])
 
@@ -174,12 +178,16 @@ class GaussianProcess:
 
         per_step = [self.step, self.dbsize]
         [per_step.append(param) for param in self.kern.param_array]
-        per_step.append(self.model.Gaussian_noise.variance[0])
+        if not self.heteroscedastic_noise:
+            ncol = 4
+            per_step.append(self.model.Gaussian_noise.variance[0])
+        else:
+            ncol = 5
         per_step.append(self.maxvar)
         per_step.append(self.tol)
         per_step.append(-self.model.log_likelihood())
 
-        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + 5) * ["{:8e}"]
+        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + ncol) * ["{:8e}"]
         per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 
@@ -187,9 +195,15 @@ class GaussianProcess:
 
     def _build_model(self):
 
-        self.model = GPy.models.GPRegression(self.db.Xtrain[self.Xmask, :].T,
-                                             self.db.Ytrain[self.Ymask, :].T,
-                                             self.kern)
+        if self.heteroscedastic_noise:
+            self.model = GPy.models.GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T,
+                                                                self.db.Ytrain[self.Ymask, :].T,
+                                                                self.kern)
+        else:
+            self.model = GPy.models.GPRegression(self.db.Xtrain[self.Xmask, :].T,
+                                                 self.db.Ytrain[self.Ymask, :].T,
+                                                 self.kern)
+
         self._fix_noise()
 
         self.last_fit_dbsize = self.dbsize
@@ -253,8 +267,13 @@ class GaussianProcess:
     def _fix_noise(self):
 
         if self.noise['fixed']:
-            self.model.Gaussian_noise.variance = self.noise['variance']
-            self.model.Gaussian_noise.variance.fix()
+            if self.heteroscedastic_noise:
+                index = 0 if self.name == 'press' else 1
+                self.model['.*het_Gauss.variance'] = (self.db.Yerr[index, :].T)[:, None]
+                self.model.het_Gauss.variance.fix()
+            else:
+                self.model.Gaussian_noise.variance = self.noise['variance']
+                self.model.Gaussian_noise.variance.fix()
 
     # def _get_solution(self):
     #     return self.sol
