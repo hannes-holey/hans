@@ -426,9 +426,8 @@ def autocorr_func_1d(x):
     """
     n = len(x)
 
-    # unbias and rescale
+    # unbias
     x -= np.mean(x)
-    x /= np.std(x)
 
     # pad with zeros
     ext_size = 2 * n - 1
@@ -438,17 +437,20 @@ def autocorr_func_1d(x):
     x_f = np.fft.fft(x, fsize)
     C = np.fft.ifft(x_f * x_f.conjugate())[:n] / (n - np.arange(n))
 
-    return C.real
+    # Normalize
+    C_t = C.real / C.real[0]
+
+    return C_t
 
 
-def statistical_inefficiency(corr, mintime):
+def statistical_inefficiency(timeseries, mintime):
     """
     see e.g. Chodera et al. J. Chem. Theory Comput., Vol. 3, No. 1, 2007
 
     Parameters
     ----------
-    corr : numpy.ndarray
-        autocorrelation_function
+    timeseries : numpy.ndarray
+        The time series
     mintime : int
         Minimum time lag to calculate correlation time
 
@@ -457,8 +459,8 @@ def statistical_inefficiency(corr, mintime):
     float
         Statisitical inefficiency parameter
     """
-    N = corr.size
-    C_t = autocorr_func_1d(corr)
+    N = len(timeseries)
+    C_t = autocorr_func_1d(timeseries)
     t_grid = np.arange(N).astype('float')
     g_t = 2.0 * C_t * (1.0 - t_grid / float(N))
     ind = np.where((C_t <= 0) & (t_grid > mintime))[0][0]
