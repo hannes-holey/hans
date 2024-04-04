@@ -461,7 +461,7 @@ def statistical_inefficiency(corr, mintime):
     C_t = autocorr_func_1d(corr)
     t_grid = np.arange(N).astype('float')
     g_t = 2.0 * C_t * (1.0 - t_grid / float(N))
-    ind = np.where((C_t <= 0) and (t_grid > mintime))[0][0]
+    ind = np.where((C_t <= 0) & (t_grid > mintime))[0][0]
     g = 1.0 + g_t[1:ind].sum()
     return max(1.0, g)
 
