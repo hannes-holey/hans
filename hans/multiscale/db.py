@@ -151,7 +151,7 @@ class Database:
         """Build initial database with different sampling strategies.
 
         Select points in two-dimensional space (gap height, flux) to
-        initialize training database. Choose between random, latin hypercube, 
+        initialize training database. Choose between random, latin hypercube,
         and Sobol sampling.
 
 
@@ -289,13 +289,11 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[11, i] = tauU
 
                     if self.gp['heteroscedastic']:
-                        Nblk = md_data.shape[0]
+                        pL_err = variance_of_mean(md_data[:, 1])
+                        pU_err = variance_of_mean(md_data[:, 3])
 
-                        pL_err = np.var(md_data[:, 1]) / Nblk
-                        pU_err = np.var(md_data[:, 3]) / Nblk
-
-                        tauxzL_err = np.var(md_data[:, 2]) / Nblk
-                        tauxzU_err = np.var(md_data[:, 4]) / Nblk
+                        tauxzL_err = variance_of_mean(md_data[:, 2])
+                        tauxzU_err = variance_of_mean(md_data[:, 4])
 
                         Yerrnew[0, i] = (pL_err + pU_err) / 2.
                         Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
@@ -316,15 +314,13 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[11, i] = tauxzU
 
                     if self.gp['heteroscedastic']:
-                        Nblk = md_data.shape[0]
+                        pL_err = variance_of_mean(md_data[:, 1])
+                        pU_err = variance_of_mean(md_data[:, 3])
 
-                        pL_err = np.var(md_data[:, 1]) / Nblk
-                        pU_err = np.var(md_data[:, 3]) / Nblk
-
-                        tauxzL_err = np.var(md_data[:, 2]) / Nblk
-                        tauxzU_err = np.var(md_data[:, 4]) / Nblk
-                        tauyzL_err = np.var(md_data[:, 5]) / Nblk
-                        tauyzU_err = np.var(md_data[:, 6]) / Nblk
+                        tauxzL_err = variance_of_mean(md_data[:, 2])
+                        tauxzU_err = variance_of_mean(md_data[:, 4])
+                        tauyzL_err = variance_of_mean(md_data[:, 5])
+                        tauyzU_err = variance_of_mean(md_data[:, 6])
 
                         Yerrnew[0, i] = (pL_err + pU_err) / 2.
                         Yerrnew[1, i] = (tauxzL_err + tauxzU_err + tauyzL_err + tauyzU_err) / 4.
@@ -411,3 +407,85 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
             Hnew = Hnew[:, None]
 
         return Hnew
+
+
+def autocorr_func_1d(x):
+    """
+
+    Compute autocorrelation function of 1D time series.
+
+    Parameters
+    ----------
+    x : numpy.ndarry
+        The time series
+
+    Returns
+    -------
+    numpy.ndarray
+        Normalized time autocorrelation function
+    """
+    n = len(x)
+
+    # unbias and rescale
+    x -= np.mean(x)
+    x /= np.std(x)
+
+    # pad with zeros
+    ext_size = 2 * n - 1
+    fsize = 2**np.ceil(np.log2(ext_size)).astype('int')
+
+    # ACF from FFT
+    x_f = np.fft.fft(x, fsize)
+    C = np.fft.ifft(x_f * x_f.conjugate())[:n] / (n - np.arange(n))
+
+    return C.real
+
+
+def statistical_inefficiency(corr, mintime):
+    """
+    see e.g. Chodera et al. J. Chem. Theory Comput., Vol. 3, No. 1, 2007
+
+    Parameters
+    ----------
+    corr : numpy.ndarray
+        autocorrelation_function
+    mintime : int
+        Minimum time lag to calculate correlation time
+
+    Returns
+    -------
+    float
+        Statisitical inefficiency parameter
+    """
+    N = corr.size
+    C_t = autocorr_func_1d(corr)
+    t_grid = np.arange(N).astype('float')
+    g_t = 2.0 * C_t * (1.0 - t_grid / float(N))
+    ind = np.where((C_t <= 0) and (t_grid > mintime))[0][0]
+    g = 1.0 + g_t[1:ind].sum()
+    return max(1.0, g)
+
+
+def variance_of_mean(timeseries, mintime=1):
+    """
+
+    Compute the variance of the mean value for a correlated time series
+
+    Parameters
+    ----------
+    timeseries : numpy.ndarray
+        The time series
+    mintime : int, optional
+        Minimum time lag to calculate correlation time
+
+    Returns
+    -------
+    float
+        Variance of the mean
+    """
+
+    g = statistical_inefficiency(timeseries, mintime)
+    n = len(timeseries)
+    var = np.var(timeseries) / n * g
+
+    return var
