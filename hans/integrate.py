@@ -25,6 +25,7 @@
 
 import numpy as np
 from mpi4py import MPI
+from copy import deepcopy
 
 from hans.field import VectorField
 from hans.stress import SymStressField2D, WallStressField3D
@@ -93,6 +94,7 @@ class ConservedField(VectorField):
             self.dt = numerics["dt"]
 
         self.eps = np.nan
+        self.Ekin_old = deepcopy(self.ekin)
 
         # Avg stress (xx, yy, xy) -- not used in GP runs, is small anyways
         self.viscous_stress = SymStressField2D(disc, geometry, material, surface, gp)
@@ -327,8 +329,6 @@ class ConservedField(VectorField):
 
         """
 
-        ng = self.disc["nghost"]
-
         self.time += self.dt
 
         dx = np.array([self.disc["dx"], self.disc["dy"]])
@@ -341,16 +341,8 @@ class ConservedField(VectorField):
         else:
             CFL = self.dt / np.amax(dt_crit)
 
-        diff = np.empty(1)
-        denom = np.empty(1)
-
-        local_diff = np.sum((self.inner[0] - q0[0, ng:-ng, ng:-ng])**2)
-        local_denom = np.sum(q0[0, ng:-ng, ng:-ng]**2)
-
-        self.comm.Allreduce(local_diff, diff, op=MPI.SUM)
-        self.comm.Allreduce(local_denom, denom, op=MPI.SUM)
-
-        self.eps = np.sqrt(diff[0] / denom[0]) / CFL
+        self.eps = abs(self.ekin - self.Ekin_old) / self.Ekin_old / CFL
+        self.Ekin_old = deepcopy(self.ekin)
 
     def fill_ghost_buffer(self):
         """
