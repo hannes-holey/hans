@@ -128,7 +128,7 @@ class GaussianProcess:
 
         # TODO: in input
         counter = 0
-        maxcount = 5
+        maxcount = q.shape[1] * q.shape[2]  # 5
         self.wait -= 1
 
         while self.maxvar > self.tol and self.wait <= 0:
