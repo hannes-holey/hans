@@ -166,39 +166,35 @@ class Database:
         Nsample = Ninit - self.size
 
         # Bounds for quasi random sampling of initial database
-        l_bounds = [np.amin(self.h[0]), 0.0]
-        u_bounds = [np.amax(self.h[0]), 2. * np.mean(Q[1, :])]
+        jabs = np.hypot(np.mean(Q[1, :]), np.mean(Q[2, :]))
+        rho = np.mean(Q[0, :])
+        l_bounds = np.array([np.amin(self.h[0]), 0.95 * rho, 0.5 * jabs, 0.])
+        u_bounds = np.array([np.amax(self.h[0]), 1.05 * rho, 1.5 * jabs, 0.5 * jabs])
 
         # Sampling
         if sampling == 'random':
-            h_init = l_bounds[0] + np.random.random_sample([Nsample, ]) * (u_bounds[1] - l_bounds[0])
-            jx_init = l_bounds[1] + np.random.random_sample([Nsample, ]) * (u_bounds[1] - l_bounds[0])
+            scaled_samples = l_bounds + np.random.random_sample([Nsample, 4]) * (u_bounds - l_bounds)
+
         elif sampling == 'lhc':
-
-            sampler = qmc.LatinHypercube(d=2)
+            sampler = qmc.LatinHypercube(d=4)
             sample = sampler.random(n=Nsample)
-
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
-            h_init = scaled_samples[:, 0]
-            jx_init = scaled_samples[:, 1]
-            # jy_init = scaled_samples[:, 2]
 
         elif sampling == 'sobol':
-            sampler = qmc.Sobol(d=2)
-
+            sampler = qmc.Sobol(d=3)
             m = int(np.log2(Nsample))
             if int(2**m) != Nsample:
                 m = int(np.ceil(np.log2(Nsample)))
                 print(f'Sample size should be a power of 2 for Sobol sampling. Use Ninit={2**m}.')
             sample = sampler.random_base2(m=m)
-
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
-            h_init = scaled_samples[:, 0]
-            jx_init = scaled_samples[:, 1]
+
+        h_init = scaled_samples[:, 0]
+        rho_init = scaled_samples[:, 1]
+        jx_init = scaled_samples[:, 2]
+        jy_init = scaled_samples[:, 3]
 
         # Remaining inputs (constant)
-        rho_init = np.ones_like(jx_init) * np.mean(Q[0, :])
-        jy_init = np.zeros_like(jx_init)
         h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])
         h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
 
