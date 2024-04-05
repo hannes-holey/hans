@@ -168,8 +168,8 @@ class Database:
         # Bounds for quasi random sampling of initial database
         jabs = np.hypot(np.mean(Q[1, :]), np.mean(Q[2, :]))
         rho = np.mean(Q[0, :])
-        l_bounds = np.array([np.amin(self.h[0]), 0.95 * rho, 0.5 * jabs, 0.])
-        u_bounds = np.array([np.amax(self.h[0]), 1.05 * rho, 1.5 * jabs, 0.5 * jabs])
+        l_bounds = np.array([np.amin(self.h[0]), 0.99 * rho, 0.5 * jabs, 0.])
+        u_bounds = np.array([np.amax(self.h[0]), 1.01 * rho, 1.5 * jabs, 0.5 * jabs])
 
         # Sampling
         if sampling == 'random':
