@@ -167,12 +167,35 @@ class GapHeight(VectorField):
         elif self.geometry["type"] == "asperity":
             h0 = self.geometry['hmin']
             h1 = self.geometry['hmax']
-            cx = Lx / 2.
-            cy = Ly / 2.
-            bx = np.pi / Lx
-            by = np.pi / Ly
 
-            self.field[0] = h1 - (h1 - h0) * np.cos(bx * (xx - cx)) * np.cos(by * (yy - cy))
+            bumps = self.geometry['nperside']  # per side
+
+            if bumps == 1:
+                hmins = np.array([h0])
+            else:
+                # Gaussian 99% between hmin and hmax
+                std = (h1 - h0) / 2. / 2.57
+                hmins = np.random.normal(loc=h0 + (h1 - h0) / 2., scale=std, size=bumps**2)
+
+            xid = (xx // (Lx / bumps)).astype(int)
+            yid = (yy // (Ly / bumps)).astype(int)
+
+            masks = []
+            for i in range(bumps):
+                for j in range(bumps):
+                    masks.append(np.logical_and(xid == i, yid == j))
+
+            bx = np.pi / (Lx / bumps)
+            by = np.pi / (Ly / bumps)
+
+            zz = np.ones_like(xx) * h1
+
+            for m, h0 in zip(masks, hmins):
+                cx = np.mean(xx[m])
+                cy = np.mean(yy[m])
+                zz[m] -= (h1 - h0) * (np.cos(bx * (xx[m] - cx)) * np.cos(by * (yy[m] - cy)))
+
+            self.field[0] = zz
 
     def add_roughness_from_file(self):
 

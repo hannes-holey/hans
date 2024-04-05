@@ -205,6 +205,7 @@ class Input:
         elif geometry["type"] == "asperity":
             geometry["hmin"] = float(geometry['hmin'])
             geometry["hmax"] = float(geometry['hmax'])
+            geometry["nperside"] = int(geometry['nperside'])
         elif geometry["type"] == "twin_parabolic":
             geometry["hmin"] = float(geometry['hmin'])
             geometry["hmax"] = float(geometry['hmax'])
