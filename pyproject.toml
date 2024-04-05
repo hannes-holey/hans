@@ -23,7 +23,7 @@ dependencies = [
 	"PyYAML>=5.3",
 	"mpi4py>=3.0",
 	"scipy>=1.3",
-	"GPy==1.13.1",
+	"GPy>=1.10.0",
 	"dtool",
 	"dtool-lookup-api==0.5.1"
 ]
