@@ -26,6 +26,7 @@
 import numpy as np
 from mpi4py import MPI
 from copy import deepcopy
+from unittest.mock import Mock
 
 from hans.field import VectorField
 from hans.stress import SymStressField2D, WallStressField3D
@@ -38,7 +39,7 @@ from hans.multiscale.db import Database
 class ConservedField(VectorField):
 
     def __init__(self, disc, bc, geometry, material, numerics, surface, roughness, gp, md,
-                 q_init=None, t_init=None):
+                 q_init=None, t_init=None, fallback=0):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
         and the methods to update them. Derived from VectorField.
@@ -77,10 +78,19 @@ class ConservedField(VectorField):
         self.material = material
         self.numerics = numerics
         self.roughness = roughness
+        self.surface = surface
+        self.gp = gp
+        self.geometry = geometry
+        self.md = md
 
+        self.fallback = fallback
+
+        self.initialize(q_init, t_init)
+
+    def initialize(self, q_init, t_init, restart=False):
         # initialize gap height and slip length field
-        self.height = GapHeight(disc, geometry, roughness)
-        self.slip_length = SlipLength(disc, surface)
+        self.height = GapHeight(self.disc, self.geometry, self.roughness)
+        self.slip_length = SlipLength(self.disc, self.surface)
 
         # intialize field and time
         if q_init is not None:
@@ -89,33 +99,44 @@ class ConservedField(VectorField):
             self.time = t_init[0]
             self.dt = t_init[1]
         else:
-            self.field[0] = material['rho0']
+            self.field[0] = self.material['rho0']
             self.time = 0.
-            self.dt = numerics["dt"]
+            self.dt = self.numerics["dt"]
 
         self.eps = np.nan
         self.Ekin_old = deepcopy(self.ekin)
 
-        # Avg stress (xx, yy, xy) -- not used in GP runs, is small anyways
-        self.viscous_stress = SymStressField2D(disc, geometry, material, surface, gp)
+        if not restart:
 
-        # Wall stress (xx, yy, zz, yz, xz, xy)
-        self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
+            self.q_fallback = deepcopy(self.field)
 
-        # Equation of state
-        self.eos = Material(self.material, gp)
+            # Avg stress (xx, yy, xy) -- not used in GP runs, is small anyways
+            self.viscous_stress = SymStressField2D(self.disc, self.geometry, self.material, self.surface, self.gp)
 
-        if gp is not None:
-            # Initalize global training database
-            db = Database(gp, md, self.height.field,
-                          self.eos.eos_pressure,  # only w/o lammps
-                          self.wall_stress.gp_wall_stress)  # only w/o lammps
+            # Wall stress (xx, yy, zz, yz, xz, xy)
+            self.wall_stress = WallStressField3D(self.disc, self.geometry, self.material, self.surface, self.gp)
 
-            self.wall_stress.init_gp(self.field, db)
-            self.eos.init_gp(self.field, db)
-        else:
-            self.wall_stress.gp = None
-            self.eos.gp = None
+            # Equation of state
+            self.eos = Material(self.material, self.gp)
+
+            if self.gp is not None:
+                # Initalize global training database
+                db = Database(self.gp, self.md, self.height.field,
+                              self.eos.eos_pressure,  # only w/o lammps
+                              self.wall_stress.gp_wall_stress)  # only w/o lammps
+
+                self.wall_stress.init_gp(self.field, db)
+                self.eos.init_gp(self.field, db)
+            else:
+                self.wall_stress.GP = Mock()
+                self.wall_stress.GP.dbsize = 0
+                self.wall_stress.GP.stalled = False
+                self.wall_stress.gp = None
+
+                self.eos.GP = Mock()
+                self.eos.GP.dbsize = 0
+                self.eos.GP.stalled = False
+                self.eos.gp = None
 
     @property
     def mass(self):
@@ -188,6 +209,10 @@ class ConservedField(VectorField):
             time step
 
         """
+
+        if self.fallback > 0:
+            if i % self.fallback == 0:
+                self.q_fallback = deepcopy(self.field)
 
         integrator = self.numerics["integrator"]
 
@@ -342,6 +367,12 @@ class ConservedField(VectorField):
 
         self.eps = abs(self.ekin - self.Ekin_old) / self.Ekin_old / CFL
         self.Ekin_old = deepcopy(self.ekin)
+
+        # Restart
+        if self.wall_stress.GP.stalled or self.eos.GP.stalled:
+            self.initialize(q_init=self.q_fallback, t_init=(self.time, self.dt), restart=True)
+            self.wall_stress.GP.reset_stalled()
+            self.eos.GP.reset_stalled()
 
     def fill_ghost_buffer(self):
         """

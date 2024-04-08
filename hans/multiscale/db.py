@@ -147,7 +147,7 @@ class Database:
     def update(self, Qnew, ix, iy):
         self._update_inputs(Qnew, ix, iy)
 
-    def sampling(self, Q, Ninit, sampling='lhc'):
+    def initialize(self, Q, Ninit, sampling='lhc'):
         """Build initial database with different sampling strategies.
 
         Select points in two-dimensional space (gap height, flux) to
@@ -326,14 +326,14 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
             # ... or use a (possibly noisy) constitutive law
             else:
                 # Artificial noise
-                pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
-                snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(1, Xnew.shape[1]))
+                pnoise = np.random.normal(0., np.sqrt(self.gp['noisePress']), size=(1, Xnew.shape[1]))
+                snoise = np.random.normal(0., np.sqrt(self.gp['noiseShear']), size=(1, Xnew.shape[1]))
                 Ynew[0, i] = self.eos_func(Xnew[3, i]) + pnoise[:, i]
                 Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
 
                 if self.gp['heteroscedastic']:
-                    Yerrnew[0, i] = self.gp['snp']
-                    Yerrnew[1, i] = self.gp['sns']
+                    Yerrnew[0, i] = self.gp['noisePress']
+                    Yerrnew[1, i] = self.gp['noiseShear']
 
             self.write_readme(os.path.join(base_uri, ds_name), Xnew[:, i], Ynew[:, i], Yerrnew[:, i])
 

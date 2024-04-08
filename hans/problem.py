@@ -127,7 +127,8 @@ class Problem:
                                 self.gp,
                                 self.md,
                                 q_init=q_init,
-                                t_init=t_init)
+                                t_init=t_init,
+                                fallback=self.options['writeRestart'])
 
         rank = self.q.comm.Get_rank()
 
@@ -509,19 +510,20 @@ maximum number of iterations reached.", flush=True)
         # TODO: scalar quantities from GP
 
         if bool(self.options['writeRestart']):
-            with Dataset(f"{self.outpath.rstrip('.nc')}_restart.nc", "w") as dst:
-                # copy global attributes all at once via dictionary
-                dst.setncatts(nc.__dict__)
-                # copy dimensions
-                for name, dimension in nc.dimensions.items():
-                    dst.createDimension(
-                        name, (len(dimension) if not dimension.isunlimited() else None))
-                # copy all file data except for the excluded
-                for name, variable in nc.variables.items():
-                    x = dst.createVariable(name, variable.datatype, variable.dimensions)
-                    dst[name][:] = nc[name][:]
-                    # copy variable attributes all at once via dictionary
-                    dst[name].setncatts(nc[name].__dict__)
+            if i % self.options['writeRestart'] == 0:
+                with Dataset(f"{self.outpath.rstrip('.nc')}_restart.nc", "w") as dst:
+                    # copy global attributes all at once via dictionary
+                    dst.setncatts(nc.__dict__)
+                    # copy dimensions
+                    for name, dimension in nc.dimensions.items():
+                        dst.createDimension(
+                            name, (len(dimension) if not dimension.isunlimited() else None))
+                    # copy all file data except for the excluded
+                    for name, variable in nc.variables.items():
+                        x = dst.createVariable(name, variable.datatype, variable.dimensions)
+                        dst[name][:] = nc[name][:]
+                        # copy variable attributes all at once via dictionary
+                        dst[name].setncatts(nc[name].__dict__)
 
         if mode > 0:
             nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))

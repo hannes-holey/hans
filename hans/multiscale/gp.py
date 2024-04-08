@@ -36,38 +36,43 @@ class GaussianProcess:
     name: str
     ndim: int
 
-    def __init__(self, active_dim, db, Xmask, Ymask,
-                 active_learning={'max_iter': 10, 'threshold': .1, 'alpha': 0.05, 'start': 20, 'Ninit': 5, 'sampling': 'lhc'},
-                 kernel_dict={'type': 'Mat32', 'init_params': None, 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
-                 noise={'type': 'Gaussian',  'fixed': False, 'variance': 0., 'heteroscedastic': False}):
+    def __init__(self,
+                 active_dim,
+                 db,
+                 gp,
+                 Xmask,
+                 Ymask,
+                 atol,
+                 kernel_init_var,
+                 kernel_init_scale,
+                 noise_variance):
 
-        self.Xmask = Xmask
-        self.Ymask = Ymask
+        self.tol = atol
+        self.atol = atol
+        self.rtol = gp['rtol']
 
         self.active_dim = active_dim
         self.db = db
+        self.Xmask = Xmask
+        self.Ymask = Ymask
 
-        self.kernel_dict = kernel_dict
-        self.optimizer = optimizer
-        self.active_learning = active_learning
-        self.noise = noise
+        # Kernel
+        self.kern = GPy.kern.Matern32(active_dim, ARD=True)
+        self.kernel_init_var = kernel_init_var
+        self.kernel_init_scale = kernel_init_scale
 
-        self.maxvar = np.inf
-        self.tol = active_learning['threshold']
-
-        self.heteroscedastic_noise = noise['heteroscedastic']
+        # Noise
+        self.heteroscedastic_noise = gp['heteroscedastic']
+        self.noise_fixed = gp['noiseFixed']
         if self.heteroscedastic_noise:
-            assert noise['fixed']
+            assert bool(self.noise_fixed)
+            self.noise_variance = noise_variance
 
-        self.kern = GPy.kern.Matern32(active_dim, ARD=kernel_dict['ARD'])
-
-        if kernel_dict['init_params'] is not None:
-            self.kern.variance = kernel_dict['init_params'][0]
-            self.kern.lengthscale = kernel_dict['init_params'][1:active_dim+1]
-
+        # Common parameters
+        self.options = gp
         self.step = 0
-        self.wait = -1
+        self._stalled = False
+        self.maxvar = np.inf
 
         self._init_outfile()
 
@@ -81,26 +86,34 @@ class GaussianProcess:
     def dbsize(self):
         return self.db.size
 
+    @property
+    def stalled(self):
+        return self._stalled
+
+    def reset_stalled(self):
+        self._stalled = False
+
     def setup(self, q):
         nx, ny = q.shape[1:]
         self.rshape = (nx, ny if ny > 3 else 1)
 
         self._set_solution(q)
 
-        if self.dbsize < self.active_learning['Ninit']:
-            self._initialize_database()
+        if self.dbsize < self.options['Ninit']:
+            self.db.initialize(self.sol,
+                               self.options['Ninit'],
+                               self.options['sampling'])
 
         self._fit()
         self._write_history()
 
-    def predict(self, skips=0):
+    def predict(self, skips=0, counter=0):
 
         refit = False
+        old_maxvar = deepcopy(self.maxvar)
         # Check if dbsize changed and refit
         if self.last_fit_dbsize != self.dbsize:
-            print('')
-            print(f'Step {self.step} - GP_{self.name}' + (f': (skipped {skips+1} inputs)' if skips > 0 else ':'))
-            print(f'Max. variance before fit: {self.maxvar:.3e}')
+            self.gp_print()
             self._fit()
             refit = True
 
@@ -108,13 +121,13 @@ class GaussianProcess:
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
 
         self.maxvar = np.amax(cov)
-        meandiff = np.amax(mean) - np.amin(mean)
-        self.tol = max(self.active_learning['threshold'], (self.active_learning['alpha'] * meandiff)**2)
+        self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
 
         if refit:
             self._write_history()
-            print(f'Max. variance after fit: {self.maxvar:.3e}')
-            print('')
+            success = self.maxvar < self.tol
+            self.gp_print(f'Max. var. (old, new, tol, success): {old_maxvar: .3e}, {self.maxvar: .3e}, {self.tol: .3e}, ', end='')
+            self.gp_print(f'{success}, {skips}, {counter + 1}/{self.options["maxSteps"]}')
 
         if self.ndim == 1:
             return mean.T[:, :, np.newaxis], cov
@@ -126,12 +139,10 @@ class GaussianProcess:
         self._set_solution(q)
         mean, cov = self.predict()
 
-        # TODO: in input
         counter = 0
-        maxcount = q.shape[1] * q.shape[2]  # 5
-        self.wait -= 1
+        maxcount = self.options['maxSteps']
 
-        while self.maxvar > self.tol and self.wait <= 0:
+        while self.maxvar > self.tol:
             success = False
 
             # sort indices with increasing variance
@@ -145,22 +156,22 @@ class GaussianProcess:
 
                 if not self._similarity_check(ix, iy):
                     # Add to training data
-                    print(f'Active learning: GP_{self.name} in step {self.step + 1} ({(counter + 1)}/{maxcount})...')
                     self._update_database(ix, iy)
-                    mean, cov = self.predict(skips=i)
+                    mean, cov = self.predict(skips=i, counter=counter)
                     success = True
                     break
 
-            if not success:
-                # If not possible, use the max variance point anyways
-                ix, iy = np.unravel_index(xnext[-1], (nx, ny))
-                self._update_database(ix, iy)
-                mean, cov = self.predict(skips=i)
+            # if not success:
+            #     # If not possible, use the max variance point anyways
+            #     ix, iy = np.unravel_index(xnext[-1], (nx, ny))
+            #     self._update_database(ix, iy)
+            #     mean, cov = self.predict(skips=i, counter=counter)
 
             counter += 1
-            if counter == maxcount:
-                self.wait = 10
-                print(f'Active learning seems to stall. Wait for {self.wait} steps...')
+            if not success or counter == maxcount:
+                print(f'Active learning seems to stall. Fall back to last restart.')
+                self._stalled = True
+                counter = 0
 
         self.step += 1
 
@@ -210,31 +221,33 @@ class GaussianProcess:
 
     def _fit(self):
 
+        if self.kernel_init_var < 0.:
+            v0 = self.atol
+        else:
+            v0 = self.kernel_init_var
+
         # Initial guess hyperparameters
-        l0 = np.ones(self.active_dim + 1)
-        l0[0] = self.tol
+        if len(self.kernel_init_scale) != 0:
+            l0 = np.array(self.kernel_init_scale)
+        else:
+            if self.active_dim == 3:
+                Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
+                l0 = np.maximum(100 * Xrange, [10., 1e-3, 0.01])
+            elif self.active_dim == 4:
+                Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4, 5]]
+                l0 = np.maximum(100 * Xrange, [10., 1e-3, 0.01, 0.01])
 
-        if self.active_dim == 3:
-            Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
-            l0[1:] = np.maximum(100 * Xrange, [10., 1e-3, 0.01])
-        elif self.active_dim == 4:
-            Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4, 5]]
-            l0[1:] = np.maximum(100 * Xrange, [10., 1e-3, 0.01, 0.01])
-
-        print(l0[1:])
         self._build_model()
 
         best_mll = np.inf
         best_model = self.model
-
-        num_restarts = self.optimizer['num_restarts']
+        num_restarts = self.options['optRestarts']
 
         for i in range(num_restarts):
-
             try:
                 # Randomize hyperparameters
-                self.kern.lengthscale = l0[1:] * np.exp(np.random.normal(size=self.active_dim))
-                self.kern.variance = l0[0] * np.exp(np.random.normal())
+                self.kern.lengthscale = l0 * np.exp(np.random.normal(size=self.active_dim))
+                self.kern.variance = v0 * np.exp(np.random.normal())
                 self.model.optimize('bfgs', max_iters=100)
             except np.linalg.LinAlgError:
                 print('LinAlgError: Skip optimization step')
@@ -245,18 +258,17 @@ class GaussianProcess:
                 best_model = self.model.copy()
                 best_mll = np.copy(current_mll)
 
-            if self.optimizer['verbose']:
-                to_stdout = f'DB size {self.dbsize:3d} | '
-                to_stdout += f'Fit {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
-                print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
+            to_stdout = f'Step {self.step + 1:10d} - GP_{self.name} | DB size {self.dbsize:3d} | '
+            to_stdout += f'Fit {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
+            self.gp_print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
 
         self.model = best_model
-        self.model.save_model(os.path.join(self.db.gp['local'],
+        self.model.save_model(os.path.join(self.options['local'],
                                            f'gp_{self.name}-{self.dbsize}.json'), compress=True)
 
         # Also save parameters as numpy array.
         # This is more consistent across python versions (avoids pickle)
-        np.save(os.path.join(self.db.gp['local'], f'gp_{self.name}-{self.dbsize}.npy'), self.model.param_array)
+        np.save(os.path.join(self.options['local'], f'gp_{self.name}-{self.dbsize}.npy'), self.model.param_array)
 
         # To load it later:
         # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
@@ -267,17 +279,14 @@ class GaussianProcess:
 
     def _fix_noise(self):
 
-        if self.noise['fixed']:
+        if self.noise_fixed:
             if self.heteroscedastic_noise:
                 index = 0 if self.name == 'press' else 1
                 self.model['.*het_Gauss.variance'] = (self.db.Yerr[index, :].T)[:, None]
                 self.model.het_Gauss.variance.fix()
             else:
-                self.model.Gaussian_noise.variance = self.noise['variance']
+                self.model.Gaussian_noise.variance = self.noise_variance
                 self.model.Gaussian_noise.variance.fix()
-
-    # def _get_solution(self):
-    #     return self.sol
 
     def _similarity_check(self, ix, iy=1):
 
@@ -299,13 +308,6 @@ class GaussianProcess:
 
         return similar_point_exists
 
-    def _initialize_database(self):
-
-        # Xsol = self._get_solution()
-        self.db.sampling(self.sol,
-                         self.active_learning['Ninit'],
-                         self.active_learning['sampling'])
-
     def _update_database(self, ix, iy):
 
         X_new = self.sol[:, ix, iy]
@@ -314,6 +316,10 @@ class GaussianProcess:
             X_new = X_new[:, None]
 
         self.db.update(X_new, ix, iy)
+
+    def gp_print(self, msg='', **kwargs):
+        if self.options['verbose']:
+            print(msg, **kwargs)
 
     @ abc.abstractmethod
     def _get_test_input(self):
@@ -332,11 +338,12 @@ class GP_stress(GaussianProcess):
     ndim = 1
     name = 'shear'
 
-    def __init__(self, db,
-                 active_learning={'max_iter': 10, 'threshold': .1},
-                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
-                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+    def __init__(self, db, gp):
+
+        atol = gp['atolShear']
+        kernel_init_var = gp['varShear']
+        kernel_init_scale = gp['scaleShear']
+        noise_variance = gp['noiseShear']
 
         Xmask = 6 * [False]
         Xmask[0] = True
@@ -347,7 +354,7 @@ class GP_stress(GaussianProcess):
         Ymask[5] = True
         Ymask[11] = True
 
-        super().__init__(3, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+        super().__init__(3, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
 
     def _get_test_input(self):
         """
@@ -366,11 +373,12 @@ class GP_stress2D(GaussianProcess):
     ndim = 2
     name = 'shear'
 
-    def __init__(self, db,
-                 active_learning={'max_iter': 10, 'threshold': .1},
-                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
-                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+    def __init__(self, db, gp):
+
+        atol = gp['atolShear']
+        kernel_init_var = gp['varShear']
+        kernel_init_scale = gp['scaleShear']
+        noise_variance = gp['noiseShear']
 
         Xmask = 6 * [False]
         Xmask[0] = True
@@ -384,7 +392,7 @@ class GP_stress2D(GaussianProcess):
         Ymask[10] = True
         Ymask[11] = True
 
-        super().__init__(4, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+        super().__init__(4, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
 
     def _get_test_input(self):
         """
@@ -408,13 +416,12 @@ class GP_pressure(GaussianProcess):
     ndim = 1
     name = 'press'
 
-    def __init__(self, db,
-                 active_learning={'max_iter': 10, 'threshold': .1},
-                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
-                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+    def __init__(self, db, gp):
 
-        # self.Ytrain = np.empty((1, 0))
+        atol = gp['atolPress']
+        kernel_init_var = gp['varPress']
+        kernel_init_scale = gp['scalePress']
+        noise_variance = gp['noisePress']
 
         Xmask = 6 * [False]
         Xmask[0] = True
@@ -424,7 +431,7 @@ class GP_pressure(GaussianProcess):
         Ymask = 13 * [False]
         Ymask[0] = True
 
-        super().__init__(3, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+        super().__init__(3, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
 
     def _get_test_input(self):
         """
@@ -442,13 +449,12 @@ class GP_pressure2D(GaussianProcess):
     ndim = 2
     name = 'press'
 
-    def __init__(self, db,
-                 active_learning={'max_iter': 10, 'threshold': .1},
-                 kernel_dict={'type': 'Mat32', 'init_params': [1e6, 1e-5, 1e-2, 100.], 'ARD': True},
-                 optimizer={'type': 'bfgs', 'restart': True, 'num_restarts': 10, 'verbose': True},
-                 noise={'type': 'Gaussian',  'fixed': True, 'variance': 0.}):
+    def __init__(self, db, gp):
 
-        # self.Ytrain = np.empty((1, 0))
+        atol = gp['atolPress']
+        kernel_init_var = gp['varPress']
+        kernel_init_scale = gp['scalePress']
+        noise_variance = gp['noisePress']
 
         Xmask = 6 * [False]
         Xmask[0] = True
@@ -459,7 +465,7 @@ class GP_pressure2D(GaussianProcess):
         Ymask = 13 * [False]
         Ymask[0] = True
 
-        super().__init__(4, db, Xmask, Ymask, active_learning, kernel_dict, optimizer, noise)
+        super().__init__(4, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
 
     def _get_test_input(self):
         """

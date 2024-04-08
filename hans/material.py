@@ -24,7 +24,6 @@
 
 
 import numpy as np
-from unittest.mock import Mock
 
 from hans.tools import abort
 from hans.multiscale.gp import GP_pressure, GP_pressure2D
@@ -39,48 +38,23 @@ class Material:
         self.material = material
 
         self.gp = gp
-
         self.ncalls = 0
 
     def init_gp(self, q, db):
 
-        if self.gp is not None:
-            active_learning = {'max_iter': 200,
-                               'threshold': self.gp['ptol'],
-                               'start': self.gp['start'],
-                               'Ninit': self.gp['Ninit'],
-                               'alpha': self.gp['alpha'],
-                               'sampling': self.gp['sampling']}
-
-            kernel_dict = {'type': 'Mat32',
-                           'init_params': None,  # [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj'],  self.gp['lj']],
-                           'ARD': True}
-
-            optimizer = {'type': 'bfgs',
-                         'num_restarts': self.gp['num_restarts'],
-                         'verbose': bool(self.gp['verbose'])}
-
-            noise = {'type': 'Gaussian',
-                     'fixed': bool(self.gp['fix']),
-                     'variance': self.gp['snp'],
-                     'heteroscedastic': bool(self.gp['heteroscedastic'])}
-
-            if q.shape[-1] > 3:
-                # 2D
-                self.GP = GP_pressure2D(db, active_learning, kernel_dict, optimizer, noise)
-            else:
-                # 1D
-                self.GP = GP_pressure(db, active_learning, kernel_dict, optimizer, noise)
-
-            # Initialize
-            self.GP.setup(q)
+        if q.shape[-1] > 3:
+            # 2D
+            self.GP = GP_pressure2D(db, self.gp)
         else:
-            self.GP = Mock()
-            self.GP.dbsize = 0
+            # 1D
+            self.GP = GP_pressure(db, self.gp)
+
+        # Initialize
+        self.GP.setup(q)
 
     def get_pressure(self, q):
 
-        if self.gp is not None and self.ncalls > 4 * self.gp['start']:
+        if self.gp is not None:
             # In contrast to viscous stress, pressure is not stored internally but just returned.
             # There are four calls to the EOS within one time step.
             # We want to perform an active learning step only once.
