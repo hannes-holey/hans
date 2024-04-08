@@ -160,12 +160,11 @@ class ConservedField(VectorField):
 
     @property
     def ekin(self):
-        area = self.disc["dx"] * self.disc["dy"]
-        local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0] * area)
+        local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0]**2)
         recvbuf = np.empty(1, dtype=float)
-        self.comm.Allreduce(local_ekin, recvbuf, op=MPI.MAX)
+        self.comm.Allreduce(local_ekin, recvbuf, op=MPI.SUM)
 
-        return recvbuf[0]
+        return recvbuf[0] * self.mass / 2.
 
     @property
     def isnan(self):
