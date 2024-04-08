@@ -293,7 +293,7 @@ class GaussianProcess:
             var = self.kern.variance
             similarity = (self.kern.K(Xnew[self.Xmask, 0, None].T, self.db.Xtrain[self.Xmask, j, None].T) / var)[0][0]
 
-            if np.isclose(similarity, 1.):
+            if np.isclose(similarity, 1., rtol=0., atol=1e-8):
                 similar_point_exists = True
                 break
 
