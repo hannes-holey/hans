@@ -216,11 +216,12 @@ class GaussianProcess:
 
         if self.active_dim == 3:
             Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
-            l0[1:] = np.maximum(1000 * Xrange / self.dbsize, 1e-3)
+            l0[1:] = np.maximum(100 * Xrange, [10., 1e-3, 0.01])
         elif self.active_dim == 4:
             Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4, 5]]
-            l0[1:] = np.maximum(1000 * Xrange / self.db.size, [10., 1e-3, 0.01, 0.01])
+            l0[1:] = np.maximum(100 * Xrange, [10., 1e-3, 0.01, 0.01])
 
+        print(l0[1:])
         self._build_model()
 
         best_mll = np.inf
