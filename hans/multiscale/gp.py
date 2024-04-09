@@ -71,7 +71,6 @@ class GaussianProcess:
         # Common parameters
         self.options = gp
         self.step = 0
-        self._stalled = False
         self.maxvar = np.inf
 
         self._init_outfile()
@@ -87,11 +86,11 @@ class GaussianProcess:
         return self.db.size
 
     @property
-    def stalled(self):
-        return self._stalled
+    def trusted(self):
+        return self._trusted
 
-    def reset_stalled(self):
-        self._stalled = False
+    def increment(self):
+        self.step += 1
 
     def setup(self, q):
         nx, ny = q.shape[1:]
@@ -103,36 +102,63 @@ class GaussianProcess:
             self.db.initialize(self.sol,
                                self.options['Ninit'],
                                self.options['sampling'])
+        self._build_model()
+        self.predict(q)
 
-        self._fit()
-        self._write_history()
+    def _raw_predict(self, Xtest):
 
-    def predict(self, skips=0, counter=0):
-
-        refit = False
-        old_maxvar = deepcopy(self.maxvar)
-        # Check if dbsize changed and refit
-        if self.last_fit_dbsize != self.dbsize:
-            self.gp_print()
-            self._fit()
-            refit = True
-
-        Xtest = self._get_test_input()
         mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
 
         self.maxvar = np.amax(cov)
         self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
 
-        if refit:
-            self._write_history()
-            success = self.maxvar < self.tol
-            self.gp_print(f'Max. var. (old, new, tol, success): {old_maxvar: .3e}, {self.maxvar: .3e}, {self.tol: .3e}, ', end='')
-            self.gp_print(f'{success}, {skips}, {counter + 1}/{self.options["maxSteps"]}')
+        self._trusted = self.maxvar < self.tol
 
         if self.ndim == 1:
             return mean.T[:, :, np.newaxis], cov
         else:
             return np.transpose(mean.reshape(*self.rshape, -1), (2, 0, 1)), cov
+
+    def predict(self, q, active_learning=False):
+
+        self._set_solution(q)
+        Xtest = self._get_test_input()
+        old_maxvar = deepcopy(self.maxvar)
+
+        # First check if dbsize changed and refit
+        if self.last_fit_dbsize != self.dbsize:
+            self.gp_print()
+            self._fit()
+            mean, cov = self._raw_predict(Xtest)
+            self._write_history()
+            self.gp_print(f'>>>> {"Active learning":<18}: {None}')
+            self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
+            self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
+            self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
+            self.gp_print(f'>>>> {"Accepted":<18}: {self.maxvar < self.tol}')
+        else:
+            mean, cov = self._raw_predict(Xtest)
+
+        if active_learning or (not self._trusted):
+            counter = 0
+            while (not self._trusted) and (counter < self.options['maxSteps']):
+                found_newX = self._active_learning_step(mean, cov)
+                counter += 1
+                if found_newX:
+                    self.gp_print()
+                    self._fit()
+                    mean, cov = self._raw_predict(Xtest)
+                    self._write_history()
+                    self.gp_print(f'>>>> {"Active learning":<18}: {counter}/{self.options["maxSteps"]}')
+                    self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
+                    self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
+                    self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
+                    self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted}')
+
+        if not self._trusted:
+            print('Active learning seems to stall. Fall back to last restart.')
+
+        return mean, cov
 
     def predict_gradient(self):
         Xtest = self._get_test_input()
@@ -143,47 +169,24 @@ class GaussianProcess:
         else:
             return np.transpose(dq_dX.reshape(*self.rshape, -1), (2, 0, 1)), dv_dX
 
-    def active_learning_step(self, q):
+    def _active_learning_step(self, mean, cov):
+        success = False
 
-        self._set_solution(q)
-        mean, cov = self.predict()
+        xnext = np.argsort(cov[:, 0])
+        _, nx, ny = mean.shape
 
-        counter = 0
-        maxcount = self.options['maxSteps']
+        # try to find a point not too close to previous ones
+        for i, x in enumerate(xnext[::-1]):
+            ix, iy = np.unravel_index(x, (nx, ny))
 
-        while self.maxvar > self.tol:
-            success = False
+            success = not self._similarity_check(ix, iy)
 
-            # sort indices with increasing variance
-            xnext = np.argsort(cov[:, 0])
-            _, nx, ny = mean.shape
+            if success:
+                # Add to training data
+                self._update_database(ix, iy)
+                break
 
-            # try to find a point not too close to previous ones
-            for i, x in enumerate(xnext[::-1]):
-
-                ix, iy = np.unravel_index(x, (nx, ny))
-
-                if not self._similarity_check(ix, iy):
-                    # Add to training data
-                    self._update_database(ix, iy)
-                    mean, cov = self.predict(skips=i, counter=counter)
-                    success = True
-                    break
-
-            # if not success:
-            #     # If not possible, use the max variance point anyways
-            #     ix, iy = np.unravel_index(xnext[-1], (nx, ny))
-            #     self._update_database(ix, iy)
-            #     mean, cov = self.predict(skips=i, counter=counter)
-
-            counter += 1
-            if not success or counter == maxcount:
-                print(f'Active learning seems to stall. Fall back to last restart.')
-                self._stalled = True
-
-        self.step += 1
-
-        return mean, cov
+        return success
 
     def _init_outfile(self):
 
@@ -224,7 +227,6 @@ class GaussianProcess:
                                                  self.kern)
 
         self._fix_noise()
-
         self.last_fit_dbsize = self.dbsize
 
     def _fit(self):
@@ -266,7 +268,7 @@ class GaussianProcess:
                 best_model = self.model.copy()
                 best_mll = np.copy(current_mll)
 
-            to_stdout = f'Step {self.step + 1:10d} - GP_{self.name} | DB size {self.dbsize:3d} | '
+            to_stdout = f'>>>> GP_{self.name} {self.step + 1:8d} | DB size {self.dbsize:3d} | '
             to_stdout += f'Fit {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
             self.gp_print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
 

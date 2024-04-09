@@ -84,6 +84,7 @@ class ConservedField(VectorField):
         self.md = md
 
         self.fallback = fallback
+        self.num_resets = 0
 
         self.initialize(q_init, t_init)
 
@@ -368,8 +369,11 @@ class ConservedField(VectorField):
         self.eps = abs(self.ekin - self.Ekin_old) / self.Ekin_old / CFL
         self.Ekin_old = deepcopy(self.ekin)
 
-        # Restart
-        if self.wall_stress.GP.stalled or self.eos.GP.stalled:
+        if self.wall_stress.GP.trusted and self.eos.GP.trusted:
+            self.wall_stress.GP.increment()
+            self.eos.GP.increment()
+        else:
+            self.num_resets += 1
             self.initialize(q_init=self.q_fallback, t_init=(self.time, self.dt), restart=True)
             self.wall_stress.GP.reset_stalled()
             self.eos.GP.reset_stalled()

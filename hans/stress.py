@@ -538,10 +538,7 @@ class WallStressField3D(DoubleTensorField):
 
         if self.gp is not None:
 
-            if self.ncalls % 2 == 0:
-                mean, cov = self.GP.active_learning_step(q)
-            else:
-                mean, cov = self.GP.predict()
+            mean, cov = self.GP.predict(q, self.ncalls % 2 == 0)
 
             if self.GP.ndim == 2:
                 mean[0] *= np.sign(q[2])
