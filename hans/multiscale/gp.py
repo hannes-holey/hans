@@ -64,9 +64,9 @@ class GaussianProcess:
         # Noise
         self.heteroscedastic_noise = gp['heteroscedastic']
         self.noise_fixed = gp['noiseFixed']
+        self.noise_variance = noise_variance
         if self.heteroscedastic_noise:
             assert bool(self.noise_fixed)
-            self.noise_variance = noise_variance
 
         # Common parameters
         self.options = gp
