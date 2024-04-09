@@ -455,7 +455,7 @@ class Problem:
             Writing mode (0: normal, 1: converged, 2: max time, 3: execution stopped).
 
         """
-        print(f"# {i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e} \t{self.q.tv:.6e}\t{self.q.eps:.6e}", flush=True)
+        print(f"# {i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
 
         if mode == 1:
             print(f"\nSolution has converged after {i:d} steps.", flush=True)
@@ -616,4 +616,4 @@ maximum number of iterations reached.", flush=True)
         ax = adaptiveLimits(ax)
 
         if i % writeInterval == 0 and i > 0:
-            print(f"# {i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e} \t{self.q.tv:.6e}\t{self.q.eps:.6e}", flush=True)
+            print(f"{i:10d}\t{self.q.dt:.6e}\t{self.q.time:.6e}\t{self.q.eps:.6e}", flush=True)
