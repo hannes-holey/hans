@@ -149,7 +149,7 @@ class ConservedField(VectorField):
 
     @property
     def vSound(self):
-        local_vSound = self.eos.eos_sound_speed(self.inner[0])
+        local_vSound = self.eos.get_sound_speed(self.inner)
         recvbuf = np.empty(1, dtype=float)
         self.comm.Allreduce(local_vSound, recvbuf, op=MPI.MAX)
 

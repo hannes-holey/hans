@@ -134,6 +134,15 @@ class GaussianProcess:
         else:
             return np.transpose(mean.reshape(*self.rshape, -1), (2, 0, 1)), cov
 
+    def predict_gradient(self):
+        Xtest = self._get_test_input()
+        dq_dX, dv_dX = self.model.predictive_gradients(Xtest)
+
+        if self.ndim == 1:
+            return dq_dX.T[:, :, np.newaxis], dv_dX
+        else:
+            return np.transpose(dq_dX.reshape(*self.rshape, -1), (2, 0, 1)), dv_dX
+
     def active_learning_step(self, q):
 
         self._set_solution(q)

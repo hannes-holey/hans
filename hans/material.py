@@ -72,6 +72,16 @@ class Material:
 
         return p
 
+    def get_sound_speed(self, q):
+
+        if self.gp is not None:
+            dp_dq, _ = self.GP.predict_gradient()
+            c = np.sqrt(np.amax(np.abs(dp_dq[1])))
+        else:
+            c = self.eos_sound_speed(q[0])
+
+        return c
+
     def eos_pressure(self, rho):
         # Dowson-Higginson (with cavitation)
         if self.material['EOS'] == "DH":
