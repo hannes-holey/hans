@@ -180,7 +180,6 @@ class GaussianProcess:
             if not success or counter == maxcount:
                 print(f'Active learning seems to stall. Fall back to last restart.')
                 self._stalled = True
-                counter = 0
 
         self.step += 1
 
@@ -231,7 +230,7 @@ class GaussianProcess:
     def _fit(self):
 
         if self.kernel_init_var < 0.:
-            v0 = self.atol
+            v0 = self.atol * 1000
         else:
             v0 = self.kernel_init_var
 
