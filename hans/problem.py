@@ -37,6 +37,7 @@ import shutil
 from hans.material import Material
 from hans.plottools import adaptiveLimits
 from hans.integrate import ConservedField
+from hans.tools import handle_signals
 
 
 class Problem:
@@ -98,20 +99,13 @@ class Problem:
         # global write options
         writeInterval = self.options['writeInterval']
 
-        if "maxT" in self.numerics.keys():
-            maxT = self.numerics["maxT"]
+        # TODO: should be done in input via defaults
+        if "maxT" not in self.numerics.keys():
+            self.numerics['maxT'] = np.inf
+        if "maxIt" not in self.numerics.keys():
+            self.numerics["maxIt"] = np.inf
         else:
-            maxT = np.inf
-
-        if "maxIt" in self.numerics.keys():
             maxIt = self.numerics["maxIt"]
-        else:
-            maxIt = np.inf
-
-        if "tol" in self.numerics.keys():
-            tol = self.numerics["tol"]
-        else:
-            tol = 0.
 
         # Initial conditions
         q_init, t_init = self.get_initial_conditions()
@@ -136,12 +130,13 @@ class Problem:
         self.tStart = datetime.now()
 
         i = 0
-        self._write_mode = 0
+        mode = 0
+        self._stop = False
 
         # Header line for screen output
         if rank == 0:
             print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
-            self.write_to_stdout(i, mode=self._write_mode)
+            self.write_to_stdout(i, mode=mode)
 
         if plot:
             # on-the-fly plotting
@@ -149,54 +144,37 @@ class Problem:
         else:
             nc = self.init_netcdf(out_dir, out_name, rank)
 
-            while self._write_mode == 0:
+            while mode <= 0 and i < maxIt:
 
                 # Perform time update
-                self.q.update(i)
+                mode = self.q.update(i)
 
                 # increase time step
-                i += 1
+                if mode >= 0:
+                    i += 1
 
                 # catch signals and execute signal handler
-                signal.signal(signal.SIGINT, self.receive_signal)
-                signal.signal(signal.SIGTERM, self.receive_signal)
-                signal.signal(signal.SIGHUP, self.receive_signal)
-                signal.signal(signal.SIGUSR1, self.receive_signal)
-                signal.signal(signal.SIGUSR2, self.receive_signal)
+                handle_signals(self.receive_signal)
 
-                # convergence
-                if i > 1 and self.q.eps < tol:
-                    self._write_mode = 1
+                if i == maxIt:
+                    mode = 3
+
+                if self._stop:
+                    mode = 5
                     break
 
-                # maximum time reached
-                if round(self.q.time, 15) >= maxT:
-                    self._write_mode = 2
-                    break
-
-                # maximum number of iterations reached
-                if i >= maxIt:
-                    self._write_mode = 3
-                    break
-
-                # GP stuck
-                if self.q.num_resets >= 10:
-                    self._write_mode = 3
-                    break
-
-                # NaN detected
-                if self.q.isnan > 0:
-                    self._write_mode = 4
+                if mode > 0:
                     break
 
                 if i % writeInterval == 0:
-                    self.write_to_netcdf(i, nc, mode=self._write_mode)
+                    self.write_to_netcdf(i, nc, mode=mode)
                     if rank == 0:
-                        self.write_to_stdout(i, mode=self._write_mode)
+                        self.write_to_stdout(i, mode=mode)
 
-            self.write_to_netcdf(i, nc, mode=self._write_mode)
+            # write last step
+            self.write_to_netcdf(i, nc, mode=mode)
             if rank == 0:
-                self.write_to_stdout(i, mode=self._write_mode)
+                self.write_to_stdout(i, mode=mode)
 
             # Delete GP objects (and thereby close files)
             if self.gp is not None:
@@ -541,9 +519,8 @@ maximum number of iterations reached.", flush=True)
             Description of parameter `frame`.
 
         """
-
-        if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
-            self._write_mode = 5
+        signals = [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]
+        self._stop = signum in signals
 
     def plot(self, writeInterval):
         """

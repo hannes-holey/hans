@@ -163,6 +163,11 @@ class Field:
         ng = self.disc["nghost"]
         return np.ascontiguousarray(self.field[:, ng:-ng, ng:-ng])
 
+    @inner.setter
+    def inner(self, field):
+        ng = self.disc["nghost"]
+        self.field[:, ng:-ng, ng:-ng] = field
+
     @property
     def edgeE(self):
         return (self.field + np.roll(self.field, -1, axis=1)) / 2.

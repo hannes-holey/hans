@@ -72,6 +72,7 @@ class GaussianProcess:
         self.options = gp
         self.step = 0
         self.maxvar = np.inf
+        self._reset = False
 
         self._init_outfile()
 
@@ -89,6 +90,13 @@ class GaussianProcess:
     def trusted(self):
         return self._trusted
 
+    @property
+    def reset(self):
+        return self._reset
+
+    def reset_reset(self):
+        self._reset = False
+
     def increment(self):
         self.step += 1
 
@@ -102,8 +110,10 @@ class GaussianProcess:
             self.db.initialize(self.sol,
                                self.options['Ninit'],
                                self.options['sampling'])
+
+        self.last_fit_dbsize = self.dbsize
         self._build_model()
-        self.predict(q)
+        self.predict(q, False)
 
     def _raw_predict(self, Xtest):
 
@@ -119,27 +129,29 @@ class GaussianProcess:
         else:
             return np.transpose(mean.reshape(*self.rshape, -1), (2, 0, 1)), cov
 
-    def predict(self, q, active_learning=False):
+    def predict(self, q, in_predictor):
 
         self._set_solution(q)
         Xtest = self._get_test_input()
         old_maxvar = deepcopy(self.maxvar)
 
-        # First check if dbsize changed and refit
-        if self.last_fit_dbsize != self.dbsize:
+        if in_predictor and self.last_fit_dbsize != self.dbsize:
+            # Predictor step: Refit after database has grown
             self.gp_print()
             self._fit()
             mean, cov = self._raw_predict(Xtest)
             self._write_history()
-            self.gp_print(f'>>>> {"Active learning":<18}: {None}')
+            self.gp_print(f'>>>> {"Reason":<18}: {"DB changed"}')
             self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
             self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
             self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
-            self.gp_print(f'>>>> {"Accepted":<18}: {self.maxvar < self.tol}')
+            self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted}')
         else:
+            # Corrector step: Only use additional training point w/o hyperparameter optimization
+            self._build_model()
             mean, cov = self._raw_predict(Xtest)
 
-        if active_learning or (not self._trusted):
+        if in_predictor:
             counter = 0
             while (not self._trusted) and (counter < self.options['maxSteps']):
                 found_newX = self._active_learning_step(mean, cov)
@@ -150,14 +162,16 @@ class GaussianProcess:
                     self._fit()
                     mean, cov = self._raw_predict(Xtest)
                     self._write_history()
-                    self.gp_print(f'>>>> {"Active learning":<18}: {counter}/{self.options["maxSteps"]}')
+                    self.gp_print(f'>>>> {"Reason":<18}: AL {counter}/{self.options["maxSteps"]}')
                     self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
                     self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
                     self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
                     self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted}')
+                else:
+                    self.gp_print(f'>>>> No data added ({counter}/{self.options["maxSteps"]})')
 
-        if not self._trusted:
-            print('Active learning seems to stall. Fall back to last restart.')
+        if in_predictor and not self._trusted:
+            self._reset = True
 
         return mean, cov
 
@@ -225,9 +239,7 @@ class GaussianProcess:
             self.model = GPy.models.GPRegression(self.db.Xtrain[self.Xmask, :].T,
                                                  self.db.Ytrain[self.Ymask, :].T,
                                                  self.kern)
-
         self._fix_noise()
-        self.last_fit_dbsize = self.dbsize
 
     def _fit(self):
 
@@ -271,6 +283,8 @@ class GaussianProcess:
             to_stdout = f'>>>> GP_{self.name} {self.step + 1:8d} | DB size {self.dbsize:3d} | '
             to_stdout += f'Fit {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
             self.gp_print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
+
+        self.last_fit_dbsize = self.dbsize
 
         self.model = best_model
         self.model.save_model(os.path.join(self.options['local'],

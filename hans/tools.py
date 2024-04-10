@@ -26,6 +26,8 @@
 import sys
 from mpi4py import MPI
 import numpy as np
+import signal
+
 
 def abort(errcode=1):
     if MPI.COMM_WORLD.Get_size() == 1:
@@ -47,6 +49,7 @@ def progressbar(it, prefix="", size=40, out=sys.stdout):  # Python3.6+
         show(i+1)
     print("\n", flush=True, file=out)
 
+
 def bordered_text(text):
     lines = text.splitlines()
     width = max(len(s) for s in lines)
@@ -56,9 +59,15 @@ def bordered_text(text):
     res.append('└' + '─' * width + '┘')
     return '\n'.join(res)
 
+
 def power(base, exponent):
 
     complex_base = base.astype('complex128')
     result = np.float_power(complex_base, exponent)
 
     return result.real
+
+
+def handle_signals(func):
+    for s in [signal.SIGHUP, signal.SIGINT, signal.SIGHUP, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2]:
+        signal.signal(s, func)
