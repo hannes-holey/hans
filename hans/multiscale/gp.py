@@ -144,6 +144,7 @@ class GaussianProcess:
             while (not self._trusted) and (counter < self.options['maxSteps']):
                 found_newX = self._active_learning_step(mean, cov)
                 counter += 1
+                old_maxvar = deepcopy(self.maxvar)
                 if found_newX:
                     self.gp_print()
                     self._fit()
@@ -165,7 +166,7 @@ class GaussianProcess:
         dq_dX, dv_dX = self.model.predictive_gradients(Xtest)
 
         if self.ndim == 1:
-            return dq_dX.T[:, :, np.newaxis], dv_dX
+            return dq_dX.T[0], dv_dX
         else:
             return np.transpose(dq_dX.reshape(*self.rshape, -1), (2, 0, 1)), dv_dX
 
@@ -178,8 +179,7 @@ class GaussianProcess:
         # try to find a point not too close to previous ones
         for i, x in enumerate(xnext[::-1]):
             ix, iy = np.unravel_index(x, (nx, ny))
-
-            success = not self._similarity_check(ix, iy)
+            success = not self._similarity_check(ix, iy if self.ndim == 2 else 1)
 
             if success:
                 # Add to training data
@@ -372,10 +372,10 @@ class GP_stress(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        return np.vstack([self.db.h[0, :, 1], self.sol[0], self.sol[1]]).T
+        return np.vstack([self.db.h[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
 
     def _set_solution(self, q):
-        self.sol = q[:, :, 1]
+        self.sol = q  # [:, :, 1]
 
 
 class GP_stress2D(GaussianProcess):
@@ -448,10 +448,10 @@ class GP_pressure(GaussianProcess):
         Test data as input for GP prediction:
         For pressure, only density is required (not with MD!)
         """
-        return np.vstack([self.db.h[0, :, 1], self.sol[0], self.sol[1]]).T
+        return np.vstack([self.db.h[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
 
     def _set_solution(self, q):
-        self.sol = q[:, :, 1]
+        self.sol = q  # [:, :, 1]
 
 
 class GP_pressure2D(GaussianProcess):

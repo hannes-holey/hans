@@ -140,7 +140,7 @@ class Problem:
 
         # Header line for screen output
         if rank == 0:
-            print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'TV':12s}\t{'Epsilon':12s}", flush=True)
+            print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
             self.write_to_stdout(i, mode=self._write_mode)
 
         if plot:

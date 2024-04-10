@@ -131,12 +131,10 @@ class ConservedField(VectorField):
             else:
                 self.wall_stress.GP = Mock()
                 self.wall_stress.GP.dbsize = 0
-                self.wall_stress.GP.stalled = False
                 self.wall_stress.gp = None
 
                 self.eos.GP = Mock()
                 self.eos.GP.dbsize = 0
-                self.eos.GP.stalled = False
                 self.eos.gp = None
 
     @property
@@ -199,6 +197,17 @@ class ConservedField(VectorField):
     @property
     def cfl(self):
         return self.dt * (self.vmax + self.vSound) / min(self.disc["dx"], self.disc["dy"])
+
+    @property
+    def tv(self):
+        grad_x = np.mean(np.abs(self.inner[:, 1:, :] - self.inner[:, :-1, :]))
+        grad_y = np.mean(np.abs(self.inner[:, :, 1:] - self.inner[:, :, :-1]))
+
+        local_tv = grad_x + grad_y
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_tv, recvbuf, op=MPI.SUM)
+
+        return recvbuf[0]
 
     def update(self, i):
         """
@@ -375,8 +384,6 @@ class ConservedField(VectorField):
         else:
             self.num_resets += 1
             self.initialize(q_init=self.q_fallback, t_init=(self.time, self.dt), restart=True)
-            self.wall_stress.GP.reset_stalled()
-            self.eos.GP.reset_stalled()
 
     def fill_ghost_buffer(self):
         """
