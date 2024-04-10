@@ -103,7 +103,8 @@ class Problem:
         if "maxT" not in self.numerics.keys():
             self.numerics['maxT'] = np.inf
         if "maxIt" not in self.numerics.keys():
-            self.numerics["maxIt"] = np.inf
+            maxIt = np.inf
+            self.numerics["maxIt"] = maxIt
         else:
             maxIt = self.numerics["maxIt"]
 
