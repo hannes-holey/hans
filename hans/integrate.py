@@ -236,7 +236,7 @@ class ConservedField(VectorField):
         if self.fallback > 0:
             if i % self.fallback == 0:
                 self.q_fallback = deepcopy(self.field)
-                self.num_resets = 0
+                # self.num_resets = 0
 
         integrator = self.numerics["integrator"]
 
@@ -400,8 +400,8 @@ class ConservedField(VectorField):
 
         if skip:
             # GP stuck
-            print(f'Active learning seems to stall. Fall back to last restart ({10-self.num_resets} remaining).')
-            if self.num_resets >= 10:
+            print(f'Active learning seems to stall. Fall back to last restart ({self.gp["maxResets"] - self.num_resets} remaining).')
+            if self.num_resets >= self.gp["maxResets"]:
                 return 3
             else:
                 return -1
