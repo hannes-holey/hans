@@ -75,8 +75,9 @@ class GaussianProcess:
         self._init_outfile()
 
     def __del__(self):
-        self.model.save_model(f'gp_{self.name}.json', compress=True)
 
+        self._fit()
+        self.model.save_model(f'gp_{self.name}.json', compress=True)
         self._write_history()
         self.file.close()
 
@@ -110,8 +111,10 @@ class GaussianProcess:
                                self.options['sampling'])
 
         self.last_fit_dbsize = self.dbsize
-        self._build_model()
-        self.predict(q, False)
+        self._fit()
+        Xtest = self._get_test_input()
+        self._raw_predict(Xtest)
+        self._write_history()
 
     def _raw_predict(self, Xtest):
 
@@ -212,16 +215,17 @@ class GaussianProcess:
 
         per_step = [self.step, self.dbsize]
         [per_step.append(param) for param in self.kern.param_array]
-        if not self.heteroscedastic_noise:
-            ncol = 4
-            per_step.append(self.model.Gaussian_noise.variance[0])
+
+        if self.heteroscedastic_noise:
+            per_step.append(np.mean(self.model.het_Gauss.variance))
         else:
-            ncol = 5
+            per_step.append(self.model.Gaussian_noise.variance[0])
+
         per_step.append(self.maxvar)
         per_step.append(self.tol)
         per_step.append(-self.model.log_likelihood())
 
-        fmt = ["{:8d}", "{:8d}"] + (self.active_dim + ncol) * ["{:8e}"]
+        fmt = ["{:8d}", "{:8d}"] + (len(per_step) - 2) * ["{:8e}"]
         per_step = [f.format(item) for f, item in zip(fmt, per_step)]
         out_str = " ".join(per_step) + '\n'
 
