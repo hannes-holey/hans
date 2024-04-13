@@ -65,8 +65,6 @@ class GaussianProcess:
         self.heteroscedastic_noise = gp['heteroscedastic']
         self.noise_fixed = gp['noiseFixed']
         self.noise_variance = noise_variance
-        if self.heteroscedastic_noise:
-            assert bool(self.noise_fixed)
 
         # Common parameters
         self.options = gp
@@ -239,9 +237,9 @@ class GaussianProcess:
             self.model = GPy.models.GPRegression(self.db.Xtrain[self.Xmask, :].T,
                                                  self.db.Ytrain[self.Ymask, :].T,
                                                  self.kern)
-        self._fix_noise()
+        self._set_noise()
 
-    def _fit(self):
+    def _initial_guess_kernel_params(self):
 
         if self.kernel_init_var < 0.:
             v0 = self.atol * 1000
@@ -259,18 +257,25 @@ class GaussianProcess:
                 Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4, 5]]
                 l0 = np.maximum(100 * Xrange, [10., 1e-3, 0.01, 0.01])
 
+        return v0, l0
+
+    def _fit(self):
+
         self._build_model()
+
+        v0, l0 = self._initial_guess_kernel_params()
 
         best_mll = np.inf
         best_model = self.model
         num_restarts = self.options['optRestarts']
 
+        # TODO: test vs. GPy.model.optimize_restarts()
         for i in range(num_restarts):
             try:
                 # Randomize hyperparameters
                 self.kern.lengthscale = l0 * np.exp(np.random.normal(size=self.active_dim))
                 self.kern.variance = v0 * np.exp(np.random.normal())
-                self.model.optimize('bfgs', max_iters=100)
+                self.model.optimize('lbfgsb', max_iters=1000)
             except np.linalg.LinAlgError:
                 print('LinAlgError: Skip optimization step')
 
@@ -301,15 +306,16 @@ class GaussianProcess:
         # m_load[:] = np.load('model_save.npy')
         # m_load.update_model(True)
 
-    def _fix_noise(self):
+    def _set_noise(self):
 
-        if self.noise_fixed:
-            if self.heteroscedastic_noise:
-                index = 0 if self.name == 'press' else 1
-                self.model['.*het_Gauss.variance'] = (self.db.Yerr[index, :].T)[:, None]
+        if self.heteroscedastic_noise:
+            index = 0 if self.name == 'press' else 1
+            self.model.het_Gauss.variance = (self.db.Yerr[index, :].T)[:, None]
+            if self.noise_fixed:
                 self.model.het_Gauss.variance.fix()
-            else:
-                self.model.Gaussian_noise.variance = self.noise_variance
+        else:
+            self.model.Gaussian_noise.variance = self.noise_variance
+            if self.noise_fixed:
                 self.model.Gaussian_noise.variance.fix()
 
     def _similarity_check(self, ix, iy=1):
