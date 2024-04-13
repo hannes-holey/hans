@@ -56,20 +56,19 @@ class Database:
         output_dim = 13
         # p, tau_lower (6), tau_upper (6)
 
-        if bool(self.gp['remote']):
-            self._init_remote(input_dim, output_dim)
-        else:
-            self._init_local(input_dim, output_dim)
+        self._init_database(input_dim, output_dim)
 
     def __del__(self):
         np.save('Xtrain.npy', self.Xtrain)
         np.save('Ytrain.npy', self.Ytrain)
+        np.save('Ytrainvar.npy', self.Yerr)
 
     @property
     def size(self):
         return self.Xtrain.shape[1]
 
-    def _init_remote(self, input_dim, output_dim):
+    def _get_readme_list_remote(self):
+
         # uses dtool_lookup_server configuration from your dtool config
         # TODO: Possibility to pass a txtfile w/ uuids or query string
         query_dict = {"readme.description": {"$regex": "Dummy"}}
@@ -79,70 +78,65 @@ class Database:
                      for ds in progressbar(remote_ds_list,
                                            prefix="Loading remote datasets based on dtool query: ")]
 
-        if len(remote_ds) > 0:
+        yaml = YAML()
 
-            yaml = YAML()
-            Xtrain = []
-            Ytrain = []
+        readme_list = [yaml.load(ds.get_readme_content()) for ds in remote_ds]
 
-            for ds in remote_ds:
-                readme_string = ds.get_readme_content()
-                rm = yaml.load(readme_string)
+        return readme_list
 
-                Xtrain.append(rm['X'])
-                Ytrain.append(rm['Y'])
-
-            self.Xtrain = np.array(Xtrain).T
-            self.Ytrain = np.array(Ytrain).T
-        else:
-            print("No matching dtool datasets found. Start with empty database.")
-            self.Xtrain = np.empty((input_dim, 0))
-            self.Ytrain = np.empty((output_dim, 0))
-
-    def _init_local(self, input_dim, output_dim):
-        # All datsets in local directory
+    def _get_readme_list_local(self):
 
         if not os.path.exists(self.gp['local']):
             os.makedirs(self.gp['local'])
+            return []
 
         # Python 3.9+
         # str.removeprefix (prefix = f'file://{gethostname()}')
-        readme_list = [os.path.join(os.sep, *ds.uri.split(os.sep)[3:], 'README.yml')
-                       for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
+        readme_paths = [os.path.join(os.sep, *ds.uri.split(os.sep)[3:], 'README.yml')
+                        for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
+
+        yaml = YAML()
+
+        readme_list = []
+        for readme in readme_paths:
+            with open(readme, 'r') as instream:
+                readme_list.append(yaml.load(instream))
+
+        print(f"Loading {len(readme_list)} local datasets in '{self.gp['local']}'.")
+
+        return readme_list
+
+    def _init_database(self, input_dim, output_dim):
+
+        if bool(self.gp['remote']):
+            readme_list = self._get_readme_list_remote()
+        else:
+            readme_list = self._get_readme_list_local()
 
         if len(readme_list) > 0:
-            print(f"Loading {len(readme_list)} local datasets in '{self.gp['local']}'.")
 
-            yaml = YAML()
             Xtrain = []
             Ytrain = []
             Yerr = []
 
-            for readme in readme_list:
-                with open(readme, 'r') as instream:
-                    rm = yaml.load(instream)
-
+            for rm in readme_list:
                 Xtrain.append(rm['X'])
                 Ytrain.append(rm['Y'])
 
-                if self.gp['heteroscedastic']:
-                    if 'Yerr' in rm.keys():
-                        Yerr.append(rm['Yerr'])
-                    else:
-                        Yerr.append([0., 0.])
+                if 'Yerr' in rm.keys():
+                    Yerr.append(rm['Yerr'])
+                else:
+                    Yerr.append([0., 0.])
 
             self.Xtrain = np.array(Xtrain).T
             self.Ytrain = np.array(Ytrain).T
-            if self.gp["heteroscedastic"]:
-                self.Yerr = np.array(Yerr).T
+            self.Yerr = np.array(Yerr).T
 
         else:
             print("No matching dtool datasets found. Start with empty database.")
             self.Xtrain = np.empty((input_dim, 0))
             self.Ytrain = np.empty((output_dim, 0))
-
-            if self.gp['heteroscedastic']:
-                self.Yerr = np.empty((2, 0))
+            self.Yerr = np.empty((2, 0))
 
     def update(self, Qnew, ix, iy):
         self._update_inputs(Qnew, ix, iy)
@@ -284,15 +278,14 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[5, i] = tauL
                     Ynew[11, i] = tauU
 
-                    if self.gp['heteroscedastic']:
-                        pL_err = variance_of_mean(md_data[:, 1])
-                        pU_err = variance_of_mean(md_data[:, 3])
+                    pL_err = variance_of_mean(md_data[:, 1])
+                    pU_err = variance_of_mean(md_data[:, 3])
 
-                        tauxzL_err = variance_of_mean(md_data[:, 2])
-                        tauxzU_err = variance_of_mean(md_data[:, 4])
+                    tauxzL_err = variance_of_mean(md_data[:, 2])
+                    tauxzU_err = variance_of_mean(md_data[:, 4])
 
-                        Yerrnew[0, i] = (pL_err + pU_err) / 2.
-                        Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
+                    Yerrnew[0, i] = (pL_err + pU_err) / 2.
+                    Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
 
                 elif md_data.shape[1] == 7:
                     # 2D
@@ -309,17 +302,16 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[10, i] = tauyzU
                     Ynew[11, i] = tauxzU
 
-                    if self.gp['heteroscedastic']:
-                        pL_err = variance_of_mean(md_data[:, 1])
-                        pU_err = variance_of_mean(md_data[:, 3])
+                    pL_err = variance_of_mean(md_data[:, 1])
+                    pU_err = variance_of_mean(md_data[:, 3])
 
-                        tauxzL_err = variance_of_mean(md_data[:, 2])
-                        tauxzU_err = variance_of_mean(md_data[:, 4])
-                        tauyzL_err = variance_of_mean(md_data[:, 5])
-                        tauyzU_err = variance_of_mean(md_data[:, 6])
+                    tauxzL_err = variance_of_mean(md_data[:, 2])
+                    tauxzU_err = variance_of_mean(md_data[:, 4])
+                    tauyzL_err = variance_of_mean(md_data[:, 5])
+                    tauyzU_err = variance_of_mean(md_data[:, 6])
 
-                        Yerrnew[0, i] = (pL_err + pU_err) / 2.
-                        Yerrnew[1, i] = (tauxzL_err + tauxzU_err + tauyzL_err + tauyzU_err) / 4.
+                    Yerrnew[0, i] = (pL_err + pU_err) / 2.
+                    Yerrnew[1, i] = (tauxzL_err + tauxzU_err + tauyzL_err + tauyzU_err) / 4.
 
                 os.chdir(basedir)
 
@@ -331,9 +323,8 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                 Ynew[0, i] = self.eos_func(Xnew[3, i]) + pnoise[:, i]
                 Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
 
-                if self.gp['heteroscedastic']:
-                    Yerrnew[0, i] = self.gp['noisePress']
-                    Yerrnew[1, i] = self.gp['noiseShear']
+                Yerrnew[0, i] = self.gp['noisePress']
+                Yerrnew[1, i] = self.gp['noiseShear']
 
             self.write_readme(os.path.join(base_uri, ds_name), Xnew[:, i], Ynew[:, i], Yerrnew[:, i])
 
@@ -343,8 +334,7 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                 dtoolcore.copy(proto_ds.uri, self.gp['storage'])
 
         self.Ytrain = np.hstack([self.Ytrain, Ynew])
-        if self.gp["heteroscedastic"]:
-            self.Yerr = np.hstack([self.Yerr, Yerrnew])
+        self.Yerr = np.hstack([self.Yerr, Yerrnew])
 
     def write_readme(self, path, Xnew, Ynew, Yerrnew):
 
@@ -386,12 +376,11 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
 
         X = [float(item) for item in Xnew]
         Y = [float(item) for item in Ynew]
+        Yerr = [float(item) for item in Yerrnew]
 
         metadata['X'] = X
         metadata['Y'] = Y
-        if self.gp['heteroscedastic']:
-            Yerr = [float(item) for item in Yerrnew]
-            metadata['Yerr'] = Yerr
+        metadata['Yerr'] = Yerr
 
         with open(out_fname, 'w') as outfile:
             yaml.dump(metadata, outfile)

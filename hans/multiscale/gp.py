@@ -308,13 +308,14 @@ class GaussianProcess:
 
     def _set_noise(self):
 
+        index = 0 if self.name == 'press' else 1
+
         if self.heteroscedastic_noise:
-            index = 0 if self.name == 'press' else 1
             self.model.het_Gauss.variance = (self.db.Yerr[index, :].T)[:, None]
             if self.noise_fixed:
                 self.model.het_Gauss.variance.fix()
         else:
-            self.model.Gaussian_noise.variance = self.noise_variance
+            self.model.Gaussian_noise.variance = np.mean(self.db.Yerr[index, :].T)
             if self.noise_fixed:
                 self.model.Gaussian_noise.variance.fix()
 
@@ -344,6 +345,8 @@ class GaussianProcess:
 
         if X_new.ndim == 1:
             X_new = X_new[:, None]
+
+        self.gp_print(f'\n>>>> Database update in step {self.step + 1} ({self.name}):')
 
         self.db.update(X_new, ix, iy)
 
