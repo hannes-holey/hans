@@ -83,7 +83,8 @@ class ConservedField(VectorField):
         self.geometry = geometry
         self.md = md
 
-        self.fallback = fallback
+        # self.fallback = fallback
+        self.q_init = q_init
         self.num_resets = 0
 
         self.initialize(q_init, t_init)
@@ -233,10 +234,10 @@ class ConservedField(VectorField):
 
         """
 
-        if self.fallback > 0:
-            if i % self.fallback == 0:
-                self.q_fallback = deepcopy(self.field)
-                # self.num_resets = 0
+        # if self.fallback > 0:
+        #     if i % self.fallback == 0:
+        #         self.q_fallback = deepcopy(self.field)
+        #         # self.num_resets = 0
 
         integrator = self.numerics["integrator"]
 
@@ -371,7 +372,7 @@ class ConservedField(VectorField):
     def check_p_reset(self):
         if self.eos.GP.reset:
             self.num_resets += 1
-            self.initialize(q_init=self.q_fallback, t_init=(self.time, self.dt), restart=True)
+            self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
             self.eos.GP.reset_reset()
             return True
         else:
@@ -380,7 +381,7 @@ class ConservedField(VectorField):
     def check_tau_reset(self):
         if self.wall_stress.GP.reset:
             self.num_resets += 1
-            self.initialize(q_init=self.q_fallback, t_init=(self.time, self.dt), restart=True)
+            self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
             self.wall_stress.GP.reset_reset()
             return True
         else:
