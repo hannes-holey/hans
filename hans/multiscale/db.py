@@ -175,7 +175,7 @@ class Database:
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
 
         elif sampling == 'sobol':
-            sampler = qmc.Sobol(d=3)
+            sampler = qmc.Sobol(d=4)
             m = int(np.log2(Nsample))
             if int(2**m) != Nsample:
                 m = int(np.ceil(np.log2(Nsample)))
@@ -187,6 +187,9 @@ class Database:
         rho_init = scaled_samples[:, 1]
         jx_init = scaled_samples[:, 2]
         jy_init = scaled_samples[:, 3]
+
+        if Q.shape[2] <= 3:
+            jy_init = np.zeros_like(jx_init)
 
         # Remaining inputs (constant)
         h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])

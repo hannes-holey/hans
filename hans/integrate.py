@@ -401,7 +401,8 @@ class ConservedField(VectorField):
 
         if skip:
             # GP stuck
-            print(f'Active learning seems to stall. Fall back to last restart ({self.gp["maxResets"] - self.num_resets} remaining).')
+            print('>>>> Active learning seems to stall.', end='')
+            print(f'Fall back to last restart ({self.gp["maxResets"] - self.num_resets} remaining).')
             if self.num_resets >= self.gp["maxResets"]:
                 return 3
             else:
