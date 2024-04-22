@@ -86,6 +86,8 @@ class ConservedField(VectorField):
         # self.fallback = fallback
         self.q_init = q_init
         self.num_resets = 0
+        self.wait_p_after_reset = 0
+        self.wait_tau_after_reset = 0
 
         self.initialize(q_init, t_init)
 
@@ -369,21 +371,55 @@ class ConservedField(VectorField):
 
         return self.post_integrate()
 
+    # def check_p_reset(self):
+    #     if self.eos.GP.reset:
+    #         self.num_resets += 1
+    #         self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+    #         self.eos.GP.reset_reset()
+    #         return True
+    #     else:
+    #         return False
+
     def check_p_reset(self):
         if self.eos.GP.reset:
-            self.num_resets += 1
-            self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
-            self.eos.GP.reset_reset()
-            return True
+            if self.wait_p_after_reset == 0:
+                self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+                self.num_resets += 1
+                self.wait_p_after_reset += 1
+                return True
+            elif self.wait_p_after_reset < 200:
+                self.wait_p_after_reset += 1
+                return False
+            else:
+                self.wait_p_after_reset = 0
+                self.eos.GP.reset_reset()
+                return False
         else:
             return False
 
+    # def check_tau_reset(self):
+    #     if self.wall_stress.GP.reset:
+    #         self.num_resets += 1
+    #         self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+    #         self.wall_stress.GP.reset_reset()
+    #         return True
+    #     else:
+    #         return False
+
     def check_tau_reset(self):
         if self.wall_stress.GP.reset:
-            self.num_resets += 1
-            self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
-            self.wall_stress.GP.reset_reset()
-            return True
+            if self.wait_tau_after_reset == 0:
+                self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+                self.num_resets += 1
+                self.wait_tau_after_reset += 1
+                return True
+            elif self.wait_tau_after_reset < 200:
+                self.wait_tau_after_reset += 1
+                return False
+            else:
+                self.wait_tau_after_reset = 0
+                self.wall_stress.GP.reset_reset()
+                return False
         else:
             return False
 
@@ -403,6 +439,7 @@ class ConservedField(VectorField):
             # GP stuck
             print('>>>> Active learning seems to stall.', end='')
             print(f'Fall back to last restart ({self.gp["maxResets"] - self.num_resets} remaining).')
+            print('>>>> Next GP update in 100 steps.')  # TODO: as option
             if self.num_resets >= self.gp["maxResets"]:
                 return 3
             else:

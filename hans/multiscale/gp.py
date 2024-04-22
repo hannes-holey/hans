@@ -61,6 +61,9 @@ class GaussianProcess:
         self.kernel_init_var = kernel_init_var
         self.kernel_init_scale = kernel_init_scale
 
+        if len(self.kernel_init_scale) == self.active_dim:
+            self.kern.lengthscale = kernel_init_scale
+
         # Noise
         self.heteroscedastic_noise = gp['heteroscedastic']
         self.noise_fixed = gp['noiseFixed']
@@ -146,24 +149,26 @@ class GaussianProcess:
             self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
             self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
             self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
-            self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted}')
+            suffix = ' (waiting)' if self._reset else ''
+            self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted} {suffix}')
         else:
             # Corrector step: Only use additional training point w/o hyperparameter optimization
             self._build_model()
             mean, cov = self._raw_predict(Xtest)
 
-        if in_predictor:
+        if in_predictor and not self._reset:
             counter = 0
             while (not self._trusted) and (counter < self.options['maxSteps']):
                 found_newX = self._active_learning_step(mean, cov)
                 counter += 1
+                level = 2 - np.sum(counter <= np.arange(1, 3) * self.options['maxSteps'] // 3 + self.options['maxSteps'] % 3)
                 old_maxvar = deepcopy(self.maxvar)
                 if found_newX:
                     self.gp_print()
-                    self._fit()
+                    self._fit(level)
                     mean, cov = self._raw_predict(Xtest)
                     self._write_history()
-                    self.gp_print(f'>>>> {"Reason":<18}: AL {counter}/{self.options["maxSteps"]}')
+                    self.gp_print(f'>>>> {"Reason":<18}: AL {counter}/{self.options["maxSteps"]} ({level})')
                     self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
                     self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
                     self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
@@ -171,8 +176,8 @@ class GaussianProcess:
                 else:
                     self.gp_print(f'>>>> No data added ({counter}/{self.options["maxSteps"]})')
 
-        if in_predictor and not self._trusted:
-            self._reset = True
+            if not self.trusted:
+                self._reset = True
 
         return mean, cov
 
@@ -243,31 +248,31 @@ class GaussianProcess:
                                                  self.kern)
         self._set_noise()
 
-    def _initial_guess_kernel_params(self):
+    def _initial_guess_kernel_params(self, level):
 
         if self.kernel_init_var < 0.:
             v0 = self.atol * 1000
         else:
             v0 = self.kernel_init_var
 
-        # Initial guess hyperparameters
-        if len(self.kernel_init_scale) != 0:
+        # three different levels of initial kernel lengthscale
+        if level == 0:
+            # 0) try with fitted scales from previous step (init_scales at first step)
+            l0 = np.array(self.model.kern.lengthscale)
+        elif level == 1 and len(self.kernel_init_scale) == self.active_dim:
+            # 1) use initial scales from input (if given)
             l0 = np.array(self.kernel_init_scale)
         else:
-            if self.active_dim == 3:
-                Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4]]
-                l0 = np.maximum(100 * Xrange, [10., 1e-3, 0.01])
-            elif self.active_dim == 4:
-                Xrange = (np.amax(self.db.Xtrain, axis=1) - np.amin(self.db.Xtrain, axis=1))[[0, 3, 4, 5]]
-                l0 = np.maximum(100 * Xrange, [10., 1e-3, 0.01, 0.01])
+            # 2) use completely random lengthscales in reasonable interval
+            l0 = np.random.uniform(.1, 100., size=self.active_dim)
 
         return v0, l0
 
-    def _fit(self):
+    def _fit(self, level=0):
 
         self._build_model()
 
-        v0, l0 = self._initial_guess_kernel_params()
+        v0, l0 = self._initial_guess_kernel_params(level)
 
         best_mll = np.inf
         best_model = self.model
