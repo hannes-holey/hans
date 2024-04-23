@@ -64,6 +64,8 @@ class GaussianProcess:
         if len(self.kernel_init_scale) == self.active_dim:
             self.kern.lengthscale = kernel_init_scale
 
+        self.kern_last_success_params = None
+
         # Noise
         self.heteroscedastic_noise = gp['heteroscedastic']
         self.noise_fixed = gp['noiseFixed']
@@ -127,6 +129,9 @@ class GaussianProcess:
         self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
 
         self._trusted = self.maxvar < self.tol
+
+        if self._trusted and not self._reset:
+            self.kern_last_success_params = np.copy(self.kern.param_array)
 
         if self.ndim == 1:
             return mean.T[:, :, np.newaxis], cov
@@ -250,21 +255,19 @@ class GaussianProcess:
 
     def _initial_guess_kernel_params(self, level):
 
-        if self.kernel_init_var < 0.:
-            v0 = self.atol * 1000
-        else:
-            v0 = self.kernel_init_var
-
         # three different levels of initial kernel lengthscale
-        if level == 0:
-            # 0) try with fitted scales from previous step (init_scales at first step)
-            l0 = np.array(self.model.kern.lengthscale)
-        elif level == 1 and len(self.kernel_init_scale) == self.active_dim:
-            # 1) use initial scales from input (if given)
+        if level == 0 and len(self.kernel_init_scale) == self.active_dim:
+            # 0) use initial scales from input (if given)
             l0 = np.array(self.kernel_init_scale)
+            v0 = self.kernel_init_var if self.kernel_init_var > 0. else self.atol * 100.
+        elif level == 1 and self.kern_last_success_params is not None:
+            # 1) try with fitted scales from previous succesful step
+            v0 = np.array(self.kern_last_success_params[0]) * 100
+            l0 = np.array(self.kern_last_success_params[1:]) * 100
         else:
             # 2) use completely random lengthscales in reasonable interval
             l0 = np.random.uniform(.1, 100., size=self.active_dim)
+            v0 = 1.
 
         return v0, l0
 

@@ -387,7 +387,7 @@ class ConservedField(VectorField):
                 self.num_resets += 1
                 self.wait_p_after_reset += 1
                 return True
-            elif self.wait_p_after_reset < 200:
+            elif self.wait_p_after_reset < 2 * self.gp['wait']:
                 self.wait_p_after_reset += 1
                 return False
             else:
@@ -413,7 +413,7 @@ class ConservedField(VectorField):
                 self.num_resets += 1
                 self.wait_tau_after_reset += 1
                 return True
-            elif self.wait_tau_after_reset < 200:
+            elif self.wait_tau_after_reset < 2 * self.gp['wait']:
                 self.wait_tau_after_reset += 1
                 return False
             else:
@@ -437,9 +437,9 @@ class ConservedField(VectorField):
 
         if skip:
             # GP stuck
-            print('>>>> Active learning seems to stall.', end='')
+            print('>>>> Active learning seems to stall. ', end='')
             print(f'Fall back to last restart ({self.gp["maxResets"] - self.num_resets} remaining).')
-            print('>>>> Next GP update in 100 steps.')  # TODO: as option
+            print(f'>>>> Next GP update in {self.gp["wait"]} steps.')
             if self.num_resets >= self.gp["maxResets"]:
                 return 3
             else:

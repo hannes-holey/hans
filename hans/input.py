@@ -671,10 +671,10 @@ class Input:
         optional_gp_keys = ['rtol',                                                         # Relative tolerance
                             'scaleShear', 'scalePress', 'varShear', 'varPress',             # Kernel
                             'noiseShear', 'noisePress', 'noiseFixed', 'heteroscedastic',    # Noise
-                            'optRestarts', 'maxSteps', 'maxResets', 'verbose']               # Options
+                            'optRestarts', 'maxSteps', 'maxResets', 'wait', 'verbose']      # Options
 
-        optional_gp_types = [float] + 2 * [list] + 4 * [float] + 6 * [int]
-        optional_gp_defaults = [0.05, [], [], -1., -1., 0., 0., 0, 0, 10, 5, 5, 1]
+        optional_gp_types = [float] + 2 * [list] + 4 * [float] + 7 * [int]
+        optional_gp_defaults = [0.05, [], [], -1., -1., 0., 0., 0, 0, 10, 5, 5, 100, 1]
         gp = check_input(gp, optional_gp_keys, optional_gp_types, optional_gp_defaults)
 
         # DB stuff
