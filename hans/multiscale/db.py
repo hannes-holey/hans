@@ -244,7 +244,8 @@ class Database:
                                mass_flux_x=Xnew[4, i],
                                mass_flux_y=Xnew[5, i],
                                wallfile=os.path.join(basedir, self.md['wallfile']),
-                               inputfile=os.path.join(basedir, self.md['infile']))
+                               inputfile=os.path.join(basedir, self.md['infile']),
+                               tsample=self.md['tsample'])
 
                 text = f"""Run next MD simulation in: {proto_datapath}
 ---
@@ -373,7 +374,7 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
         metadata["software_packages"][0]["version"] = str(lammps.__version__)
         if self.md is not None:
-            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall']}
+            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall', 'tsample']}
 
         out_fname = os.path.join(path, 'README.yml')
 

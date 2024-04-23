@@ -95,7 +95,8 @@ def run_slab(gap_height=50.,
              mass_flux_x=0.08,
              mass_flux_y=0.0,
              inputfile='in.lmp',
-             wallfile='wall.lmp'):
+             wallfile='wall.lmp',
+             tsample=200_000):
 
     nargs = ["-log", "log.lammps"]
 
@@ -110,6 +111,7 @@ def run_slab(gap_height=50.,
     lmp.command(f'variable input_vWall equal {vWall}')
     lmp.command(f'variable slabfile index {wallfile}')
     lmp.command(f'variable input_fluxY equal {mass_flux_y}')
+    lmp.command(f'variable tsample equal {tsample}')
 
     # run LAMMPS
     lmp.file(inputfile)

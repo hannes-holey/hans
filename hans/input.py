@@ -689,8 +689,8 @@ class Input:
     def sanitize_md(self, md):
         print("Checking MD parameters... ")
 
-        keys = ['ncpu', 'infile', 'wallfile', 'cutoff', 'temp', 'vWall']
-        types = [int, str, str, float, float, float]
+        keys = ['ncpu', 'infile', 'wallfile', 'cutoff', 'temp', 'vWall', 'tsample']
+        types = [int, str, str, float, float, float, int]
 
         md = check_input(md, keys, types)
 
