@@ -166,14 +166,13 @@ class GaussianProcess:
             while (not self._trusted) and (counter < self.options['maxSteps']):
                 found_newX = self._active_learning_step(mean, cov)
                 counter += 1
-                level = 2 - np.sum(counter <= np.arange(1, 3) * self.options['maxSteps'] // 3 + self.options['maxSteps'] % 3)
                 old_maxvar = deepcopy(self.maxvar)
                 if found_newX:
                     self.gp_print()
-                    self._fit(level)
+                    self._fit()
                     mean, cov = self._raw_predict(Xtest)
                     self._write_history()
-                    self.gp_print(f'>>>> {"Reason":<18}: AL {counter}/{self.options["maxSteps"]} ({level})')
+                    self.gp_print(f'>>>> {"Reason":<18}: AL {counter}/{self.options["maxSteps"]}')
                     self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
                     self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
                     self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
@@ -253,53 +252,95 @@ class GaussianProcess:
                                                  self.kern)
         self._set_noise()
 
-    def _initial_guess_kernel_params(self, level):
+    def _initial_guess_kernel_params(self, level=0):
 
         # three different levels of initial kernel lengthscale
-        if level == 0 and len(self.kernel_init_scale) == self.active_dim:
-            # 0) use initial scales from input (if given)
-            l0 = np.array(self.kernel_init_scale)
-            v0 = self.kernel_init_var if self.kernel_init_var > 0. else self.atol * 100.
-        elif level == 1 and self.kern_last_success_params is not None:
-            # 1) try with fitted scales from previous succesful step
-            v0 = np.array(self.kern_last_success_params[0]) * 100
-            l0 = np.array(self.kern_last_success_params[1:]) * 100
-        else:
-            # 2) use completely random lengthscales in reasonable interval
-            l0 = np.random.uniform(.1, 100., size=self.active_dim)
-            v0 = 1.
+        # if level == 0 and len(self.kernel_init_scale) == self.active_dim:
+        #     # 0) use initial scales from input (if given)
+        #     l0 = np.array(self.kernel_init_scale)
+        #     v0 = self.kernel_init_var if self.kernel_init_var > 0. else self.atol * 100.
+
+        # elif level == 1:  # and self.kern_last_success_params is not None:
+        #     # 1) try with fitted scales from previous succesful step
+        #     # l0 = np.std(self.db.Xtrain[self.Xmask, :], axis=1)
+        #     # v0 = np.var(self.db.Ytrain[self.Ymask, :])
+
+        l0 = np.std(self.model.X, axis=0)
+        v0 = np.var(self.model.Y)
+
+        if level == 1:
+            # Optimize NMLL w.r.t. variance analytically, see https://arxiv.org/abs/2101.09747
+            self.kern.lengthscale = l0
+            K_inv = self.kern.variance.values.copy()[0] * self.model.posterior.woodbury_inv.copy()
+            y = self.model.Y.values.copy()
+            # Assuming zero mean
+            v0 = np.mean(np.diag(((y).T @ K_inv @ (y) / self.model.X.shape[0])))
+
+        if level == 2:
+            # Grid search, also see https://arxiv.org/abs/2101.09747
+            # NOT STABLE
+            grid_factor = np.logspace(np.log10(1/10), np.log10(2), num=5, base=10.0)
+
+            min_obj = np.inf
+
+            for i in grid_factor:
+                for j in grid_factor:
+                    for k in grid_factor:
+                        try:
+                            self.kern.lengthscale = np.array([i, j, k]) * l0
+                            K_inv = self.kern.variance.values.copy()[0] * self.model.posterior.woodbury_inv.copy()
+                            y = self.model.Y.values.copy()
+                            _v = np.maximum(((y).T @ K_inv @ (y) / self.model.X.shape[0])[0, 0], 1e-12)
+
+                            if self.model.objective_function() < min_obj:
+                                min_obj = np.copy(self.model.objective_function())
+                                v0 = _v
+                                l0 = np.array([i, j, k]) * l0
+
+                        except np.linalg.LinAlgError:
+                            pass
 
         return v0, l0
 
-    def _fit(self, level=0):
+    def _fit(self):
 
         self._build_model()
 
-        v0, l0 = self._initial_guess_kernel_params(level)
-
-        best_mll = np.inf
-        best_model = self.model
         num_restarts = self.options['optRestarts']
 
-        # TODO: test vs. GPy.model.optimize_restarts()
+        v0, l0 = self._initial_guess_kernel_params(1)
+        Xbounds = self.model.X.max(0) - self.model.X.min(0)
+
+        self.kern.lengthscale = l0
+        self.kern.variance = v0
+        best_model = self.model.copy()
+        best_mll = np.copy(-self.model.log_likelihood())
+
+        # Constrain lengthscales
+        for i in range(self.active_dim):
+            self.kern.lengthscale[[i]].constrain_bounded(Xbounds[i] / self.model.X.shape[0], 10 * Xbounds[i], warning=False)
+
         for i in range(num_restarts):
+            # Randomize initial hyperparameters
+            skip_update = False
+            self.kern.lengthscale = l0 * np.exp(np.random.normal(size=self.active_dim))
+            self.kern.variance = v0 * np.exp(np.random.normal())
             try:
-                # Randomize hyperparameters
-                self.kern.lengthscale = l0 * np.exp(np.random.normal(size=self.active_dim))
-                self.kern.variance = v0 * np.exp(np.random.normal())
-                self.model.optimize('lbfgsb', max_iters=1000)
+                # self.model.optimize('lbfgsb', max_iters=1000)
+                self.model.optimize_restarts(10, optimizer='lbfgsb', max_iters=100, verbose=False)
             except np.linalg.LinAlgError:
-                print('LinAlgError: Skip optimization step')
+                skip_update = True
 
-            current_mll = -self.model.log_likelihood()
+            if not skip_update:
+                current_mll = -self.model.log_likelihood()
 
-            if current_mll < best_mll:
-                best_model = self.model.copy()
-                best_mll = np.copy(current_mll)
+                if current_mll < best_mll:
+                    best_model = self.model.copy()
+                    best_mll = np.copy(current_mll)
 
             to_stdout = f'>>>> GP_{self.name} {self.step + 1:8d} | DB size {self.dbsize:3d} | '
             to_stdout += f'Fit {i+1:2d}/{num_restarts}: NMLL (current, best): {current_mll:.3f}, {best_mll:.3f}'
-            self.gp_print(to_stdout, flush=True, end='\r' if i < num_restarts - 1 else '\n')
+            self.gp_print(to_stdout, flush=True, end='\n' if i + 1 == num_restarts else '\r')
 
         self.last_fit_dbsize = self.dbsize
 
