@@ -154,9 +154,6 @@ class ConservedField(VectorField):
                 self.eos.GP.reset = False
                 self.eos.gp = None
 
-            self.wall_stress.ncalls = 0
-            self.eos.ncalls = 0
-
     @property
     def mass(self):
         area = self.disc["dx"] * self.disc["dy"]
@@ -375,52 +372,44 @@ class ConservedField(VectorField):
 
         return self.post_integrate()
 
-    # def check_p_reset(self):
-    #     if self.eos.GP.reset:
-    #         self.num_resets += 1
-    #         self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
-    #         self.eos.GP.reset_reset()
-    #         return True
-    #     else:
-    #         return False
-
     def check_p_reset(self):
         if self.eos.GP.reset:
             if self.wait_p_after_reset == 0:
-                self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+                if self.gp['wait'] < 0:
+                    # Go back to start and pause GP update for some steps
+                    self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
                 self.num_resets += 1
                 self.wait_p_after_reset += 1
+                self.eos.ncalls = 0
                 return True
-            elif self.wait_p_after_reset < 2 * self.gp['wait']:
+            elif self.wait_p_after_reset < 2 * abs(self.gp['wait']):
+                # continue waiting
                 self.wait_p_after_reset += 1
                 return False
             else:
+                # end waiting
                 self.wait_p_after_reset = 0
                 self.eos.GP.reset_reset()
                 return False
         else:
             return False
 
-    # def check_tau_reset(self):
-    #     if self.wall_stress.GP.reset:
-    #         self.num_resets += 1
-    #         self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
-    #         self.wall_stress.GP.reset_reset()
-    #         return True
-    #     else:
-    #         return False
-
     def check_tau_reset(self):
         if self.wall_stress.GP.reset:
             if self.wait_tau_after_reset == 0:
-                self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
-                self.num_resets += 1
+                if self.gp['wait'] < 0:
+                    # Go back to start and pause GP update for some steps
+                    self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
                 self.wait_tau_after_reset += 1
+                self.num_resets += 1
+                self.wall_stress.ncalls = 0
                 return True
-            elif self.wait_tau_after_reset < 2 * self.gp['wait']:
+            elif self.wait_tau_after_reset < 2 * abs(self.gp['wait']):
+                # continue waiting
                 self.wait_tau_after_reset += 1
                 return False
             else:
+                # end waiting
                 self.wait_tau_after_reset = 0
                 self.wall_stress.GP.reset_reset()
                 return False
@@ -440,13 +429,14 @@ class ConservedField(VectorField):
         """
 
         if skip:
-            # GP stuck
             print('>>>> Active learning seems to stall. ', end='')
-            print(f'Fall back to last restart ({self.gp["maxResets"] - self.num_resets} remaining).')
-            print(f'>>>> Next GP update in {self.gp["wait"]} steps.')
-            if self.num_resets >= self.gp["maxResets"]:
+            remaining_resets = self.gp["maxResets"] - self.num_resets
+            if remaining_resets < 0:
+                print('Stop immediately.')
                 return 3
             else:
+                prefix = 'Continue anyways' if self.gp['wait'] > 0 else 'Restart'
+                print(f'{prefix}... ({remaining_resets} resets remaining, pause for {abs(self.gp["wait"])} steps).')
                 return -1
 
         self.time += self.dt
