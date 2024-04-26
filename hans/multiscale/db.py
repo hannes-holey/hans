@@ -231,6 +231,16 @@ class Database:
             proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)
             proto_datapath = os.path.join(base_uri, ds_name, 'data')
 
+            data_acq = 'MD simulation' if self.md is not None else '"MD simulation"'
+
+            text = [f'Run next {data_acq} in: {proto_datapath}']
+            text.append('---')
+            text.append(f'Gap height: {Xnew[0, i]:.5f}')
+            text.append(f'Mass density: {Xnew[3, i]:.5f}')
+            text.append(f'Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})')
+
+            print(bordered_text('\n'.join(text)))
+
             # Run LAMMPS...
             if self.md is not None:
 
@@ -246,15 +256,6 @@ class Database:
                                wallfile=os.path.join(basedir, self.md['wallfile']),
                                inputfile=os.path.join(basedir, self.md['infile']),
                                tsample=self.md['tsample'])
-
-                text = f"""Run next MD simulation in: {proto_datapath}
----
-Gap height: {Xnew[0, i]:.5f}
-Mass density: {Xnew[3, i]:.5f}
-Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
-"""
-
-                print(bordered_text(text))
 
                 # Run
                 os.chdir(proto_datapath)
