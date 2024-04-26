@@ -92,7 +92,7 @@ class GaussianProcess:
 
     @property
     def trusted(self):
-        return self._trusted
+        return self.maxvar < self.tol
 
     @property
     def reset(self):
@@ -144,26 +144,28 @@ class GaussianProcess:
         Xtest = self._get_test_input()
         old_maxvar = deepcopy(self.maxvar)
 
-        if in_predictor and self.last_fit_dbsize != self.dbsize:
+        if in_predictor:
             # Predictor step: Refit after database has grown
-            self.gp_print()
-            self._fit()
-            mean, cov = self._raw_predict(Xtest)
-            self._write_history()
-            self.gp_print(f'>>>> {"Reason":<18}: {"DB changed"}')
-            self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
-            self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
-            self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
-            suffix = ' (waiting)' if self._reset else ''
-            self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted} {suffix}')
+            if self.last_fit_dbsize != self.dbsize:
+                self.gp_print()
+                self._fit()
+                mean, cov = self._raw_predict(Xtest)
+                self._write_history()
+                self.gp_print(f'>>>> {"Reason":<18}: {"DB changed"}')
+                self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
+                self.gp_print(f'>>>> {"Max. var. (new)":<18}: {self.maxvar:.3e}')
+                self.gp_print(f'>>>> {"Tolerance":<18}: {self.tol:.3e}')
+                suffix = ' (waiting)' if self._reset else ''
+                self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted} {suffix}')
+            else:
+                mean, cov = self._raw_predict(Xtest)
         else:
-            # Corrector step: Only use additional training point w/o hyperparameter optimization
-            self._build_model()
+            # Corrector step: Use same state of the model as in predictor
             mean, cov = self._raw_predict(Xtest)
 
         if in_predictor and not self._reset:
             counter = 0
-            while (not self._trusted) and (counter < self.options['maxSteps']):
+            while (not self.trusted) and (counter < self.options['maxSteps']):
                 found_newX = self._active_learning_step(mean, cov)
                 counter += 1
                 old_maxvar = deepcopy(self.maxvar)
