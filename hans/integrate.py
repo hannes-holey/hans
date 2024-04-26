@@ -92,6 +92,7 @@ class ConservedField(VectorField):
         self.initialize(q_init, t_init)
 
     def initialize(self, q_init, t_init, restart=False):
+
         # initialize gap height and slip length field
         self.height = GapHeight(self.disc, self.geometry, self.roughness)
         self.slip_length = SlipLength(self.disc, self.surface)
@@ -112,7 +113,7 @@ class ConservedField(VectorField):
 
         if not restart:
 
-            self.q_fallback = deepcopy(self.field)
+            # self.q_fallback = deepcopy(self.field)
 
             if self.gp is not None:
                 if self.numerics['integrator'].startswith('MC'):
@@ -152,6 +153,9 @@ class ConservedField(VectorField):
                 self.eos.GP.dbsize = 0
                 self.eos.GP.reset = False
                 self.eos.gp = None
+
+            self.wall_stress.ncalls = 0
+            self.eos.ncalls = 0
 
     @property
     def mass(self):
