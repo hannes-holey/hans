@@ -27,6 +27,7 @@ import GPy
 import numpy as np
 import os
 from copy import deepcopy
+from scipy.stats import qmc
 
 
 class GaussianProcess:
@@ -43,8 +44,8 @@ class GaussianProcess:
                  Xmask,
                  Ymask,
                  atol,
-                 kernel_init_var,
-                 kernel_init_scale,
+                 # kernel_init_var,
+                 # kernel_init_scale,
                  noise_variance):
 
         self.tol = atol
@@ -58,13 +59,13 @@ class GaussianProcess:
 
         # Kernel
         self.kern = GPy.kern.Matern32(active_dim, ARD=True)
-        self.kernel_init_var = kernel_init_var
-        self.kernel_init_scale = kernel_init_scale
+        # self.kernel_init_var = kernel_init_var
+        # self.kernel_init_scale = kernel_init_scale
 
-        if len(self.kernel_init_scale) == self.active_dim:
-            self.kern.lengthscale = kernel_init_scale
+        # if len(self.kernel_init_scale) == self.active_dim:
+        #     self.kern.lengthscale = kernel_init_scale
 
-        self.kern_last_success_params = None
+        # self.kern_last_success_params = None
 
         # Noise
         self.heteroscedastic_noise = gp['heteroscedastic']
@@ -128,10 +129,10 @@ class GaussianProcess:
         self.maxvar = np.amax(cov)
         self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
 
-        self._trusted = self.maxvar < self.tol
+        # self._trusted = self.maxvar < self.tol
 
-        if self._trusted and not self._reset:
-            self.kern_last_success_params = np.copy(self.kern.param_array)
+        # if self._trusted and not self._reset:
+        #     self.kern_last_success_params = np.copy(self.kern.param_array)
 
         if self.ndim == 1:
             return mean.T[:, :, np.newaxis], cov
@@ -256,17 +257,6 @@ class GaussianProcess:
 
     def _initial_guess_kernel_params(self, level=0):
 
-        # three different levels of initial kernel lengthscale
-        # if level == 0 and len(self.kernel_init_scale) == self.active_dim:
-        #     # 0) use initial scales from input (if given)
-        #     l0 = np.array(self.kernel_init_scale)
-        #     v0 = self.kernel_init_var if self.kernel_init_var > 0. else self.atol * 100.
-
-        # elif level == 1:  # and self.kern_last_success_params is not None:
-        #     # 1) try with fitted scales from previous succesful step
-        #     # l0 = np.std(self.db.Xtrain[self.Xmask, :], axis=1)
-        #     # v0 = np.var(self.db.Ytrain[self.Ymask, :])
-
         l0 = np.std(self.model.X, axis=0)
         v0 = np.var(self.model.Y)
 
@@ -280,27 +270,30 @@ class GaussianProcess:
 
         if level == 2:
             # Grid search, also see https://arxiv.org/abs/2101.09747
-            # NOT STABLE
-            grid_factor = np.logspace(np.log10(1/10), np.log10(2), num=5, base=10.0)
-
             min_obj = np.inf
+            best = np.hstack([v0, l0])
 
-            for i in grid_factor:
-                for j in grid_factor:
-                    for k in grid_factor:
-                        try:
-                            self.kern.lengthscale = np.array([i, j, k]) * l0
-                            K_inv = self.kern.variance.values.copy()[0] * self.model.posterior.woodbury_inv.copy()
-                            y = self.model.Y.values.copy()
-                            _v = np.maximum(((y).T @ K_inv @ (y) / self.model.X.shape[0])[0, 0], 1e-12)
+            sampler = qmc.LatinHypercube(d=3)
+            sample = sampler.random(n=1000)
+            scaled_samples = qmc.scale(sample, np.ones(3)*0.01, np.ones(3)*100.)
 
-                            if self.model.objective_function() < min_obj:
-                                min_obj = np.copy(self.model.objective_function())
-                                v0 = _v
-                                l0 = np.array([i, j, k]) * l0
+            for s in scaled_samples:
+                try:
+                    self.kern.lengthscale = s * l0
+                    K_inv = self.kern.variance.values.copy()[0] * self.model.posterior.woodbury_inv.copy()
+                    y = self.model.Y.values.copy()
+                    _v = np.maximum(((y).T @ K_inv @ (y) / self.model.X.shape[0])[0, 0], 1e-12)
+                    self.kern.variance = _v
 
-                        except np.linalg.LinAlgError:
-                            pass
+                    if self.model.objective_function() < min_obj:
+                        min_obj = np.copy(self.model.objective_function())
+                        best = np.copy(self.kern.param_array)
+
+                except np.linalg.LinAlgError:
+                    pass
+
+            v0 = best[0]
+            l0 = best[1:]
 
         return v0, l0
 
@@ -310,17 +303,23 @@ class GaussianProcess:
 
         num_restarts = self.options['optRestarts']
 
-        v0, l0 = self._initial_guess_kernel_params(1)
-        Xbounds = self.model.X.max(0) - self.model.X.min(0)
-
+        v0, l0 = self._initial_guess_kernel_params(2)
         self.kern.lengthscale = l0
         self.kern.variance = v0
-        best_model = self.model.copy()
-        best_mll = np.copy(-self.model.log_likelihood())
 
         # Constrain lengthscales
+        Xdelta = self.model.X.max(0) - self.model.X.min(0)
+
         for i in range(self.active_dim):
-            self.kern.lengthscale[[i]].constrain_bounded(Xbounds[i] / self.model.X.shape[0], 10 * Xbounds[i], warning=False)
+            Xlimits = [Xdelta[i] / self.model.X.shape[0], 100 * Xdelta[i]]
+            # assert l0[i] < Xlimits[1]
+            # assert l0[i] > Xlimits[0]
+            self.kern.lengthscale[[i]].constrain_bounded(*Xlimits, warning=False)
+
+        self.model.optimize()
+        # self.model.optimize_restarts(verbose=False)
+        best_model = self.model.copy()
+        best_mll = np.copy(-self.model.log_likelihood())
 
         for i in range(num_restarts):
             # Randomize initial hyperparameters
@@ -328,8 +327,8 @@ class GaussianProcess:
             self.kern.lengthscale = l0 * np.exp(np.random.normal(size=self.active_dim))
             self.kern.variance = v0 * np.exp(np.random.normal())
             try:
-                # self.model.optimize('lbfgsb', max_iters=1000)
-                self.model.optimize_restarts(10, optimizer='lbfgsb', max_iters=100, verbose=False)
+                self.model.optimize('lbfgsb', max_iters=1000)
+                # self.model.optimize_restarts(verbose=False)
             except np.linalg.LinAlgError:
                 skip_update = True
 
@@ -429,8 +428,8 @@ class GP_stress(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolShear']
-        kernel_init_var = gp['varShear']
-        kernel_init_scale = gp['scaleShear']
+        # kernel_init_var = gp['varShear']
+        # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
         Xmask = 6 * [False]
@@ -442,7 +441,7 @@ class GP_stress(GaussianProcess):
         Ymask[5] = True
         Ymask[11] = True
 
-        super().__init__(3, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
+        super().__init__(3, db, gp, Xmask, Ymask, atol, noise_variance)
 
     def _get_test_input(self):
         """
@@ -464,8 +463,8 @@ class GP_stress2D(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolShear']
-        kernel_init_var = gp['varShear']
-        kernel_init_scale = gp['scaleShear']
+        # kernel_init_var = gp['varShear']
+        # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
         Xmask = 6 * [False]
@@ -480,7 +479,7 @@ class GP_stress2D(GaussianProcess):
         Ymask[10] = True
         Ymask[11] = True
 
-        super().__init__(4, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
+        super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
 
     def _get_test_input(self):
         """
@@ -507,8 +506,8 @@ class GP_pressure(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolPress']
-        kernel_init_var = gp['varPress']
-        kernel_init_scale = gp['scalePress']
+        # kernel_init_var = gp['varPress']
+        # kernel_init_scale = gp['scalePress']
         noise_variance = gp['noisePress']
 
         Xmask = 6 * [False]
@@ -519,7 +518,7 @@ class GP_pressure(GaussianProcess):
         Ymask = 13 * [False]
         Ymask[0] = True
 
-        super().__init__(3, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
+        super().__init__(3, db, gp, Xmask, Ymask, atol, noise_variance)
 
     def _get_test_input(self):
         """
@@ -540,8 +539,8 @@ class GP_pressure2D(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolPress']
-        kernel_init_var = gp['varPress']
-        kernel_init_scale = gp['scalePress']
+        # kernel_init_var = gp['varPress']
+        # kernel_init_scale = gp['scalePress']
         noise_variance = gp['noisePress']
 
         Xmask = 6 * [False]
@@ -553,7 +552,7 @@ class GP_pressure2D(GaussianProcess):
         Ymask = 13 * [False]
         Ymask[0] = True
 
-        super().__init__(4, db, gp, Xmask, Ymask, atol, kernel_init_var, kernel_init_scale, noise_variance)
+        super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
 
     def _get_test_input(self):
         """
