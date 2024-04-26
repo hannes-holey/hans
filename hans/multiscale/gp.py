@@ -257,7 +257,7 @@ class GaussianProcess:
 
     def _initial_guess_kernel_params(self, level=0):
 
-        l0 = np.std(self.model.X, axis=0)
+        l0 = np.maximum(np.std(self.model.X, axis=0), 1e-8)
         v0 = np.var(self.model.Y)
 
         if level == 1:
@@ -273,9 +273,9 @@ class GaussianProcess:
             min_obj = np.inf
             best = np.hstack([v0, l0])
 
-            sampler = qmc.LatinHypercube(d=3)
+            sampler = qmc.LatinHypercube(self.active_dim)
             sample = sampler.random(n=1000)
-            scaled_samples = qmc.scale(sample, np.ones(3)*0.01, np.ones(3)*100.)
+            scaled_samples = qmc.scale(sample, np.ones(self.active_dim)*0.01, np.ones(self.active_dim)*100.)
 
             for s in scaled_samples:
                 try:
@@ -308,7 +308,7 @@ class GaussianProcess:
         self.kern.variance = v0
 
         # Constrain lengthscales
-        Xdelta = self.model.X.max(0) - self.model.X.min(0)
+        Xdelta = np.maximum(self.model.X.max(0) - self.model.X.min(0), 1e-8)
 
         for i in range(self.active_dim):
             Xlimits = [Xdelta[i] / self.model.X.shape[0], 100 * Xdelta[i]]
