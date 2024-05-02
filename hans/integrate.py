@@ -395,7 +395,7 @@ class ConservedField(VectorField):
             return False
 
     def check_tau_reset(self):
-        if self.wall_stress.GP.reset:
+        if self.wall_stress.reset:
             if self.wait_tau_after_reset == 0:
                 if self.gp['wait'] < 0:
                     # Go back to start and pause GP update for some steps
@@ -440,7 +440,7 @@ class ConservedField(VectorField):
                 return -1
 
         self.time += self.dt
-        self.wall_stress.GP.increment()
+        self.wall_stress.increment()
         self.eos.GP.increment()
 
         dx = np.array([self.disc["dx"], self.disc["dy"]])

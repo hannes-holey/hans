@@ -452,7 +452,7 @@ class GP_stress(GaussianProcess):
         return np.vstack([self.db.h[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
 
     def _set_solution(self, q):
-        self.sol = q  # [:, :, 1]
+        self.sol = q
 
 
 class GP_stress2D(GaussianProcess):
@@ -478,6 +478,92 @@ class GP_stress2D(GaussianProcess):
         Ymask[5] = True
         Ymask[10] = True
         Ymask[11] = True
+
+        super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
+
+    def _get_test_input(self):
+        """
+        Test data as input for GP prediction.
+        Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
+        """
+
+        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
+
+        return Xtest
+
+    def _set_solution(self, q):
+
+        self.sol = deepcopy(q)
+        self.sol[2] *= np.sign(q[2])
+
+
+class GP_stress2D_xz(GaussianProcess):
+
+    ndim = 2
+    name = 'shearXZ'
+
+    def __init__(self, db, gp):
+
+        atol = gp['atolShear']
+        # kernel_init_var = gp['varShear']
+        # kernel_init_scale = gp['scaleShear']
+        noise_variance = gp['noiseShear']
+
+        Xmask = 6 * [False]
+        Xmask[0] = True
+        Xmask[3] = True
+        Xmask[4] = True
+        Xmask[5] = True
+
+        Ymask = 13 * [False]
+        # Ymask[4] = True
+        Ymask[5] = True
+        # Ymask[10] = True
+        Ymask[11] = True
+
+        super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
+
+    def _get_test_input(self):
+        """
+        Test data as input for GP prediction.
+        Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
+        """
+
+        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
+
+        return Xtest
+
+    def _set_solution(self, q):
+
+        self.sol = deepcopy(q)
+        self.sol[2] *= np.sign(q[2])
+
+
+class GP_stress2D_yz(GaussianProcess):
+
+    ndim = 2
+    name = 'shearYZ'
+
+    def __init__(self, db, gp):
+
+        atol = gp['atolShear']
+        # kernel_init_var = gp['varShear']
+        # kernel_init_scale = gp['scaleShear']
+        noise_variance = gp['noiseShear']
+
+        Xmask = 6 * [False]
+        Xmask[0] = True
+        Xmask[3] = True
+        Xmask[4] = True
+        Xmask[5] = True
+
+        Ymask = 13 * [False]
+        Ymask[4] = True
+        # Ymask[5] = True
+        Ymask[10] = True
+        # Ymask[11] = True
 
         super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
 

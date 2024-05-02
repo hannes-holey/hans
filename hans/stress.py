@@ -28,7 +28,7 @@ from hans.field import VectorField, TensorField, DoubleTensorField
 from hans.material import Material
 from hans.special.powerlaw_fluid import solve_zmax, approximate_zmax
 from hans.tools import power
-from hans.multiscale.gp import GP_stress, GP_stress2D
+from hans.multiscale.gp import GP_stress, GP_stress2D_xz, GP_stress2D_yz
 
 
 class SymStressField2D(VectorField):
@@ -495,16 +495,32 @@ class WallStressField3D(DoubleTensorField):
 
         self.ncalls = 0
 
+    @property
+    def reset(self):
+        return np.any([gp.reset for gp in self.GP_list])
+
+    def increment(self):
+        for GP in self.GP_list:
+            GP.increment()
+
     def init_gp(self, q, db):
 
         if q.shape[-1] > 3:
             # 2D
-            self.GP = GP_stress2D(db, self.gp)
+            self.GP_xz = GP_stress2D_xz(db, self.gp)
+            self.GP_yz = GP_stress2D_yz(db, self.gp)
+            self.GP_list = [self.GP_xz, self.GP_yz]
         else:
             # 1D
             self.GP = GP_stress(db, self.gp)
+            self.GP_list = [self.GP]
 
-        self.GP.setup(q)
+        for GP in self.GP_list:
+            GP.setup(q)
+
+    def del_gp(self):
+        for GP in self.GP_list:
+            del GP
 
     @property
     def lower(self):
@@ -538,13 +554,21 @@ class WallStressField3D(DoubleTensorField):
 
         if self.gp is not None:
 
-            mean, cov = self.GP.predict(q, self.ncalls % self.gp['_sCalls'] == 0)
+            if len(self.GP_list) == 1:
+                mean, cov = self.GP.predict(q, self.ncalls % self.gp['_sCalls'] == 0)
+                self.field[self.GP.Ymask[1:]] = mean
+            else:
+                for GP in self.GP_list:
+                    mean, cov = GP.predict(q, self.ncalls % self.gp['_sCalls'] == 0)
 
-            if self.GP.ndim == 2:
-                mean[0] *= np.sign(q[2])
-                mean[2] *= np.sign(q[2])
+                    if GP.name == 'shearYZ':
+                        # Flux input is always positive
+                        # Here we symmetrize the output for shear stress  (YZ)
+                        # in the case where the test data is negative
+                        mean[0] *= np.sign(q[2])
+                        mean[1] *= np.sign(q[2])
 
-            self.field[self.GP.Ymask[1:]] = mean
+                    self.field[GP.Ymask[1:]] = mean
 
             self.ncalls += 1
 

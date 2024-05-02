@@ -50,13 +50,13 @@ class Database:
         self.gp = gp
         self.md = md
 
-        input_dim = 6
+        # Input dimensions
         # h, dh_dx, dh_dy, rho, jx, jy
 
-        output_dim = 13
+        # Output dimensions
         # p, tau_lower (6), tau_upper (6)
 
-        self._init_database(input_dim, output_dim)
+        self._init_database(6, 13)
 
     def __del__(self):
         np.save('Xtrain.npy', self.Xtrain)
@@ -126,7 +126,7 @@ class Database:
                 if 'Yerr' in rm.keys():
                     Yerr.append(rm['Yerr'])
                 else:
-                    Yerr.append([0., 0.])
+                    Yerr.append([0., 0., 0.])
 
             self.Xtrain = np.array(Xtrain).T
             self.Ytrain = np.array(Ytrain).T
@@ -136,7 +136,7 @@ class Database:
             print("No matching dtool datasets found. Start with empty database.")
             self.Xtrain = np.empty((input_dim, 0))
             self.Ytrain = np.empty((output_dim, 0))
-            self.Yerr = np.empty((2, 0))
+            self.Yerr = np.empty((3, 0))
 
     def update(self, Qnew, ix, iy):
         self._update_inputs(Qnew, ix, iy)
@@ -216,12 +216,12 @@ class Database:
     def _update_outputs(self, Xnew):
 
         Ynew = np.zeros((13, Xnew.shape[1]))
+        Yerrnew = np.zeros((3, Xnew.shape[1]))
 
         # In current version of heteroscedastic multi-output GP (single kernel):
         # one error for normal and one for shear stress.
         # Otherwise need individual kernels for tau_xy and tau_xy,
         # and possibly correlations between outputs.
-        Yerrnew = np.zeros((2, Xnew.shape[1]))
 
         for i in range(Xnew.shape[1]):
 
@@ -316,7 +316,8 @@ class Database:
                     tauyzU_err = variance_of_mean(md_data[:, 6])
 
                     Yerrnew[0, i] = (pL_err + pU_err) / 2.
-                    Yerrnew[1, i] = (tauxzL_err + tauxzU_err + tauyzL_err + tauyzU_err) / 4.
+                    Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
+                    Yerrnew[2, i] = (tauyzL_err + tauyzU_err) / 2.
 
                 os.chdir(basedir)
 
@@ -328,8 +329,9 @@ class Database:
                 Ynew[0, i] = self.eos_func(Xnew[3, i]) + pnoise[:, i]
                 Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
 
+                Yerrnew = np.zeros((3, Xnew.shape[1]))
                 Yerrnew[0, i] = self.gp['noisePress']
-                Yerrnew[1, i] = self.gp['noiseShear']
+                Yerrnew[1:, i] = self.gp['noiseShear']
 
             self.write_readme(os.path.join(base_uri, ds_name), Xnew[:, i], Ynew[:, i], Yerrnew[:, i])
 
