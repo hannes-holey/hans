@@ -144,13 +144,10 @@ class ConservedField(VectorField):
                 self.wall_stress.init_gp(self.field, db)
                 self.eos.init_gp(self.field, db)
             else:
-                self.wall_stress.GP = Mock()
-                self.wall_stress.GP.dbsize = 0
-                self.wall_stress.GP.reset = False
+                self.wall_stress.GP_list = []
                 self.wall_stress.gp = None
 
                 self.eos.GP = Mock()
-                self.eos.GP.dbsize = 0
                 self.eos.GP.reset = False
                 self.eos.gp = None
 
@@ -395,6 +392,8 @@ class ConservedField(VectorField):
             return False
 
     def check_tau_reset(self):
+        # in 2D, this checks if any of the two GP's is set to 'reset'
+        # if yes, both will be paused
         if self.wall_stress.reset:
             if self.wait_tau_after_reset == 0:
                 if self.gp['wait'] < 0:
@@ -411,7 +410,7 @@ class ConservedField(VectorField):
             else:
                 # end waiting
                 self.wait_tau_after_reset = 0
-                self.wall_stress.GP.reset_reset()
+                self.wall_stress.reset_reset()
                 return False
         else:
             return False

@@ -499,6 +499,10 @@ class WallStressField3D(DoubleTensorField):
     def reset(self):
         return np.any([gp.reset for gp in self.GP_list])
 
+    def reset_reset(self):
+        for GP in self.GP_list:
+            GP.reset_reset()
+
     def increment(self):
         for GP in self.GP_list:
             GP.increment()
