@@ -77,7 +77,11 @@ class SymStressField2D(VectorField):
 
         """
 
-        if self.gp is not None:
+        if self.gp is None:
+            # Only use averaged stress tensor components in the fully deterministic setting.
+            # If we use a surrogate model, we neglect the averaged xx, yy, and xy components.
+            # These components are very small in most (if not all) lubrication scenarios.
+
             U = self.geometry['U']
             V = self.geometry['V']
             eta = Material(self.material).viscosity(U, V, q[0], h[0])
