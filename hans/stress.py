@@ -524,7 +524,7 @@ class WallStressField3D(DoubleTensorField):
 
     def del_gp(self):
         for GP in self.GP_list:
-            del GP
+            GP.__del__()
 
     @property
     def lower(self):
