@@ -362,7 +362,14 @@ class GaussianProcess:
 
     def _set_noise(self):
 
-        index = 0 if self.name == 'press' else 1
+        if self.name == 'press':
+            index = 0
+        elif self.name == 'shearXZ':
+            index = 1
+        elif self.name == 'shear':
+            index = 1
+        elif self.name == 'shearYZ':
+            index = 2
 
         if self.heteroscedastic_noise:
             self.model.het_Gauss.variance = (self.db.Yerr[index, :].T)[:, None]
