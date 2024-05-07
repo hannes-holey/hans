@@ -33,14 +33,9 @@ except ImportError:
 
 def main():
 
-    comm = MPI.Comm.Get_parent().Merge()
+    comm = MPI.Comm.Get_parent()
 
-    comm.Barrier()
-
-    assert comm != MPI.COMM_NULL
-
-    kw_args = None
-    kw_args = comm.bcast(kw_args, root=0)
+    kw_args = comm.bcast(None, root=0)
 
     run(sys.argv[1], kw_args)
 
@@ -56,17 +51,11 @@ def mpirun(system, kw_args, nworker):
                                    args=[worker_file, system],
                                    maxprocs=nworker)
 
-    common_comm = sub_comm.Merge()
-    common_comm.Barrier()
-
-    if common_comm.Get_rank() == 0:
-        kw_args = kw_args
-
-    kw_args = common_comm.bcast(kw_args, root=0)
+    kw_args = sub_comm.bcast(kw_args, root=0)
 
     # Wait for MD to complete and free spawned communicator
-    common_comm.Barrier()
-    common_comm.Free()
+    sub_comm.Barrier()
+    sub_comm.Free()
 
 
 def run(system, cmdargs):

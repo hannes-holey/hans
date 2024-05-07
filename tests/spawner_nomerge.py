@@ -21,24 +21,47 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-import os
+
 import sys
-import subprocess
-import pytest
+from mpi4py import MPI
 
 
-@pytest.fixture(scope="session", params=[1, 2, 3, 4, 5, 6, 7, 8])
-def command(request):
+def main():
 
-    fname = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'spawner_nomerge.py')
-    command = f'mpirun -n 1 --oversubscribe {sys.executable} {fname} {request.param}'
+    WORKER_COMMAND = 'worker'
 
-    yield command
+    command = len(sys.argv) > 1 and sys.argv[1] or '1'
+    if command != WORKER_COMMAND:
+        worker_count = int(command)
+        print('Manager: launching {} worker.'.format(worker_count))
+        sub_comm = MPI.COMM_SELF.Spawn(sys.executable,
+                                       args=[sys.argv[0], WORKER_COMMAND],
+                                       maxprocs=worker_count)
+
+        arg = {'a': 3, 'b': 5.}
+        arg = sub_comm.bcast(arg, root=MPI.ROOT)
+
+        print(f"Manager: finished with fleet size {sub_comm.Get_size()}.")
+
+        sub_comm.Barrier()
+        sub_comm.Free()
+
+    else:
+        comm = MPI.Comm.Get_parent()
+        size = comm.Get_size()
+        rank = comm.Get_rank()
+        print(f'Worker {rank}/{size}: launched.')
+        print(f"Worker {rank}/{size}: got parent.")
+
+        arg = comm.bcast(None, root=0)
+
+        assert arg == {'a': 3, 'b': 5.}
+
+        print(f"Worker {rank}/{size}: finished")
+
+        comm.Barrier()
+        comm.Free()
 
 
-def test_spawn(command):
-
-    try:
-        subprocess.run(command.split(), check=True, stderr=True, env=os.environ)
-    except subprocess.CalledProcessError:
-        assert False
+if __name__ == '__main__':
+    main()
