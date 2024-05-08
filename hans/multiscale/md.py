@@ -51,7 +51,7 @@ def mpirun(system, kw_args, nworker):
                                    args=[worker_file, system],
                                    maxprocs=nworker)
 
-    kw_args = sub_comm.bcast(kw_args, root=0)
+    kw_args = sub_comm.bcast(kw_args, root=MPI.ROOT)
 
     # Wait for MD to complete and free spawned communicator
     sub_comm.Barrier()
