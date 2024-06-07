@@ -43,9 +43,6 @@ def main():
 
         print(f"Manager: finished with fleet size {sub_comm.Get_size()}.")
 
-        sub_comm.Barrier()
-        sub_comm.Free()
-
     else:
         comm = MPI.Comm.Get_parent()
         size = comm.Get_size()
@@ -58,9 +55,6 @@ def main():
         assert arg == {'a': 3, 'b': 5.}
 
         print(f"Worker {rank}/{size}: finished")
-
-        comm.Barrier()
-        comm.Free()
 
 
 if __name__ == '__main__':
