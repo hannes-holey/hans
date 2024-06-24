@@ -23,7 +23,8 @@
 #
 
 import abc
-import GPy
+from GPy.models import GPRegression, GPHeteroscedasticRegression
+from GPy.kern import Matern32
 import numpy as np
 import os
 from copy import deepcopy
@@ -58,7 +59,7 @@ class GaussianProcess:
         self.Ymask = Ymask
 
         # Kernel
-        self.kern = GPy.kern.Matern32(active_dim, ARD=True)
+        self.kern = Matern32(active_dim, ARD=True)
         # self.kernel_init_var = kernel_init_var
         # self.kernel_init_scale = kernel_init_scale
 
@@ -246,13 +247,13 @@ class GaussianProcess:
     def _build_model(self):
 
         if self.heteroscedastic_noise:
-            self.model = GPy.models.GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T,
-                                                                self.db.Ytrain[self.Ymask, :].T,
-                                                                self.kern)
+            self.model = GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T,
+                                                     self.db.Ytrain[self.Ymask, :].T,
+                                                     self.kern)
         else:
-            self.model = GPy.models.GPRegression(self.db.Xtrain[self.Xmask, :].T,
-                                                 self.db.Ytrain[self.Ymask, :].T,
-                                                 self.kern)
+            self.model = GPRegression(self.db.Xtrain[self.Xmask, :].T,
+                                      self.db.Ytrain[self.Ymask, :].T,
+                                      self.kern)
         self._set_noise()
 
     def _initial_guess_kernel_params(self, level=0):
