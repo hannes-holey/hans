@@ -262,7 +262,7 @@ class Database:
                 excluded = ['infile', 'wallfile', 'ncpu']
                 for k, v in self.md.items():
                     if k not in excluded:
-                        var_str += f'variable input_{k} equal {v}\n'
+                        var_str += f'variable {k} equal {v}\n'
 
                 with open(os.path.join(proto_datapath, 'in.param'), 'w') as f:
                     f.writelines(var_str)
