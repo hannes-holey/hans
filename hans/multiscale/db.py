@@ -248,26 +248,32 @@ class Database:
                 nworker = self.md['ncpu']
                 basedir = os.getcwd()
 
-                kw_args = dict(gap_height=Xnew[0, i],
-                               vWall=self.md['vWall'],
-                               density=Xnew[3, i],
-                               mass_flux_x=Xnew[4, i],
-                               mass_flux_y=Xnew[5, i],
-                               wallfile=os.path.join(basedir, self.md['wallfile']),
-                               inputfile=os.path.join(basedir, self.md['infile']),
-                               tsample=self.md['tsample'])
+                # Move inputfiles to proto dataset
+                proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), 'in.wall')
+                proto_ds.put_item(os.path.join(basedir, self.md['infile']), 'in.run')
+
+                # write variables file
+                var_str = \
+                    f'variable input_gap equal {Xnew[0, i]}\n' + \
+                    f'variable input_dens equal {Xnew[3, i]}\n' + \
+                    f'variable input_fluxX equal {Xnew[4, i]}\n' + \
+                    f'variable input_fluxY equal {Xnew[5, i]}\n'
+
+                excluded = ['infile', 'wallfile', 'ncpu']
+                for k, v in self.md.items():
+                    if k not in excluded:
+                        var_str += f'variable input_{k} equal {v}\n'
+
+                with open(os.path.join(proto_datapath, 'in.param'), 'w') as f:
+                    f.writelines(var_str)
 
                 # Run
                 os.chdir(proto_datapath)
 
                 if self.md['ncpu'] > 1:
-                    mpirun('slab', kw_args, nworker)
+                    mpirun('slab', nworker)
                 else:
-                    run('slab', kw_args)
-
-                # Move inputfiles to proto dataset
-                proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), os.path.basename(self.md['wallfile']))
-                proto_ds.put_item(os.path.join(basedir, self.md['infile']), os.path.basename(self.md['infile']))
+                    run('slab')
 
                 # Get stress
                 md_data = np.loadtxt('stress_wall.dat')

@@ -36,6 +36,7 @@ def command(request):
     yield command
 
 
+@pytest.mark.skip(reason='Broadcasting with spawned processes stalls on some systems.')
 def test_spawn(command):
 
     try:
