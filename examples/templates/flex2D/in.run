@@ -142,14 +142,15 @@ velocity		fluid set v_uCOM v_vCOM 0. sum no units box
 # 2nd equilibration (Langevin walls)
 fix             1 fluid nve
 fix 			2 solid nve
-fix 			2a therm langevin ${temp} ${temp} $(100.0*dt) 435623
+fix 			2L thermL langevin ${temp} ${temp} $(100.0*dt) 435623
+fix 			2U thermU langevin ${temp} ${temp} $(100.0*dt) 435623
 fix 			3 frozen store/force
 fix 			4 frozen setforce 0. 0. 0.
 fix 			5 fluid flow/gauss 1 1 0
 
-# Subtract COM velocity from wall atoms for thermostatting 
-compute			thermotemp_wall therm temp/com
-fix_modify 		2a temp thermotemp_wall
+# Subtract COM velocity from lower (moving) wall atoms for thermostatting 
+compute			thermotemp_wall thermL temp/com
+fix_modify 		2L temp thermotemp_wall
 
 run 			${ttherm}
 reset_timestep 	0
