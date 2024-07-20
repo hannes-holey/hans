@@ -208,7 +208,7 @@ fix 			avebinN fluid ave/time 5 100 500 c_binpressN mode vector ave running over
 fix 			avebinT fluid ave/time 5 100 500 c_binpressT mode vector ave running overwrite file pressT_profile.dat
 
 # MEAN STRESS
-fix 			avewall all ave/time ${Nevery} ${Nrepeat} ${Nfreq} v_pressL v_pressU v_shearxzL v_shearxzU v_shearyzL v_shearyzU file stress_wall.dat 
+fix 			avewall all ave/time ${Nevery} ${Nrepeat} ${Nfreq} v_pressL v_shearxzL v_pressU v_shearxzU v_shearyzL v_shearyzU file stress_wall.dat 
 fix 			avecenter fluid ave/time ${Nevery} ${Nrepeat} ${Nfreq} c_centerpress[*] file press_center.dat
 
 dump        	1 all custom 5000 out.xyz type id x y z
