@@ -440,10 +440,14 @@ class GP_stress(GaussianProcess):
         # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
-        Xmask = 6 * [False]
-        Xmask[0] = True
-        Xmask[3] = True
-        Xmask[4] = True
+        # slip only
+        Xmask = 4 * [True]
+        Xmask[-1] = False
+
+        # Xmask = 6 * [False]
+        # Xmask[0] = True
+        # Xmask[3] = True
+        # Xmask[4] = True
 
         Ymask = 13 * [False]
         Ymask[5] = True
@@ -604,10 +608,14 @@ class GP_pressure(GaussianProcess):
         # kernel_init_scale = gp['scalePress']
         noise_variance = gp['noisePress']
 
-        Xmask = 6 * [False]
-        Xmask[0] = True
-        Xmask[3] = True
-        Xmask[4] = True
+        # slip only
+        Xmask = 4 * [True]
+        Xmask[-1] = False
+
+        # Xmask = 6 * [False]
+        # Xmask[0] = True
+        # Xmask[3] = True
+        # Xmask[4] = True
 
         Ymask = 13 * [False]
         Ymask[0] = True
