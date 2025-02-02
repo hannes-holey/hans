@@ -236,8 +236,8 @@ class Database:
             text = [f'Run next {data_acq} in: {proto_datapath}']
             text.append('---')
 
-            for X in Xnew[:, i]:
-                text.append(f'Input {i}: {Xnew[0, i]:.5f}')
+            for j, X in enumerate(Xnew[:, i]):
+                text.append(f'Input {i}: {X:.5f}')
 
             # text.append(f'Gap height: {Xnew[0, i]:.5f}')
             # text.append(f'Mass density: {Xnew[3, i]:.5f}')
