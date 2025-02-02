@@ -192,8 +192,8 @@ class Database:
             jy_init = np.zeros_like(jx_init)
 
         # Remaining inputs (constant)
-        h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])
-        h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
+        h_gradx_init = np.ones_like(h_init)  # * np.mean(self.h[1, :, 1])
+        h_grady_init = np.ones_like(h_init)  # * np.mean(self.h[2, :, 1])
 
         # Assemble
         Hnew = np.vstack([h_init, h_gradx_init, h_grady_init])
@@ -252,9 +252,10 @@ class Database:
                 proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), 'in.wall')
                 proto_ds.put_item(os.path.join(basedir, self.md['infile']), 'in.run')
 
-                # write variables file
+                # write variables file (# FIXME: height not hardcoded)
                 var_str = \
-                    f'variable input_gap equal {Xnew[0, i]}\n' + \
+                    'variable input_gap equal 8.82\n' + \
+                    f'variable input_kappa equal {Xnew[0, i]}\n' + \
                     f'variable input_dens equal {Xnew[3, i]}\n' + \
                     f'variable input_fluxX equal {Xnew[4, i]}\n' + \
                     f'variable input_fluxY equal {Xnew[5, i]}\n'
