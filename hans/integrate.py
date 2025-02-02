@@ -137,7 +137,7 @@ class ConservedField(VectorField):
 
             if self.gp is not None:
                 # Initalize global training database
-                db = Database(self.gp, self.md, self.height.field,
+                db = Database(self.gp, self.md, self.slip_length.field,
                               self.eos.eos_pressure,  # only w/o lammps
                               self.wall_stress.gp_wall_stress)  # only w/o lammps
 

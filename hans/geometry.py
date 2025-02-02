@@ -653,3 +653,7 @@ class SlipLength(ScalarField):
 
         ls = self.surface["lslip"]
         self.field[0, mask] = ls
+
+        if "lslip1" in self.surface.keys():
+            ls1 = self.surface["lslip1"]
+            self.field[0, mask] = ls1
