@@ -235,9 +235,13 @@ class Database:
 
             text = [f'Run next {data_acq} in: {proto_datapath}']
             text.append('---')
-            text.append(f'Gap height: {Xnew[0, i]:.5f}')
-            text.append(f'Mass density: {Xnew[3, i]:.5f}')
-            text.append(f'Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})')
+
+            for X in Xnew[:, i]:
+                text.append(f'Input {i}: {Xnew[0, i]:.5f}')
+
+            # text.append(f'Gap height: {Xnew[0, i]:.5f}')
+            # text.append(f'Mass density: {Xnew[3, i]:.5f}')
+            # text.append(f'Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})')
 
             print(bordered_text('\n'.join(text)))
 
@@ -252,13 +256,13 @@ class Database:
                 proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), 'in.wall')
                 proto_ds.put_item(os.path.join(basedir, self.md['infile']), 'in.run')
 
-                # write variables file (# FIXME: height not hardcoded)
+                # write variables file (# FIXME: height, indices not hardcoded)
                 var_str = \
                     'variable input_gap equal 8.82\n' + \
                     f'variable input_kappa equal {Xnew[0, i]}\n' + \
-                    f'variable input_dens equal {Xnew[3, i]}\n' + \
-                    f'variable input_fluxX equal {Xnew[4, i]}\n' + \
-                    f'variable input_fluxY equal {Xnew[5, i]}\n'
+                    f'variable input_dens equal {Xnew[1, i]}\n' + \
+                    f'variable input_fluxX equal {Xnew[2, i]}\n' + \
+                    f'variable input_fluxY equal {Xnew[3, i]}\n'
 
                 excluded = ['infile', 'wallfile', 'ncpu']
                 for k, v in self.md.items():
