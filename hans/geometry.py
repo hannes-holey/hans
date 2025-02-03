@@ -25,6 +25,7 @@
 
 import numpy as np
 from mpi4py import MPI
+from scipy import signal
 
 from hans.field import ScalarField, VectorField
 from hans.tools import abort
@@ -601,6 +602,12 @@ class SlipLength(ScalarField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
+        smooth = int(self.surface.get('smooth', 10))
+        if smooth:
+            window1d = np.abs(signal.windows.hann(20))
+            window1d /= window1d.sum()
+            window2d = np.outer(window1d, window1d)
+
         idxx, idyy = self.id_grid
 
         ng = self.disc["nghost"]
@@ -651,9 +658,13 @@ class SlipLength(ScalarField):
         elif self.surface["type"] == "full":
             mask = None
 
-        ls = self.surface["lslip"]
-        self.field[0, mask] = ls
+        if smooth:
+            mask = signal.convolve2d(mask, window2d,
+                                     mode='same',
+                                     boundary='wrap' if self.disc['pX'] and self.disc['pY'] else 'symm'
+                                     )
 
-        if "lslip1" in self.surface.keys():
-            ls1 = self.surface["lslip1"]
-            self.field[0, ~mask] = ls1
+        ls0 = self.surface.get("lslip0", 0.)
+        ls1 = self.surface["lslip"]
+
+        self.field[0] = ls0 + mask * (ls1 - ls0)

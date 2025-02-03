@@ -493,7 +493,8 @@ class ConservedField(VectorField):
             self.field[:, -ng:, :] = recvbuf
         else:
             if np.any(x1 == "D"):
-                self.field[x1 == "D", -ng:, :] = self.dirichlet_bc_down(self.bc["rhox1"], self.field[x1 == "D", -ngt:-ng, :], ax=1)
+                self.field[x1 == "D", -ng:,
+                           :] = self.dirichlet_bc_down(self.bc["rhox1"], self.field[x1 == "D", -ngt:-ng, :], ax=1)
             if np.any(x1 == "N"):
 
                 self.field[x1 == "N", -ng:, :] = self.neumann_bc_down(self.field[x1 == "N", -ngt:-ng, :], ax=1)
@@ -506,7 +507,8 @@ class ConservedField(VectorField):
             self.field[:, :ng, :] = recvbuf
         else:
             if np.any(x0 == "D"):
-                self.field[x0 == "D", :ng, :] = self.dirichlet_bc_up(self.bc["rhox0"], self.field[x0 == "D", ng:ngt, :], ax=1)
+                self.field[x0 == "D", :ng, :] = self.dirichlet_bc_up(
+                    self.bc["rhox0"], self.field[x0 == "D", ng:ngt, :], ax=1)
             if np.any(x0 == "N"):
                 self.field[x0 == "N", :ng, :] = self.neumann_bc_up(self.field[x0 == "N", ng:ngt, :], ax=1)
 
@@ -518,7 +520,8 @@ class ConservedField(VectorField):
             self.field[:, :, -ng:] = recvbuf
         else:
             if np.any(y1 == "D"):
-                self.field[y1 == "D", :, -ng:] = self.dirichlet_bc_down(self.bc["rhoy1"], self.field[y1 == "D", :, -ngt:-ng], ax=2)
+                self.field[y1 == "D", :, -
+                           ng:] = self.dirichlet_bc_down(self.bc["rhoy1"], self.field[y1 == "D", :, -ngt:-ng], ax=2)
             if np.any(y1 == "N"):
                 self.field[y1 == "N", :, -ng:] = self.neumann_bc_up(self.field[y1 == "N", :, -ngt:-ng], ax=2)
 
@@ -530,7 +533,8 @@ class ConservedField(VectorField):
             self.field[:, :, :ng] = recvbuf
         else:
             if np.any(y0 == "D"):
-                self.field[y0 == "D", :, :ng] = self.dirichlet_bc_up(self.bc["rhoy0"], self.field[y0 == "D", :, ng:ngt], ax=2)
+                self.field[y0 == "D", :, :ng] = self.dirichlet_bc_up(
+                    self.bc["rhoy0"], self.field[y0 == "D", :, ng:ngt], ax=2)
             if np.any(y0 == "N"):
                 # self.field[y0 == "N", :, ng:ngt]
                 self.field[y0 == "N", :, :ng] = self.neumann_bc_up(self.field[y0 == "N", :, ng:ngt], ax=2)

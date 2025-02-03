@@ -522,11 +522,11 @@ class GP_stress2D_xz(GaussianProcess):
         # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
-        Xmask = 6 * [False]
-        Xmask[0] = True
-        Xmask[3] = True
-        Xmask[4] = True
-        Xmask[5] = True
+        Xmask = 4 * [True]
+        # Xmask[0] = True
+        # Xmask[3] = True
+        # Xmask[4] = True
+        # Xmask[5] = True
 
         Ymask = 13 * [False]
         # Ymask[4] = True
@@ -565,11 +565,11 @@ class GP_stress2D_yz(GaussianProcess):
         # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
-        Xmask = 6 * [False]
-        Xmask[0] = True
-        Xmask[3] = True
-        Xmask[4] = True
-        Xmask[5] = True
+        Xmask = 4 * [True]
+        # Xmask[0] = True
+        # Xmask[3] = True
+        # Xmask[4] = True
+        # Xmask[5] = True
 
         Ymask = 13 * [False]
         Ymask[4] = True
@@ -645,11 +645,11 @@ class GP_pressure2D(GaussianProcess):
         # kernel_init_scale = gp['scalePress']
         noise_variance = gp['noisePress']
 
-        Xmask = 6 * [False]
-        Xmask[0] = True
-        Xmask[3] = True
-        Xmask[4] = True
-        Xmask[5] = True
+        Xmask = 4 * [True]
+        # Xmask[0] = True
+        # Xmask[3] = True
+        # Xmask[4] = True
+        # Xmask[5] = True
 
         Ymask = 13 * [False]
         Ymask[0] = True

@@ -56,7 +56,7 @@ class Database:
         # Output dimensions
         # p, tau_lower (6), tau_upper (6)
 
-        self._init_database(6, 13)
+        self._init_database(4, 13)
 
     def __del__(self):
         np.save('Xtrain.npy', self.Xtrain)
@@ -192,11 +192,14 @@ class Database:
             jy_init = np.zeros_like(jx_init)
 
         # Remaining inputs (constant)
-        h_gradx_init = np.ones_like(h_init)  # * np.mean(self.h[1, :, 1])
-        h_grady_init = np.ones_like(h_init)  # * np.mean(self.h[2, :, 1])
+        # h_gradx_init = np.ones_like(h_init)  # * np.mean(self.h[1, :, 1])
+        # h_grady_init = np.ones_like(h_init)  # * np.mean(self.h[2, :, 1])
 
         # Assemble
-        Hnew = np.vstack([h_init, h_gradx_init, h_grady_init])
+        Hnew = np.vstack([h_init,
+                          # h_gradx_init,
+                          # h_grady_init
+                          ])
         Qnew = np.vstack([rho_init, jx_init, jy_init])
 
         Xnew = np.vstack([Hnew, Qnew])
