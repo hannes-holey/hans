@@ -26,6 +26,7 @@
 import os
 import time
 import netCDF4
+import GPy
 import numpy as np
 
 from hans.material import Material
@@ -35,12 +36,12 @@ from hans.geometry import GapHeight
 class DatasetSelector:
 
     def __init__(self, path, mode="select", fname=[], prefix="", silent=False):
-
-        self._ds = self.get_files(path, prefix=prefix, mode=mode, fname=fname, silent=silent)
-
-    def get_files(self, path, prefix="", mode="select", fname=[], silent=False):
         """
         Select netCDF data files for plotting.
+
+        Creates dictionary where keys are filenames and values are corresponding datasets.
+        Datasets currently only implemented for suffices "nc" (netCDF4.Dataset) and "dat" (numpy.ndarray).
+        Else, values are None.
 
         Parameters
         ----------
@@ -56,12 +57,6 @@ class DatasetSelector:
             - name: select files by name through 'fname' keyword argument
         fname : list
             list of file names for mode=name, relative to 'path', defaul="[]"
-        Returns
-        ----------
-        out : dict
-            dictionary where keys are filenames and values are corresponding datasets.
-            Datasets currently only implemented for suffices "nc" (netCDF4.Dataset) and "dat" (numpy.ndarray).
-            Else, values are None.
         """
 
         assert mode in ["single", "select", "all", "name"], "mode must be 'single', select, 'all' or 'name'"
@@ -101,9 +96,9 @@ class DatasetSelector:
             fileList = [os.path.join(path, f) for f in fname]
             mask = np.arange(len(fileList))
 
-        out = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
+        self._ds = {f: netCDF4.Dataset(f) for i, f in enumerate(fileList) if i in mask}
 
-        return out
+        # return out
 
     def get_filenames(self):
         return list(self._ds.keys())
@@ -112,12 +107,13 @@ class DatasetSelector:
         return list(self._ds.values())
 
     def get_metadata(self):
-        category_prefix = ["options", "disc", "bc", "geometry", "roughness", "ic", "numerics", "material", "surface", "gp"]
+        category_prefix = ["options", "disc", "bc", "geometry",
+                           "roughness", "ic", "numerics", "material", "surface", "gp"]
         out = []
         for f in self._ds.values():
             metadict = {}
             for cat in category_prefix:
-                catdict = self._generate_input_dict(f, cat)
+                catdict = _generate_input_dict(f, cat)
                 if catdict is not None:
                     metadict[cat] = catdict
 
@@ -129,22 +125,66 @@ class DatasetSelector:
 
         return out
 
-    def _generate_input_dict(self, data, category):
-        out = {(k.split("_")[-1]): (v if str(v) != "None" else None) for k, v in dict(data.__dict__).items() if k.startswith(category)}
+    def get_centerline_gp(self, key=None, index=-1, dir='x'):
 
-        if len(out) > 0:
-            return out
-        else:
-            return None
+        out = []
+        keys = ["rho", "p", "jx", "jy", "tau_bot", "tau_top"]
 
-    def _get_grid(self, data):
+        for data in self._ds.values():
 
-        Nx = int(data.disc_Nx)
-        Ny = int(data.disc_Ny)
-        Lx = float(data.disc_Lx)
-        Ly = float(data.disc_Ly)
+            Nx, Ny, Lx, Ly = _get_grid(data)
 
-        return Nx, Ny, Lx, Ly
+            if dir == "x":
+                xdata = (np.arange(Nx) + 0.5) * Lx / Nx
+            elif dir == "y":
+                xdata = (np.arange(Ny) + 0.5) * Ly / Ny
+
+            p, varp, tau, vartau = _get_gp_prediction(data, step=index)
+            if key is None:
+                ydata = {}
+
+                for k in keys:
+
+                    if k == "p":
+                        frame = (p[:, 0], varp)
+                    elif k == "tau_bot":
+                        frame = (tau[:, 0], vartau)
+                    elif k == "tau_top":
+                        frame = (tau[:, 1], vartau)
+                    else:
+                        if dir == 'x':
+                            frame = np.array(data.variables[k][index])[:, Ny // 2]
+                        elif dir == "y":
+                            frame = np.array(data.variables[k][index])[Nx // 2, :]
+
+                    if dir == "x":
+                        ydata[k] = frame
+                    elif dir == "y":
+                        ydata[k] = frame
+
+            else:
+                assert key in keys
+
+                if key == "p":
+                    frame = (p[:, 0], varp)
+                elif k == "tau_bot":
+                    frame = (tau[:, 0], vartau)
+                elif k == "tau_top":
+                    frame = (tau[:, 1], vartau)
+
+                    rho = np.array(data.variables["rho"][index])
+                    material = _generate_input_dict(data, "material")
+                    frame = Material(material).eos_pressure(rho)
+                else:
+                    frame = np.array(data.variables[key][index])
+                if dir == "x":
+                    ydata = frame[:, Ny // 2]
+                elif dir == "y":
+                    ydata = frame[Nx // 2, :]
+
+            out.append((xdata, ydata))
+
+        return out
 
     def get_centerline(self, key=None, index=-1, dir='x'):
 
@@ -153,7 +193,7 @@ class DatasetSelector:
 
         for data in self._ds.values():
 
-            Nx, Ny, Lx, Ly = self._get_grid(data)
+            Nx, Ny, Lx, Ly = _get_grid(data)
 
             if dir == "x":
                 xdata = (np.arange(Nx) + 0.5) * Lx / Nx
@@ -166,7 +206,7 @@ class DatasetSelector:
 
                     if k == "p":
                         rho = np.array(data.variables["rho"][index])
-                        material = self._generate_input_dict(data, "material")
+                        material = _generate_input_dict(data, "material")
                         frame = Material(material).eos_pressure(rho)
                     else:
                         frame = np.array(data.variables[k][index])
@@ -181,7 +221,7 @@ class DatasetSelector:
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
-                    material = self._generate_input_dict(data, "material")
+                    material = _generate_input_dict(data, "material")
                     frame = Material(material).eos_pressure(rho)
                 else:
                     frame = np.array(data.variables[key][index])
@@ -201,7 +241,7 @@ class DatasetSelector:
 
         for data in self._ds.values():
 
-            Nx, Ny, Lx, Ly = self._get_grid(data)
+            Nx, Ny, Lx, Ly = _get_grid(data)
 
             if dir == "x":
                 xdata = (np.arange(Nx) + 0.5) * Lx / Nx
@@ -216,7 +256,7 @@ class DatasetSelector:
 
                     if k == "p":
                         rho = np.array(data.variables["rho"][::freq])
-                        material = self._generate_input_dict(data, "material")
+                        material = _generate_input_dict(data, "material")
                         frames = Material(material).eos_pressure(rho)
                     else:
                         frames = np.array(data.variables[k][::freq])
@@ -231,7 +271,7 @@ class DatasetSelector:
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][::freq])
-                    material = self._generate_input_dict(data, "material")
+                    material = _generate_input_dict(data, "material")
                     frames = Material(material).eos_pressure(rho)
                 else:
                     frames = np.array(data.variables[key][::freq])
@@ -286,7 +326,7 @@ class DatasetSelector:
                 for k in keys:
                     if k == "p":
                         rho = np.array(data.variables["rho"][index])
-                        material = self._generate_input_dict(data, "material")
+                        material = _generate_input_dict(data, "material")
                         zdata[k] = Material(material).eos_pressure(rho)
                     else:
                         zdata[k] = np.array(data.variables[k][index])
@@ -295,7 +335,7 @@ class DatasetSelector:
                 assert key in keys
                 if key == "p":
                     rho = np.array(data.variables["rho"][index])
-                    material = self._generate_input_dict(data, "material")
+                    material = _generate_input_dict(data, "material")
                     zdata = Material(material).eos_pressure(rho)
                 else:
                     zdata = np.array(data.variables[key][index])
@@ -309,13 +349,13 @@ class DatasetSelector:
         out = []
 
         for data in self._ds.values():
-            disc = self._generate_input_dict(data, "disc")
+            disc = _generate_input_dict(data, "disc")
             disc['pX'] = True
             disc['pY'] = True
             disc['nghost'] = 1
 
-            geometry = self._generate_input_dict(data, "geometry")
-            roughness = self._generate_input_dict(data, "roughness")
+            geometry = _generate_input_dict(data, "geometry")
+            roughness = _generate_input_dict(data, "roughness")
             frame = GapHeight(disc, geometry, roughness)
 
             out.append(frame.inner[0])
@@ -328,26 +368,7 @@ class DatasetSelector:
 
         for data in self._ds.values():
 
-            Nx, Ny, Lx, Ly = self._get_grid(data)
-
-            if dir == "x":
-                xdata = (np.arange(Nx) + 0.5) * Lx / Nx
-            elif dir == "y":
-                xdata = (np.arange(Ny) + 0.5) * Ly / Ny
-
-            disc = self._generate_input_dict(data, "disc")
-            disc['pX'] = True
-            disc['pY'] = True
-            disc['nghost'] = 1
-
-            geometry = self._generate_input_dict(data, "geometry")
-            roughness = self._generate_input_dict(data, "roughness")
-            frame = GapHeight(disc, geometry, roughness)
-
-            if dir == "x":
-                ydata = frame.centerline_x[0]
-            elif dir == "y":
-                ydata = frame.centerline_y[0]
+            xdata, ydata = _get_height_1D(data)
 
             out.append((xdata, ydata))
 
@@ -368,7 +389,7 @@ class DatasetSelector:
                 for k in keys:
                     if k == "p":
                         rho = np.array(data.variables["rho"][::freq])
-                        material = self._generate_input_dict(data, "material")
+                        material = _generate_input_dict(data, "material")
                         zdata[k] = Material(material).eos_pressure(rho)
                     else:
                         zdata[k] = np.array(data.variables[k][::freq])
@@ -377,7 +398,7 @@ class DatasetSelector:
 
                 if key == "p":
                     rho = np.array(data.variables["rho"][::freq])
-                    material = self._generate_input_dict(data, "material")
+                    material = _generate_input_dict(data, "material")
                     zdata = Material(material).eos_pressure(rho)
                 else:
                     zdata = np.array(data.variables[key][::freq])
@@ -404,3 +425,82 @@ def adaptiveLimits(ax):
         a.set_ylim(y_min - offset(y_max, y_min), y_max + offset(y_max, y_min))
 
     return ax
+
+
+def _get_height_1D(data, axis=0):
+    Nx, Ny, Lx, Ly = _get_grid(data)
+
+    if axis == 0:
+        xdata = (np.arange(Nx) + 0.5) * Lx / Nx
+    elif axis == 1:
+        xdata = (np.arange(Ny) + 0.5) * Ly / Ny
+
+    disc = _generate_input_dict(data, "disc")
+    disc['pX'] = True
+    disc['pY'] = True
+    disc['nghost'] = 1
+
+    geometry = _generate_input_dict(data, "geometry")
+    roughness = _generate_input_dict(data, "roughness")
+    frame = GapHeight(disc, geometry, roughness)
+
+    if axis == 0:
+        ydata = frame.centerline_x[0]
+    elif axis == 1:
+        ydata = frame.centerline_y[0]
+
+    return xdata, ydata
+
+
+def _get_grid(data):
+
+    Nx = int(data.disc_Nx)
+    Ny = int(data.disc_Ny)
+    Lx = float(data.disc_Lx)
+    Ly = float(data.disc_Ly)
+
+    return Nx, Ny, Lx, Ly
+
+
+def _generate_input_dict(data, category):
+    out = {(k.split("_")[-1]): (v if str(v) != "None" else None)
+           for k, v in dict(data.__dict__).items() if k.startswith(category)}
+
+    if len(out) > 0:
+        return out
+    else:
+        return None
+
+
+def _get_gp_model(basepath, step, dbsize=None, name='shear'):
+    if dbsize is None or step == -1:
+        fsuffix = '.json.zip'
+        path = basepath
+    else:
+        fsuffix = f'-{int(dbsize[step])}.json.zip'
+        path = os.path.join(basepath, 'data')
+
+    model = GPy.models.GPRegression.load_model(os.path.join(path, f'gp_{name}{fsuffix}'))
+
+    return model
+
+
+def _get_gp_prediction(data, step=-1, dbsize=None, return_noise=False):
+
+    x, h = _get_height_1D(data)
+    rho = data.variables['rho'][step]
+    jx = data.variables['jx'][step]
+
+    Xtest = np.hstack([h[:, None], rho, jx])
+
+    basepath = '.'
+
+    shearmodel = _get_gp_model(basepath, step, dbsize, name='shear')
+    pressmodel = _get_gp_model(basepath, step, dbsize, name='press')
+
+    # print(pressmodel)
+
+    tau, vartau = shearmodel.predict_noiseless(Xtest)
+    p, varp = pressmodel.predict_noiseless(Xtest)
+
+    return p, varp, tau, vartau
