@@ -29,7 +29,7 @@ fix              avewall all ave/time ${Nevery} ${Nrepeat} ${Nfreq} v_pressL v_s
 
 restart 		100000 restart.*  
 
-dump            1 all custom 5000 traj.sample.dump type id mol x y z vx vy vz
+dump            1 all custom ${dumpfreq} traj.sample.dump type id mol x y z vx vy vz
 
 run		    	${Nsample}
 

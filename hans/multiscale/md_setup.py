@@ -182,6 +182,7 @@ def write_settings(args, offset):
     Nevery = args.get("Nevery", 10)
     Nrepeat = args.get("Nrepeat", 100)
     Nfreq = args.get("Nfreq", 1000)
+    dumpfreq = args.get("Nfreq", 10_000)
 
     out = "\nwrite_once(\"In Settings\"){"
     out += f"""
@@ -205,6 +206,9 @@ def write_settings(args, offset):
     variable        Nevery equal {Nevery}
     variable        Nrepeat equal {Nrepeat}
     variable        Nfreq equal {Nfreq}
+
+    variable        dumpfreq equal {dumpfreq}
+
 
     include         static/in.settings.lmp
 
