@@ -125,7 +125,7 @@ class DatasetSelector:
 
         return out
 
-    def get_centerline_gp(self, key=None, index=-1, dir='x'):
+    def get_centerline_gp(self, key=None, index=-1, gp_index=-1, dir='x'):
 
         out = []
         keys = ["rho", "p", "jx", "jy", "tau_bot", "tau_top"]
@@ -139,7 +139,7 @@ class DatasetSelector:
             elif dir == "y":
                 xdata = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            p, varp, tau, vartau = _get_gp_prediction(data, step=index)
+            p, varp, tau, vartau = _get_gp_prediction(data, step=index, index=gp_index)
             if key is None:
                 ydata = {}
 
@@ -472,20 +472,25 @@ def _generate_input_dict(data, category):
         return None
 
 
-def _get_gp_model(basepath, step, dbsize=None, name='shear'):
-    if dbsize is None or step == -1:
+def _get_gp_model(basepath, index=-1, name='shear'):
+
+    if index == -1:
         fsuffix = '.json.zip'
         path = basepath
     else:
-        fsuffix = f'-{int(dbsize[step])}.json.zip'
+        fsuffix = f'-{index}.json.zip'
         path = os.path.join(basepath, 'data')
 
-    model = GPy.models.GPRegression.load_model(os.path.join(path, f'gp_{name}{fsuffix}'))
+    name = os.path.join(path, f'gp_{name}{fsuffix}')
+
+    print(f"Load model: {name}")
+
+    model = GPy.models.GPRegression.load_model(name)
 
     return model
 
 
-def _get_gp_prediction(data, step=-1, dbsize=None, return_noise=False):
+def _get_gp_prediction(data, step=-1, index=-1, return_noise=False):
 
     x, h = _get_height_1D(data)
     rho = data.variables['rho'][step]
@@ -495,12 +500,14 @@ def _get_gp_prediction(data, step=-1, dbsize=None, return_noise=False):
 
     basepath = '.'
 
-    shearmodel = _get_gp_model(basepath, step, dbsize, name='shear')
-    pressmodel = _get_gp_model(basepath, step, dbsize, name='press')
+    shear_model = _get_gp_model(basepath, index, name='shear')
+    press_model = _get_gp_model(basepath, index, name='press')
 
-    # print(pressmodel)
+    print(press_model)
 
-    tau, vartau = shearmodel.predict_noiseless(Xtest)
-    p, varp = pressmodel.predict_noiseless(Xtest)
+    print(shear_model)
+
+    tau, vartau = shear_model.predict_noiseless(Xtest)
+    p, varp = press_model.predict_noiseless(Xtest)
 
     return p, varp, tau, vartau

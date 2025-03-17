@@ -34,6 +34,7 @@ def get_parser():
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
     parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
+    parser.add_argument('-n', dest="step", default=-1)
 
     return parser
 
@@ -53,7 +54,7 @@ def main():
 
     files = DatasetSelector(args.path)
     fns = files.get_filenames()
-    data = files.get_centerline_gp(key=args.key, dir=args.dir)
+    data = files.get_centerline_gp(key=args.key, index=-1, gp_index=args.step, dir=args.dir)
 
     if args.key is None:
         fig, ax = plt.subplots(3, 2, sharex=True, figsize=(6.4, 7.2), tight_layout=False)
