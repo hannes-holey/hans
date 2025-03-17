@@ -127,6 +127,8 @@ class DatasetSelector:
 
     def get_centerline_gp(self, key=None, index=-1, gp_index=-1, dir='x'):
 
+        # 1 kcal/mol/A^3 = 6947.7 MPa
+
         out = []
         keys = ["rho", "p", "jx", "jy", "tau_bot", "tau_top"]
 
@@ -171,12 +173,9 @@ class DatasetSelector:
                     frame = (tau[:, 0], vartau)
                 elif k == "tau_top":
                     frame = (tau[:, 1], vartau)
-
-                    rho = np.array(data.variables["rho"][index])
-                    material = _generate_input_dict(data, "material")
-                    frame = Material(material).eos_pressure(rho)
                 else:
                     frame = np.array(data.variables[key][index])
+
                 if dir == "x":
                     ydata = frame[:, Ny // 2]
                 elif dir == "y":
@@ -231,6 +230,49 @@ class DatasetSelector:
                     ydata = frame[Nx // 2, :]
 
             out.append((xdata, ydata))
+
+        return out
+
+    def get_centerlines_gp(self, gp_index=-1, dir='x'):
+
+        out = []
+        keys = ["rho", "p", "jx", "jy", "tau_bot", "tau_top"]
+
+        for data in self._ds.values():
+
+            Nx, Ny, Lx, Ly = _get_grid(data)
+
+            if dir == "x":
+                xdata = (np.arange(Nx) + 0.5) * Lx / Nx
+                cl = Ny // 2
+                transpose = (1, 0)
+            elif dir == "y":
+                xdata = (np.arange(Ny) + 0.5) * Ly / Ny
+                cl = Nx // 2
+                transpose = (0, 1)
+
+            time = np.array(data.variables["time"])
+            Nsteps = time.shape[0]
+
+            indices = [Nsteps//4, Nsteps//2, 3*Nsteps//4, -1]
+
+            ydata = {k: [] for k in keys}
+            for index in indices:
+                for k in keys:
+                    p, varp, tau, vartau = _get_gp_prediction(data, step=index, index=gp_index)
+
+                    if k == "p":
+                        frame = (p[:, 0], varp)
+                    elif k == "tau_bot":
+                        frame = (tau[:, 0], vartau)
+                    elif k == "tau_top":
+                        frame = (tau[:, 1], vartau)
+                    else:
+                        frame = np.array(data.variables[k][index]).transpose(*transpose)[cl]
+
+                    ydata[k].append(frame)
+
+            out.append((time, xdata, ydata))
 
         return out
 
@@ -492,16 +534,14 @@ def _get_gp_model(basepath, index=-1, name='shear'):
 
 def _get_gp_prediction(data, step=-1, index=-1, return_noise=False):
 
-    x, h = _get_height_1D(data)
-    rho = data.variables['rho'][step]
-    jx = data.variables['jx'][step]
-
-    Xtest = np.hstack([h[:, None], rho, jx])
-
     basepath = '.'
-
+    x, h = _get_height_1D(data)
     shear_model = _get_gp_model(basepath, index, name='shear')
     press_model = _get_gp_model(basepath, index, name='press')
+
+    rho = data.variables['rho'][step]
+    jx = data.variables['jx'][step]
+    Xtest = np.hstack([h[:, None], rho, jx])
 
     print(press_model)
 

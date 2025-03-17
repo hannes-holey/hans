@@ -74,7 +74,7 @@ def main():
                     axis.fill_between(xdata, y + ci, y - ci, color=p.get_color(), alpha=0.3, lw=0.)
 
                 else:
-                    p, = axis.plot(xdata, ydata[key])
+                    axis.plot(xdata, ydata[key])
                 axis.set_ylabel(ylabels[key])
 
     else:
