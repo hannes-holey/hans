@@ -275,7 +275,7 @@ def write_template(args):
     volume = lx * ly * h
     molecule_file = f"{name}.lt"
     mFluid = get_mass_alkane(name)
-    Nf = round(sci.N_A * 1e-24 * density * volume / mFluid)
+    Nf = round(density * volume / mFluid)
     nxf, nyf, nzf, gap = get_molecule_grid(molecule_file, lx, ly, h, Nf)
 
     sig_wf = (3.75 + 2.63) / 2.
