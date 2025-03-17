@@ -37,6 +37,7 @@ from scipy.stats import qmc
 
 
 from hans.tools import progressbar, bordered_text
+from hans.multiscale.md_setup import write_template, build_template
 from hans.multiscale.md import run, mpirun
 
 
@@ -248,27 +249,32 @@ class Database:
                 nworker = self.md['ncpu']
                 basedir = os.getcwd()
 
+                args = self.md
+
                 # Move inputfiles to proto dataset
-                proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), 'in.wall')
-                proto_ds.put_item(os.path.join(basedir, self.md['infile']), 'in.run')
+                os.makedirs(os.path.join(proto_datapath, "moltemplate_files"))
+                os.makedirs(os.path.join(proto_datapath, "static"))
 
-                # write variables file
-                var_str = \
-                    f'variable input_gap equal {Xnew[0, i]}\n' + \
-                    f'variable input_dens equal {Xnew[3, i]}\n' + \
-                    f'variable input_fluxX equal {Xnew[4, i]}\n' + \
-                    f'variable input_fluxY equal {Xnew[5, i]}\n'
+                proto_ds.put_item(self.md['fftemplate'],
+                                  os.path.join("moltemplate_files", os.path.basename(self.md['fftemplate'])))
 
-                excluded = ['infile', 'wallfile', 'ncpu']
-                for k, v in self.md.items():
-                    if k not in excluded:
-                        var_str += f'variable {k} equal {v}\n'
+                proto_ds.put_item(self.md['topo'],
+                                  os.path.join("moltemplate_files", os.path.basename(self.md['topo'])))
 
-                with open(os.path.join(proto_datapath, 'in.param'), 'w') as f:
-                    f.writelines(var_str)
+                for f in os.listdir(self.md["staticFiles"]):
+                    proto_ds.put_item(os.path.join(self.md["staticFiles"], f), os.path.join("static", f))
+
+                # TODO: separate section of metadata
+                args["gap_height"] = float(Xnew[0, i])
+                args["density"] = float(Xnew[3, i])
+                args["fluxX"] = float(Xnew[4, i])
+                args["fluxY"] = float(Xnew[5, i])
 
                 # Run
                 os.chdir(proto_datapath)
+
+                write_template(args)
+                build_template(args)
 
                 if self.md['ncpu'] > 1:
                     mpirun('slab', nworker)
@@ -382,8 +388,10 @@ class Database:
         metadata["creation_date"] = date.today()
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
         metadata["software_packages"][0]["version"] = str(lammps.__version__)
+
         if self.md is not None:
-            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall', 'tsample']}
+            # metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall', 'tsample']}
+            metadata['parameters'] = {k: v for k, v in self.md.items()}
 
         out_fname = os.path.join(path, 'README.yml')
 
