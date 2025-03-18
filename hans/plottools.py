@@ -233,7 +233,7 @@ class DatasetSelector:
 
         return out
 
-    def get_centerlines_gp(self, gp_index=-1, dir='x'):
+    def get_centerlines_gp(self, num=3, gp_index=-1, dir='x'):
 
         out = []
         keys = ["rho", "p", "jx", "jy", "tau_bot", "tau_top"]
@@ -246,7 +246,7 @@ class DatasetSelector:
                 xdata = (np.arange(Nx) + 0.5) * Lx / Nx
                 cl = Ny // 2
                 transpose = (1, 0)
-            elif dir == "y":
+            else:  # dir == "y":
                 xdata = (np.arange(Ny) + 0.5) * Ly / Ny
                 cl = Nx // 2
                 transpose = (0, 1)
@@ -254,9 +254,10 @@ class DatasetSelector:
             time = np.array(data.variables["time"])
             Nsteps = time.shape[0]
 
-            indices = [Nsteps//4, Nsteps//2, 3*Nsteps//4, -1]
+            indices = np.hstack([np.arange(1, num) / num * Nsteps, [-1]]).astype(int)
 
             ydata = {k: [] for k in keys}
+
             for index in indices:
                 for k in keys:
                     p, varp, tau, vartau = _get_gp_prediction(data, step=index, index=gp_index)

@@ -24,6 +24,7 @@
 
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
+from matplotlib import colormaps
 import numpy as np
 
 from hans.plottools import DatasetSelector
@@ -32,9 +33,12 @@ from hans.plottools import DatasetSelector
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
-    parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
+    parser.add_argument('-v', dest="key", default=None,
+                        choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
     parser.add_argument('-n', dest="step", default=-1)
+    parser.add_argument('-N', dest="num", default=3, type=int)
+    parser.add_argument('-c', dest="colormap", default='Blues')
 
     return parser
 
@@ -54,7 +58,7 @@ def main():
 
     files = DatasetSelector(args.path, mode="single")
     fn, = files.get_filenames()
-    _, xdata, ydata = files.get_centerlines_gp(gp_index=args.step, dir=args.dir)[0]
+    _, xdata, ydata = files.get_centerlines_gp(num=args.num, gp_index=args.step, dir=args.dir)[0]
     print("Plotting ", fn)
 
     fig, ax = plt.subplots(3, 2, sharex=True, figsize=(6.4, 7.2))
@@ -64,20 +68,25 @@ def main():
 
     keys = ["rho", "jx", "jy", "p", "tau_bot", "tau_top"]
 
+    colors = colormaps[args.colormap]
+
     for key, axis in zip(keys, ax.T.flat):
 
-        for i in range(len(ydata[key])):
+        N = len(ydata[key])
+        for i in range(N):
+
+            c = colors((i+1)/N)
 
             if key in ["p", "tau_bot", "tau_top"]:
                 y, var_y = ydata[key][i]
                 ci = 1.96 * np.sqrt(var_y[:, 0])
 
-                p, = axis.plot(xdata, y)
-                axis.fill_between(xdata, y + ci, y - ci, color=p.get_color(), alpha=0.3, lw=0.)
+                axis.plot(xdata, y, color=c)
+                axis.fill_between(xdata, y + ci, y - ci, color=c, alpha=0.3, lw=0.)
 
             else:
                 y = ydata[key][i]
-                axis.plot(xdata, y)
+                axis.plot(xdata, y, color=c)
 
         axis.set_ylabel(ylabels[key])
 
