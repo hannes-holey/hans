@@ -212,6 +212,10 @@ class Input:
         elif geometry["type"] in ["inclined", "inclined_x", "inclined_y"]:
             geometry["h1"] = float(geometry['h1'])
             geometry["h2"] = float(geometry['h2'])
+        elif geometry["type"] in ["cdc"]:
+            geometry["h0"] = float(geometry['h0'])
+            geometry["h1"] = float(geometry['h1'])
+            geometry["b"] = float(geometry['b'])
         elif geometry["type"] == "inclined_pocket":
             geometry["h1"] = float(geometry['h1'])
             geometry["h2"] = float(geometry['h2'])

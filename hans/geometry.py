@@ -164,6 +164,24 @@ class GapHeight(VectorField):
             mask = np.greater(xx, Lx / 2)
             self.field[0][mask] = h0
 
+        elif self.geometry["type"] == "cdc":
+            h0 = self.geometry['h0']
+            h1 = self.geometry['h1']
+            b = self.geometry['b']
+
+            slope = (h1 - h0) / (Lx / 2 - 2 * b)
+
+            conv = np.logical_and(xx >= b, xx < Lx / 2 - b)
+            center = np.logical_and(xx >= Lx / 2 - b, xx < Lx / 2 + b)
+            div = np.logical_and(xx >= Lx / 2 + b, xx < Lx - b)
+
+            h = np.ones_like(xx) * h1
+            h[conv] = h1 - slope * (xx[conv] - b)
+            h[center] = h0
+            h[div] = h0 + slope * (xx[div] - (Lx / 2 + b))
+
+            self.field[0] = h
+
         elif self.geometry["type"] == "asperity":
             h0 = self.geometry['hmin']
             h1 = self.geometry['hmax']
