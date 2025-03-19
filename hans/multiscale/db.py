@@ -292,26 +292,34 @@ class Database:
                     run('slab')
 
                 # Get stress
-                md_data = np.loadtxt('stress_wall.dat')
+                md_data = np.loadtxt('stress_wall.dat') * self._stress_scale
 
                 if md_data.shape[1] == 5:
                     # 1D
                     # step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
-                    pressL = np.mean(md_data[:, 1]) * self._stress_scale
-                    pressU = np.mean(md_data[:, 3]) * self._stress_scale
-                    tauL = np.mean(md_data[:, 2]) * self._stress_scale
-                    tauU = np.mean(md_data[:, 4]) * self._stress_scale
 
+                    # timeseries
+                    pressL_t = md_data[:, 1]
+                    pressU_t = md_data[:, 3]
+                    tauL_t = md_data[:, 2]
+                    tauU_t = md_data[:, 4]
+
+                    # mean
+                    pressL = np.mean(pressL_t)
+                    pressU = np.mean(pressU_t)
+                    tauL = np.mean(tauL_t)
+                    tauU = np.mean(tauU_t)
+
+                    # variance of mean
+                    pL_err = variance_of_mean(pressL_t)
+                    pU_err = variance_of_mean(pressU_t)
+                    tauxzL_err = variance_of_mean(tauL_t)
+                    tauxzU_err = variance_of_mean(tauU_t)
+
+                    # fill into buffer
                     Ynew[0, i] = (pressL + pressU) / 2.
                     Ynew[5, i] = tauL
                     Ynew[11, i] = tauU
-
-                    pL_err = variance_of_mean(pressL)
-                    pU_err = variance_of_mean(pressU)
-
-                    tauxzL_err = variance_of_mean(tauL)
-                    tauxzU_err = variance_of_mean(tauU)
-
                     Yerrnew[0, i] = (pL_err + pU_err) / 2.
                     Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
 
@@ -319,27 +327,36 @@ class Database:
                     # 2D
                     # step, pL_t, tauxzL_t, pU_t, tauxzU_t, tauyzL_t, tauyzU_t = np.loadtxt('stress_wall.dat', unpack=True)
 
-                    pressL = np.mean(md_data[:, 1]) * self._stress_scale
-                    pressU = np.mean(md_data[:, 3]) * self._stress_scale
-                    tauxzL = np.mean(md_data[:, 2]) * self._stress_scale
-                    tauxzU = np.mean(md_data[:, 4]) * self._stress_scale
-                    tauyzL = np.mean(md_data[:, 5]) * self._stress_scale
-                    tauyzU = np.mean(md_data[:, 6]) * self._stress_scale
+                    # timeseries data
+                    pressL_t = md_data[:, 1]
+                    pressU_t = md_data[:, 3]
+                    tauxzL_t = md_data[:, 2]
+                    tauxzU_t = md_data[:, 4]
+                    tauyzL_t = md_data[:, 5]
+                    tauyzU_t = md_data[:, 6]
 
+                    # mean
+                    pressL = np.mean(pressL_t)
+                    pressU = np.mean(pressU_t)
+                    tauxzL = np.mean(tauxzL_t)
+                    tauxzU = np.mean(tauxzU_t)
+                    tauyzL = np.mean(tauyzL_t)
+                    tauyzU = np.mean(tauyzU_t)
+
+                    # variance of mean
+                    pL_err = variance_of_mean(pressL_t)
+                    pU_err = variance_of_mean(pressU_t)
+                    tauxzL_err = variance_of_mean(tauxzL_t)
+                    tauxzU_err = variance_of_mean(tauxzU_t)
+                    tauyzL_err = variance_of_mean(tauyzL_t)
+                    tauyzU_err = variance_of_mean(tauyzU_t)
+
+                    # fill into buffer
                     Ynew[0, i] = (pressL + pressU) / 2.
                     Ynew[4, i] = tauyzL
                     Ynew[5, i] = tauxzL
                     Ynew[10, i] = tauyzU
                     Ynew[11, i] = tauxzU
-
-                    pL_err = variance_of_mean(pressL)
-                    pU_err = variance_of_mean(pressU)
-
-                    tauxzL_err = variance_of_mean(tauxzL)
-                    tauxzU_err = variance_of_mean(tauxzU)
-                    tauyzL_err = variance_of_mean(tauyzL)
-                    tauyzU_err = variance_of_mean(tauyzU)
-
                     Yerrnew[0, i] = (pL_err + pU_err) / 2.
                     Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
                     Yerrnew[2, i] = (tauyzL_err + tauyzU_err) / 2.
