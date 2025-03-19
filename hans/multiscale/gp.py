@@ -125,15 +125,12 @@ class GaussianProcess:
 
     def _raw_predict(self, Xtest):
 
-        mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
+        mean, cov = self.model.predict_noiseless(Xtest / self.Xnorm, full_cov=False)
+        mean *= self.Ynorm
+        cov *= self.Ynorm**2
 
         self.maxvar = np.amax(cov)
         self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
-
-        # self._trusted = self.maxvar < self.tol
-
-        # if self._trusted and not self._reset:
-        #     self.kern_last_success_params = np.copy(self.kern.param_array)
 
         if self.ndim == 1:
             return mean.T[:, :, np.newaxis], cov
@@ -191,7 +188,8 @@ class GaussianProcess:
 
     def predict_gradient(self):
         Xtest = self._get_test_input()
-        dq_dX, dv_dX = self.model.predictive_gradients(Xtest)
+        dq_dX, dv_dX = self.model.predictive_gradients(Xtest / self.Xnorm)
+        dq_dX *= self.Ynorm / self.Xnorm.T[None, :, :]
 
         if self.ndim == 1:
             return dq_dX.T[0], dv_dX
@@ -246,13 +244,16 @@ class GaussianProcess:
 
     def _build_model(self):
 
+        self.Xnorm = np.max(np.abs(self.db.Xtrain[self.Xmask, :].T), axis=0)[None, :]
+        self.Ynorm = np.max(np.abs(self.db.Ytrain[self.Ymask, :].T))
+
         if self.heteroscedastic_noise:
-            self.model = GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T,
-                                                     self.db.Ytrain[self.Ymask, :].T,
+            self.model = GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T / self.Xnorm,
+                                                     self.db.Ytrain[self.Ymask, :].T / self.Xnorm,
                                                      self.kern)
         else:
-            self.model = GPRegression(self.db.Xtrain[self.Xmask, :].T,
-                                      self.db.Ytrain[self.Ymask, :].T,
+            self.model = GPRegression(self.db.Xtrain[self.Xmask, :].T / self.Xnorm,
+                                      self.db.Ytrain[self.Ymask, :].T / self.Ynorm,
                                       self.kern)
         self._set_noise()
 

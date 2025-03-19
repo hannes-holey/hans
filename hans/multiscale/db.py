@@ -34,6 +34,7 @@ from getpass import getuser
 from ruamel.yaml import YAML
 from dtool_lookup_api import query
 from scipy.stats import qmc
+import scipy.constants as sci
 
 
 from hans.tools import progressbar, bordered_text
@@ -51,6 +52,10 @@ class Database:
         self.gp = gp
         self.md = md
 
+        # FIXME: hardcoded // or make MD output consistent
+        self._stress_scale = sci.calorie * 1e-4  # from kcal/mol/A^3 to g/mol/A/fs^2 (LAMMPS real units)
+        self._var_stress_scale = self._stress_scale**2
+
         # Input dimensions
         # h, dh_dx, dh_dy, rho, jx, jy
 
@@ -60,13 +65,16 @@ class Database:
         self._init_database(6, 13)
 
     def __del__(self):
-        np.save('Xtrain.npy', self.Xtrain)
-        np.save('Ytrain.npy', self.Ytrain)
-        np.save('Ytrainvar.npy', self.Yerr)
+        self.save()
 
     @property
     def size(self):
         return self.Xtrain.shape[1]
+
+    def save(self):
+        np.save(f'Ytrain-{self.size:03d}.npy', self.Ytrain)
+        np.save(f'Xtrain-{self.size:03d}.npy', self.Xtrain)
+        np.save(f'Ytrainvar-{self.size:03d}.npy', self.Yerr)
 
     def _get_readme_list_remote(self):
 
@@ -130,8 +138,10 @@ class Database:
                     Yerr.append([0., 0., 0.])
 
             self.Xtrain = np.array(Xtrain).T
-            self.Ytrain = np.array(Ytrain).T
-            self.Yerr = np.array(Yerr).T
+            self.Ytrain = np.array(Ytrain).T * self._stress_scale
+            self.Yerr = np.array(Yerr).T * self._var_stress_scale**2
+
+            self.save()
 
         else:
             print("No matching dtool datasets found. Start with empty database.")
@@ -352,8 +362,10 @@ class Database:
             if self.gp['remote']:
                 dtoolcore.copy(proto_ds.uri, self.gp['storage'])
 
-        self.Ytrain = np.hstack([self.Ytrain, Ynew])
-        self.Yerr = np.hstack([self.Yerr, Yerrnew])
+        self.Ytrain = np.hstack([self.Ytrain, Ynew * self._stress_scale])
+        self.Yerr = np.hstack([self.Yerr, Yerrnew * self._var_stress_scale])
+
+        self.save()
 
     def write_readme(self, path, Xnew, Ynew, Yerrnew):
 
