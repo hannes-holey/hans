@@ -58,6 +58,9 @@ class GaussianProcess:
         self.Xmask = Xmask
         self.Ymask = Ymask
 
+        _Yerr_map = {'press': 0, 'shear': 1, 'shearXZ': 1, 'shearYZ': 2}
+        self.index = _Yerr_map[self.name]
+
         # Kernel
         self.kern = Matern32(active_dim, ARD=True)
         # self.kernel_init_var = kernel_init_var
@@ -129,8 +132,10 @@ class GaussianProcess:
         mean *= self.Ynorm
         cov *= self.Ynorm**2
 
+        # absolute tolerance is multiple of mean noise variance from data
+        abosolute_tol = self.atol * self.model.Gaussian_noise.variance[0] * self.Ynorm**2
         self.maxvar = np.amax(cov)
-        self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
+        self.tol = max(abosolute_tol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
 
         if self.ndim == 1:
             return mean.T[:, :, np.newaxis], cov
@@ -230,7 +235,7 @@ class GaussianProcess:
         if self.heteroscedastic_noise:
             per_step.append(np.mean(self.model.het_Gauss.variance))
         else:
-            per_step.append(self.model.Gaussian_noise.variance[0])
+            per_step.append(self.model.Gaussian_noise.variance[0] * self.Ynorm**2)
 
         per_step.append(self.maxvar)
         per_step.append(self.tol)
@@ -364,21 +369,12 @@ class GaussianProcess:
 
     def _set_noise(self):
 
-        if self.name == 'press':
-            index = 0
-        elif self.name == 'shearXZ':
-            index = 1
-        elif self.name == 'shear':
-            index = 1
-        elif self.name == 'shearYZ':
-            index = 2
-
         if self.heteroscedastic_noise:
-            self.model.het_Gauss.variance = (self.db.Yerr[index, :].T)[:, None]
+            self.model.het_Gauss.variance = (self.db.Yerr[self.index, :].T / self.Ynorm**2)[:, None]
             if self.noise_fixed:
                 self.model.het_Gauss.variance.fix()
         else:
-            self.model.Gaussian_noise.variance = np.mean(self.db.Yerr[index, :].T)
+            self.model.Gaussian_noise.variance = np.mean(self.db.Yerr[self.index, :].T / self.Ynorm**2)
             if self.noise_fixed:
                 self.model.Gaussian_noise.variance.fix()
 

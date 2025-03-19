@@ -139,7 +139,7 @@ class Database:
 
             self.Xtrain = np.array(Xtrain).T
             self.Ytrain = np.array(Ytrain).T * self._stress_scale
-            self.Yerr = np.array(Yerr).T * self._var_stress_scale**2
+            self.Yerr = np.array(Yerr).T * self._var_stress_scale
 
             self.save()
 
@@ -297,19 +297,20 @@ class Database:
                 if md_data.shape[1] == 5:
                     # 1D
                     # step, pL_t, tauL_t, pU_t, tauU_t = np.loadtxt('stress_wall.dat', unpack=True)
-                    press = np.mean(md_data[:, 1] + md_data[:, 3]) / 2.
-                    tauL = np.mean(md_data[:, 2])
-                    tauU = np.mean(md_data[:, 4])
+                    pressL = np.mean(md_data[:, 1]) * self._stress_scale
+                    pressU = np.mean(md_data[:, 3]) * self._stress_scale
+                    tauL = np.mean(md_data[:, 2]) * self._stress_scale
+                    tauU = np.mean(md_data[:, 4]) * self._stress_scale
 
-                    Ynew[0, i] = press
+                    Ynew[0, i] = (pressL + pressU) / 2.
                     Ynew[5, i] = tauL
                     Ynew[11, i] = tauU
 
-                    pL_err = variance_of_mean(md_data[:, 1])
-                    pU_err = variance_of_mean(md_data[:, 3])
+                    pL_err = variance_of_mean(pressL)
+                    pU_err = variance_of_mean(pressU)
 
-                    tauxzL_err = variance_of_mean(md_data[:, 2])
-                    tauxzU_err = variance_of_mean(md_data[:, 4])
+                    tauxzL_err = variance_of_mean(tauL)
+                    tauxzU_err = variance_of_mean(tauU)
 
                     Yerrnew[0, i] = (pL_err + pU_err) / 2.
                     Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
@@ -317,25 +318,27 @@ class Database:
                 elif md_data.shape[1] == 7:
                     # 2D
                     # step, pL_t, tauxzL_t, pU_t, tauxzU_t, tauyzL_t, tauyzU_t = np.loadtxt('stress_wall.dat', unpack=True)
-                    press = np.mean(md_data[:, 1] + md_data[:, 3]) / 2.
-                    tauxzL = np.mean(md_data[:, 2])
-                    tauxzU = np.mean(md_data[:, 4])
-                    tauyzL = np.mean(md_data[:, 5])
-                    tauyzU = np.mean(md_data[:, 6])
 
-                    Ynew[0, i] = press
+                    pressL = np.mean(md_data[:, 1]) * self._stress_scale
+                    pressU = np.mean(md_data[:, 3]) * self._stress_scale
+                    tauxzL = np.mean(md_data[:, 2]) * self._stress_scale
+                    tauxzU = np.mean(md_data[:, 4]) * self._stress_scale
+                    tauyzL = np.mean(md_data[:, 5]) * self._stress_scale
+                    tauyzU = np.mean(md_data[:, 6]) * self._stress_scale
+
+                    Ynew[0, i] = (pressL + pressU) / 2.
                     Ynew[4, i] = tauyzL
                     Ynew[5, i] = tauxzL
                     Ynew[10, i] = tauyzU
                     Ynew[11, i] = tauxzU
 
-                    pL_err = variance_of_mean(md_data[:, 1])
-                    pU_err = variance_of_mean(md_data[:, 3])
+                    pL_err = variance_of_mean(pressL)
+                    pU_err = variance_of_mean(pressU)
 
-                    tauxzL_err = variance_of_mean(md_data[:, 2])
-                    tauxzU_err = variance_of_mean(md_data[:, 4])
-                    tauyzL_err = variance_of_mean(md_data[:, 5])
-                    tauyzU_err = variance_of_mean(md_data[:, 6])
+                    tauxzL_err = variance_of_mean(tauxzL)
+                    tauxzU_err = variance_of_mean(tauxzU)
+                    tauyzL_err = variance_of_mean(tauyzL)
+                    tauyzU_err = variance_of_mean(tauyzU)
 
                     Yerrnew[0, i] = (pL_err + pU_err) / 2.
                     Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
@@ -362,8 +365,8 @@ class Database:
             if self.gp['remote']:
                 dtoolcore.copy(proto_ds.uri, self.gp['storage'])
 
-        self.Ytrain = np.hstack([self.Ytrain, Ynew * self._stress_scale])
-        self.Yerr = np.hstack([self.Yerr, Yerrnew * self._var_stress_scale])
+        self.Ytrain = np.hstack([self.Ytrain, Ynew])
+        self.Yerr = np.hstack([self.Yerr, Yerrnew])
 
         self.save()
 
