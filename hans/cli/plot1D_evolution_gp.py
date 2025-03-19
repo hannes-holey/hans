@@ -78,11 +78,15 @@ def main():
             c = colors((i+1)/N)
 
             if key in ["p", "tau_bot", "tau_top"]:
-                y, var_y = ydata[key][i]
+                y, var_y, tol = ydata[key][i]
                 ci = 1.96 * np.sqrt(var_y[:, 0])
 
                 axis.plot(xdata, y, color=c)
                 axis.fill_between(xdata, y + ci, y - ci, color=c, alpha=0.3, lw=0.)
+
+                # tol_ci = 1.96 * np.sqrt(tol)
+                # axis.plot(xdata, y + tol_ci, '--', color=c)
+                # axis.plot(xdata, y - tol_ci, '--', color=c)
 
             else:
                 y = ydata[key][i]

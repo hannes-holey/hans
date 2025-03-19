@@ -67,11 +67,16 @@ def main():
             for key, axis in zip(keys, ax.T.flat):
 
                 if key in ["p", "tau_bot", "tau_top"]:
-                    y, var_y = ydata[key]
+                    y, var_y, tol = ydata[key]
                     ci = 1.96 * np.sqrt(var_y[:, 0])
 
                     p, = axis.plot(xdata, y)
                     axis.fill_between(xdata, y + ci, y - ci, color=p.get_color(), alpha=0.3, lw=0.)
+
+                    # Plotting tolerance
+                    # tol_ci = 1.96 * np.sqrt(tol)
+                    # axis.plot(xdata, y + tol_ci, '--', color=p.get_color())
+                    # axis.plot(xdata, y - tol_ci, '--', color=p.get_color())
 
                 else:
                     axis.plot(xdata, ydata[key])

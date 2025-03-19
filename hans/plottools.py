@@ -141,18 +141,18 @@ class DatasetSelector:
             elif dir == "y":
                 xdata = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            p, varp, tau, vartau = _get_gp_prediction(data, step=index, index=gp_index)
+            p, varp, ptol, tau, vartau, stol = _get_gp_prediction(data, step=index, index=gp_index)
             if key is None:
                 ydata = {}
 
                 for k in keys:
 
                     if k == "p":
-                        frame = (p[:, 0], varp)
+                        frame = (p[:, 0], varp, ptol)
                     elif k == "tau_bot":
-                        frame = (tau[:, 0], vartau)
+                        frame = (tau[:, 0], vartau, stol)
                     elif k == "tau_top":
-                        frame = (tau[:, 1], vartau)
+                        frame = (tau[:, 1], vartau, stol)
                     else:
                         if dir == 'x':
                             frame = np.array(data.variables[k][index])[:, Ny // 2]
@@ -260,14 +260,14 @@ class DatasetSelector:
 
             for index in indices:
                 for k in keys:
-                    p, varp, tau, vartau = _get_gp_prediction(data, step=index, index=gp_index)
+                    p, varp, ptol, tau, vartau, stol = _get_gp_prediction(data, step=index, index=gp_index)
 
                     if k == "p":
-                        frame = (p[:, 0], varp)
+                        frame = (p[:, 0], varp, ptol)
                     elif k == "tau_bot":
-                        frame = (tau[:, 0], vartau)
+                        frame = (tau[:, 0], vartau, stol)
                     elif k == "tau_top":
-                        frame = (tau[:, 1], vartau)
+                        frame = (tau[:, 1], vartau, stol)
                     else:
                         frame = np.array(data.variables[k][index]).transpose(*transpose)[cl]
 
@@ -524,31 +524,53 @@ def _get_gp_model(basepath, index=-1, name='shear'):
         fsuffix = f'-{index}.json.zip'
         path = os.path.join(basepath, 'data')
 
-    name = os.path.join(path, f'gp_{name}{fsuffix}')
+    fname = os.path.join(path, f'gp_{name}{fsuffix}')
 
-    print(f"Load model: {name}")
+    print(f"Load model: {fname}")
 
-    model = GPy.models.GPRegression.load_model(name)
+    model = GPy.models.GPRegression.load_model(fname)
 
-    return model
+    N = model.Y.shape[0]
+    X = np.load(f"Xtrain-{N:03d}.npy")
+    Y = np.load(f"Ytrain-{N:03d}.npy")
+    Yvar = np.load(f"Ytrainvar-{N:03d}.npy")
+
+    Xnorm = np.max(np.abs(X), axis=1)[[0, 3, 4]]
+    Ynorm = np.max(np.abs(Y))
+
+    index_map = {'press': 0, 'shear': 1, 'shearXZ': 1, 'shearYZ': 2}
+    Yvm = np.mean(Yvar[index_map[name], :])
+
+    return model, Xnorm, Ynorm, Yvm
 
 
 def _get_gp_prediction(data, step=-1, index=-1, return_noise=False):
 
     basepath = '.'
     x, h = _get_height_1D(data)
-    shear_model = _get_gp_model(basepath, index, name='shear')
-    press_model = _get_gp_model(basepath, index, name='press')
+    shear_model, Xsnorm, Ysnorm, Yserr = _get_gp_model(basepath, index, name='shear')
+    press_model, Xpnorm, Ypnorm, Yperr = _get_gp_model(basepath, index, name='press')
 
     rho = data.variables['rho'][step]
     jx = data.variables['jx'][step]
+
     Xtest = np.hstack([h[:, None], rho, jx])
 
     print(press_model)
 
     print(shear_model)
 
-    tau, vartau = shear_model.predict_noiseless(Xtest)
-    p, varp = press_model.predict_noiseless(Xtest)
+    tau, vartau = shear_model.predict_noiseless(Xtest / Xsnorm)
+    p, varp = press_model.predict_noiseless(Xtest / Xpnorm)
 
-    return p, varp, tau, vartau
+    p *= Ypnorm
+    tau *= Ysnorm
+
+    varp *= Ypnorm**2
+    vartau *= Ysnorm**2
+
+    # TODO: hardcoded tolerance levels, should be read from somewhere
+    ptol = max(1. * Yserr, 0.05 * (p.max() - p.mean())**2)
+    stol = max(1. * Yperr, 0.05 * (tau.max() - tau.mean())**2)
+
+    return p, varp, ptol, tau, vartau, stol
