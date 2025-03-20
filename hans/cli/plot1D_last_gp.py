@@ -27,6 +27,7 @@ from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
 from hans.plottools import DatasetSelector
+import scipy.constants as sci
 
 
 def get_parser():
@@ -35,6 +36,7 @@ def get_parser():
     parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
     parser.add_argument('-n', dest="step", default=-1)
+    parser.add_argument('-u', dest="units", default=None)
 
     return parser
 
@@ -51,6 +53,11 @@ def main():
 
     parser = get_parser()
     args = parser.parse_args()
+
+    if args.units == "real":
+        p_scale = 1e37 / sci.N_A
+    else:
+        p_scale = 1.
 
     files = DatasetSelector(args.path)
     fns = files.get_filenames()
@@ -70,13 +77,10 @@ def main():
                     y, var_y, tol = ydata[key]
                     ci = 1.96 * np.sqrt(var_y[:, 0])
 
-                    p, = axis.plot(xdata, y)
-                    axis.fill_between(xdata, y + ci, y - ci, color=p.get_color(), alpha=0.3, lw=0.)
-
-                    # Plotting tolerance
-                    # tol_ci = 1.96 * np.sqrt(tol)
-                    # axis.plot(xdata, y + tol_ci, '--', color=p.get_color())
-                    # axis.plot(xdata, y - tol_ci, '--', color=p.get_color())
+                    p, = axis.plot(xdata, y * p_scale)
+                    axis.fill_between(xdata,
+                                      (y + ci) * p_scale,
+                                      (y - ci) * p_scale, color=p.get_color(), alpha=0.3, lw=0.)
 
                 else:
                     axis.plot(xdata, ydata[key])
