@@ -1,6 +1,6 @@
 #   Pentane
 
-import trappe1998.lt
+import "moltemplate_files/trappe1998.lt"
 
 pentane inherits TraPPE {
     write("Data Atoms"){

@@ -1,6 +1,6 @@
 # Hexadecane
 
-import trappe1998.lt
+import "moltemplate_files/trappe1998.lt"
 
 hexadecane inherits TraPPE {
     write("Data Atoms"){

@@ -71,7 +71,19 @@ def get_molecule_grid(file, lx, ly, h, Nf):
     return nxf, nyf, nzf, gap
 
 
-def write_solid_data(coords, mass):
+def write_solid_data(coords, mass,
+                     pair_style="eam",
+                     file="static/Au_u3.eam",
+                     eps=5.29,
+                     sig=2.629
+                     ):
+
+    if pair_style == "eam":
+        pair_coeff_suffix = f"eam {file}"
+    elif pair_style == "lj":
+        pair_coeff_suffix = f"{eps:3f} {sig:3f}"
+    else:
+        pair_coeff_suffix = ""
 
     out = "solid {\n\n"
 
@@ -92,11 +104,38 @@ def write_solid_data(coords, mass):
     out += "\n\t}\n\n"
 
     # Pair coeffs
-    # Heinz et al., J. Phys. Chem. C 112 2008
+    # Gold defaults from: Heinz et al., J. Phys. Chem. C 112 2008
     out += "\twrite_once(\"In Settings\") {\n"
-    out += "\t\tpair_coeff @atom:au @atom:au lj/cut 5.29 2.629\n"
+    out += f"\t\tpair_coeff @atom:au @atom:au {pair_coeff_suffix}\n"
     out += "\t\tgroup solid type @atom:au\n\t}\n"
     out += "}\n\n"
+
+    return out
+
+
+def write_init(cutoff=11., extra_pair="", extra_args="", shift=True):
+
+    out = """
+write_once("In Init") {
+    # -- Default styles for "TraPPE" --
+    units           real
+    atom_style      full
+    # (Hybrid force field styles were used for portability.)
+    bond_style      hybrid harmonic
+    angle_style     hybrid harmonic
+    dihedral_style  hybrid opls
+    improper_style  none
+    special_bonds   lj 0.0 0.0 0.0
+"""
+
+    # (Original TraPPE has rc=14 A)
+    out += f"\tpair_style      hybrid lj/cut {cutoff:.1f} {extra_pair} {extra_args}"
+    out += "\n\tpair_modify     mix arithmetic"
+
+    if shift:
+        out += " shift yes"
+
+    out += "\n}\n\n"
 
     return out
 
@@ -151,6 +190,43 @@ fluid[*][*][*].move(0, 0, {zoffset})
         out += f"delete fluid[0-{min(Nx, delta-diff-1)}][{i}][0]\n"
         i += 1
         diff += Nx
+
+    return out
+
+
+def write_mixing():
+
+    # TODO: read pair_coeffs for mixing, e.g., from trappe1998.lt
+
+    out = "\nwrite_once(\"In Settings\"){"
+
+    out += r"""
+
+    variable    eps_Au equal 5.29
+    variable    sig_Au equal 2.629
+
+    variable    eps_CH2 equal 0.091411522
+    variable    eps_CH3 equal 0.194746286
+    variable    eps_CH4 equal 0.294106636
+    variable    sig_CH2 equal 3.95
+    variable    sig_CH3 equal 3.75
+    variable    sig_CH4 equal 3.73
+
+    variable    eps_CH2_Au equal sqrt(v_eps_CH2*v_eps_Au)
+    variable    eps_CH3_Au equal sqrt(v_eps_CH3*v_eps_Au)
+    variable    eps_CH4_Au equal sqrt(v_eps_CH4*v_eps_Au)
+    variable    sig_CH2_Au equal (v_sig_CH2+v_sig_Au)/2.
+    variable    sig_CH3_Au equal (v_sig_CH3+v_sig_Au)/2.
+    variable    sig_CH4_Au equal (v_sig_CH4+v_sig_Au)/2.
+
+    # Mixed interactions
+    pair_coeff @atom:au @atom:CH2 lj/cut \$\{eps_CH2_Au\} \$\{sig_CH2_Au\}
+    pair_coeff @atom:au @atom:CH3 lj/cut \$\{eps_CH3_Au\} \$\{sig_CH3_Au\}
+    pair_coeff @atom:au @atom:CH4 lj/cut \$\{eps_CH4_Au\} \$\{sig_CH4_Au\}
+
+"""
+
+    out += "}\n"
 
     return out
 
@@ -255,6 +331,8 @@ def write_template(args):
     name = args.get("molecule", "pentane")
     n = args.get("size", 3)
     solid = args.get("solid", "Au")
+    shift = args.get("shift", True)
+    wall_potential = args.get("wall", "")
 
     # input variables
     density = args.get("density")
@@ -282,14 +360,18 @@ def write_template(args):
     Nf = round(density * volume / mFluid)
     nxf, nyf, nzf, gap = get_molecule_grid(molecule_file, lx, ly, h, Nf)
 
+    # effective wall fluid distance / hardcoded for TraPPE / gold
+    # (You slightly miss the target gap height without it)
     sig_wf = (3.75 + 2.63) / 2.
 
     with open('moltemplate_files/system.lt', 'w') as f:
+        f.write(write_init(extra_pair=wall_potential, shift=shift))
         f.write(write_solid_data(coords, mass))
         f.write(write_boundary(lx, ly, 2*lz + gap))
         f.write(write_slab(nx, ny, nz, ax, ay, az, name='solidU', shift=lz+gap))
         f.write(write_slab(nx, ny, nz, ax, ay, az, name='solidL'))
         f.write(write_fluid(molecule_file, Nf, nxf, nyf, nzf, lx, ly, gap, lz+az/6.))
+        f.write(write_mixing())
         f.write(write_settings(args, gap - (h + sig_wf/4.)))
         f.write(write_run())
 

@@ -387,6 +387,7 @@ class Input:
 
         elif material['EOS'] == 'BWR':
             material['T'] = float(material['T'])
+            material['rho0'] = float(material['rho0'])
             # Parameters: Johnson et al., Mol. Phys. 78 (1993)
             params = """
                     0.8623085097507421
@@ -426,8 +427,15 @@ class Input:
             x = [float(val) for val in params.split()]
             material['params'] = x
 
-        material["shear"] = float(material["shear"])
-        material["bulk"] = float(material["bulk"])
+        elif material["EOS"] == "MD":
+            # Density for initial conditions, everything else in "md" input section
+            keys = ['rho0', ]
+            types = [float, ]
+            material = check_input(material, keys, types)
+
+        if material["EOS"] != "MD":
+            material["shear"] = float(material["shear"])
+            material["bulk"] = float(material["bulk"])
 
         if "Pcav" in material.keys():
             material["Pcav"] = float(material["Pcav"])

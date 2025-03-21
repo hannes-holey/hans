@@ -1,6 +1,6 @@
 # Decane
 
-import trappe1998.lt
+import "moltemplate_files/trappe1998.lt"
 
 decane inherits TraPPE {
     write("Data Atoms"){

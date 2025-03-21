@@ -52,8 +52,8 @@ class Database:
         self.gp = gp
         self.md = md
 
-        # FIXME: hardcoded // or make MD output consistent
-        self._stress_scale = sci.calorie * 1e-4  # from kcal/mol/A^3 to g/mol/A/fs^2 (LAMMPS real units)
+        # Default: from kcal/mol/A^3 to g/mol/A/fs^2
+        self._stress_scale = float(self.md.get('scaleRM', sci.calorie * 1e-4))
         self._var_stress_scale = self._stress_scale**2
 
         # Input dimensions
@@ -138,8 +138,10 @@ class Database:
                     Yerr.append([0., 0., 0.])
 
             self.Xtrain = np.array(Xtrain).T
-            self.Ytrain = np.array(Ytrain).T * self._stress_scale
-            self.Yerr = np.array(Yerr).T * self._var_stress_scale
+            # REMINDER: Need to change earlier READMEs with wrong units
+            # This assumes that READMEs are correctly written
+            self.Ytrain = np.array(Ytrain).T  # * self._stress_scale
+            self.Yerr = np.array(Yerr).T  # * self._var_stress_scale
 
             self.save()
 
@@ -292,6 +294,7 @@ class Database:
                     run('slab')
 
                 # Get stress
+                # Apply unit conversion from LAMMPS output to READMEs
                 md_data = np.loadtxt('stress_wall.dat') * self._stress_scale
 
                 if md_data.shape[1] == 5:
@@ -394,7 +397,7 @@ class Database:
         description: Automatically generated MD run of confined fluid for multiscale simulations
         owners:
           - name: Hannes Holey
-            email: hannes.holey@kit.edu
+            email: hannes.holey@unimi.it
             username: hannes
             orcid: 0000-0002-4547-8791
         funders:
