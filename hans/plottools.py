@@ -132,7 +132,7 @@ class DatasetSelector:
         out = []
         keys = ["rho", "p", "jx", "jy", "tau_bot", "tau_top"]
 
-        for data in self._ds.values():
+        for fn, data in self._ds.items():
 
             Nx, Ny, Lx, Ly = _get_grid(data)
 
@@ -141,7 +141,9 @@ class DatasetSelector:
             elif dir == "y":
                 xdata = (np.arange(Ny) + 0.5) * Ly / Ny
 
-            p, varp, ptol, tau, vartau, stol = _get_gp_prediction(data, step=index, index=gp_index)
+            basepath = os.path.dirname(fn)
+
+            p, varp, ptol, tau, vartau, stol = _get_gp_prediction(basepath, data, step=index, index=gp_index)
             if key is None:
                 ydata = {}
 
@@ -522,7 +524,8 @@ def _get_gp_model(basepath, index=-1, name='shear'):
         path = basepath
     else:
         fsuffix = f'-{index}.json.zip'
-        path = os.path.join(basepath, 'data')
+        # usually it's here, but we may need an option to specify this (or read from yaml)
+        path = os.path.join(basepath, '..', 'data')
 
     fname = os.path.join(path, f'gp_{name}{fsuffix}')
 
@@ -531,13 +534,13 @@ def _get_gp_model(basepath, index=-1, name='shear'):
     model = GPy.models.GPRegression.load_model(fname)
 
     N = model.Y.shape[0]
-    X = np.load(f"Xtrain-{N:03d}.npy")[[0, 3, 4]]
+    X = np.load(os.path.join(basepath, f"Xtrain-{N:03d}.npy"))[[0, 3, 4]]
     if name == 'shear':
-        Y = np.load(f"Ytrain-{N:03d}.npy")[[5, 11]]
+        Y = np.load(os.path.join(basepath, f"Ytrain-{N:03d}.npy"))[[5, 11]]
+        Yvar = np.load(os.path.join(basepath, f"Ytrainvar-{N:03d}.npy"))[[1, 2]]
     else:
-        Y = np.load(f"Ytrain-{N:03d}.npy")[[0]]
-
-    Yvar = np.load(f"Ytrainvar-{N:03d}.npy")
+        Y = np.load(os.path.join(basepath, f"Ytrain-{N:03d}.npy"))[[0]]
+        Yvar = np.load(os.path.join(basepath, f"Ytrainvar-{N:03d}.npy"))[[0]]
 
     Xnorm = np.max(np.abs(X), axis=1)
     Ynorm = np.max(np.abs(Y))
@@ -548,9 +551,8 @@ def _get_gp_model(basepath, index=-1, name='shear'):
     return model, Xnorm, Ynorm, Yvm
 
 
-def _get_gp_prediction(data, step=-1, index=-1, return_noise=False):
+def _get_gp_prediction(basepath, data, step=-1, index=-1, return_noise=False):
 
-    basepath = '.'
     x, h = _get_height_1D(data)
     shear_model, Xsnorm, Ysnorm, Yserr = _get_gp_model(basepath, index, name='shear')
     press_model, Xpnorm, Ypnorm, Yperr = _get_gp_model(basepath, index, name='press')
