@@ -531,11 +531,15 @@ def _get_gp_model(basepath, index=-1, name='shear'):
     model = GPy.models.GPRegression.load_model(fname)
 
     N = model.Y.shape[0]
-    X = np.load(f"Xtrain-{N:03d}.npy")
-    Y = np.load(f"Ytrain-{N:03d}.npy")
+    X = np.load(f"Xtrain-{N:03d}.npy")[[0, 3, 4]]
+    if name == 'shear':
+        Y = np.load(f"Ytrain-{N:03d}.npy")[[5, 11]]
+    else:
+        Y = np.load(f"Ytrain-{N:03d}.npy")[[0]]
+
     Yvar = np.load(f"Ytrainvar-{N:03d}.npy")
 
-    Xnorm = np.max(np.abs(X), axis=1)[[0, 3, 4]]
+    Xnorm = np.max(np.abs(X), axis=1)
     Ynorm = np.max(np.abs(Y))
 
     index_map = {'press': 0, 'shear': 1, 'shearXZ': 1, 'shearYZ': 2}

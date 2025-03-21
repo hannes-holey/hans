@@ -254,7 +254,7 @@ class GaussianProcess:
 
         if self.heteroscedastic_noise:
             self.model = GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T / self.Xnorm,
-                                                     self.db.Ytrain[self.Ymask, :].T / self.Xnorm,
+                                                     self.db.Ytrain[self.Ymask, :].T / self.Ynorm,
                                                      self.kern)
         else:
             self.model = GPRegression(self.db.Xtrain[self.Xmask, :].T / self.Xnorm,
