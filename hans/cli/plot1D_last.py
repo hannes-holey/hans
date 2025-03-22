@@ -32,7 +32,8 @@ from hans.plottools import DatasetSelector
 def get_parser():
     parser = ArgumentParser()
     parser.add_argument('-p', dest="path", default="data", help="path (default: data)")
-    parser.add_argument('-v', dest="key", default=None, choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
+    parser.add_argument('-v', dest="key", default=None,
+                        choices=[None, "rho", "p", "jx", "jy"], help="variable (default: None)")
     parser.add_argument('-d', dest="dir", default="x", choices=["x", "y"], help="cutting direction (default: x)")
 
     return parser
