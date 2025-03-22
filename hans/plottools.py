@@ -519,6 +519,8 @@ def _generate_input_dict(data, category):
 
 def _get_gp_model(basepath, datapath, index=-1, name='shear'):
 
+    # TODO: need to store all relevant data/metadata for the GP in one place
+
     if index == -1:
         fsuffix = '.json.zip'
         path = basepath
