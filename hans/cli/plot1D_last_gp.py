@@ -96,7 +96,7 @@ def main():
                                       (y - ci) * sf, color=p.get_color(), alpha=0.3, lw=0.)
 
                 else:
-                    axis.plot(xdata, ydata[key])
+                    axis.plot(xdata, ydata[key] * sf)
                 axis.set_ylabel(ylabels[key])
 
     else:
