@@ -4,39 +4,6 @@ import scipy.constants as sci
 from ase.lattice.cubic import FaceCenteredCubic
 
 
-# from argparse import ArgumentParser
-
-
-# def get_parser():
-
-#     parser = ArgumentParser()
-#     parser.add_argument('-mol', '--molecule', type=str, default='pentane',
-#                         choices=['pentane', 'decane', 'hexadecane'])
-#     parser.add_argument('-n', '--size', type=int, default=3)
-#     parser.add_argument('-g', '--gap-height', type=float, default=30.)
-#     parser.add_argument('-d', '--density', type=float, default=.7)
-#     parser.add_argument('-jx', '--fluxX', type=float, default=.0)
-#     parser.add_argument('-jy', '--fluxY', type=float, default=.0)
-#     parser.add_argument('-U', '--wall-velocity', type=float, default=20.)
-#     parser.add_argument('-T', '--temperature', type=float, default=300.)
-#     parser.add_argument('-s', '--solid', type=str, default='Au')
-#     parser.add_argument('-b', '--build', action='store_true', default=False)
-#     parser.add_argument('-C', '--couette', action='store_true', default=False)
-
-#     parser.add_argument('-dt', '--timestep', type=float, default=1.)
-#     parser.add_argument('--Ninit', type=int, default=50_000)
-#     parser.add_argument('--Nsteady', type=int, default=100_000)
-#     parser.add_argument('--Nsample', type=int, default=300_000)
-#     parser.add_argument('-Ne', '--Nevery', type=int, default=10)
-#     parser.add_argument('-Nr', '--Nrepeat', type=int, default=100)
-#     parser.add_argument('-Nf', '--Nfreq', type=int, default=1000)
-#     parser.add_argument('--nz', type=int, default=200)
-
-#     parser.add_argument('-r', '--restart-file', type=str, default='restart.steady')
-
-#     return parser
-
-
 def get_molecule_grid(file, lx, ly, h, Nf):
     coords = []
 
@@ -72,7 +39,7 @@ def get_molecule_grid(file, lx, ly, h, Nf):
 
 
 def write_solid_data(coords, mass,
-                     pair_style="eam",
+                     pair_style="lj/cut",
                      file="static/Au_u3.eam",
                      eps=5.29,
                      sig=2.629
@@ -80,8 +47,8 @@ def write_solid_data(coords, mass,
 
     if pair_style == "eam":
         pair_coeff_suffix = f"eam {file}"
-    elif pair_style == "lj":
-        pair_coeff_suffix = f"{eps:3f} {sig:3f}"
+    elif pair_style == "lj/cut":
+        pair_coeff_suffix = f"lj/cut {eps:3f} {sig:3f}"
     else:
         pair_coeff_suffix = ""
 
@@ -113,7 +80,7 @@ def write_solid_data(coords, mass,
     return out
 
 
-def write_init(cutoff=11., extra_pair="", extra_args="", shift=True):
+def write_init(cutoff=11., extra_pair="", extra_args="", shift=False, mpi_grid=None):
 
     out = """
 write_once("In Init") {
@@ -129,11 +96,20 @@ write_once("In Init") {
 """
 
     # (Original TraPPE has rc=14 A)
-    out += f"\tpair_style      hybrid lj/cut {cutoff:.1f} {extra_pair} {extra_args}"
-    out += "\n\tpair_modify     mix arithmetic"
+    out += f"\tpair_style      hybrid lj/cut {cutoff:.1f}"
+
+    if extra_pair != "lj/cut":
+        out += f" {extra_pair} {extra_args}"
+
+    out += "\n\tpair_modify     pair lj/cut mix arithmetic"
 
     if shift:
         out += " shift yes"
+
+    if mpi_grid is None:
+        out += "\nprocessors      1 1 *"
+    else:
+        out += f"\nprocessors      {mpi_grid[0]} {mpi_grid[1]} {mpi_grid[2]}"
 
     out += "\n}\n\n"
 
@@ -323,7 +299,18 @@ def get_mass_alkane(name):
     mCH3 = 15.2507
     mCH4 = 16.3307
 
-    return nCH2 * mCH2 + nCH3 * mCH3 + nCH4 * mCH4
+    return nCH2 * mCH2 + nCH3 * mCH3 + nCH4 * mCH4, np.sum(molecules[name])
+
+
+def _get_MPI_grid(Natoms, size, max_cpu, atoms_per_core=1000):
+
+    ncpus = min(max_cpu, Natoms // atoms_per_core)
+
+    nx = 1
+    ny = max(size // 2, 1)  # 1D flow , otherwise nx=ny (TODO)
+    nz = max(ncpus // (nx * ny), 1)
+
+    return nx, ny, nz
 
 
 def write_template(args):
@@ -331,8 +318,9 @@ def write_template(args):
     name = args.get("molecule", "pentane")
     n = args.get("size", 3)
     solid = args.get("solid", "Au")
-    shift = args.get("shift", True)
+    shift = args.get("shift", False)
     wall_potential = args.get("wall", "")
+    max_cpu = args.get("ncpu")
 
     # input variables
     density = args.get("density")
@@ -356,24 +344,30 @@ def write_template(args):
 
     volume = lx * ly * h
     molecule_file = f"{name}.lt"
-    mFluid = get_mass_alkane(name)
+    mFluid, nC_per_mol = get_mass_alkane(name)
     Nf = round(density * volume / mFluid)
     nxf, nyf, nzf, gap = get_molecule_grid(molecule_file, lx, ly, h, Nf)
+
+    Natoms = Nf * nC_per_mol + coords.shape[0] * nx * ny * nz * 2
+    mpi_grid = _get_MPI_grid(Natoms, n, max_cpu)
 
     # effective wall fluid distance / hardcoded for TraPPE / gold
     # (You slightly miss the target gap height without it)
     sig_wf = (3.75 + 2.63) / 2.
 
     with open('moltemplate_files/system.lt', 'w') as f:
-        f.write(write_init(extra_pair=wall_potential, shift=shift))
-        f.write(write_solid_data(coords, mass))
+        f.write(write_init(extra_pair=wall_potential, shift=shift, mpi_grid=mpi_grid))
+        f.write(write_solid_data(coords, mass, pair_style=wall_potential))
         f.write(write_boundary(lx, ly, 2*lz + gap))
         f.write(write_slab(nx, ny, nz, ax, ay, az, name='solidU', shift=lz+gap))
         f.write(write_slab(nx, ny, nz, ax, ay, az, name='solidL'))
         f.write(write_fluid(molecule_file, Nf, nxf, nyf, nzf, lx, ly, gap, lz+az/6.))
-        f.write(write_mixing())
+        if wall_potential != "lj/cut":  # lj/cut
+            f.write(write_mixing())
         f.write(write_settings(args, gap - (h + sig_wf/4.)))
         f.write(write_run())
+
+    return np.prod(mpi_grid)
 
 
 def build_template(args):
