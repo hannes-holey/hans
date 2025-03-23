@@ -196,9 +196,9 @@ def write_mixing():
     variable    sig_CH4_Au equal (v_sig_CH4+v_sig_Au)/2.
 
     # Mixed interactions
-    pair_coeff @atom:au @atom:CH2 lj/cut \$\{eps_CH2_Au\} \$\{sig_CH2_Au\}
-    pair_coeff @atom:au @atom:CH3 lj/cut \$\{eps_CH3_Au\} \$\{sig_CH3_Au\}
-    pair_coeff @atom:au @atom:CH4 lj/cut \$\{eps_CH4_Au\} \$\{sig_CH4_Au\}
+    pair_coeff @atom:solid/au @atom:TraPPE/CH2 lj/cut \$\{eps_CH2_Au\} \$\{sig_CH2_Au\}
+    pair_coeff @atom:solid/au @atom:TraPPE/CH3 lj/cut \$\{eps_CH3_Au\} \$\{sig_CH3_Au\}
+    pair_coeff @atom:solid/au @atom:TraPPE/CH4 lj/cut \$\{eps_CH4_Au\} \$\{sig_CH4_Au\}
 
 """
 
