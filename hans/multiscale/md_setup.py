@@ -306,8 +306,13 @@ def _get_MPI_grid(Natoms, size, max_cpu, atoms_per_core=1000):
 
     ncpus = min(max_cpu, Natoms // atoms_per_core)
 
-    nx = 1
-    ny = max(size // 2, 1)  # 1D flow , otherwise nx=ny (TODO)
+    ny = size // 2 + size % 2
+    if max_cpu < ny**2:
+        ny = 1
+        nx = 1
+    else:
+        nx = ny
+
     nz = max(ncpus // (nx * ny), 1)
 
     return nx, ny, nz
