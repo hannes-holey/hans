@@ -3,7 +3,9 @@ change_box      all boundary p p s
 dump            1 all custom ${dumpfreq} traj.equil.dump type id mol x y z vx vy vz
 
 variable        scale equal 1.
-variable        vZ equal -${offset}/${dt}/${Ninit}
+variable		shift equal bound(surfU,zmin)-bound(surfL,zmax)-(v_hmin+v_offset)
+
+variable        vZ equal -${shift}/${dt}/${Ninit}
 
 velocity        TraPPE create $(2*v_input_temp) 726403 dist gaussian mom yes
 

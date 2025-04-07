@@ -17,8 +17,8 @@ variable		zloU equal $(bound(surfU, zmin))
 variable		zhiU equal $(bound(surfU, zmax))
 
 variable        thickness equal ${zhiL}-${zloL}  # wall thickness
-variable        layer equal ${thickness}/16.  # half (111) distance
-variable        thermal equal 8*${layer}	  # four times (111) distance
+variable        layer equal ${thickness}/(${nwall}*3-1)/2.  # half (111) distance
+variable        thermal equal ${ntherm}*2*${layer}	  		# thickness thermalized layer
 
 # lower and upper frozen layers
 region          freezeU block INF INF INF INF $(v_zhiU-v_layer) INF units box

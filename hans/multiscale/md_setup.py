@@ -73,17 +73,21 @@ def get_molecule_grid(file, lx, ly, h, Nf):
 
 def write_solid_data(coords, mass,
                      pair_style="eam",
-                     file="static/Au_u3.eam",
                      eps=5.29,
                      sig=2.629
                      ):
 
     if pair_style == "eam":
-        pair_coeff_suffix = f"eam {file}"
-    elif pair_style == "lj":
-        pair_coeff_suffix = f"{eps:3f} {sig:3f}"
+        file = "static/Au_u3.eam"
+        pair_coeff_line = f"\t\tpair_coeff @atom:au @atom:au eam {file}\n"
+    elif pair_style == "eam/alloy":
+        file = "static/Au-Grochola-JCP05.eam.alloy"
+        pair_coeff_line = f"\t\tpair_coeff * * eam/alloy {file} Au NULL NULL NULL \n"
+    elif pair_style == "lj/cut":
+        # dafults from Heinz et al., J. Phys. Chem. C 112 2008
+        pair_coeff_line = f"\t\tpair_coeff @atom:au @atom:au {eps} {sig}\n"
     else:
-        pair_coeff_suffix = ""
+        pair_coeff_line = ""
 
     out = "solid {\n\n"
 
@@ -104,9 +108,8 @@ def write_solid_data(coords, mass,
     out += "\n\t}\n\n"
 
     # Pair coeffs
-    # Gold defaults from: Heinz et al., J. Phys. Chem. C 112 2008
     out += "\twrite_once(\"In Settings\") {\n"
-    out += f"\t\tpair_coeff @atom:au @atom:au {pair_coeff_suffix}\n"
+    out += pair_coeff_line
     out += "\t\tgroup solid type @atom:au\n\t}\n"
     out += "}\n\n"
 
@@ -236,6 +239,10 @@ def write_settings(args, offset):
     density = args.get("density")
     wall_velocity = args.get("vWall")
     U = wall_velocity * 1e-5  # m/s to A/fs
+    h = args.get("gap_height")
+
+    nlayers = 9  # 3 * unit cell size (default)
+    nthermal = (nlayers - 1) // 2 + (nlayers - 1) % 2
 
     # Couette flow
     couette = args.get("couette", False)
@@ -274,6 +281,12 @@ def write_settings(args, offset):
     variable        input_fluxY equal {jy_real}
     variable        input_temp equal {temperature} # K
     variable        vWall equal {U} # A/fs
+    variable        hmin equal {h}
+
+    # Wall sections
+    variable        nwall equal 3
+    variable        ntherm equal {nthermal}
+
 
     # sampling // spatial
     variable        nbinz index {nz}
@@ -301,6 +314,7 @@ def write_run():
     out = """
 write_once("In Run"){
 
+    include static/in.run.min.lmp
     include static/in.run.equil.lmp
     include static/in.run.steady.lmp
     include static/in.run.sample.lmp
@@ -331,7 +345,7 @@ def write_template(args):
     name = args.get("molecule", "pentane")
     n = args.get("size", 3)
     solid = args.get("solid", "Au")
-    shift = args.get("shift", True)
+    shift = args.get("shift", False)
     wall_potential = args.get("wall", "")
 
     # input variables
@@ -366,13 +380,13 @@ def write_template(args):
 
     with open('moltemplate_files/system.lt', 'w') as f:
         f.write(write_init(extra_pair=wall_potential, shift=shift))
-        f.write(write_solid_data(coords, mass))
+        f.write(write_solid_data(coords, mass, pair_style=wall_potential))
         f.write(write_boundary(lx, ly, 2*lz + gap))
         f.write(write_slab(nx, ny, nz, ax, ay, az, name='solidU', shift=lz+gap))
         f.write(write_slab(nx, ny, nz, ax, ay, az, name='solidL'))
-        f.write(write_fluid(molecule_file, Nf, nxf, nyf, nzf, lx, ly, gap, lz+az/6.))
+        f.write(write_fluid(molecule_file, Nf, nxf, nyf, nzf, lx, ly, gap, lz+sig_wf/2.))
         f.write(write_mixing())
-        f.write(write_settings(args, gap - (h + sig_wf/4.)))
+        f.write(write_settings(args, sig_wf))
         f.write(write_run())
 
 
