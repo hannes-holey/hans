@@ -258,7 +258,7 @@ class Database:
             if self.md is not None:
 
                 # Run MD with fixed number of cores in proto dataset
-                nworker = self.md['ncpu']
+                # nworker = self.md['ncpu']
                 basedir = os.getcwd()
 
                 args = self.md
@@ -285,7 +285,7 @@ class Database:
                 # Run
                 os.chdir(proto_datapath)
 
-                write_template(args)
+                nworker = write_template(args)
                 build_template(args)
 
                 if self.md['ncpu'] > 1:

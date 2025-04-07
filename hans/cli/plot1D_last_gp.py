@@ -58,8 +58,18 @@ def main():
 
     if args.units == "real":
         p_scale = 1e37 / sci.N_A
+        r_scale = 1e27 / sci.N_A
     else:
         p_scale = 1.
+        r_scale = 1.
+
+    scale_factors = {"rho": r_scale,
+                     "jx": 1.,
+                     "jy": 1.,
+                     "p": p_scale,
+                     "tau_bot": p_scale,
+                     "tau_top": p_scale,
+                     }
 
     files = DatasetSelector(args.path)
     fns = files.get_filenames()
@@ -74,24 +84,26 @@ def main():
             keys = ["rho", "jx", "jy", "p", "tau_bot", "tau_top"]
             print("Plotting ", fn)
             for key, axis in zip(keys, ax.T.flat):
+                sf = scale_factors[key]
 
                 if key in ["p", "tau_bot", "tau_top"]:
                     y, var_y, tol = ydata[key]
                     ci = 1.96 * np.sqrt(var_y[:, 0])
 
-                    p, = axis.plot(xdata, y * p_scale)
+                    p, = axis.plot(xdata, y * sf)
                     axis.fill_between(xdata,
-                                      (y + ci) * p_scale,
-                                      (y - ci) * p_scale, color=p.get_color(), alpha=0.3, lw=0.)
+                                      (y + ci) * sf,
+                                      (y - ci) * sf, color=p.get_color(), alpha=0.3, lw=0.)
 
                 else:
-                    axis.plot(xdata, ydata[key])
+                    axis.plot(xdata, ydata[key] * sf)
                 axis.set_ylabel(ylabels[key])
 
     else:
         fig, ax = plt.subplots(1, figsize=(6.4, 4.8), tight_layout=True)
         for fn, (xdata, ydata) in zip(fns, data):
-            ax.plot(xdata, ydata)
+            sf = scale_factors[args.key]
+            ax.plot(xdata, ydata * sf)
 
         ax.set_ylabel(ylabels[args.key])
         ax.set_xlabel(rf"Distance ${args.dir}$")
