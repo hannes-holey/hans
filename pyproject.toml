@@ -30,9 +30,8 @@ dependencies = [
 
 [project.optional-dependencies]
 multiscale  = ['lammps']
-
-test = ['pytest',
-         'coverage>=5.0.3']
+test = ['pytest', 'coverage>=5.0.3']
+doc = ['sphinx', 'sphinx_rtd_theme']
 
 [project.urls]
 Source = "https://github.com/hannes-holey/hans"

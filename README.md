@@ -37,5 +37,13 @@ pytest
 ```
 or append the path to the test definition file (located in [tests](tests)) to run selected tests only.
 
+## Documentation
+A Sphinx-generated documentation can be built locally with
+```
+cd doc
+sphinx-apidoc -o . ../hans
+make html
+```
+
 ## Funding
 This work is funded by the German Research Foundation (DFG) through GRK 2450.
