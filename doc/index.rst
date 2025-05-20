@@ -16,6 +16,7 @@ documentation for details.
    :caption: Notes
 
    readme
+   ./theory/index
 
 
 .. toctree::

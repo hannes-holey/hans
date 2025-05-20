@@ -31,7 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 multiscale  = ['lammps']
 test = ['pytest', 'coverage>=5.0.3']
-doc = ['sphinx', 'sphinx_rtd_theme']
+doc = ['sphinx', 'sphinx_rtd_theme', 'myst-nb', 'jupytext']
 
 [project.urls]
 Source = "https://github.com/hannes-holey/hans"
