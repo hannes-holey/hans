@@ -30,7 +30,6 @@ jobs:
       # Standard drop-in approach that should work for most people.
       - name: build_doc
         run: |
-          git checkout 25_doc
           cd doc
           make html
           cd ..
