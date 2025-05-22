@@ -111,6 +111,14 @@ _a, = sp.solveset(eq1, a)
 _b, = sp.solveset(eq2, b)
 _c, = sp.solveset(eq3, c)
 
+# %% [markdown]
+# Furthermore, the boundary layer velocities need to be solved for using
+# 
+# $U_{bot} = u(0)$, $U_{top} = u(h)$, 
+#
+# $V_{bot} = v(0)$, $V_{top} = v(h)$.
+
+# %%
 eq4 = sp.Eq(Ub, u.subs(a, _a).subs(z, 0))
 _Ub, = sp.solveset(eq4, Ub)
 
@@ -123,8 +131,6 @@ _Vb, = sp.solveset(eq6, Vb)
 eq7 = sp.Eq(Vt, v.subs(b, _b).subs(z, h(x, y)).subs(Vb, _Vb))
 _Vt, = sp.solveset(eq7, Vt)
 
-u_final = u.subs(a, _a).subs(Ub, _Ub).subs(Ut, _Ut)
-v_final = v.subs(b, _b).subs(Vb, _Vb).subs(Vt, _Vt)
 
 # %% [markdown]
 # It is important to realize that the solutions depend on the lateral coordinates.
@@ -132,6 +138,9 @@ v_final = v.subs(b, _b).subs(Vb, _Vb).subs(Vt, _Vt)
 # into the expressions for the velocity profiles using ```subs```.
 
 # %%
+u_final = u.subs(a, _a).subs(Ub, _Ub).subs(Ut, _Ut)
+v_final = v.subs(b, _b).subs(Vb, _Vb).subs(Vt, _Vt)
+
 # Compute velocity gradients
 du_dx = sp.diff(u_final, x)
 du_dy = sp.diff(u_final, y)
@@ -206,6 +215,7 @@ _replace = {
 # We may want to consider different combinations of slip/no-slip
 
 # %%
+write = False  # set to false when building the doc
 from copy import deepcopy
 
 replace_no_slip = deepcopy(_replace)
@@ -227,21 +237,22 @@ replace_slip_both['Lst'] = Ls
 
 
 # Velocity profiles
-print('\nVelocity profiles (no slip):')
-print('u = ', sp.simplify(u_final.subs(replace_no_slip)))
-print('v = ', sp.simplify(v_final.subs(replace_no_slip)))
+if write:
+    print('\nVelocity profiles (no slip):')
+    print('u = ', sp.simplify(u_final.subs(replace_no_slip)))
+    print('v = ', sp.simplify(v_final.subs(replace_no_slip)))
 
-print('\nVelocity profiles (slip top):')
-print('u = ', sp.simplify(u_final.subs(replace_slip_top)))
-print('v = ', sp.simplify(v_final.subs(replace_slip_top)))
+    print('\nVelocity profiles (slip top):')
+    print('u = ', sp.simplify(u_final.subs(replace_slip_top)))
+    print('v = ', sp.simplify(v_final.subs(replace_slip_top)))
 
-print('\nVelocity profiles (slip bottom):')
-print('u = ', sp.simplify(u_final.subs(replace_slip_bottom)))
-print('v = ', sp.simplify(v_final.subs(replace_slip_bottom)))
+    print('\nVelocity profiles (slip bottom):')
+    print('u = ', sp.simplify(u_final.subs(replace_slip_bottom)))
+    print('v = ', sp.simplify(v_final.subs(replace_slip_bottom)))
 
-print('\nVelocity profiles (slip both):')
-print('u = ', sp.simplify(u_final.subs(replace_slip_both)))
-print('v = ', sp.simplify(v_final.subs(replace_slip_both)))
+    print('\nVelocity profiles (slip both):')
+    print('u = ', sp.simplify(u_final.subs(replace_slip_both)))
+    print('v = ', sp.simplify(v_final.subs(replace_slip_both)))
 
 
 # %% [markdown]
@@ -249,7 +260,6 @@ print('v = ', sp.simplify(v_final.subs(replace_slip_both)))
 
 # %%
 replace = replace_slip_both
-write = False  # set to false when building the doc
 
 if write:
     print('Stress profiles:')
