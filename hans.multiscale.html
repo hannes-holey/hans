@@ -1,0 +1,346 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hans.multiscale package &mdash; hans  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="hans.special package" href="hans.special.html" />
+    <link rel="prev" title="hans.cli package" href="hans.cli.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            hans
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Notes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="readme.html">HANS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="theory/index.html">Theory</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Package reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">hans</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="hans.html">hans package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="hans.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="hans.cli.html">hans.cli package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">hans.multiscale package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.special.html">hans.special package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.field">hans.field module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.geometry">hans.geometry module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.input">hans.input module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.integrate">hans.integrate module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.material">hans.material module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.plottools">hans.plottools module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.problem">hans.problem module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.stress">hans.stress module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans.tools">hans.tools module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.html#module-hans">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">hans</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">hans</a></li>
+          <li class="breadcrumb-item"><a href="hans.html">hans package</a></li>
+      <li class="breadcrumb-item active">hans.multiscale package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/hans.multiscale.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="hans-multiscale-package">
+<h1>hans.multiscale package<a class="headerlink" href="#hans-multiscale-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-hans.multiscale.db">
+<span id="hans-multiscale-db-module"></span><h2>hans.multiscale.db module<a class="headerlink" href="#module-hans.multiscale.db" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="hans.multiscale.db.Database">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.multiscale.db.</span></span><span class="sig-name descname"><span class="pre">Database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">md</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eos_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.db.Database" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.db.Database.gap_height">
+<span class="sig-name descname"><span class="pre">gap_height</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.db.Database.gap_height" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.db.Database.sampling">
+<span class="sig-name descname"><span class="pre">sampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ninit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lhc'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.db.Database.sampling" title="Link to this definition"></a></dt>
+<dd><p>Build initial database with different sampling strategies.</p>
+<p>Select points in two-dimensional space (gap height, flux) to
+initialize training database. Choose between random, latin hypercube,
+and Sobol sampling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Q</strong> (<em>[</em><em>type</em><em>]</em>) – [description]</p></li>
+<li><p><strong>Ninit</strong> (<em>[</em><em>type</em><em>]</em>) – [description]</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="hans.multiscale.db.Database.size">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">size</span></span><a class="headerlink" href="#hans.multiscale.db.Database.size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.db.Database.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Qnew</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iy</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.db.Database.update" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.db.Database.write_readme">
+<span class="sig-name descname"><span class="pre">write_readme</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Xnew</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ynew</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.db.Database.write_readme" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-hans.multiscale.gp">
+<span id="hans-multiscale-gp-module"></span><h2>hans.multiscale.gp module<a class="headerlink" href="#module-hans.multiscale.gp" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_pressure">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.multiscale.gp.</span></span><span class="sig-name descname"><span class="pre">GP_pressure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_learning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'max_iter':</span> <span class="pre">10,</span> <span class="pre">'threshold':</span> <span class="pre">0.1}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'ARD':</span> <span class="pre">True,</span> <span class="pre">'init_params':</span> <span class="pre">[1000000.0,</span> <span class="pre">1e-05,</span> <span class="pre">0.01,</span> <span class="pre">100.0],</span> <span class="pre">'type':</span> <span class="pre">'Mat32'}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'num_restarts':</span> <span class="pre">10,</span> <span class="pre">'restart':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'bfgs',</span> <span class="pre">'verbose':</span> <span class="pre">True}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'fixed':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'Gaussian',</span> <span class="pre">'variance':</span> <span class="pre">0.0}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GP_pressure" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#hans.multiscale.gp.GaussianProcess" title="hans.multiscale.gp.GaussianProcess"><code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianProcess</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_pressure.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'press'</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_pressure.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_pressure.ndim">
+<span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_pressure.ndim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_pressure2D">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.multiscale.gp.</span></span><span class="sig-name descname"><span class="pre">GP_pressure2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_learning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'max_iter':</span> <span class="pre">10,</span> <span class="pre">'threshold':</span> <span class="pre">0.1}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'ARD':</span> <span class="pre">True,</span> <span class="pre">'init_params':</span> <span class="pre">[1000000.0,</span> <span class="pre">1e-05,</span> <span class="pre">0.01,</span> <span class="pre">100.0],</span> <span class="pre">'type':</span> <span class="pre">'Mat32'}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'num_restarts':</span> <span class="pre">10,</span> <span class="pre">'restart':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'bfgs',</span> <span class="pre">'verbose':</span> <span class="pre">True}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'fixed':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'Gaussian',</span> <span class="pre">'variance':</span> <span class="pre">0.0}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GP_pressure2D" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#hans.multiscale.gp.GaussianProcess" title="hans.multiscale.gp.GaussianProcess"><code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianProcess</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_pressure2D.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'press'</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_pressure2D.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_pressure2D.ndim">
+<span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_pressure2D.ndim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_stress">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.multiscale.gp.</span></span><span class="sig-name descname"><span class="pre">GP_stress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_learning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'max_iter':</span> <span class="pre">10,</span> <span class="pre">'threshold':</span> <span class="pre">0.1}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'ARD':</span> <span class="pre">True,</span> <span class="pre">'init_params':</span> <span class="pre">[1000000.0,</span> <span class="pre">1e-05,</span> <span class="pre">0.01,</span> <span class="pre">100.0],</span> <span class="pre">'type':</span> <span class="pre">'Mat32'}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'num_restarts':</span> <span class="pre">10,</span> <span class="pre">'restart':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'bfgs',</span> <span class="pre">'verbose':</span> <span class="pre">True}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'fixed':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'Gaussian',</span> <span class="pre">'variance':</span> <span class="pre">0.0}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GP_stress" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#hans.multiscale.gp.GaussianProcess" title="hans.multiscale.gp.GaussianProcess"><code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianProcess</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_stress.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'shear'</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_stress.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_stress.ndim">
+<span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_stress.ndim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_stress2D">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.multiscale.gp.</span></span><span class="sig-name descname"><span class="pre">GP_stress2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_learning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'max_iter':</span> <span class="pre">10,</span> <span class="pre">'threshold':</span> <span class="pre">0.1}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'ARD':</span> <span class="pre">True,</span> <span class="pre">'init_params':</span> <span class="pre">[1000000.0,</span> <span class="pre">1e-05,</span> <span class="pre">0.01,</span> <span class="pre">100.0],</span> <span class="pre">'type':</span> <span class="pre">'Mat32'}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'num_restarts':</span> <span class="pre">10,</span> <span class="pre">'restart':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'bfgs',</span> <span class="pre">'verbose':</span> <span class="pre">True}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'fixed':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'Gaussian',</span> <span class="pre">'variance':</span> <span class="pre">0.0}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GP_stress2D" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#hans.multiscale.gp.GaussianProcess" title="hans.multiscale.gp.GaussianProcess"><code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianProcess</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_stress2D.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'shear'</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_stress2D.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GP_stress2D.ndim">
+<span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#hans.multiscale.gp.GP_stress2D.ndim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.multiscale.gp.</span></span><span class="sig-name descname"><span class="pre">GaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">active_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Xmask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ymask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">active_learning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'Ninit':</span> <span class="pre">5,</span> <span class="pre">'alpha':</span> <span class="pre">0.05,</span> <span class="pre">'max_iter':</span> <span class="pre">10,</span> <span class="pre">'sampling':</span> <span class="pre">'lhc',</span> <span class="pre">'start':</span> <span class="pre">20,</span> <span class="pre">'threshold':</span> <span class="pre">0.1}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'ARD':</span> <span class="pre">True,</span> <span class="pre">'init_params':</span> <span class="pre">None,</span> <span class="pre">'type':</span> <span class="pre">'Mat32'}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'num_restarts':</span> <span class="pre">10,</span> <span class="pre">'restart':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'bfgs',</span> <span class="pre">'verbose':</span> <span class="pre">True}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{'fixed':</span> <span class="pre">True,</span> <span class="pre">'type':</span> <span class="pre">'Gaussian',</span> <span class="pre">'variance':</span> <span class="pre">0.0}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess.active_learning_step">
+<span class="sig-name descname"><span class="pre">active_learning_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess.active_learning_step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess.dbsize">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dbsize</span></span><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess.dbsize" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess.ndim">
+<span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess.ndim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">skips</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess.predict" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.multiscale.gp.GaussianProcess.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.gp.GaussianProcess.setup" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-hans.multiscale.md">
+<span id="hans-multiscale-md-module"></span><h2>hans.multiscale.md module<a class="headerlink" href="#module-hans.multiscale.md" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="hans.multiscale.md.main">
+<span class="sig-prename descclassname"><span class="pre">hans.multiscale.md.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.md.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hans.multiscale.md.mpirun">
+<span class="sig-prename descclassname"><span class="pre">hans.multiscale.md.</span></span><span class="sig-name descname"><span class="pre">mpirun</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kw_args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nworker</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.md.mpirun" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hans.multiscale.md.run">
+<span class="sig-prename descclassname"><span class="pre">hans.multiscale.md.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmdargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.md.run" title="Link to this definition"></a></dt>
+<dd><p>Wrapper function around implemented MD systems called by lmpworker.py</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>system</strong> (<em>str</em>) – Name of the system.</p></li>
+<li><p><strong>cmdargs</strong> (<em>dict</em>) – Collection of keyword arguments for the system’s corresponding run function</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hans.multiscale.md.run_lj">
+<span class="sig-prename descclassname"><span class="pre">hans.multiscale.md.</span></span><span class="sig-name descname"><span class="pre">run_lj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.452</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Natoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Rcut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.005</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tequi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tsample</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'log.lammps'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.md.run_lj" title="Link to this definition"></a></dt>
+<dd><p>Run Lennard-Jones fluid system. All quantities measured in LJ units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temp</strong> (<em>float</em>) – Temperature (the default is 2.).</p></li>
+<li><p><strong>dens</strong> (<em>float</em>) – Number density (the default is 0.452).</p></li>
+<li><p><strong>Natoms</strong> (<em>float</em>) – Number of atoms (the default is 1000).</p></li>
+<li><p><strong>Rcut</strong> (<em>float</em>) – Cutoff radius (the default is 5.).</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – Timestep (the default is 0.005).</p></li>
+<li><p><strong>tequi</strong> (<em>int</em>) – Eqilibration steps (the default is 10000).</p></li>
+<li><p><strong>tsample</strong> (<em>int</em>) – Sampling steps (the default is 100000).</p></li>
+<li><p><strong>logfile</strong> (<em>str</em>) – Name of the log file. If None, fallback to LAMMPS default ‘log.lammps’ (the default is None).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hans.multiscale.md.run_slab">
+<span class="sig-prename descclassname"><span class="pre">hans.multiscale.md.</span></span><span class="sig-name descname"><span class="pre">run_slab</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gap_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vWall</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mass_flux_x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mass_flux_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'in.lmp'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wallfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'wall.lmp'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.multiscale.md.run_slab" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-hans.multiscale">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-hans.multiscale" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hans.cli.html" class="btn btn-neutral float-left" title="hans.cli package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="hans.special.html" class="btn btn-neutral float-right" title="hans.special package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Hannes Holey.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
