@@ -53,7 +53,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        coverage run --source=. --omit=./setup.py,*/__*__.py,lammps -m pytest
+        coverage run --source=hans --omit=hans/cli/* -m pytest
         TOTAL=$(coverage report | awk 'END{print $4}' | sed 's/%//')
 
         if (( $(echo "$TOTAL <= 50" | bc -l) )) ; then
