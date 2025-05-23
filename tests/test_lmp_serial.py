@@ -12,6 +12,7 @@ def setup(tmpdir_factory):
     yield logfile
 
 
+@pytest.mark.skip(reason="Skip tests that require LAMMPS for now")
 def test_lmp_serial(setup):
 
     logfile = setup
