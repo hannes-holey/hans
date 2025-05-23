@@ -67,7 +67,9 @@ class GapHeight(VectorField):
         return recvbuf[0]
 
     def set_profile(self):
-
+        """Generation of the gap height field (the height profile).
+        For possible options refer to "Input options".
+        """
         Lx = self.disc["Lx"]
         Ly = self.disc["Ly"]
         Nx = self.disc["Nx"]
@@ -79,6 +81,7 @@ class GapHeight(VectorField):
 
         ng = self.disc["nghost"]
 
+        # using xx, yy or combination of both arrays to encode some x- or y-dependency
         xx = idxx * (Lx + 2 * ng * dx) / (Nx + 2 * ng) + dx / 2
         yy = idyy * (Ly + 2 * ng * dy) / (Ny + 2 * ng) + dy / 2
 

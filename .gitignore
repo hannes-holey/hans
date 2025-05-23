@@ -9,3 +9,8 @@ dist
 *.egg-info
 .eggs
 .coverage
+
+# Doc
+_templates/
+_static/
+_build/

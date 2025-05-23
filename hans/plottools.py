@@ -280,7 +280,29 @@ class DatasetSelector:
         return out
 
     def get_centerlines(self, key=None, freq=1, dir='x'):
+        """returns variable values of specified key in either x- or y-direction. If key is pressure, it is calculated from rho using EOS
 
+        Parameters
+        ----------
+        key : str
+            specify variable to read
+        freq : int, defaults to 1
+            timestep sample step
+        dir : char
+            spacial sampling direction, defaults to ‘x’
+
+        Returns
+        ----------
+        out : array of tuple of np.array(s)
+            time : timestamps
+            xdata : x coordinates
+            ydata : variable values
+
+        Usage
+        ----------
+        time, x, ydata = files.get_centerlines("p")[0] → np.array(s)
+        """
+        
         out = []
         keys = ["rho", "p", "jx", "jy"]
 
