@@ -2,7 +2,7 @@ name: Build documentation
 
 on:
   push:
-    branches: [ main, 25_doc ]
+    branches: [ main ]
     tags:
       - '*'
   pull_request:
