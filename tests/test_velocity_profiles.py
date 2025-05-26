@@ -38,7 +38,7 @@ def trapezoid(u, z):
 @pytest.mark.parametrize('slip', ['both', 'top', 'bottom', 'none'])
 def test_flow_rate(slip):
 
-    Nz = 100
+    Nz = 10000
     hmax = 2.
 
     z = np.linspace(0., hmax, Nz)
