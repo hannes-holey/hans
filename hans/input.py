@@ -250,7 +250,7 @@ class Input:
             Discretization settings
 
         Returns
-        ------- 
+        -------
         dict
             Sanitized numerics settings
         dict

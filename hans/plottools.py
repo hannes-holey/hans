@@ -217,7 +217,7 @@ class DatasetSelector:
         ----------
         time, x, ydata = files.get_centerlines("p")[0] → np.array(s)
         """
-        
+
         out = []
         keys = ["rho", "p", "jx", "jy"]
 
