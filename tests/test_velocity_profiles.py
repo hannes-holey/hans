@@ -31,10 +31,14 @@ import pytest
 from hans.analytic.velocity_profile import get_velocity_profiles
 
 
+def trapezoid(u, z):
+    return np.sum((u[1:] + u[:-1]) / 2. * (z[1:] - z[:-1]))
+
+
 @pytest.mark.parametrize('slip', ['both', 'top', 'bottom', 'none'])
 def test_flow_rate(slip):
 
-    Nz = 10000
+    Nz = 100
     hmax = 2.
 
     z = np.linspace(0., hmax, Nz)
@@ -44,5 +48,5 @@ def test_flow_rate(slip):
 
     u, v = get_velocity_profiles(z, q, Ls=Ls, U=1., V=1., slip=slip)
 
-    assert np.isclose(np.trapezoid(u, z) / hmax, q[1])
-    assert np.isclose(np.trapezoid(v, z) / hmax, q[2])
+    assert np.isclose(trapezoid(u, z) / hmax, q[1])
+    assert np.isclose(trapezoid(v, z) / hmax, q[2])
