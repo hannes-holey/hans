@@ -23,12 +23,11 @@
 #
 
 
-import os
 import numpy as np
 import pytest
 
 
-from hans.analytic.velocity_profile import get_velocity_profiles
+from hans.models.velocity_profile import get_velocity_profiles
 
 
 def trapezoid(u, z):

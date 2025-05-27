@@ -28,8 +28,8 @@ from unittest.mock import Mock
 from hans.field import VectorField, TensorField, DoubleTensorField
 from hans.material import Material
 
-from hans.analytic.viscous_stress_newton import stress_bottom, stress_top, stress_avg
-from hans.analytic.viscous_stress_powerlaw import stress_powerlaw_bottom, stress_powerlaw_top
+from hans.models.viscous_stress_newton import stress_bottom, stress_top, stress_avg
+from hans.models.viscous_stress_powerlaw import stress_powerlaw_bottom, stress_powerlaw_top
 from hans.multiscale.gp import GP_stress, GP_stress2D
 
 
@@ -177,7 +177,8 @@ class SymStressField3D(TensorField):
             q = sol[:, :, 1]
 
             active_learning = {"max_iter": self.disc["Nx"], "threshold": self.gp["tol"]}
-            kernel_dict = {"type": "Mat32", "init_params": [self.gp["var"], self.gp["lh"], self.gp["lrho"], self.gp["lj"]], "ARD": True}
+            kernel_dict = {"type": "Mat32", "init_params": [
+                self.gp["var"], self.gp["lh"], self.gp["lrho"], self.gp["lj"]], "ARD": True}
 
             optimizer = {"type": "bfgs", "num_restarts": self.gp["num_restarts"], "verbose": bool(self.gp["verbose"])}
 

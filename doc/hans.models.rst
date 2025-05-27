@@ -1,29 +1,29 @@
-hans.analytic package
+hans.models package
 =====================
 
 Submodules
 ----------
 
-hans.analytic.velocity\_profile module
+hans.models.velocity\_profile module
 --------------------------------------
 
-.. automodule:: hans.analytic.velocity_profile
+.. automodule:: hans.models.velocity_profile
    :members:
    :show-inheritance:
    :undoc-members:
 
-hans.analytic.viscous\_stress\_newton module
+hans.models.viscous\_stress\_newton module
 --------------------------------------------
 
-.. automodule:: hans.analytic.viscous_stress_newton
+.. automodule:: hans.models.viscous_stress_newton
    :members:
    :show-inheritance:
    :undoc-members:
 
-hans.analytic.viscous\_stress\_powerlaw module
+hans.models.viscous\_stress\_powerlaw module
 ----------------------------------------------
 
-.. automodule:: hans.analytic.viscous_stress_powerlaw
+.. automodule:: hans.models.viscous_stress_powerlaw
    :members:
    :show-inheritance:
    :undoc-members:
@@ -31,7 +31,7 @@ hans.analytic.viscous\_stress\_powerlaw module
 Module contents
 ---------------
 
-.. automodule:: hans.analytic
+.. automodule:: hans.models
    :members:
    :show-inheritance:
    :undoc-members:
