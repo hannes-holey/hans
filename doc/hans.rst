@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   hans.analytic
    hans.cli
    hans.multiscale
    hans.special
