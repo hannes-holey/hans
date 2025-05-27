@@ -1,161 +1,173 @@
-
 import numpy as np
 
 
 def dowson_higginson(dens, rho0, P0, C1, C2):
-    """[summary]
+    """
+    Computes pressure using the Dowson-Higginson isothermal equation of state.
 
-    [description]
+    .. math::
+        P(\\rho) = P_0 + \\frac{C_1 (\\rho/\\rho_0 - 1)}{C_2 - \\rho/\\rho_0}
+
+    This equation is used to describe lubricant behavior under high-pressure conditions.
+    Reference: Dowson, D., & Higginson, G. R. (1977). *Elastohydrodynamic Lubrication*.
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    C1 : [type]
-        [description]
-    C2 : [type]
-        [description]
+    dens : float or np.ndarray
+        Current fluid density.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Pressure at reference density.
+    C1 : float
+        Empirical constant.
+    C2 : float
+        Empirical constant limiting maximum density ratio.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed pressure.
+
     """
-
     rho = np.minimum(dens, 0.99 * C2 * rho0)
-
     return P0 + (C1 * (rho / rho0 - 1.)) / (C2 - rho / rho0)
 
 
 def power_law(dens, rho0, P0, alpha):
-    """[summary]
+    """
+    Computes pressure using a power-law equation of state.
 
-    Power law, (alpha = 0: ideal gas)
+    .. math::
+        P(\\rho) = P_0 \\left(\\frac{\\rho}{\\rho_0}\\right)^{1 / (1 - \\frac{\\alpha}{2})}
+
+    A generalization that includes ideal gas as a special case when alpha=0.
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    alpha : [type]
-        [description]
+    dens : float or np.ndarray
+        Current density.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    alpha : float
+        Power-law exponent parameter.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed pressure.
     """
-
     return P0 * (dens / rho0)**(1. / (1. - 0.5 * alpha))
 
 
 def van_der_waals(dens, M, T, a, b):
-    """[summary]
+    """
+    Computes pressure using the Van der Waals equation of state.
 
-    [description]
+    .. math::
+        P = \\frac{RT \\rho}{M - b \\rho} - a \\frac{\\rho^2}{M^2}
+
+    Includes molecular interaction (a) and finite size (b) corrections to ideal gas law.
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    M : [type]
-        [description]
-    T : [type]
-        [description]
-    a : [type]
-        [description]
-    b : [type]
-        [description]
+    dens : float or np.ndarray
+        Molar density (mol/m³).
+    M : float
+        Molar mass (g/mol).
+    T : float
+        Temperature (K).
+    a : float
+        Attraction parameter.
+    b : float
+        Repulsion parameter.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed pressure.
     """
-
     R = 8.314462618
     return R * T * dens / (M - b * dens) - a * dens**2 / M**2
 
 
 def murnaghan_tait(dens, rho0, P0, K, n):
-    """[summary]
+    """
+    Computes pressure using the Murnaghan-Tait equation of state.
 
-    [description]
+    .. math::
+        P(\\rho) = \\frac{K}{n} \\left(\\left(\\frac{\\rho}{\\rho_0}\\right)^n - 1\\right) + P_0
+
+    Commonly used in compressible fluid and shock wave studies.
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    K : [type]
-        [description]
-    n : [type]
-        [description]
+    dens : float or np.ndarray
+        Current density.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    K : float
+        Bulk modulus.
+    n : float
+        Murnaghan exponent.
 
     Returns
     -------
-    [type]
-        [description]
-    """
+    float or np.ndarray
+        Computed pressure.
 
+    """
     return K / n * ((dens / rho0)**n - 1) + P0
 
 
 def cubic(dens, a, b, c, d):
-    """[summary]
+    """
+    Computes pressure using a general cubic polynomial fit.
 
-    [description]
+    .. math::
+        P(\\rho) = a \\rho^3 + b \\rho^2 + c \\rho + d
+
+    Useful for empirical models where data fits a polynomial relationship.
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    a : [type]
-        [description]
-    b : [type]
-        [description]
-    c : [type]
-        [description]
-    d : [type]
-        [description]
+    dens : float or np.ndarray
+        Density.
+    a, b, c, d : float
+        Polynomial coefficients.
 
     Returns
     -------
-    [type]
-        [description]
-    """
+    float or np.ndarray
+        Computed pressure.
 
+    """
     return a * dens**3 + b * dens**2 + c * dens + d
 
 
 def bwr(rho, T, gamma=3.):
-    """[summary]
+    """
+    Computes pressure using the Benedict–Webb–Rubin (BWR) equation of state.
 
-    [description]
+    This complex EoS models real fluid behavior accurately over wide conditions.
 
     Parameters
     ----------
-    rho : [type]
-        [description]
-    T : [type]
-        [description]
-    gamma : number, optional
-        [description] (the default is 3., which [default_description])
+    rho : float or np.ndarray
+        Density.
+    T : float
+        Temperature.
+    gamma : float, optional
+        Exponential decay parameter (default is 3.0).
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed pressure.
     """
 
     params = """
@@ -215,29 +227,31 @@ def bwr(rho, T, gamma=3.):
 
 
 def bayada_chupin(rho, rho_l, rho_v, c_l, c_v):
-    """[summary]
+    """
+    Computes pressure using the Bayada-Chupin cavitation model.
 
-    Cavitation model Bayada and Chupin, J. Trib. 135, 2013
+    Models lubricated film pressure in the presence of phase change.
+    Reference: Bayada, G., & Chupin, L. (2013). *Journal of Tribology, 135(4), 041703*.
 
     Parameters
     ----------
-    rho : [type]
-        [description]
-    rho_l : [type]
-        [description]
-    rho_v : [type]
-        [description]
-    c_l : [type]
-        [description]
-    c_v : [type]
-        [description]
+    rho : float or np.ndarray
+        Current density.
+    rho_l : float
+        Liquid density.
+    rho_v : float
+        Vapor density.
+    c_l : float
+        Speed of sound in liquid.
+    c_v : float
+        Speed of sound in vapor.
 
     Returns
     -------
-    [type]
-        [description]
-    """
+    float or np.ndarray
+        Computed pressure.
 
+    """
     N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
     Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
     alpha = (rho - rho_l) / (rho_v - rho_l)

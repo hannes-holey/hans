@@ -2,166 +2,167 @@ import numpy as np
 
 
 def dowson_higginson(dens, rho0, P0, C1, C2):
-    """[summary]
+    """
+    Computes the isothermal speed of sound using the Dowson-Higginson equation of state.
 
-    [description]
+    .. math::
+        c = \\sqrt{\\frac{dp}{d\\rho}} = \\sqrt{\\frac{C_1 \\rho_0 (C_2 - 1)}{\\rho^2 (C_2 \\rho_0 / \\rho - 1)^2}}
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    C1 : [type]
-        [description]
-    C2 : [type]
-        [description]
+    dens : float or np.ndarray
+        Current density.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    C1 : float
+        Empirical constant.
+    C2 : float
+        Empirical constant.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
-    c_squared = C1 * rho0 * (C2 - 1.) * (1 / dens)**2 / ((C2 * rho0 / dens - 1.)**2)
+    c_squared = C1 * rho0 * (C2 - 1.0) * (1 / dens) ** 2 / ((C2 * rho0 / dens - 1.0) ** 2)
 
     return np.sqrt(c_squared)
 
 
 def power_law(dens, rho0, P0, alpha):
-    """[summary]
+    """
+    Computes the isothermal speed of sound using a power-law equation of state.
 
-    Power law, (alpha = 0: ideal gas)
+    .. math::
+        c = \\sqrt{\\frac{dp}{d\\rho}} = \\sqrt{\\frac{-2 P_0}{(\\alpha - 2) \\rho}
+        \\left(\\frac{\\rho}{\\rho_0}\\right)^{-2 / (\\alpha - 2)}}
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    alpha : [type]
-        [description]
+    dens : float or np.ndarray
+        Density.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    alpha : float
+        Power-law exponent.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
-
-    c_squared = -2. * P0 * (dens / rho0)**(-2. / (alpha - 2.)) / ((alpha - 2) * dens)
-
+    c_squared = -2.0 * P0 * (dens / rho0) ** (-2.0 / (alpha - 2.0)) / ((alpha - 2) * dens)
     return np.sqrt(c_squared)
 
 
 def van_der_waals(dens, M, T, a, b):
-    """[summary]
+    """
+    Computes the speed of sound using the Van der Waals equation of state.
 
-    [description]
+    .. math::
+        c = \\sqrt{\\frac{dp}{d\\rho}} = \\sqrt{\\frac{RTM}{(M - b\\rho)^2} - \\frac{2a\\rho}{M^2}}
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    M : [type]
-        [description]
-    T : [type]
-        [description]
-    a : [type]
-        [description]
-    b : [type]
-        [description]
+    dens : float or np.ndarray
+        Density.
+    M : float
+        Molar mass.
+    T : float
+        Temperature (K).
+    a : float
+        Attraction parameter.
+    b : float
+        Repulsion parameter.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
 
     R = 8.314462618
-    c_squared = R * T * M / (M - b * dens)**2 - 2 * a * dens / M**2
+    c_squared = R * T * M / (M - b * dens) ** 2 - 2 * a * dens / M**2
 
     return np.sqrt(c_squared)
 
 
 def murnaghan_tait(dens, rho0, P0, K, n):
-    """[summary]
+    """
+    Computes the speed of sound from the Murnaghan-Tait equation of state.
 
-    [description]
+    .. math::
+        c = \\sqrt{\\frac{dp}{d\\rho}} = \\sqrt{\\frac{K}{\\rho_0^n} \\rho^{n - 1}}
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    K : [type]
-        [description]
-    n : [type]
-        [description]
+    dens : float or np.ndarray
+        Current density.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    K : float
+        Bulk modulus.
+    n : float
+        Murnaghan exponent.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
 
-    c_squared = K / rho0**n * dens**(n - 1)
+    c_squared = K / rho0**n * dens ** (n - 1)
 
     return np.sqrt(c_squared)
 
 
 def cubic(dens, a, b, c, d):
-    """[summary]
+    """
+    Computes the speed of sound from a cubic polynomial pressure law.
 
-    [description]
+    .. math::
+        c = \\sqrt{\\frac{dp}{d\\rho}} = \\sqrt{3a \\rho^2 + 2b \\rho + c}
 
     Parameters
     ----------
-    dens : [type]
-        [description]
-    a : [type]
-        [description]
-    b : [type]
-        [description]
-    c : [type]
-        [description]
-    d : [type]
-        [description]
+    dens : float or np.ndarray
+        Density.
+    a, b, c, d : float
+        Polynomial coefficients.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
-    # Cubic polynomial
     c_squared = 3 * a * dens**2 + 2 * b * dens + c
 
     return np.sqrt(c_squared)
 
 
-def bwr(rho, T, gamma=3.):
-    """[summary]
-
-    [description]
+def bwr(rho, T, gamma=3.0):
+    """
+    Computes the speed of sound using the Benedict–Webb–Rubin (BWR) equation of state.
 
     Parameters
     ----------
-    rho : [type]
-        [description]
-    T : [type]
-        [description]
-    gamma : number, optional
-        [description] (the default is 3., which [default_description])
+    rho : float or np.ndarray
+        Density.
+    T : float
+        Temperature.
+    gamma : float, optional
+        Exponential decay parameter (default is 3.0).
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
 
     params = """
@@ -201,56 +202,63 @@ def bwr(rho, T, gamma=3.):
 
     x = [float(val) for val in params.split()]
 
-    exp_prefac = (rho**3 * (x[19] / T**2 + x[20] / T**3) +
-                  rho**5 * (x[21] / T**2 + x[22] / T**4) +
-                  rho**7 * (x[23] / T**2 + x[24] / T**3) +
-                  rho**9 * (x[25] / T**2 + x[26] / T**4) +
-                  rho**11 * (x[27] / T**2 + x[28] / T**3) +
-                  rho**13 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4))
+    exp_prefac = (
+        rho**3 * (x[19] / T**2 + x[20] / T**3)
+        + rho**5 * (x[21] / T**2 + x[22] / T**4)
+        + rho**7 * (x[23] / T**2 + x[24] / T**3)
+        + rho**9 * (x[25] / T**2 + x[26] / T**4)
+        + rho**11 * (x[27] / T**2 + x[28] / T**3)
+        + rho**13 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4)
+    )
 
-    D_exp_prefac = (3. * rho**2 * (x[19] / T**2 + x[20] / T**3) +
-                    5. * rho**4 * (x[21] / T**2 + x[22] / T**4) +
-                    7. * rho**6 * (x[23] / T**2 + x[24] / T**3) +
-                    9. * rho**8 * (x[25] / T**2 + x[26] / T**4) +
-                    11. * rho**10 * (x[27] / T**2 + x[28] / T**3) +
-                    13. * rho**12 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4))
+    D_exp_prefac = (
+        3.0 * rho**2 * (x[19] / T**2 + x[20] / T**3)
+        + 5.0 * rho**4 * (x[21] / T**2 + x[22] / T**4)
+        + 7.0 * rho**6 * (x[23] / T**2 + x[24] / T**3)
+        + 9.0 * rho**8 * (x[25] / T**2 + x[26] / T**4)
+        + 11.0 * rho**10 * (x[27] / T**2 + x[28] / T**3)
+        + 13.0 * rho**12 * (x[29] / T**2 + x[30] / T**3 + x[31] / T**4)
+    )
 
-    c_squared = T + 2. * rho * (x[0] * T + x[1] * np.sqrt(T) + x[2] + x[3] / T + x[4] / T**2) +\
-        3. * rho**2 * (x[5] * T + x[6] + x[7] / T + x[8] / T**2) +\
-        4. * rho**3 * (x[9] * T + x[10] + x[11] / T) +\
-        5. * rho**4 * x[12] +\
-        6. * rho**5 * (x[13] / T + x[14] / T**2) +\
-        7. * rho**6 * (x[15] / T) +\
-        8. * rho**7 * (x[16] / T + x[17] / T**2) +\
-        9. * rho**8 * (x[18] / T**2) +\
-        np.exp(-gamma * rho**2) * D_exp_prefac -\
-        2. * rho * gamma * np.exp(-gamma * rho**2) * exp_prefac
+    c_squared = (
+        T
+        + 2.0 * rho * (x[0] * T + x[1] * np.sqrt(T) + x[2] + x[3] / T + x[4] / T**2)
+        + 3.0 * rho**2 * (x[5] * T + x[6] + x[7] / T + x[8] / T**2)
+        + 4.0 * rho**3 * (x[9] * T + x[10] + x[11] / T)
+        + 5.0 * rho**4 * x[12]
+        + 6.0 * rho**5 * (x[13] / T + x[14] / T**2)
+        + 7.0 * rho**6 * (x[15] / T)
+        + 8.0 * rho**7 * (x[16] / T + x[17] / T**2)
+        + 9.0 * rho**8 * (x[18] / T**2)
+        + np.exp(-gamma * rho**2) * D_exp_prefac
+        - 2.0 * rho * gamma * np.exp(-gamma * rho**2) * exp_prefac
+    )
 
     return np.sqrt(c_squared)
 
 
 def bayada_chupin(rho, rho_l, rho_v, c_l, c_v):
-    """[summary]
+    """
+    Computes the isothermal speed of sound using the Bayada-Chupin cavitation model.
 
-    Cavitation model Bayada and Chupin, J. Trib. 135, 2013
 
     Parameters
     ----------
-    rho : [type]
-        [description]
-    rho_l : [type]
-        [description]
-    rho_v : [type]
-        [description]
-    c_l : [type]
-        [description]
-    c_v : [type]
-        [description]
+    rho : float or np.ndarray
+        Density.
+    rho_l : float
+        Liquid density.
+    rho_v : float
+        Vapor density.
+    c_l : float
+        Speed of sound in liquid.
+    c_v : float
+        Speed of sound in vapor.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Speed of sound.
     """
 
     alpha = (rho - rho_l) / (rho_v - rho_l)
@@ -259,8 +267,7 @@ def bayada_chupin(rho, rho_l, rho_v, c_l, c_v):
         if alpha < 0:
             c_squared = c_l**2
         elif alpha >= 0 and alpha <= 1:
-            c_squared = rho_v * rho_l * (c_v * c_l)**2 / (alpha * rho_l * c_l **
-                                                          2 + (1 - alpha) * rho_v * c_v**2) / rho
+            c_squared = rho_v * rho_l * (c_v * c_l) ** 2 / (alpha * rho_l * c_l**2 + (1 - alpha) * rho_v * c_v**2) / rho
         else:
             c_squared = c_v**2
 
@@ -268,7 +275,6 @@ def bayada_chupin(rho, rho_l, rho_v, c_l, c_v):
         mix = np.logical_and(alpha <= 1, alpha >= 0)
         c_squared = np.ones_like(rho) * c_v**2
         c_squared[alpha < 0] = c_l**2
-        c_squared[mix] = rho_v * rho_l * (c_v * c_l)**2 / (alpha[mix] * rho_l * c_l**2 +
-                                                           (1 - alpha[mix]) * rho_v * c_v**2) / rho[mix]
+        c_squared[mix] = rho_v * rho_l * (c_v * c_l) ** 2 / (alpha[mix] * rho_l * c_l**2 + (1 - alpha[mix]) * rho_v * c_v**2) / rho[mix]
 
     return np.sqrt(c_squared)

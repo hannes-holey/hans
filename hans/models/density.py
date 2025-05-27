@@ -2,79 +2,106 @@ import numpy as np
 
 
 def dowson_higginson(p, rho0, P0, C1, C2):
-    """[summary]
+    """
+    Computes density using the inverse of the Dowson-Higginson isothermal equation of state.
 
-    [description]
+    This model is often used to describe lubricants under high pressure.
+
+    .. math::
+        \\rho(P) = \\rho_0 \\frac{C_1 + C_2 (P - P_0)}{C_1 + (P - P_0)}
 
     Parameters
     ----------
-    p : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    C1 : [type]
-        [description]
-    C2 : [type]
-        [description]
+    p : float or np.ndarray
+        Pressure.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    C1 : float
+        Empirical constant.
+    C2 : float
+        Empirical constant.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed density.
     """
 
     return rho0 * (C1 + C2 * (p - P0)) / (C1 + p - P0)
 
 
 def power_law(p, rho0, P0, alpha):
-    """[summary]
+    """
+    Computes density from pressure using an inverse power-law equation of state.
 
-    [description]
+    This general form includes the ideal gas law as a special case when :math:`\\alpha = 0`.
+
+    .. math::
+        \\rho(P) = \\rho_0 \\left(\\frac{P}{P_0}\\right)^{1 - \\alpha/2}
 
     Parameters
     ----------
-    p : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    alpha : [type]
-        [description]
+    p : float or np.ndarray
+        Pressure.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    alpha : float
+        Power-law parameter.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed density.
     """
-    # Power law, (alpha = 0: ideal gas)
     return rho0 * (p / P0)**(1. - alpha / 2.)
 
 
 def bayada_chupin(p, rho_l, rho_v, c_l, c_v):
-    """[summary]
+    """
+    Computes density from pressure using the Bayada-Chupin cavitation model.
 
-    Cavitation model Bayada and Chupin, J. Trib. 135, 2013
+    This model accounts for phase transitions in lubricated thin films.
+    Reference: Bayada & Chupin, *J. Tribology*, 135(4), 2013.
+
+    The model defines density as a piecewise function depending on pressure:
+
+    - For :math:`P > P_{cav}`:
+
+    .. math::
+        \\rho = \\rho_l + \\frac{P - P_{cav}}{c_l^2}
+
+    - For :math:`P < c_v^2 \\rho_v`:
+
+    .. math::
+        \\rho = \\frac{P}{c_v^2}
+
+    - Else (mixture phase):
+
+    .. math::
+        \\rho = \\frac{(c_l^2 \\rho_l^3 - c_v^2 \\rho_l \\rho_v^2) \\exp\\left(\\frac{P - P_{cav}}{N}\\right)}
+        {(c_l^2 \\rho_l^2 - c_v^2 \\rho_l \\rho_v) \\exp\\left(\\frac{P - P_{cav}}{N}\\right) + c_v^2 \\rho_v (\\rho_l - \\rho_v)}
 
     Parameters
     ----------
-    p : [type]
-        [description]
-    rho_l : [type]
-        [description]
-    rho_v : [type]
-        [description]
-    c_l : [type]
-        [description]
-    c_v : [type]
-        [description]
+    p : float or np.ndarray
+        Pressure.
+    rho_l : float
+        Liquid density.
+    rho_v : float
+        Vapor density.
+    c_l : float
+        Speed of sound in liquid.
+    c_v : float
+        Speed of sound in vapor.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed density.
     """
 
     N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
@@ -99,27 +126,31 @@ def bayada_chupin(p, rho_l, rho_v, c_l, c_v):
 
 
 def murnaghan_tait(p, rho0, P0, K, n):
-    """[summary]
+    """
+    Computes density from pressure using the inverse of the Murnaghan-Tait equation of state.
 
-    [description]
+    Commonly used in shockwave modeling and compressible fluid flow.
+
+    .. math::
+        \\rho(P) = \\rho_0 \\left(1 + \\frac{n}{K} (P - P_0) \\right)^{1/n}
 
     Parameters
     ----------
-    p : [type]
-        [description]
-    rho0 : [type]
-        [description]
-    P0 : [type]
-        [description]
-    K : [type]
-        [description]
-    n : [type]
-        [description]
+    p : float or np.ndarray
+        Pressure.
+    rho0 : float
+        Reference density.
+    P0 : float
+        Reference pressure.
+    K : float
+        Bulk modulus.
+    n : float
+        Murnaghan exponent.
 
     Returns
     -------
-    [type]
-        [description]
+    float or np.ndarray
+        Computed density.
     """
 
     return rho0 * (1 + n / K * (p - P0))**(1 / n)
