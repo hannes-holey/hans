@@ -1,5 +1,6 @@
 #
-# Copyright 2020, 2022 Hannes Holey
+# Copyright 2025 Christoph Huber
+#           2020, 2022 Hannes Holey
 #
 # ### MIT License
 #
