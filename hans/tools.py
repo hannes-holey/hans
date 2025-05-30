@@ -1,5 +1,5 @@
 #
-# Copyright 2021, 2024 Hannes Holey
+# Copyright 2021, 2025 Hannes Holey
 #
 # ### MIT License
 #
@@ -27,6 +27,7 @@ import sys
 from mpi4py import MPI
 import numpy as np
 
+
 def abort(errcode=1):
     if MPI.COMM_WORLD.Get_size() == 1:
         sys.exit(errcode)
@@ -39,13 +40,14 @@ def progressbar(it, prefix="", size=40, out=sys.stdout):  # Python3.6+
     count = len(it)
 
     def show(j):
-        x = int(size*j/count)
+        x = int(size * j / count)
         print(f"{prefix}|{u'█'*x}{('.'*(size-x))}| {j}/{count}", end='\r', file=out, flush=True)
     show(0)
     for i, item in enumerate(it):
         yield item
-        show(i+1)
+        show(i + 1)
     print("\n", flush=True, file=out)
+
 
 def bordered_text(text):
     lines = text.splitlines()
@@ -55,6 +57,7 @@ def bordered_text(text):
         res.append('│' + (s + ' ' * width)[:width] + '│')
     res.append('└' + '─' * width + '┘')
     return '\n'.join(res)
+
 
 def power(base, exponent):
 

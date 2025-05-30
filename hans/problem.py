@@ -1,5 +1,5 @@
 #
-# Copyright 2019, 2024 Hannes Holey
+# Copyright 2019, 2025 Hannes Holey
 #           2019 Andrea Codrignani
 #
 # ### MIT License
@@ -319,7 +319,7 @@ class Problem:
         """
 
         if rank == 0:
-            if not(os.path.exists(out_dir)):
+            if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
 
         if self.ic is None or self.ic["type"] != "restart":

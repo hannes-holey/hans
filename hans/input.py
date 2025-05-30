@@ -1,5 +1,5 @@
 #
-# Copyright 2019, 2024 Hannes Holey
+# Copyright 2019, 2025 Hannes Holey
 #           2019 Andrea Codrignani
 #
 # ### MIT License
@@ -250,7 +250,7 @@ class Input:
             Discretization settings
 
         Returns
-        ------- 
+        -------
         dict
             Sanitized numerics settings
         dict
