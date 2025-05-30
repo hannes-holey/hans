@@ -53,6 +53,7 @@
 <li class="toctree-l2 current"><a class="reference internal" href="hans.html">hans package</a><ul class="current">
 <li class="toctree-l3 current"><a class="reference internal" href="hans.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="hans.cli.html">hans.cli package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.models.html">hans.models package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html">hans.multiscale package</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">hans.special package</a></li>
 </ul>
@@ -143,100 +144,6 @@
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>np.array</p>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
-<section id="module-hans.special.powerlaw_fluid">
-<span id="hans-special-powerlaw-fluid-module"></span><h2>hans.special.powerlaw_fluid module<a class="headerlink" href="#module-hans.special.powerlaw_fluid" title="Link to this heading"></a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="hans.special.powerlaw_fluid.approximate_zmax">
-<span class="sig-prename descclassname"><span class="pre">hans.special.powerlaw_fluid.</span></span><span class="sig-name descname"><span class="pre">approximate_zmax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">V</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Um</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Vm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.special.powerlaw_fluid.approximate_zmax" title="Link to this definition"></a></dt>
-<dd><p>Approximate the location of maximum velocity in z-direction to compute the power law stresses.
-Exact values have been found numerically for both cases, but a good approximation
-is given by a hyperbola with vertical asymptote at jx/rho = U/2 (Couette profile).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>U</strong> (<em>float</em>) – Sliding velocity of the lower surface in x-direction.</p></li>
-<li><p><strong>V</strong> (<em>float</em>) – Sliding velocity of the lower surface in y-direction.</p></li>
-<li><p><strong>Um</strong> (<em>numpy.ndarray</em>) – Array of mean velocities in x-direction (jx/rho).</p></li>
-<li><p><strong>Vm</strong> (<em>numpy.ndarray</em>) – Array of mean velocities in y-direction (jy/rho).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><em>numpy.ndarray</em> – Nondimensional z-coordinate of velocity maximum in x-direction</p></li>
-<li><p><em>numpy.ndarray</em> – Nondimensional z-coordinate of velocity maximum in y-direction</p></li>
-</ul>
-</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="hans.special.powerlaw_fluid.solve_zmax">
-<span class="sig-prename descclassname"><span class="pre">hans.special.powerlaw_fluid.</span></span><span class="sig-name descname"><span class="pre">solve_zmax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">V</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">um</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.special.powerlaw_fluid.solve_zmax" title="Link to this definition"></a></dt>
-<dd><p>Calculate the location of maximum velocity in z-direction to compute the power law stresses.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>U</strong> (<em>float</em>) – Sliding velocity of the lower surface in x-direction.</p></li>
-<li><p><strong>V</strong> (<em>float</em>) – Sliding velocity of the lower surface in y-direction.</p></li>
-<li><p><strong>Um</strong> (<em>numpy.ndarray</em>) – Array of mean velocities in x-direction (jx/rho).</p></li>
-<li><p><strong>Vm</strong> (<em>numpy.ndarray</em>) – Array of mean velocities in y-direction (jy/rho).</p></li>
-<li><p><strong>n</strong> (<em>float</em>) – Exponent</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><em>numpy.ndarray</em> – Nondimensional z-coordinate of velocity maximum in x-direction</p></li>
-<li><p><em>numpy.ndarray</em> – Nondimensional z-coordinate of velocity maximum in y-direction</p></li>
-</ul>
-</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="hans.special.powerlaw_fluid.zmax_nleq_case1">
-<span class="sig-prename descclassname"><span class="pre">hans.special.powerlaw_fluid.</span></span><span class="sig-name descname"><span class="pre">zmax_nleq_case1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">un</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.special.powerlaw_fluid.zmax_nleq_case1" title="Link to this definition"></a></dt>
-<dd><p>Definition of nonlinear equation (Case 1) to be solved for zmax with scipy.optimize.fsolve.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>zmax</strong> (<em>float</em>) – z-location of velocity maximum</p></li>
-<li><p><strong>n</strong> (<em>float</em>) – Power-law exponent</p></li>
-<li><p><strong>un</strong> (<em>float</em>) – non-dimensional height-averaged velocity.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Function value f(zmax) = 0 for root-finding.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="hans.special.powerlaw_fluid.zmax_nleq_case2">
-<span class="sig-prename descclassname"><span class="pre">hans.special.powerlaw_fluid.</span></span><span class="sig-name descname"><span class="pre">zmax_nleq_case2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">un</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.special.powerlaw_fluid.zmax_nleq_case2" title="Link to this definition"></a></dt>
-<dd><p>Definition of nonlinear equation (Case 2) to be solved for zmax with scipy.optimize.fsolve.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>zmax</strong> (<em>float</em>) – z-location of velocity maximum</p></li>
-<li><p><strong>n</strong> (<em>float</em>) – Power-law exponent</p></li>
-<li><p><strong>un</strong> (<em>float</em>) – non-dimensional height-averaged velocity.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Function value f(zmax) = 0 for root-finding.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>

@@ -116,7 +116,7 @@
 </li>
       <li><a href="hans.html#hans.problem.Problem.animate1D">animate1D() (hans.problem.Problem method)</a>
 </li>
-      <li><a href="hans.special.html#hans.special.powerlaw_fluid.approximate_zmax">approximate_zmax() (in module hans.special.powerlaw_fluid)</a>
+      <li><a href="hans.models.html#hans.models.viscous_stress_powerlaw.approximate_zmax">approximate_zmax() (in module hans.models.viscous_stress_powerlaw)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -124,14 +124,34 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="hans.models.html#hans.models.viscosity.barus_piezo">barus_piezo() (in module hans.models.viscosity)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.density.bayada_chupin">bayada_chupin() (in module hans.models.density)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.pressure.bayada_chupin">(in module hans.models.pressure)</a>
+</li>
+        <li><a href="hans.models.html#hans.models.sound_speed.bayada_chupin">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="hans.html#hans.tools.bordered_text">bordered_text() (in module hans.tools)</a>
 </li>
+      <li><a href="hans.models.html#hans.models.pressure.bwr">bwr() (in module hans.models.pressure)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.sound_speed.bwr">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="hans.models.html#hans.models.viscosity.carreau_shear">carreau_shear() (in module hans.models.viscosity)</a>
+</li>
       <li><a href="hans.html#hans.field.Field.centerline_x">centerline_x (hans.field.Field property)</a>
 </li>
       <li><a href="hans.html#hans.field.Field.centerline_y">centerline_y (hans.field.Field property)</a>
@@ -144,6 +164,12 @@
 </li>
       <li><a href="hans.html#hans.integrate.ConservedField">ConservedField (class in hans.integrate)</a>
 </li>
+      <li><a href="hans.models.html#hans.models.pressure.cubic">cubic() (in module hans.models.pressure)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.sound_speed.cubic">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
       <li><a href="hans.html#hans.integrate.ConservedField.cubicInterpolation">cubicInterpolation() (hans.integrate.ConservedField method)</a>
 </li>
   </ul></td>
@@ -158,13 +184,23 @@
 </li>
       <li><a href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.dbsize">dbsize (hans.multiscale.gp.GaussianProcess property)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="hans.html#hans.integrate.ConservedField.diffusiveCD">diffusiveCD() (hans.integrate.ConservedField method)</a>
 </li>
       <li><a href="hans.html#hans.integrate.ConservedField.diffusiveFlux">diffusiveFlux() (hans.integrate.ConservedField method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="hans.html#hans.field.DoubleTensorField">DoubleTensorField (class in hans.field)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.density.dowson_higginson">dowson_higginson() (in module hans.models.density)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.pressure.dowson_higginson">(in module hans.models.pressure)</a>
+</li>
+        <li><a href="hans.models.html#hans.models.sound_speed.dowson_higginson">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
+      <li><a href="hans.models.html#hans.models.viscosity.dukler_mixture">dukler_mixture() (in module hans.models.viscosity)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -189,6 +225,8 @@
       <li><a href="hans.html#hans.material.Material.eos_pressure">eos_pressure() (hans.material.Material method)</a>
 </li>
       <li><a href="hans.html#hans.material.Material.eos_sound_speed">eos_sound_speed() (hans.material.Material method)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscosity.eyring_shear">eyring_shear() (in module hans.models.viscosity)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -290,6 +328,8 @@
         <li><a href="hans.html#hans.stress.WallStressField3D.get_top">(hans.stress.WallStressField3D method)</a>
 </li>
       </ul></li>
+      <li><a href="hans.models.html#hans.models.velocity_profile.get_velocity_profiles">get_velocity_profiles() (in module hans.models.velocity_profile)</a>
+</li>
       <li><a href="hans.html#hans.input.Input.getProblem">getProblem() (hans.input.Input method)</a>
 </li>
       <li><a href="hans.multiscale.html#hans.multiscale.gp.GP_pressure">GP_pressure (class in hans.multiscale.gp)</a>
@@ -417,8 +457,6 @@
         <li><a href="hans.html#module-hans.input">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     hans.integrate
 
@@ -431,6 +469,64 @@
 
       <ul>
         <li><a href="hans.html#module-hans.material">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    hans.models.density
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.density">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models.pressure
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.pressure">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models.sound_speed
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.sound_speed">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models.velocity_profile
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.velocity_profile">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models.viscosity
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.viscosity">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models.viscous_stress_newton
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.viscous_stress_newton">module</a>
+</li>
+      </ul></li>
+      <li>
+    hans.models.viscous_stress_powerlaw
+
+      <ul>
+        <li><a href="hans.models.html#module-hans.models.viscous_stress_powerlaw">module</a>
 </li>
       </ul></li>
       <li>
@@ -487,13 +583,6 @@
 
       <ul>
         <li><a href="hans.special.html#module-hans.special.flux_limiter">module</a>
-</li>
-      </ul></li>
-      <li>
-    hans.special.powerlaw_fluid
-
-      <ul>
-        <li><a href="hans.special.html#module-hans.special.powerlaw_fluid">module</a>
 </li>
       </ul></li>
       <li>
@@ -594,6 +683,8 @@
 </li>
       <li><a href="hans.html#hans.geometry.GapHeight.max_height">max_height (hans.geometry.GapHeight property)</a>
 </li>
+      <li><a href="hans.models.html#hans.models.viscosity.mc_adams_mixture">mc_adams_mixture() (in module hans.models.viscosity)</a>
+</li>
       <li><a href="hans.html#hans.geometry.GapHeight.min_height">min_height (hans.geometry.GapHeight property)</a>
 </li>
       <li>
@@ -634,6 +725,22 @@
 </li>
         <li><a href="hans.html#module-hans.material">hans.material</a>
 </li>
+        <li><a href="hans.models.html#module-hans.models">hans.models</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.density">hans.models.density</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.pressure">hans.models.pressure</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.sound_speed">hans.models.sound_speed</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.velocity_profile">hans.models.velocity_profile</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.viscosity">hans.models.viscosity</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.viscous_stress_newton">hans.models.viscous_stress_newton</a>
+</li>
+        <li><a href="hans.models.html#module-hans.models.viscous_stress_powerlaw">hans.models.viscous_stress_powerlaw</a>
+</li>
         <li><a href="hans.multiscale.html#module-hans.multiscale">hans.multiscale</a>
 </li>
         <li><a href="hans.multiscale.html#module-hans.multiscale.db">hans.multiscale.db</a>
@@ -650,8 +757,6 @@
 </li>
         <li><a href="hans.special.html#module-hans.special.flux_limiter">hans.special.flux_limiter</a>
 </li>
-        <li><a href="hans.special.html#module-hans.special.powerlaw_fluid">hans.special.powerlaw_fluid</a>
-</li>
         <li><a href="hans.html#module-hans.stress">hans.stress</a>
 </li>
         <li><a href="hans.html#module-hans.tools">hans.tools</a>
@@ -661,6 +766,14 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="hans.multiscale.html#hans.multiscale.md.mpirun">mpirun() (in module hans.multiscale.md)</a>
 </li>
+      <li><a href="hans.models.html#hans.models.density.murnaghan_tait">murnaghan_tait() (in module hans.models.density)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.pressure.murnaghan_tait">(in module hans.models.pressure)</a>
+</li>
+        <li><a href="hans.models.html#hans.models.sound_speed.murnaghan_tait">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -707,8 +820,18 @@
 </li>
       <li><a href="hans.html#hans.tools.power">power() (in module hans.tools)</a>
 </li>
+      <li><a href="hans.models.html#hans.models.density.power_law">power_law() (in module hans.models.density)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.pressure.power_law">(in module hans.models.pressure)</a>
+</li>
+        <li><a href="hans.models.html#hans.models.sound_speed.power_law">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="hans.models.html#hans.models.viscosity.power_law_shear">power_law_shear() (in module hans.models.viscosity)</a>
+</li>
       <li><a href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.predict">predict() (hans.multiscale.gp.GaussianProcess method)</a>
 </li>
       <li><a href="hans.html#hans.integrate.ConservedField.predictor_corrector">predictor_corrector() (hans.integrate.ConservedField method)</a>
@@ -777,8 +900,6 @@
 </li>
       <li><a href="hans.html#hans.field.ScalarField">ScalarField (class in hans.field)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="hans.html#hans.geometry.self_affine_prefactor">self_affine_prefactor() (in module hans.geometry)</a>
 </li>
       <li><a href="hans.html#hans.stress.SymStressField2D.set">set() (hans.stress.SymStressField2D method)</a>
@@ -789,6 +910,8 @@
         <li><a href="hans.html#hans.stress.WallStressField3D.set">(hans.stress.WallStressField3D method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="hans.html#hans.geometry.GapHeight.set_gradients">set_gradients() (hans.geometry.GapHeight method)</a>
 </li>
       <li><a href="hans.html#hans.stress.SymStressField3D.set_Newton">set_Newton() (hans.stress.SymStressField3D method)</a>
@@ -803,7 +926,17 @@
 </li>
       <li><a href="hans.html#hans.geometry.SlipLength">SlipLength (class in hans.geometry)</a>
 </li>
-      <li><a href="hans.special.html#hans.special.powerlaw_fluid.solve_zmax">solve_zmax() (in module hans.special.powerlaw_fluid)</a>
+      <li><a href="hans.models.html#hans.models.viscous_stress_powerlaw.solve_zmax">solve_zmax() (in module hans.models.viscous_stress_powerlaw)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscous_stress_newton.stress_avg">stress_avg() (in module hans.models.viscous_stress_newton)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscous_stress_newton.stress_bottom">stress_bottom() (in module hans.models.viscous_stress_newton)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscous_stress_powerlaw.stress_powerlaw_bottom">stress_powerlaw_bottom() (in module hans.models.viscous_stress_powerlaw)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscous_stress_powerlaw.stress_powerlaw_top">stress_powerlaw_top() (in module hans.models.viscous_stress_powerlaw)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscous_stress_newton.stress_top">stress_top() (in module hans.models.viscous_stress_newton)</a>
 </li>
       <li><a href="hans.html#hans.stress.SymStressField2D">SymStressField2D (class in hans.stress)</a>
 </li>
@@ -847,17 +980,25 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="hans.models.html#hans.models.pressure.van_der_waals">van_der_waals() (in module hans.models.pressure)</a>
+
+      <ul>
+        <li><a href="hans.models.html#hans.models.sound_speed.van_der_waals">(in module hans.models.sound_speed)</a>
+</li>
+      </ul></li>
       <li><a href="hans.html#hans.field.VectorField">VectorField (class in hans.field)</a>
 </li>
       <li><a href="hans.html#hans.field.Field.verticeNE">verticeNE (hans.field.Field property)</a>
 </li>
       <li><a href="hans.html#hans.field.Field.verticeSW">verticeSW (hans.field.Field property)</a>
 </li>
-      <li><a href="hans.html#hans.material.Material.viscosity">viscosity() (hans.material.Material method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="hans.html#hans.material.Material.viscosity">viscosity() (hans.material.Material method)</a>
+</li>
       <li><a href="hans.html#hans.integrate.ConservedField.vmax">vmax (hans.integrate.ConservedField property)</a>
+</li>
+      <li><a href="hans.models.html#hans.models.viscosity.vogel_piezo">vogel_piezo() (in module hans.models.viscosity)</a>
 </li>
       <li><a href="hans.html#hans.integrate.ConservedField.vSound">vSound (hans.integrate.ConservedField property)</a>
 </li>
@@ -889,11 +1030,11 @@
 <h2 id="Z">Z</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="hans.special.html#hans.special.powerlaw_fluid.zmax_nleq_case1">zmax_nleq_case1() (in module hans.special.powerlaw_fluid)</a>
+      <li><a href="hans.models.html#hans.models.viscous_stress_powerlaw.zmax_nleq_case1">zmax_nleq_case1() (in module hans.models.viscous_stress_powerlaw)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="hans.special.html#hans.special.powerlaw_fluid.zmax_nleq_case2">zmax_nleq_case2() (in module hans.special.powerlaw_fluid)</a>
+      <li><a href="hans.models.html#hans.models.viscous_stress_powerlaw.zmax_nleq_case2">zmax_nleq_case2() (in module hans.models.viscous_stress_powerlaw)</a>
 </li>
   </ul></td>
 </tr></table>
