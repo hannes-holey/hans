@@ -13,6 +13,7 @@ hans
 
    readme
    ./theory/index
+   ./getting_started/index
 
 
 .. toctree::
