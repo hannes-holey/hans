@@ -162,8 +162,18 @@ class Database:
         # Bounds for quasi random sampling of initial database
         jabs = np.hypot(np.mean(Q[1, :]), np.mean(Q[2, :]))
         rho = np.mean(Q[0, :])
-        l_bounds = np.array([np.amin(self.h[0]), 0.99 * rho, 0.5 * jabs, 0.])
-        u_bounds = np.array([np.amax(self.h[0]), 1.01 * rho, 1.5 * jabs, 0.5 * jabs])
+
+        rho_min = self.gp.get('rhoInitLo', 0.99 * rho)
+        rho_max = self.gp.get('rhoInitHi', 1.01 * rho)
+
+        jx_min = self.gp.get('jxInitLo', 0.5 * jabs)
+        jx_max = self.gp.get('jxInitHi', 1.5 * jabs)
+
+        jy_min = self.gp.get('jyInitLo', 0.)
+        jy_max = self.gp.get('jyInitHi', 0.5 * jabs)
+
+        l_bounds = np.array([np.amin(self.h[0]), rho_min, jx_min, jy_min])
+        u_bounds = np.array([np.amax(self.h[0]), rho_max, jx_max, jy_max])
 
         # Sampling
         if sampling == 'random':
