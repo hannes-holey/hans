@@ -38,17 +38,29 @@ from scipy.stats import qmc
 
 from hans.tools import progressbar, bordered_text
 from hans.multiscale.md import run, mpirun
+from hans.multiscale.util import variance_of_mean
 
 
 class Database:
 
-    def __init__(self, gp, md, height, eos_func, tau_func):
+    def __init__(self, gp, md, const_fields, eos_func, tau_func):
 
         self.eos_func = eos_func
         self.tau_func = tau_func
-        self.h = height
         self.gp = gp
         self.md = md
+
+        # select either wall slip or gap height as constant input
+        self.mode = self.gp.get('constInput', 'gap')
+
+        if self.mode == "slip":
+            self.c = const_fields['kappa']
+            self._features = ["slip_param", "density", "mass_flux_x", "mass_flux_y"]
+        else:  # mode == "gap""
+            self.c = const_fields['gap_height'][0][None, :, :]
+            self._features = ["gap_height", "density", "mass_flux_x", "mass_flux_y"]
+
+        self.h = const_fields['gap_height']
 
         # Input dimensions
         # h, dh_dx, dh_dy, rho, jx, jy
@@ -70,7 +82,7 @@ class Database:
     def _get_readme_list_remote(self):
 
         # uses dtool_lookup_server configuration from your dtool config
-        # TODO: Possibility to pass a txtfile w/ uuids or query string
+        # TODO: Possibility to pass a textfile w/ uuids or yaml with query string
         query_dict = {"readme.description": {"$regex": "Dummy"}}
         remote_ds_list = query(query_dict)
 
@@ -120,8 +132,16 @@ class Database:
             Yerr = []
 
             for rm in readme_list:
-                Xtrain.append(rm['X'])
-                Ytrain.append(rm['Y'])
+                X = np.array(rm['X'])
+                Y = np.array(rm['Y'])
+
+                # older readme files have the height gradients in X which is never used for training
+                # exclude these entries.
+                if len(rm['X']) == 6:
+                    X = X[[0, 3, 4, 5]]
+
+                Xtrain.append(X)
+                Ytrain.append(Y)
 
                 if 'Yerr' in rm.keys():
                     Yerr.append(rm['Yerr'])
@@ -162,8 +182,8 @@ class Database:
         # Bounds for quasi random sampling of initial database
         jabs = np.hypot(np.mean(Q[1, :]), np.mean(Q[2, :]))
         rho = np.mean(Q[0, :])
-        l_bounds = np.array([np.amin(self.h[0]), 0.99 * rho, 0.5 * jabs, 0.])
-        u_bounds = np.array([np.amax(self.h[0]), 1.01 * rho, 1.5 * jabs, 0.5 * jabs])
+        l_bounds = np.array([np.amin(self.c), 0.99 * rho, 0.5 * jabs, 0.])
+        u_bounds = np.array([np.amax(self.c), 1.01 * rho, 1.5 * jabs, 0.5 * jabs])
 
         # Sampling
         if sampling == 'random':
@@ -183,7 +203,7 @@ class Database:
             sample = sampler.random_base2(m=m)
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
 
-        h_init = scaled_samples[:, 0]
+        c_init = scaled_samples[:, 0]
         rho_init = scaled_samples[:, 1]
         jx_init = scaled_samples[:, 2]
         jy_init = scaled_samples[:, 3]
@@ -191,32 +211,43 @@ class Database:
         if Q.shape[2] <= 3:
             jy_init = np.zeros_like(jx_init)
 
-        # Remaining inputs (constant)
-        # h_gradx_init = np.ones_like(h_init)  # * np.mean(self.h[1, :, 1])
-        # h_grady_init = np.ones_like(h_init)  # * np.mean(self.h[2, :, 1])
-
         # Assemble
+        if self.mode == "slip":
+            # The slip version only works with constant height (so far)
+            h_init = np.ones_like(c_init) * np.mean(self.h[0, :, 1])
+            h_gradx_init = np.zeros_like(h_init)
+            h_grady_init = np.zeros_like(h_init)
+        else:
+            h_init = c_init
+            h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])
+            h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
+
         Hnew = np.vstack([h_init,
-                          # h_gradx_init,
-                          # h_grady_init
+                          h_gradx_init,
+                          h_grady_init
                           ])
+
+        Cnew = np.vstack([c_init,
+                          ])
+
         Qnew = np.vstack([rho_init, jx_init, jy_init])
 
-        Xnew = np.vstack([Hnew, Qnew])
+        Xnew = np.vstack([Cnew, Qnew])
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
-        self._update_outputs(Xnew)
+        self._update_outputs(Xnew, Hnew)
 
     def _update_inputs(self, Qnew, ix, iy):
 
+        Cnew = self.select_constant(ix, iy)
         Hnew = self.gap_height(ix, iy)
-        Xnew = np.vstack([Hnew, Qnew])
 
+        Xnew = np.vstack([Cnew, Qnew])
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
-        self._update_outputs(Xnew)
+        self._update_outputs(Xnew, Hnew)
 
-    def _update_outputs(self, Xnew):
+    def _update_outputs(self, Xnew, Hnew):
 
         Ynew = np.zeros((13, Xnew.shape[1]))
         Yerrnew = np.zeros((3, Xnew.shape[1]))
@@ -239,12 +270,8 @@ class Database:
             text = [f'Run next {data_acq} in: {proto_datapath}']
             text.append('---')
 
-            for j, X in enumerate(Xnew[:, i]):
-                text.append(f'Input {i}: {X:.5f}')
-
-            # text.append(f'Gap height: {Xnew[0, i]:.5f}')
-            # text.append(f'Mass density: {Xnew[3, i]:.5f}')
-            # text.append(f'Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})')
+            for j, (X, f) in enumerate(zip(Xnew[:, i], self._features)):
+                text.append(f'Input {j+1}: {X:8.5f} ({f})')
 
             print(bordered_text('\n'.join(text)))
 
@@ -261,11 +288,13 @@ class Database:
 
                 # write variables file (# FIXME: height, indices not hardcoded)
                 var_str = \
-                    'variable input_gap equal 8.82\n' + \
-                    f'variable input_kappa equal {Xnew[0, i]}\n' + \
+                    f'variable input_gap equal {Hnew[0, i]}\n' + \
                     f'variable input_dens equal {Xnew[1, i]}\n' + \
                     f'variable input_fluxX equal {Xnew[2, i]}\n' + \
                     f'variable input_fluxY equal {Xnew[3, i]}\n'
+
+                if self.mode == "slip":
+                    var_str += f'variable input_kappa equal {Xnew[0, i]}\n'
 
                 excluded = ['infile', 'wallfile', 'ncpu']
                 for k, v in self.md.items():
@@ -340,8 +369,16 @@ class Database:
                 # Artificial noise
                 pnoise = np.random.normal(0., np.sqrt(self.gp['noisePress']), size=(1, Xnew.shape[1]))
                 snoise = np.random.normal(0., np.sqrt(self.gp['noiseShear']), size=(1, Xnew.shape[1]))
-                Ynew[0, i] = self.eos_func(Xnew[3, i]) + pnoise[:, i]
-                Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
+
+                # pressure
+                Ynew[0, i] = self.eos_func(Xnew[1, i]) + pnoise[:, i]
+
+                if self.mode == "slip":
+                    tau = self.tau_func(Xnew[1:, i, None], Hnew[:, i, None], Xnew[0, i, None][0])
+                else:
+                    tau = self.tau_func(Xnew[1:, i, None], Hnew[:, i, None], 0.)
+
+                Ynew[1:, i, None] = tau + snoise[:, i, None]
 
                 Yerrnew = np.zeros((3, Xnew.shape[1]))
                 Yerrnew[0, i] = self.gp['noisePress']
@@ -414,86 +451,10 @@ class Database:
 
         return Hnew
 
+    def select_constant(self, ix, iy=1):
 
-def autocorr_func_1d(x):
-    """
+        Cnew = self.c[:, ix, iy]
+        if Cnew.ndim == 1:
+            Cnew = Cnew[:, None]
 
-    Compute autocorrelation function of 1D time series.
-
-    Parameters
-    ----------
-    x : numpy.ndarry
-        The time series
-
-    Returns
-    -------
-    numpy.ndarray
-        Normalized time autocorrelation function
-    """
-    n = len(x)
-
-    # unbias
-    x -= np.mean(x)
-
-    # pad with zeros
-    ext_size = 2 * n - 1
-    fsize = 2**np.ceil(np.log2(ext_size)).astype('int')
-
-    # ACF from FFT
-    x_f = np.fft.fft(x, fsize)
-    C = np.fft.ifft(x_f * x_f.conjugate())[:n] / (n - np.arange(n))
-
-    # Normalize
-    C_t = C.real / C.real[0]
-
-    return C_t
-
-
-def statistical_inefficiency(timeseries, mintime):
-    """
-    see e.g. Chodera et al. J. Chem. Theory Comput., Vol. 3, No. 1, 2007
-
-    Parameters
-    ----------
-    timeseries : numpy.ndarray
-        The time series
-    mintime : int
-        Minimum time lag to calculate correlation time
-
-    Returns
-    -------
-    float
-        Statisitical inefficiency parameter
-    """
-    N = len(timeseries)
-    C_t = autocorr_func_1d(timeseries)
-    t_grid = np.arange(N).astype('float')
-    g_t = 2.0 * C_t * (1.0 - t_grid / float(N))
-    ind = np.where((C_t <= 0) & (t_grid > mintime))[0][0]
-    g = 1.0 + g_t[1:ind].sum()
-    return max(1.0, g)
-
-
-def variance_of_mean(timeseries, mintime=1):
-    """
-
-    Compute the variance of the mean value for a correlated time series
-
-    Parameters
-    ----------
-    timeseries : numpy.ndarray
-        The time series
-    mintime : int, optional
-        Minimum time lag to calculate correlation time
-
-    Returns
-    -------
-    float
-        Variance of the mean
-    """
-
-    g = statistical_inefficiency(timeseries, mintime)
-    n = len(timeseries)
-    var = np.var(timeseries) / n * g
-
-    return var
+        return Cnew

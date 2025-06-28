@@ -276,7 +276,7 @@ class GaussianProcess:
 
             sampler = qmc.LatinHypercube(self.active_dim)
             sample = sampler.random(n=1000)
-            scaled_samples = qmc.scale(sample, np.ones(self.active_dim)*0.01, np.ones(self.active_dim)*100.)
+            scaled_samples = qmc.scale(sample, np.ones(self.active_dim) * 0.01, np.ones(self.active_dim) * 100.)
 
             for s in scaled_samples:
                 try:
@@ -384,7 +384,7 @@ class GaussianProcess:
     def _similarity_check(self, ix, iy=1):
 
         X_new = self.sol[:, ix, iy, None]
-        Hnew = self.db.gap_height(ix, iy)
+        Hnew = self.db.select_constant(ix, iy)
 
         Xnew = np.vstack([Hnew, X_new])
 
@@ -416,7 +416,7 @@ class GaussianProcess:
         if self.options['verbose']:
             print(msg, **kwargs)
 
-    @ abc.abstractmethod
+    @abc.abstractmethod
     def _get_test_input(self):
         """
         Assemble test input data
@@ -461,7 +461,7 @@ class GP_stress(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        return np.vstack([self.db.h[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
+        return np.vstack([self.db.c[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
 
     def _set_solution(self, q):
         self.sol = q
@@ -499,7 +499,7 @@ class GP_stress2D(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest
@@ -542,7 +542,7 @@ class GP_stress2D_xz(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest
@@ -585,7 +585,7 @@ class GP_stress2D_yz(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest
@@ -627,7 +627,7 @@ class GP_pressure(GaussianProcess):
         Test data as input for GP prediction:
         For pressure, only density is required (not with MD!)
         """
-        return np.vstack([self.db.h[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
+        return np.vstack([self.db.c[0, :, 1], self.sol[0, :, 1], self.sol[1, :, 1]]).T
 
     def _set_solution(self, q):
         self.sol = q  # [:, :, 1]
@@ -662,7 +662,7 @@ class GP_pressure2D(GaussianProcess):
         For pressure, only density is required (not with MD!)
         """
 
-        Xtest_raw = np.dstack([self.db.h[0], self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest

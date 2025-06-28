@@ -416,9 +416,9 @@ def fourier_synthesis(shape, size, Hurst, rms_height=None, rms_slope=None,
     karr = np.empty(kshape, dtype=np.complex128)
 
     # Creating Fourier representation
-    qy = 2*np.pi*np.arange(kny)/sy
+    qy = 2 * np.pi * np.arange(kny) / sy
     for x in range(nx):
-        if x > nx//2:
+        if x > nx // 2:
             qx = 2 * np.pi * (nx - x) / sx
         else:
             qx = 2 * np.pi * x / sx
@@ -602,9 +602,9 @@ class SlipLength(ScalarField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        smooth = int(self.surface.get('smooth', 10))
+        smooth = int(self.surface.get('smooth', 0))
         if smooth:
-            window1d = np.abs(signal.windows.hann(20))
+            window1d = np.abs(signal.windows.hann(smooth))  # was 20 hardcoded in prev version
             window1d /= window1d.sum()
             window2d = np.outer(window1d, window1d)
 
@@ -640,7 +640,7 @@ class SlipLength(ScalarField):
             mask = np.less((xx - center[0])**2 + (yy - center[1])**2, radius**2)
 
         elif self.surface["type"] == "circle2":
-            center_1 = (3 * Lx / 4, Ly/2)
+            center_1 = (3 * Lx / 4, Ly / 2)
             center_2 = (Lx / 4, Ly)
             center_3 = (Lx / 4, 0)
             radius = Lx / 4

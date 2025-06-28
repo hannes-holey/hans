@@ -72,12 +72,6 @@ def run(system):
     assert system == 'slab'
     run_slab()
 
-    # Select type of simulation, currently only 'slab' implemented
-    # if system == "lj":
-    #     run_lj()
-    # elif system == "slab":
-    #     run_slab()
-
 
 def run_slab():
 
@@ -93,61 +87,6 @@ def run_slab():
 
     # run LAMMPS
     lmp.file("in.run")
-
-
-# def run_lj(temp=2., dens=0.452, Natoms=1000, Rcut=5., dt=0.005, tequi=10000, tsample=100000, logfile="log.lammps"):
-#     """Run Lennard-Jones fluid system. All quantities measured in LJ units.
-
-#     Parameters
-#     ----------
-#     temp : float
-#         Temperature (the default is 2.).
-#     dens : float
-#         Number density (the default is 0.452).
-#     Natoms : float
-#         Number of atoms (the default is 1000).
-#     Rcut : float
-#         Cutoff radius (the default is 5.).
-#     dt : float
-#         Timestep (the default is 0.005).
-#     tequi : int
-#         Eqilibration steps (the default is 10000).
-#     tsample : int
-#         Sampling steps (the default is 100000).
-#     logfile : str
-#         Name of the log file. If None, fallback to LAMMPS default 'log.lammps' (the default is None).
-
-#     """
-
-#     nargs = ["-log", logfile]
-
-#     lmp = lammps(cmdargs=nargs)
-
-#     try:
-#         length = np.power((Natoms / dens), 1 / 3)
-#         assert length/2 >= Rcut
-#     except AssertionError:
-#         print("Number of atoms too low for this density and cutoff radius")
-#         N_new = int(np.ceil((2 * Rcut)**3 * dens))
-#         print(f"Change number of atoms to {N_new}")
-#         Natoms = int(N_new)
-#         length = (Natoms / dens)**(1/3)
-
-#     # set variables
-#     lmp.command(f'variable length equal {length}')
-#     lmp.command(f'variable temp equal {temp}')
-#     lmp.command(f'variable ndens equal {dens}')
-#     lmp.command(f'variable cutoff equal {Rcut}')
-#     lmp.command(f'variable Natoms equal {Natoms}')
-#     lmp.command(f'variable dt equal {dt}')
-#     lmp.command(f'variable tsample equal {tsample}')
-#     lmp.command(f'variable tequi equal {tequi}')
-
-#     # run
-#     tmpdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
-#     lmp.file(os.path.join(tmpdir, "01-lj_setup.in"))
-#     lmp.file(os.path.join(tmpdir, "02-lj_equi.in"))
-#     lmp.file(os.path.join(tmpdir, "03-lj_sample.in"))
 
 
 if __name__ == "__main__":
