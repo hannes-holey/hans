@@ -542,7 +542,7 @@ class GP_stress2D_xz(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c[0], self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest
@@ -585,7 +585,7 @@ class GP_stress2D_yz(GaussianProcess):
         Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
         """
 
-        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c[0], self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest
@@ -662,7 +662,7 @@ class GP_pressure2D(GaussianProcess):
         For pressure, only density is required (not with MD!)
         """
 
-        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
+        Xtest_raw = np.dstack([self.db.c[0], self.sol[0], self.sol[1], self.sol[2]])
         Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
 
         return Xtest

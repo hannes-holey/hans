@@ -30,9 +30,8 @@ dependencies = [
 
 [project.optional-dependencies]
 multiscale  = ['lammps']
-
-test = ['pytest',
-         'coverage>=5.0.3']
+test = ['pytest', 'coverage>=5.0.3']
+doc = ['sphinx', 'sphinx_rtd_theme', 'myst-nb', 'jupytext', 'sympy']
 
 [project.urls]
 Source = "https://github.com/hannes-holey/hans"
@@ -50,5 +49,8 @@ plot_scalar = "hans.cli:plot_scalar.main"
 read_config = "hans.cli:read_config.main"
 
 [tool.pytest.ini_options]
-addopts = "-v"
+addopts = "-v -m 'not long'"
 testpaths = ["tests"]
+markers = [
+    "long: long tests (deselect with '-m \"not long\"')",
+]
