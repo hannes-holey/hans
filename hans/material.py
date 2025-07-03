@@ -46,6 +46,7 @@ class Material:
 
     def init_gp(self, q, db):
 
+
         if q.shape[-1] > 3:
             # 2D
             self.GP = GP_pressure2D(db, self.gp)
@@ -226,7 +227,6 @@ class Material:
                     self._viscosity_dens_transform = self.eos_pressure
             else:
                 self._viscosity_dens_args = []
-                self._viscosity_dens_func = lambda x: self.material['shear']
 
         if "thinning" in self.material.keys():
 

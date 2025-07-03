@@ -77,7 +77,7 @@ class SymStressField2D(VectorField):
             Field of slip lengths.
 
         """
-
+        
         if self.gp is None:
             # Only use averaged stress tensor components in the fully deterministic setting.
             # If we use a surrogate model, we neglect the averaged xx, yy, and xy components.
@@ -85,6 +85,7 @@ class SymStressField2D(VectorField):
 
             U = self.geometry['U']
             V = self.geometry['V']
+            
             eta = Material(self.material).viscosity(U, V, q[0], h[0])
             zeta = self.material["bulk"]
 
@@ -359,7 +360,7 @@ class WallStressField3D(DoubleTensorField):
         Ls : numpy.ndarray
             Field of slip lengths.
         """
-
+        
         if self.gp is not None:
 
             if len(self.GP_list) == 1:
