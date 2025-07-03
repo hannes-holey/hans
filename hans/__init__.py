@@ -23,24 +23,3 @@
 #
 
 __version__ = "0.2.2"
-
-# import sys
-
-# try:
-#     if sys.version_info >= (3, 8):
-#         from importlib import metadata
-#     else:
-#         from importlib_metadata import metadata
-
-#     __version__ = tuple(
-#     [int(i) for i in metadata.version("hans").split(".")[:2]])
-
-#     # __version__ = metadata.version(__name__)
-
-# except ImportError:
-#     from pkg_resources import get_distribution
-
-#     __version__ = get_distribution(__name__).version
-
-
-#     from importlib_metadata import metadata
