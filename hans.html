@@ -108,6 +108,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#module-hans.tools">hans.tools module</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#hans.tools.abort"><code class="docutils literal notranslate"><span class="pre">abort()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#hans.tools.bordered_text"><code class="docutils literal notranslate"><span class="pre">bordered_text()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#hans.tools.handle_signals"><code class="docutils literal notranslate"><span class="pre">handle_signals()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#hans.tools.power"><code class="docutils literal notranslate"><span class="pre">power()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#hans.tools.progressbar"><code class="docutils literal notranslate"><span class="pre">progressbar()</span></code></a></li>
 </ul>
@@ -273,8 +274,9 @@
 <li class="toctree-l2"><a class="reference internal" href="hans.multiscale.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="hans.multiscale.html#module-hans.multiscale.db">hans.multiscale.db module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.gap_height"><code class="docutils literal notranslate"><span class="pre">Database.gap_height()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.sampling"><code class="docutils literal notranslate"><span class="pre">Database.sampling()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.get_constant"><code class="docutils literal notranslate"><span class="pre">Database.get_constant()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.get_gap_height"><code class="docutils literal notranslate"><span class="pre">Database.get_gap_height()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.initialize"><code class="docutils literal notranslate"><span class="pre">Database.initialize()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.size"><code class="docutils literal notranslate"><span class="pre">Database.size</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.update"><code class="docutils literal notranslate"><span class="pre">Database.update()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.db.Database.write_readme"><code class="docutils literal notranslate"><span class="pre">Database.write_readme()</span></code></a></li>
@@ -298,18 +300,30 @@
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress.ndim"><code class="docutils literal notranslate"><span class="pre">GP_stress.ndim</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D"><code class="docutils literal notranslate"><span class="pre">GP_stress2D</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D.name"><code class="docutils literal notranslate"><span class="pre">GP_stress2D.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D.ndim"><code class="docutils literal notranslate"><span class="pre">GP_stress2D.ndim</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D_xz"><code class="docutils literal notranslate"><span class="pre">GP_stress2D_xz</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D_xz.name"><code class="docutils literal notranslate"><span class="pre">GP_stress2D_xz.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D_xz.ndim"><code class="docutils literal notranslate"><span class="pre">GP_stress2D_xz.ndim</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D_yz"><code class="docutils literal notranslate"><span class="pre">GP_stress2D_yz</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D_yz.name"><code class="docutils literal notranslate"><span class="pre">GP_stress2D_yz.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GP_stress2D_yz.ndim"><code class="docutils literal notranslate"><span class="pre">GP_stress2D_yz.ndim</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess"><code class="docutils literal notranslate"><span class="pre">GaussianProcess</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.active_learning_step"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.active_learning_step()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.dbsize"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.dbsize</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.name"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.name</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.ndim"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.ndim</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.dbsize"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.dbsize</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.gp_print"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.gp_print()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.increment"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.increment()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#id0"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#id1"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.ndim</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.predict"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.predict()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.predict_gradient"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.predict_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.reset"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.reset</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.reset_reset"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.reset_reset()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.setup"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.setup()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.gp.GaussianProcess.trusted"><code class="docutils literal notranslate"><span class="pre">GaussianProcess.trusted</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -318,7 +332,6 @@
 <li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.md.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.md.mpirun"><code class="docutils literal notranslate"><span class="pre">mpirun()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.md.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.md.run_lj"><code class="docutils literal notranslate"><span class="pre">run_lj()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="hans.multiscale.html#hans.multiscale.md.run_slab"><code class="docutils literal notranslate"><span class="pre">run_slab()</span></code></a></li>
 </ul>
 </li>
@@ -816,11 +829,21 @@ and returns an instance of the Problem class.</p>
 <span id="hans-integrate-module"></span><h2>hans.integrate module<a class="headerlink" href="#module-hans.integrate" title="Link to this heading"></a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.integrate.</span></span><span class="sig-name descname"><span class="pre">ConservedField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">disc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">material</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numerics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">surface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roughness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">md</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.integrate.</span></span><span class="sig-name descname"><span class="pre">ConservedField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">disc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">material</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numerics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">surface</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roughness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">md</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#hans.field.VectorField" title="hans.field.VectorField"><code class="xref py py-class docutils literal notranslate"><span class="pre">VectorField</span></code></a></p>
 <dl class="py property">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.cfl">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cfl</span></span><a class="headerlink" href="#hans.integrate.ConservedField.cfl" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.check_p_reset">
+<span class="sig-name descname"><span class="pre">check_p_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.check_p_reset" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.check_tau_reset">
+<span class="sig-name descname"><span class="pre">check_tau_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.check_tau_reset" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -835,7 +858,7 @@ and returns an instance of the Problem class.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.diffusiveFlux">
-<span class="sig-name descname"><span class="pre">diffusiveFlux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.diffusiveFlux" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">diffusiveFlux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.diffusiveFlux" title="Link to this definition"></a></dt>
 <dd><p>Compute diffusive flux.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -843,7 +866,6 @@ and returns an instance of the Problem class.</p>
 <li><p><strong>q</strong> (<em>np.array</em>) – Solution field.</p></li>
 <li><p><strong>h</strong> (<em>np.array</em>) – Gap height (and gradients).</p></li>
 <li><p><strong>Ls</strong> (<em>np.array</em>) – Slip length (lower surface)</p></li>
-<li><p><strong>ax</strong> (<em>int</em>) – Axis parameter, 1 == x and 2 == y</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -854,6 +876,21 @@ and returns an instance of the Problem class.</p>
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.dirichlet_bc_down">
+<span class="sig-name descname"><span class="pre">dirichlet_bc_down</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qadj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.dirichlet_bc_down" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.dirichlet_bc_up">
+<span class="sig-name descname"><span class="pre">dirichlet_bc_up</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qadj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.dirichlet_bc_up" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.dt_crit">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dt_crit</span></span><a class="headerlink" href="#hans.integrate.ConservedField.dt_crit" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.ekin">
@@ -895,14 +932,11 @@ Fill ghost cells at the boundary according to the applied BCs.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.hyperbolicFlux">
-<span class="sig-name descname"><span class="pre">hyperbolicFlux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.hyperbolicFlux" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">hyperbolicFlux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.hyperbolicFlux" title="Link to this definition"></a></dt>
 <dd><p>Compute hyperbolic flux.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>q</strong> (<em>np.array</em>) – Solution field.</p></li>
-<li><p><strong>ax</strong> (<em>int</em>) – Axis parameter, 1 == x and 2 == y</p></li>
-</ul>
+<dd class="field-odd"><p><strong>q</strong> (<em>np.array</em>) – Solution field.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Hyperbolic flux field.</p>
@@ -916,6 +950,11 @@ Fill ghost cells at the boundary according to the applied BCs.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.hyperbolicTVD">
 <span class="sig-name descname"><span class="pre">hyperbolicTVD</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.hyperbolicTVD" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.initialize">
+<span class="sig-name descname"><span class="pre">initialize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.initialize" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -951,8 +990,18 @@ Field is updated in place.</p>
 <dd></dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.neumann_bc_down">
+<span class="sig-name descname"><span class="pre">neumann_bc_down</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qadj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.neumann_bc_down" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.neumann_bc_up">
+<span class="sig-name descname"><span class="pre">neumann_bc_up</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qadj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.neumann_bc_up" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.post_integrate">
-<span class="sig-name descname"><span class="pre">post_integrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.post_integrate" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">post_integrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.post_integrate" title="Link to this definition"></a></dt>
 <dd><p>Compute relative change of solution after time update.
 Update time, and, if adaptive time-stepping is used, also the time step.</p>
 <dl class="field-list simple">
@@ -964,14 +1013,14 @@ Update time, and, if adaptive time-stepping is used, also the time step.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.predictor_corrector">
-<span class="sig-name descname"><span class="pre">predictor_corrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.predictor_corrector" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">predictor_corrector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.predictor_corrector" title="Link to this definition"></a></dt>
 <dd><p>Compute predictor/corrector fluxes fro MacCormack’s method.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>q</strong> (<em>np.array</em>) – Solution field.</p></li>
 <li><p><strong>h</strong> (<em>np.array</em>) – Gap height (and gradients).</p></li>
-<li><p><strong>dir</strong> (<em>int</em>) – Direction of the substep (-1: forwards / 1: backwards differencing)</p></li>
+<li><p><strong>direction</strong> (<em>int</em>) – Direction of the substep (-1: forwards / 1: backwards differencing)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -993,6 +1042,11 @@ Field is updated in place.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="hans.integrate.ConservedField.runge_kutta3">
 <span class="sig-name descname"><span class="pre">runge_kutta3</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.integrate.ConservedField.runge_kutta3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="hans.integrate.ConservedField.tv">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tv</span></span><a class="headerlink" href="#hans.integrate.ConservedField.tv" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1053,6 +1107,11 @@ Field is updated in place.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="hans.material.Material.get_pressure">
 <span class="sig-name descname"><span class="pre">get_pressure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.material.Material.get_pressure" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.material.Material.get_sound_speed">
+<span class="sig-name descname"><span class="pre">get_sound_speed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.material.Material.get_sound_speed" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1380,16 +1439,6 @@ or as defined through inputs.</p>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="hans.stress.SymStressField3D.gp_wall_stress">
-<span class="sig-name descname"><span class="pre">gp_wall_stress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.SymStressField3D.gp_wall_stress" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="hans.stress.SymStressField3D.init_gp">
-<span class="sig-name descname"><span class="pre">init_gp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wall</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.SymStressField3D.init_gp" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="hans.stress.SymStressField3D.set">
 <span class="sig-name descname"><span class="pre">set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.SymStressField3D.set" title="Link to this definition"></a></dt>
 <dd><p>Wrapper function around set methods for wall stress tensor components.</p>
@@ -1443,6 +1492,11 @@ or as defined through inputs.</p>
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hans.stress.</span></span><span class="sig-name descname"><span class="pre">WallStressField3D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">disc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">material</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">surface</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.WallStressField3D" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#hans.field.DoubleTensorField" title="hans.field.DoubleTensorField"><code class="xref py py-class docutils literal notranslate"><span class="pre">DoubleTensorField</span></code></a></p>
 <dl class="py method">
+<dt class="sig sig-object py" id="hans.stress.WallStressField3D.del_gp">
+<span class="sig-name descname"><span class="pre">del_gp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.WallStressField3D.del_gp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="hans.stress.WallStressField3D.get_bot">
 <span class="sig-name descname"><span class="pre">get_bot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.WallStressField3D.get_bot" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -1458,6 +1512,11 @@ or as defined through inputs.</p>
 <dd></dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="hans.stress.WallStressField3D.increment">
+<span class="sig-name descname"><span class="pre">increment</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.WallStressField3D.increment" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="hans.stress.WallStressField3D.init_gp">
 <span class="sig-name descname"><span class="pre">init_gp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.WallStressField3D.init_gp" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -1465,6 +1524,16 @@ or as defined through inputs.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="hans.stress.WallStressField3D.lower">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lower</span></span><a class="headerlink" href="#hans.stress.WallStressField3D.lower" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="hans.stress.WallStressField3D.reset">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reset</span></span><a class="headerlink" href="#hans.stress.WallStressField3D.reset" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hans.stress.WallStressField3D.reset_reset">
+<span class="sig-name descname"><span class="pre">reset_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#hans.stress.WallStressField3D.reset_reset" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1500,6 +1569,11 @@ or as defined through inputs.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="hans.tools.bordered_text">
 <span class="sig-prename descclassname"><span class="pre">hans.tools.</span></span><span class="sig-name descname"><span class="pre">bordered_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.tools.bordered_text" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hans.tools.handle_signals">
+<span class="sig-prename descclassname"><span class="pre">hans.tools.</span></span><span class="sig-name descname"><span class="pre">handle_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#hans.tools.handle_signals" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
