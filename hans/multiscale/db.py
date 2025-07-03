@@ -24,6 +24,7 @@
 import os
 import numpy as np
 import dtoolcore
+from socket import gethostname
 try:
     import lammps
 except ImportError:
@@ -42,8 +43,26 @@ from hans.multiscale.util import variance_of_mean
 
 
 class Database:
+    """
+    Holds the MD training data and controls generation of new MD runs.
+    """
 
     def __init__(self, gp, md, const_fields, eos_func, tau_func):
+        """
+
+        Parameters
+        ----------
+        gp : dict
+            GP configuration
+        md : dict
+            MD configuration
+        const_fields : dict
+            Holds constant fields which can be used as features for the GP
+        eos_func : callable
+            Computes the EoS if data does not come from MD
+        tau_func : callable
+            Computes the viscous stress if data does not come from MD
+        """
 
         self.eos_func = eos_func
         self.tau_func = tau_func
@@ -62,12 +81,6 @@ class Database:
 
         self.h = const_fields['gap_height']
 
-        # Input dimensions
-        # h, dh_dx, dh_dy, rho, jx, jy
-
-        # Output dimensions
-        # p, tau_lower (6), tau_upper (6)
-
         self._init_database(4, 13)
 
     def __del__(self):
@@ -80,9 +93,19 @@ class Database:
         return self.Xtrain.shape[1]
 
     def _get_readme_list_remote(self):
+        """Get list of dtool README files for existing MD runs 
+        from a remote data server (via dtool_lookup_api)
 
-        # uses dtool_lookup_server configuration from your dtool config
-        # TODO: Possibility to pass a textfile w/ uuids or yaml with query string
+        In the future, one should be able to pass a valid MongoDB
+        query string to select data.
+
+        Returns
+        -------
+        list
+            List of dicts containing the readme content
+        """
+
+        # TODO: Pass a textfile w/ uuids or yaml with query string
         query_dict = {"readme.description": {"$regex": "Dummy"}}
         remote_ds_list = query(query_dict)
 
@@ -97,14 +120,20 @@ class Database:
         return readme_list
 
     def _get_readme_list_local(self):
+        """Get list of dtool README files for existing MD runs 
+        from a local directory.
+
+        Returns
+        -------
+        list
+            List of dicts containing the readme content
+        """
 
         if not os.path.exists(self.gp['local']):
             os.makedirs(self.gp['local'])
             return []
 
-        # Python 3.9+
-        # str.removeprefix (prefix = f'file://{gethostname()}')
-        readme_paths = [os.path.join(os.sep, *ds.uri.split(os.sep)[3:], 'README.yml')
+        readme_paths = [os.path.join(ds.uri.removeprefix(f'file://{gethostname()}'), 'README.yml')
                         for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
 
         yaml = YAML()
@@ -119,6 +148,16 @@ class Database:
         return readme_list
 
     def _init_database(self, input_dim, output_dim):
+        """Initialize the buffers that store the training data with results from previous MD runs.
+        If no runs are available, empty buffers are created.
+
+        Parameters
+        ----------
+        input_dim : int
+            Number of input dimensions (features)
+        output_dim : int
+            Number of output dimensions
+        """
 
         if bool(self.gp['remote']):
             readme_list = self._get_readme_list_remote()
@@ -158,23 +197,18 @@ class Database:
             self.Ytrain = np.empty((output_dim, 0))
             self.Yerr = np.empty((3, 0))
 
-    def update(self, Qnew, ix, iy):
-        self._update_inputs(Qnew, ix, iy)
-
     def initialize(self, Q, Ninit, sampling='lhc'):
         """Build initial database with different sampling strategies.
 
-        Select points in two-dimensional space (gap height, flux) to
-        initialize training database. Choose between random, latin hypercube,
-        and Sobol sampling.
-
-
         Parameters
         ----------
-        Q : [type]
-            [description]
-        Ninit : [type]
-            [description]
+        Q : np.ndarray
+            Current solution (initial conditions in most cases)
+        Ninit : int
+            Number of initial datapoints
+        sampling: str
+            (Quasi-)random sampling strategy. Select one of Latin hypercube ('lhc'),
+            Sobol ('sobol') or random ('random') sampling. The default is 'lhc'.
         """
 
         Nsample = Ninit - self.size
@@ -237,17 +271,56 @@ class Database:
 
         self._update_outputs(Xnew, Hnew)
 
-    def _update_inputs(self, Qnew, ix, iy):
+    def update(self, Q, ix, iy):
+        """Update the database.
 
-        Cnew = self.select_constant(ix, iy)
-        Hnew = self.gap_height(ix, iy)
-
-        Xnew = np.vstack([Cnew, Qnew])
-        self.Xtrain = np.hstack([self.Xtrain, Xnew])
+        Parameters
+        ----------
+        Q : numpy.ndarray
+            Current solution at (ix, iy)
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int
+            Location on the 2D Cartesian grid (y index)
+        """
+        Xnew = self._update_inputs(Q, ix, iy)
+        Hnew = self.get_gap_height(ix, iy)
 
         self._update_outputs(Xnew, Hnew)
 
+    def _update_inputs(self, Qnew, ix, iy):
+        """Fill training dataset with new inputs.
+
+        Parameters
+        ----------
+        Qnew : numpy.ndarray
+            Current solution at (ix, iy)
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int
+            Location on the 2D Cartesian grid (y index)
+
+        Returns
+        -------
+        numpy.ndarray
+            New training data
+        """
+        Cnew = self.get_constant(ix, iy)
+        Xnew = np.vstack([Cnew, Qnew])
+        self.Xtrain = np.hstack([self.Xtrain, Xnew])
+
+        return Xnew
+
     def _update_outputs(self, Xnew, Hnew):
+        """Fill training dataset with new output.
+
+        Parameters
+        ----------
+        Xnew : numpy.ndarray
+            New inputs
+        Hnew : numpy.ndarray
+            Gap hieght at new input locations
+        """
 
         Ynew = np.zeros((13, Xnew.shape[1]))
         Yerrnew = np.zeros((3, Xnew.shape[1]))
@@ -395,6 +468,19 @@ class Database:
         self.Yerr = np.hstack([self.Yerr, Yerrnew])
 
     def write_readme(self, path, Xnew, Ynew, Yerrnew):
+        """Write dtool README.yml
+
+        Parameters
+        ----------
+        path : str
+            dtool proto dataset path
+        Xnew : numpy.ndarray
+            New input data
+        Ynew : numpy.ndarray
+            New output data
+        Yerrnew : numpy.ndarray
+            New output data error (signal noise)
+        """
 
         readme_template = """
         project: Multiscale Simulation of Lubrication
@@ -443,7 +529,22 @@ class Database:
         with open(out_fname, 'w') as outfile:
             yaml.dump(metadata, outfile)
 
-    def gap_height(self, ix, iy=1):
+    def get_gap_height(self, ix, iy=1):
+        """Get the gap height at the input location.
+
+        Parameters
+        ----------
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int, optional
+            Location on the 2D Cartesian grid (y index) 
+            (the default is 1, which [default_description])
+
+        Returns
+        -------
+        numpy.ndarray
+            Local gap height (and gradients)
+        """
 
         Hnew = self.h[:, ix, iy]
         if Hnew.ndim == 1:
@@ -451,7 +552,23 @@ class Database:
 
         return Hnew
 
-    def select_constant(self, ix, iy=1):
+    def get_constant(self, ix, iy=1):
+        """Get the constant field at the input location.
+        Currently, either gap height, or a variable quantifying wall slip.
+
+        Parameters
+        ----------
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int, optional
+            Location on the 2D Cartesian grid (y index) 
+            (the default is 1, which [default_description])
+
+        Returns
+        -------
+        numpy.ndarray
+            Local constant field
+        """
 
         Cnew = self.c[:, ix, iy]
         if Cnew.ndim == 1:

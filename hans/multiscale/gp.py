@@ -32,6 +32,20 @@ from scipy.stats import qmc
 
 
 class GaussianProcess:
+    """Abstract base class for all Gaussian process surrogates.
+
+    Attributes
+    ----------
+    name : str
+        Name of the surrogate model:
+        - shear: Wall shear stress (xz) in 1D simulations
+        - shearXZ: Wall shear stress (xz) in 2D simulations
+        - shearYZ: Wall shear stress (yz) in 2D simulations
+        - press: Wall normal stress (pressure) in 1/2D simulations
+
+    ndim : int
+        (Cartesian) dimensions (either 1 or 2)
+    """
 
     __metaclass__ = abc.ABCMeta
 
@@ -45,9 +59,27 @@ class GaussianProcess:
                  Xmask,
                  Ymask,
                  atol,
-                 # kernel_init_var,
-                 # kernel_init_scale,
                  noise_variance):
+        """
+        Constructor.
+
+        Parameters
+        ----------
+        active_dim : int
+            Number of active input dimensions.
+        db : hans.multiscale.db.Database
+            Attached training database
+        gp : dict
+            GP configuration
+        Xmask : list
+            Input mask
+        Ymask : list
+            Output mask
+        atol : float
+            Absolute tolerance
+        noise_variance : float
+            Noise variance parameter
+        """
 
         self.tol = atol
         self.atol = atol
@@ -60,13 +92,6 @@ class GaussianProcess:
 
         # Kernel
         self.kern = Matern32(active_dim, ARD=True)
-        # self.kernel_init_var = kernel_init_var
-        # self.kernel_init_scale = kernel_init_scale
-
-        # if len(self.kernel_init_scale) == self.active_dim:
-        #     self.kern.lengthscale = kernel_init_scale
-
-        # self.kern_last_success_params = None
 
         # Noise
         self.heteroscedastic_noise = gp['heteroscedastic']
@@ -101,12 +126,27 @@ class GaussianProcess:
         return self._reset
 
     def reset_reset(self):
+        """
+        Set reset parameter back to False
+        """
         self._reset = False
 
     def increment(self):
+        """
+        Increment internal counter by 1.
+        """
         self.step += 1
 
     def setup(self, q):
+        """Initial setup of the GP model.
+        Triggers MD runs, if not enough training data is there.
+
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Current solution
+        """
         nx, ny = q.shape[1:]
         self.rshape = (nx, ny if ny > 3 else 1)
 
@@ -124,23 +164,53 @@ class GaussianProcess:
         self._write_history()
 
     def _raw_predict(self, Xtest):
+        """Make prediction for the given test locations.
 
-        mean, cov = self.model.predict_noiseless(Xtest, full_cov=False)
+        Parameters
+        ----------
+        Xtest : numpy.ndarray
+            Test data
 
-        self.maxvar = np.amax(cov)
+        Returns
+        -------
+        numpy.ndarray
+            GP posterior mean
+        numpy.ndarray
+            GP posterior variance
+        """
+
+        mean, var = self.model.predict_noiseless(Xtest, full_cov=False)
+
+        self.maxvar = np.amax(var)
         self.tol = max(self.atol, (self.rtol * (np.amax(mean) - np.amin(mean)))**2)
 
-        # self._trusted = self.maxvar < self.tol
-
-        # if self._trusted and not self._reset:
-        #     self.kern_last_success_params = np.copy(self.kern.param_array)
-
         if self.ndim == 1:
-            return mean.T[:, :, np.newaxis], cov
+            return mean.T[:, :, np.newaxis], var
         else:
-            return np.transpose(mean.reshape(*self.rshape, -1), (2, 0, 1)), cov
+            return np.transpose(mean.reshape(*self.rshape, -1), (2, 0, 1)), var
 
     def predict(self, q, in_predictor):
+        """Wrapper around the raw prediction and hyperparameter optimization.
+        This method is called from the time integration step.
+        Triggers active learning if uncertainty tolerance is not met.
+
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Current solution
+        in_predictor : bool
+            Indicates whether the call is from the predictor (True) or the corrector step (False)
+
+        Returns
+        -------
+        Returns
+        -------
+        numpy.ndarray
+            GP posterior mean
+        numpy.ndarray
+            GP posterior variance
+        """
 
         self._set_solution(q)
         Xtest = self._get_test_input()
@@ -151,7 +221,7 @@ class GaussianProcess:
             if self.last_fit_dbsize != self.dbsize:
                 self.gp_print()
                 self._fit()
-                mean, cov = self._raw_predict(Xtest)
+                mean, var = self._raw_predict(Xtest)
                 self._write_history()
                 self.gp_print(f'>>>> {"Reason":<18}: {"DB changed"}')
                 self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
@@ -160,21 +230,21 @@ class GaussianProcess:
                 suffix = ' (waiting)' if self._reset else ''
                 self.gp_print(f'>>>> {"Accepted":<18}: {self.trusted} {suffix}')
             else:
-                mean, cov = self._raw_predict(Xtest)
+                mean, var = self._raw_predict(Xtest)
         else:
             # Corrector step: Use same state of the model as in predictor
-            mean, cov = self._raw_predict(Xtest)
+            mean, var = self._raw_predict(Xtest)
 
         if in_predictor and not self._reset:
             counter = 0
             while (not self.trusted) and (counter < self.options['maxSteps']):
-                found_newX = self._active_learning_step(mean, cov)
+                found_newX = self._active_learning_step(mean, var)
                 counter += 1
                 old_maxvar = deepcopy(self.maxvar)
                 if found_newX:
                     self.gp_print()
                     self._fit()
-                    mean, cov = self._raw_predict(Xtest)
+                    mean, var = self._raw_predict(Xtest)
                     self._write_history()
                     self.gp_print(f'>>>> {"Reason":<18}: AL {counter}/{self.options["maxSteps"]}')
                     self.gp_print(f'>>>> {"Max. var. (old)":<18}: {old_maxvar:.3e}')
@@ -187,9 +257,19 @@ class GaussianProcess:
             if not self.trusted:
                 self._reset = True
 
-        return mean, cov
+        return mean, var
 
     def predict_gradient(self):
+        """Predict the gradient of the GP w.r.t. the inputs.
+        Used to estimate the speed of sound from the EoS.
+
+        Returns
+        -------
+        numpy.ndarray
+            Predictive gradient
+        numpy.ndarray
+            Variance of the predictive gradient
+        """
         Xtest = self._get_test_input()
         dq_dX, dv_dX = self.model.predictive_gradients(Xtest)
 
@@ -198,107 +278,10 @@ class GaussianProcess:
         else:
             return np.transpose(dq_dX.reshape(*self.rshape, -1), (2, 0, 1)), dv_dX
 
-    def _active_learning_step(self, mean, cov):
-        success = False
-
-        xnext = np.argsort(cov[:, 0])
-        _, nx, ny = mean.shape
-
-        # try to find a point not too close to previous ones
-        for i, x in enumerate(xnext[::-1]):
-            ix, iy = np.unravel_index(x, (nx, ny))
-            success = not self._similarity_check(ix, iy if self.ndim == 2 else 1)
-
-            if success:
-                # Add to training data
-                self._update_database(ix, iy)
-                break
-
-        return success
-
-    def _init_outfile(self):
-
-        fname = f'gp_{self.name}.out'
-        if os.path.exists(fname):
-            os.remove(fname)
-        self.file = open(fname, 'w', buffering=1)
-        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar tol nmll\n")
-
-    def _write_history(self):
-
-        per_step = [self.step, self.dbsize]
-        [per_step.append(param) for param in self.kern.param_array]
-
-        if self.heteroscedastic_noise:
-            per_step.append(np.mean(self.model.het_Gauss.variance))
-        else:
-            per_step.append(self.model.Gaussian_noise.variance[0])
-
-        per_step.append(self.maxvar)
-        per_step.append(self.tol)
-        per_step.append(-self.model.log_likelihood())
-
-        fmt = ["{:8d}", "{:8d}"] + (len(per_step) - 2) * ["{:8e}"]
-        per_step = [f.format(item) for f, item in zip(fmt, per_step)]
-        out_str = " ".join(per_step) + '\n'
-
-        self.file.write(out_str)
-
-    def _build_model(self):
-
-        if self.heteroscedastic_noise:
-            self.model = GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T,
-                                                     self.db.Ytrain[self.Ymask, :].T,
-                                                     self.kern)
-        else:
-            self.model = GPRegression(self.db.Xtrain[self.Xmask, :].T,
-                                      self.db.Ytrain[self.Ymask, :].T,
-                                      self.kern)
-        self._set_noise()
-
-    def _initial_guess_kernel_params(self, level=0):
-
-        l0 = np.maximum(np.std(self.model.X, axis=0), 1e-8)
-        v0 = np.var(self.model.Y)
-
-        if level == 1:
-            # Optimize NMLL w.r.t. variance analytically, see https://arxiv.org/abs/2101.09747
-            self.kern.lengthscale = l0
-            K_inv = self.kern.variance.values.copy()[0] * self.model.posterior.woodbury_inv.copy()
-            y = self.model.Y.values.copy()
-            # Assuming zero mean
-            v0 = np.mean(np.diag(((y).T @ K_inv @ (y) / self.model.X.shape[0])))
-
-        if level == 2:
-            # Grid search, also see https://arxiv.org/abs/2101.09747
-            min_obj = np.inf
-            best = np.hstack([v0, l0])
-
-            sampler = qmc.LatinHypercube(self.active_dim)
-            sample = sampler.random(n=1000)
-            scaled_samples = qmc.scale(sample, np.ones(self.active_dim) * 0.01, np.ones(self.active_dim) * 100.)
-
-            for s in scaled_samples:
-                try:
-                    self.kern.lengthscale = s * l0
-                    K_inv = self.kern.variance.values.copy()[0] * self.model.posterior.woodbury_inv.copy()
-                    y = self.model.Y.values.copy()
-                    _v = np.maximum(((y).T @ K_inv @ (y) / self.model.X.shape[0])[0, 0], 1e-12)
-                    self.kern.variance = _v
-
-                    if self.model.objective_function() < min_obj:
-                        min_obj = np.copy(self.model.objective_function())
-                        best = np.copy(self.kern.param_array)
-
-                except np.linalg.LinAlgError:
-                    pass
-
-            v0 = best[0]
-            l0 = best[1:]
-
-        return v0, l0
-
     def _fit(self):
+        """
+        Hyperparameter optimization.
+        """
 
         self._build_model()
 
@@ -351,17 +334,95 @@ class GaussianProcess:
                                            f'gp_{self.name}-{self.dbsize}.json'), compress=True)
 
         # Also save parameters as numpy array.
-        # This is more consistent across python versions (avoids pickle)
         np.save(os.path.join(self.options['local'], f'gp_{self.name}-{self.dbsize}.npy'), self.model.param_array)
 
-        # To load it later:
-        # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
-        # m_load.update_model(False)
-        # m_load.initialize_parameter()
-        # m_load[:] = np.load('model_save.npy')
-        # m_load.update_model(True)
+    def _active_learning_step(self, mean, var):
+        """Make active learning step, i.e. select next training point based on max. variance.
+
+
+        Parameters
+        ----------
+        mean : numpy.ndarray
+            GP predictive mean
+        var : numpy.ndarray
+            GP predictive variance
+
+        Returns
+        -------
+        bool
+            Returns true if another training point is found that is not too similar from the exisiting ones.
+        """
+        success = False
+
+        # Acquisiition function
+        xnext = np.argsort(var[:, 0])[::-1]
+        _, nx, ny = mean.shape
+
+        # try to find a point not too close to previous ones
+        for i, x in enumerate(xnext):
+            ix, iy = np.unravel_index(x, (nx, ny))
+            success = not self._similarity_check(ix, iy if self.ndim == 2 else 1)
+
+            if success:
+                # Add to training data
+                self._update_database(ix, iy)
+                break
+
+        return success
+
+    def _init_outfile(self):
+        """
+        Initialize output file (txt)
+        """
+
+        fname = f'gp_{self.name}.out'
+        if os.path.exists(fname):
+            os.remove(fname)
+        self.file = open(fname, 'w', buffering=1)
+        self.file.write(f"# Gaussian process: {self.name}\n# Step DB_size Kernel_params[*] maxvar tol nmll\n")
+
+    def _write_history(self):
+        """
+        Write current status of the GP into the output file. 
+        """
+
+        per_step = [self.step, self.dbsize]
+        [per_step.append(param) for param in self.kern.param_array]
+
+        if self.heteroscedastic_noise:
+            per_step.append(np.mean(self.model.het_Gauss.variance))
+        else:
+            per_step.append(self.model.Gaussian_noise.variance[0])
+
+        per_step.append(self.maxvar)
+        per_step.append(self.tol)
+        per_step.append(-self.model.log_likelihood())
+
+        fmt = ["{:8d}", "{:8d}"] + (len(per_step) - 2) * ["{:8e}"]
+        per_step = [f.format(item) for f, item in zip(fmt, per_step)]
+        out_str = " ".join(per_step) + '\n'
+
+        self.file.write(out_str)
+
+    def _build_model(self):
+        """
+        Initialize GP model        
+        """
+
+        if self.heteroscedastic_noise:
+            self.model = GPHeteroscedasticRegression(self.db.Xtrain[self.Xmask, :].T,
+                                                     self.db.Ytrain[self.Ymask, :].T,
+                                                     self.kern)
+        else:
+            self.model = GPRegression(self.db.Xtrain[self.Xmask, :].T,
+                                      self.db.Ytrain[self.Ymask, :].T,
+                                      self.kern)
+        self._set_noise()
 
     def _set_noise(self):
+        """
+        Set noise variance
+        """
 
         if self.name == 'press':
             index = 0
@@ -381,12 +442,89 @@ class GaussianProcess:
             if self.noise_fixed:
                 self.model.Gaussian_noise.variance.fix()
 
+    def _initial_guess_kernel_params(self, level=0):
+        """Make an initial guess of the kernel hyperparameters (length scale and variance).
+
+        Implements methods proposed in https://arxiv.org/abs/2101.09747
+
+        Parameters
+        ----------
+        level : int, optional
+            Select the level of initial hyperparameter tuning.
+            The default is 0, which does not optimize the initial guess.
+            (1 optimizes variances analytically, 2 additionally chooses best length scales from a grid search)
+
+        Returns
+        -------
+        float
+            Kernel variance
+        numpy.ndarray
+            Kernel lengthscales
+        """
+
+        l0 = np.maximum(np.std(self.model.X, axis=0), 1e-8)
+        v0 = np.var(self.model.Y)
+
+        def variance_opt(ls):
+            # Optimize NMLL w.r.t. variance analytically, see https://arxiv.org/abs/2101.09747
+            self.kern.lengthscale = ls
+            Ntrain = self.model.X.shape[0]
+            K_inv = (self.kern.variance.values[0] * self.model.posterior.woodbury_inv).copy()
+            y = self.model.Y.values.copy()
+            # Assuming zero mean
+            v0 = np.mean(np.diag(((y).T @ K_inv @ (y) / Ntrain)))
+            return v0
+
+        if level == 1:
+            # Only variance, with const, length scale
+            v0 = variance_opt(l0)
+
+        if level == 2:
+            # Grid search for length scales, also see https://arxiv.org/abs/2101.09747
+            min_obj = np.inf
+            best = np.hstack([v0, l0])
+
+            sampler = qmc.LatinHypercube(self.active_dim)
+            sample = sampler.random(n=1000)
+            scaled_samples = qmc.scale(sample, np.ones(self.active_dim) * 0.01, np.ones(self.active_dim) * 100.)
+
+            for s in scaled_samples:
+                try:
+                    _v = variance_opt(s * l0)
+                    self.kern.variance = _v
+
+                    if self.model.objective_function() < min_obj:
+                        min_obj = np.copy(self.model.objective_function())
+                        best = np.copy(self.kern.param_array)
+
+                except np.linalg.LinAlgError:
+                    pass
+
+            v0 = best[0]
+            l0 = best[1:]
+
+        return v0, l0
+
     def _similarity_check(self, ix, iy=1):
+        """Check similarity between a new input point, and the existing training database
+        by evaluating the kernel.
 
-        X_new = self.sol[:, ix, iy, None]
-        Hnew = self.db.select_constant(ix, iy)
+        Parameters
+        ----------
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int, optional
+            Location on the 2D Cartesian grid (y index) (the default is 1)
 
-        Xnew = np.vstack([Hnew, X_new])
+        Returns
+        -------
+        bool
+            True if a similar point exists.
+        """
+
+        Qnew = self.sol[:, ix, iy, None]
+        Cnew = self.db.get_constant(ix, iy)
+        Xnew = np.vstack([Cnew, Qnew])
 
         similar_point_exists = False
 
@@ -402,17 +540,29 @@ class GaussianProcess:
         return similar_point_exists
 
     def _update_database(self, ix, iy):
+        """Update the training database.
 
-        X_new = self.sol[:, ix, iy]
+        Parameters
+        ----------
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int, optional
+            Location on the 2D Cartesian grid (y index) (the default is 1)
+        """
 
-        if X_new.ndim == 1:
-            X_new = X_new[:, None]
+        Q = self.sol[:, ix, iy]
+
+        if Q.ndim == 1:
+            Q = Q[:, None]
 
         self.gp_print(f'\n>>>> Database update in step {self.step + 1} ({self.name}):')
 
-        self.db.update(X_new, ix, iy)
+        self.db.update(Q, ix, iy)
 
     def gp_print(self, msg='', **kwargs):
+        """
+        Wrapper around print function. Prints only if verbose is True.
+        """
         if self.options['verbose']:
             print(msg, **kwargs)
 
@@ -420,15 +570,37 @@ class GaussianProcess:
     def _get_test_input(self):
         """
         Assemble test input data
+
+        Raises
+        ------
+        NotImplementedError
+            Needs to be implemented in the derived classes.
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def _set_solution(self, q):
+        """
+        Store solution in internal variable
+
+        Parameters
+        ----------
+        q : numpy.ndarray
+            Current solution
+
+        Raises
+        ------
+        NotImplementedError
+            Needs to be implemented in the derived classes.
+        """
 
         raise NotImplementedError
 
 
 class GP_stress(GaussianProcess):
+    """
+    Shear stress, 1D problems
+    """
 
     ndim = 1
     name = 'shear'
@@ -436,19 +608,13 @@ class GP_stress(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolShear']
-        # kernel_init_var = gp['varShear']
-        # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
-        # slip only
         Xmask = 4 * [True]
+        # Disable jy input
         Xmask[-1] = False
 
-        # Xmask = 6 * [False]
-        # Xmask[0] = True
-        # Xmask[3] = True
-        # Xmask[4] = True
-
+        # Outputs: tau_xz bottom, tau_xz top
         Ymask = 13 * [False]
         Ymask[5] = True
         Ymask[11] = True
@@ -467,50 +633,10 @@ class GP_stress(GaussianProcess):
         self.sol = q
 
 
-class GP_stress2D(GaussianProcess):
-
-    ndim = 2
-    name = 'shear'
-
-    def __init__(self, db, gp):
-
-        atol = gp['atolShear']
-        # kernel_init_var = gp['varShear']
-        # kernel_init_scale = gp['scaleShear']
-        noise_variance = gp['noiseShear']
-
-        Xmask = 6 * [False]
-        Xmask[0] = True
-        Xmask[3] = True
-        Xmask[4] = True
-        Xmask[5] = True
-
-        Ymask = 13 * [False]
-        Ymask[4] = True
-        Ymask[5] = True
-        Ymask[10] = True
-        Ymask[11] = True
-
-        super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
-
-    def _get_test_input(self):
-        """
-        Test data as input for GP prediction.
-        Does not contain dh_dx in this case (tau_xz does not depend on dh_dx)
-        """
-
-        Xtest_raw = np.dstack([self.db.c, self.sol[0], self.sol[1], self.sol[2]])
-        Xtest = np.reshape(np.transpose(Xtest_raw, (2, 0, 1)), (self.active_dim, -1)).T
-
-        return Xtest
-
-    def _set_solution(self, q):
-
-        self.sol = deepcopy(q)
-        self.sol[2] *= np.sign(q[2])
-
-
 class GP_stress2D_xz(GaussianProcess):
+    """
+    Shear stress (xz), 2D problems
+    """
 
     ndim = 2
     name = 'shearXZ'
@@ -518,20 +644,13 @@ class GP_stress2D_xz(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolShear']
-        # kernel_init_var = gp['varShear']
-        # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
         Xmask = 4 * [True]
-        # Xmask[0] = True
-        # Xmask[3] = True
-        # Xmask[4] = True
-        # Xmask[5] = True
 
+        # Outputs: tau_xz bottom, tau_xz top
         Ymask = 13 * [False]
-        # Ymask[4] = True
         Ymask[5] = True
-        # Ymask[10] = True
         Ymask[11] = True
 
         super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
@@ -554,6 +673,9 @@ class GP_stress2D_xz(GaussianProcess):
 
 
 class GP_stress2D_yz(GaussianProcess):
+    """   
+    Shear stress (yz), 2D problems
+    """
 
     ndim = 2
     name = 'shearYZ'
@@ -565,17 +687,13 @@ class GP_stress2D_yz(GaussianProcess):
         # kernel_init_scale = gp['scaleShear']
         noise_variance = gp['noiseShear']
 
+        # All inputs
         Xmask = 4 * [True]
-        # Xmask[0] = True
-        # Xmask[3] = True
-        # Xmask[4] = True
-        # Xmask[5] = True
 
+        # Outputs: tau_yz bottom, tau_yz top
         Ymask = 13 * [False]
         Ymask[4] = True
-        # Ymask[5] = True
         Ymask[10] = True
-        # Ymask[11] = True
 
         super().__init__(4, db, gp, Xmask, Ymask, atol, noise_variance)
 
@@ -597,6 +715,9 @@ class GP_stress2D_yz(GaussianProcess):
 
 
 class GP_pressure(GaussianProcess):
+    """
+    Normal stress (pressure), 1 dimension
+    """
 
     ndim = 1
     name = 'press'
@@ -604,19 +725,13 @@ class GP_pressure(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolPress']
-        # kernel_init_var = gp['varPress']
-        # kernel_init_scale = gp['scalePress']
         noise_variance = gp['noisePress']
 
-        # slip only
         Xmask = 4 * [True]
+        # Disable jy
         Xmask[-1] = False
 
-        # Xmask = 6 * [False]
-        # Xmask[0] = True
-        # Xmask[3] = True
-        # Xmask[4] = True
-
+        # Output: only p
         Ymask = 13 * [False]
         Ymask[0] = True
 
@@ -634,6 +749,9 @@ class GP_pressure(GaussianProcess):
 
 
 class GP_pressure2D(GaussianProcess):
+    """
+    Normal stress (pressure), 2 dimensions
+    """
 
     ndim = 2
     name = 'press'
@@ -641,16 +759,12 @@ class GP_pressure2D(GaussianProcess):
     def __init__(self, db, gp):
 
         atol = gp['atolPress']
-        # kernel_init_var = gp['varPress']
-        # kernel_init_scale = gp['scalePress']
         noise_variance = gp['noisePress']
 
+        # All inputs
         Xmask = 4 * [True]
-        # Xmask[0] = True
-        # Xmask[3] = True
-        # Xmask[4] = True
-        # Xmask[5] = True
 
+        # Output: only pressure
         Ymask = 13 * [False]
         Ymask[0] = True
 
