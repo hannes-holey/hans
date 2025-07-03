@@ -23,14 +23,13 @@
 #
 
 import numpy as np
-from unittest.mock import Mock
 
 from hans.field import VectorField, TensorField, DoubleTensorField
 from hans.material import Material
 
 from hans.models.viscous_stress_newton import stress_bottom, stress_top, stress_avg
 from hans.models.viscous_stress_powerlaw import stress_powerlaw_bottom, stress_powerlaw_top
-from hans.multiscale.gp import GP_stress, GP_stress2D
+from hans.multiscale.gp import GP_stress, GP_stress2D_xz, GP_stress2D_yz
 
 
 class SymStressField2D(VectorField):
@@ -78,10 +77,15 @@ class SymStressField2D(VectorField):
             Field of slip lengths.
 
         """
+        
+        if self.gp is None:
+            # Only use averaged stress tensor components in the fully deterministic setting.
+            # If we use a surrogate model, we neglect the averaged xx, yy, and xy components.
+            # These components are very small in most (if not all) lubrication scenarios.
 
-        if self.gp is not None:
-            U = self.geometry["U"]
-            V = self.geometry["V"]
+            U = self.geometry['U']
+            V = self.geometry['V']
+            
             eta = Material(self.material).viscosity(U, V, q[0], h[0])
             zeta = self.material["bulk"]
 
@@ -152,51 +156,6 @@ class SymStressField3D(TensorField):
             self.PL = True
         except KeyError:
             self.PL = False
-
-        self.ncalls = 0
-
-        # Saving and loading model consistently across python versions:
-        # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
-        # m_load.update_model(False)
-        # m_load.initialize_parameter()
-        # m_load[:] = np.load('model_save.npy')
-        # m_load.update_model(True)
-        # self.model = m_load
-
-        # Pickle is inconsitent across python versions!
-        # self.model = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/shear_50000.0.json.zip')
-        # model_diag = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/diag_0.1.json.zip')
-
-    def init_gp(self, height, sol, wall):
-
-        if self.gp is not None:
-
-            # 1D only (centerline)
-            h = height[0, :, 1]
-            dh = height[1, :, 1]
-            q = sol[:, :, 1]
-
-            active_learning = {"max_iter": self.disc["Nx"], "threshold": self.gp["tol"]}
-            kernel_dict = {"type": "Mat32", "init_params": [
-                self.gp["var"], self.gp["lh"], self.gp["lrho"], self.gp["lj"]], "ARD": True}
-
-            optimizer = {"type": "bfgs", "num_restarts": self.gp["num_restarts"], "verbose": bool(self.gp["verbose"])}
-
-            self.GP = GP_stress(h, dh, self.gp_wall_stress, {}, [wall], active_learning, kernel_dict, optimizer)
-
-            init_ids = [self.disc["Nx"] // 4, self.disc["Nx"] // 2, 3 * self.disc["Nx"] // 4]
-
-            # Initialize
-            self.GP.setup(q, init_ids)
-
-    def gp_wall_stress(self, q, h, Ls):
-
-        sb = self.get_bot(q, h, Ls)[4]
-        st = self.get_top(q, h, Ls)[4]
-
-        out = np.vstack([sb, st])
-
-        return out
 
     def set(self, q, h, Ls, bound):
         """Wrapper function around set methods for wall stress tensor components.
@@ -335,57 +294,42 @@ class WallStressField3D(DoubleTensorField):
         self.surface = surface
 
         self.gp = gp
-        # self.gp = None
 
         if "PLindex" in self.material.keys():
             raise NotImplementedError
 
         self.ncalls = 0
 
-        # Saving and loading model consistently across python versions:
-        # m_load = GPRegression(np.array([[], [], []]).T, np.array([[], []]).T, initialize=False)
-        # m_load.update_model(False)
-        # m_load.initialize_parameter()
-        # m_load[:] = np.load('model_save.npy')
-        # m_load.update_model(True)
-        # self.model = m_load
+    @property
+    def reset(self):
+        return np.any([gp.reset for gp in self.GP_list])
 
-        # Pickle is inconsitent across python versions!
-        # self.model = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/shear_50000.0.json.zip')
-        # model_diag = GPRegression.load_model('/home/hannes/data/2023-05_hans_gpr_stress/diag_0.1.json.zip')
+    def reset_reset(self):
+        for GP in self.GP_list:
+            GP.reset_reset()
+
+    def increment(self):
+        for GP in self.GP_list:
+            GP.increment()
 
     def init_gp(self, q, db):
 
-        if self.gp is not None:
-
-            active_learning = {
-                "max_iter": self.disc["Nx"],
-                "threshold": self.gp["tol"],
-                "start": self.gp["start"],
-                "Ninit": self.gp["Ninit"],
-                "alpha": self.gp["alpha"],
-                "sampling": self.gp["sampling"],
-            }
-
-            kernel_dict = {"type": "Mat32", "init_params": None, "ARD": True}
-
-            noise = {"type": "Gaussian", "fixed": bool(self.gp["fix"]), "variance": self.gp["sns"]}
-
-            optimizer = {"type": "bfgs", "num_restarts": self.gp["num_restarts"], "verbose": bool(self.gp["verbose"])}
-
-            if q.shape[-1] > 3:
-                # 2D
-                self.GP = GP_stress2D(db, active_learning, kernel_dict, optimizer, noise)
-                # q = sol[:, :, :]  # 1D only
-            else:
-                # 1D
-                self.GP = GP_stress(db, active_learning, kernel_dict, optimizer, noise)
-                # q = sol[:, :, 1]
-
-            self.GP.setup(q)
+        if q.shape[-1] > 3:
+            # 2D
+            self.GP_xz = GP_stress2D_xz(db, self.gp)
+            self.GP_yz = GP_stress2D_yz(db, self.gp)
+            self.GP_list = [self.GP_xz, self.GP_yz]
         else:
-            self.GP = Mock()
-            self.GP.dbsize = 0
+            # 1D
+            self.GP = GP_stress(db, self.gp)
+            self.GP_list = [self.GP]
+
+        for GP in self.GP_list:
+            GP.setup(q)
+
+    def del_gp(self):
+        for GP in self.GP_list:
+            GP.__del__()
 
     @property
     def lower(self):
@@ -416,19 +360,24 @@ class WallStressField3D(DoubleTensorField):
         Ls : numpy.ndarray
             Field of slip lengths.
         """
+        
+        if self.gp is not None:
 
-        if self.gp is not None and self.ncalls > 2 * self.gp["start"]:
-
-            if self.ncalls % 2 == 0:
-                mean, cov = self.GP.active_learning_step(q)
+            if len(self.GP_list) == 1:
+                mean, cov = self.GP.predict(q, self.ncalls % self.gp['_sCalls'] == 0)
+                self.field[self.GP.Ymask[1:]] = mean
             else:
-                mean, cov = self.GP.predict()
+                for GP in self.GP_list:
+                    mean, cov = GP.predict(q, self.ncalls % self.gp['_sCalls'] == 0)
 
-            if self.GP.ndim == 2:
-                mean[0] *= np.sign(q[2])
-                mean[2] *= np.sign(q[2])
+                    if GP.name == 'shearYZ':
+                        # Flux input is always positive
+                        # Here we symmetrize the output for shear stress  (YZ)
+                        # in the case where the test data is negative
+                        mean[0] *= np.sign(q[2])
+                        mean[1] *= np.sign(q[2])
 
-            self.field[self.GP.Ymask[1:]] = mean
+                    self.field[GP.Ymask[1:]] = mean
 
             self.ncalls += 1
 

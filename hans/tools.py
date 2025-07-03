@@ -26,6 +26,9 @@
 import sys
 from mpi4py import MPI
 import numpy as np
+import signal
+
+
 
 
 def abort(errcode=1):
@@ -65,3 +68,8 @@ def power(base, exponent):
     result = np.float_power(complex_base, exponent)
 
     return result.real
+
+
+def handle_signals(func):
+    for s in [signal.SIGHUP, signal.SIGINT, signal.SIGHUP, signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2]:
+        signal.signal(s, func)

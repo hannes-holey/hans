@@ -1,6 +1,6 @@
 #
-# Copyright 2025 Christoph Huber
-#           2020, 2022 Hannes Holey
+# Copyright 2020-2022, 2024-2025 Hannes Holey
+#           2025 Christoph Huber
 #
 # ### MIT License
 #
@@ -26,6 +26,7 @@
 
 import numpy as np
 from mpi4py import MPI
+from scipy import signal
 
 from hans.field import ScalarField, VectorField
 from hans.tools import abort
@@ -167,6 +168,39 @@ class GapHeight(VectorField):
             self.field[0] = h0 + amp * np.sin(- 4 * np.pi * (xx - Lx / 2) * num / Lx)**2
             mask = np.greater(xx, Lx / 2)
             self.field[0][mask] = h0
+
+        elif self.geometry["type"] == "asperity":
+            h0 = self.geometry['hmin']
+            h1 = self.geometry['hmax']
+
+            bumps = self.geometry['nperside']  # per side
+
+            if bumps == 1:
+                hmins = np.array([h0])
+            else:
+                # Gaussian 99% between hmin and hmax
+                std = (h1 - h0) / 2. / 2.57
+                hmins = np.random.normal(loc=h0 + (h1 - h0) / 2., scale=std, size=bumps**2)
+
+            xid = (xx // (Lx / bumps)).astype(int)
+            yid = (yy // (Ly / bumps)).astype(int)
+
+            masks = []
+            for i in range(bumps):
+                for j in range(bumps):
+                    masks.append(np.logical_and(xid == i, yid == j))
+
+            bx = np.pi / (Lx / bumps)
+            by = np.pi / (Ly / bumps)
+
+            zz = np.ones_like(xx) * h1
+
+            for m, h0 in zip(masks, hmins):
+                cx = np.mean(xx[m])
+                cy = np.mean(yy[m])
+                zz[m] -= (h1 - h0) * (np.cos(bx * (xx[m] - cx)) * np.cos(by * (yy[m] - cy)))
+
+            self.field[0] = zz
 
     def add_roughness_from_file(self):
 
@@ -386,9 +420,9 @@ def fourier_synthesis(shape, size, Hurst, rms_height=None, rms_slope=None,
     karr = np.empty(kshape, dtype=np.complex128)
 
     # Creating Fourier representation
-    qy = 2*np.pi*np.arange(kny)/sy
+    qy = 2 * np.pi * np.arange(kny) / sy
     for x in range(nx):
-        if x > nx//2:
+        if x > nx // 2:
             qx = 2 * np.pi * (nx - x) / sx
         else:
             qx = 2 * np.pi * x / sx
@@ -572,6 +606,12 @@ class SlipLength(ScalarField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
+        smooth = int(self.surface.get('smooth', 0))
+        if smooth:
+            window1d = np.abs(signal.windows.hann(smooth))  # was 20 hardcoded in prev version
+            window1d /= window1d.sum()
+            window2d = np.outer(window1d, window1d)
+
         idxx, idyy = self.id_grid
 
         ng = self.disc["nghost"]
@@ -604,7 +644,7 @@ class SlipLength(ScalarField):
             mask = np.less((xx - center[0])**2 + (yy - center[1])**2, radius**2)
 
         elif self.surface["type"] == "circle2":
-            center_1 = (3 * Lx / 4, Ly/2)
+            center_1 = (3 * Lx / 4, Ly / 2)
             center_2 = (Lx / 4, Ly)
             center_3 = (Lx / 4, 0)
             radius = Lx / 4
@@ -622,5 +662,13 @@ class SlipLength(ScalarField):
         elif self.surface["type"] == "full":
             mask = None
 
-        ls = self.surface["lslip"]
-        self.field[0, mask] = ls
+        if smooth:
+            mask = signal.convolve2d(mask, window2d,
+                                     mode='same',
+                                     boundary='wrap' if self.disc['pX'] and self.disc['pY'] else 'symm'
+                                     )
+
+        ls0 = self.surface.get("lslip0", 0.)
+        ls1 = self.surface["lslip"]
+
+        self.field[0] = ls0 + mask * (ls1 - ls0)

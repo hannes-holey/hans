@@ -1,5 +1,5 @@
 #
-# Copyright 2020, 2024 Hannes Holey
+# Copyright 2020, 2025 Hannes Holey
 #
 # ### MIT License
 #
@@ -25,6 +25,9 @@
 
 import numpy as np
 from mpi4py import MPI
+from copy import deepcopy
+from unittest.mock import Mock
+from collections import deque
 
 from hans.field import VectorField
 from hans.stress import SymStressField2D, WallStressField3D
@@ -37,7 +40,7 @@ from hans.multiscale.db import Database
 class ConservedField(VectorField):
 
     def __init__(self, disc, bc, geometry, material, numerics, surface, roughness, gp, md,
-                 q_init=None, t_init=None):
+                 q_init=None, t_init=None, fallback=0):
         """
         This class contains the field of conserved variable densities (rho, jx, jy),
         and the methods to update them. Derived from VectorField.
@@ -76,44 +79,82 @@ class ConservedField(VectorField):
         self.material = material
         self.numerics = numerics
         self.roughness = roughness
+        self.surface = surface
+        self.gp = gp
+        self.geometry = geometry
+        self.md = md
+
+        # self.fallback = fallback
+        self.q_init = q_init
+        self.num_resets = 0
+        self.wait_p_after_reset = 0
+        self.wait_tau_after_reset = 0
+
+        self.initialize(q_init, t_init)
+
+    def initialize(self, q_init, t_init, restart=False):
 
         # initialize gap height and slip length field
-        self.height = GapHeight(disc, geometry, roughness)
-        self.slip_length = SlipLength(disc, surface)
+        self.height = GapHeight(self.disc, self.geometry, self.roughness)
+        self.slip_length = SlipLength(self.disc, self.surface)
 
         # intialize field and time
         if q_init is not None:
-            self.field[:, 1:-1, 1:-1] = q_init[:, self.without_ghost[0], self.without_ghost[1]]
+            self.inner = q_init[:, self.without_ghost[0], self.without_ghost[1]]
             self.fill_ghost_buffer()
             self.time = t_init[0]
             self.dt = t_init[1]
         else:
-            self.field[0] = material['rho0']
+            self.field[0] = self.material['rho0']
             self.time = 0.
-            self.dt = numerics["dt"]
+            self.dt = self.numerics["dt"]
 
-        self.eps = np.nan
+        self.eps = np.inf
+        self.eps_buffer = deque([self.eps, ], 5)
+        self.Ekin_old = deepcopy(self.ekin)
 
-        # Avg stress (xx, yy, xy) -- not used in GP runs, is small anyways
-        self.viscous_stress = SymStressField2D(disc, geometry, material, surface, gp)
+        if not restart:
 
-        # Wall stress (xx, yy, zz, yz, xz, xy)
-        self.wall_stress = WallStressField3D(disc, geometry, material, surface, gp)
+            # self.q_fallback = deepcopy(self.field)
 
-        # Equation of state
-        self.eos = Material(self.material, gp)
+            if self.gp is not None:
+                if self.numerics['integrator'].startswith('MC'):
+                    self.gp['_pCalls'] = 2
+                    self.gp['_sCalls'] = 2
+                elif self.numerics['integrator'] == 'LW':
+                    self.gp['_pCalls'] = 4
+                    self.gp['_sCalls'] = 2
+                elif self.numerics['integrator'] == 'RK3':
+                    self.gp['_pCalls'] = 6
+                    self.gp['_sCalls'] = 3
 
-        if gp is not None:
-            # Initalize global training database
-            db = Database(gp, md, self.height.field,
-                          self.eos.eos_pressure,  # only w/o lammps
-                          self.wall_stress.gp_wall_stress)  # only w/o lammps
+            # Avg stress (xx, yy, xy) -- not used in GP runs, is small anyways
+            self.viscous_stress = SymStressField2D(self.disc, self.geometry, self.material, self.surface, self.gp)
 
-            self.wall_stress.init_gp(self.field, db)
-            self.eos.init_gp(self.field, db)
-        else:
-            self.wall_stress.gp = None
-            self.eos.gp = None
+            # Wall stress (xx, yy, zz, yz, xz, xy)
+            self.wall_stress = WallStressField3D(self.disc, self.geometry, self.material, self.surface, self.gp)
+
+            # Equation of state
+            self.eos = Material(self.material, self.gp)
+
+            if self.gp is not None:
+                # Initalize global training database
+                db = Database(self.gp,
+                              self.md,
+                              {'kappa': self.slip_length.field,
+                               'gap_height': self.height.field},
+                              self.eos.eos_pressure,  # only w/o lammps
+                              self.wall_stress.gp_wall_stress)  # only w/o lammps
+
+                self.wall_stress.init_gp(self.field, db)
+                self.eos.init_gp(self.field, db)
+            else:
+                self.wall_stress.GP_list = []
+                self.wall_stress.gp = None
+
+                self.eos.GP = Mock()
+                self.eos.GP.reset = False
+                self.eos.gp = None
 
     @property
     def mass(self):
@@ -126,7 +167,7 @@ class ConservedField(VectorField):
 
     @property
     def vSound(self):
-        local_vSound = self.eos.eos_sound_speed(self.inner[0])
+        local_vSound = self.eos.get_sound_speed(self.inner)
         recvbuf = np.empty(1, dtype=float)
         self.comm.Allreduce(local_vSound, recvbuf, op=MPI.MAX)
 
@@ -158,12 +199,11 @@ class ConservedField(VectorField):
 
     @property
     def ekin(self):
-        area = self.disc["dx"] * self.disc["dy"]
-        local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0] * area)
+        local_ekin = np.sum((self.inner[1]**2 + self.inner[2]**2) / self.inner[0]**2)
         recvbuf = np.empty(1, dtype=float)
-        self.comm.Allreduce(local_ekin, recvbuf, op=MPI.MAX)
+        self.comm.Allreduce(local_ekin, recvbuf, op=MPI.SUM)
 
-        return recvbuf[0]
+        return recvbuf[0] * self.mass / 2.
 
     @property
     def isnan(self):
@@ -174,8 +214,23 @@ class ConservedField(VectorField):
         return recvbuf[0]
 
     @property
+    def dt_crit(self):
+        return min(self.disc["dx"], self.disc["dy"]) / (self.vmax + self.vSound)
+
+    @property
     def cfl(self):
-        return self.dt * (self.vmax + self.vSound) / min(self.disc["dx"], self.disc["dy"])
+        return self.dt / self.dt_crit
+
+    @property
+    def tv(self):
+        grad_x = np.mean(np.abs(self.inner[:, 1:, :] - self.inner[:, :-1, :]))
+        grad_y = np.mean(np.abs(self.inner[:, :, 1:] - self.inner[:, :, :-1]))
+
+        local_tv = grad_x + grad_y
+        recvbuf = np.empty(1, dtype=float)
+        self.comm.Allreduce(local_tv, recvbuf, op=MPI.SUM)
+
+        return recvbuf[0]
 
     def update(self, i):
         """
@@ -188,12 +243,17 @@ class ConservedField(VectorField):
 
         """
 
+        # if self.fallback > 0:
+        #     if i % self.fallback == 0:
+        #         self.q_fallback = deepcopy(self.field)
+        #         # self.num_resets = 0
+
         integrator = self.numerics["integrator"]
 
         # MacCormack forward backward
         if integrator == "MC" or integrator == "MC_fb":
             try:
-                self.mac_cormack(0)
+                return self.mac_cormack(0)
             except NotImplementedError:
                 print("MacCormack scheme not implemented. Exit!")
                 quit()
@@ -201,7 +261,7 @@ class ConservedField(VectorField):
         # Mac Cormack backward forward
         elif integrator == "MC_bf":
             try:
-                self.mac_cormack(1)
+                return self.mac_cormack(1)
             except NotImplementedError:
                 print("MacCormack scheme not implemented. Exit!")
                 quit()
@@ -209,7 +269,7 @@ class ConservedField(VectorField):
         # MacCormack alternating
         elif integrator == "MC_alt":
             try:
-                self.mac_cormack(i % 2)
+                return self.mac_cormack(i % 2)
             except NotImplementedError:
                 print("MacCormack scheme not implemented. Exit!")
                 quit()
@@ -217,7 +277,7 @@ class ConservedField(VectorField):
         # Richtmyer two-step Lax-Wendroff
         elif integrator == "LW":
             try:
-                self.richtmyer()
+                return self.richtmyer()
             except NotImplementedError:
                 print("Lax-Wendroff scheme not implemented. Exit!")
                 quit()
@@ -225,7 +285,7 @@ class ConservedField(VectorField):
         # 3rd order Runge-Kutta
         elif integrator == "RK3":
             try:
-                self.runge_kutta3()
+                return self.runge_kutta3()
             except NotImplementedError:
                 print("Runge-Kutta 3 scheme not implemented. Exit!")
                 quit()
@@ -253,10 +313,13 @@ class ConservedField(VectorField):
         cfl = np.copy(self.cfl)
         q0 = self.field.copy()
 
-        for dir in directions:
-
-            fX, fY = self.predictor_corrector(self.field, self.height.field, dir)
+        for d in directions:
+            fX, fY = self.predictor_corrector(self.field, self.height.field, d)
+            if self.check_p_reset():
+                return self.post_integrate(skip=True)
             src = self.get_source(self.field, self.height.field, self.slip_length.field)
+            if self.check_tau_reset():
+                return self.post_integrate(skip=True)
 
             self.field = self.field - self.dt * (fX / dx + fY / dy - src)
             self.fill_ghost_buffer()
@@ -267,7 +330,7 @@ class ConservedField(VectorField):
             self.field += self.numerics["fluxLim"] * TVD_MC_correction(q0, cfl)
             self.fill_ghost_buffer()
 
-        self.post_integrate(q0)
+        return self.post_integrate()
 
     def richtmyer(self):
         """
@@ -286,7 +349,7 @@ class ConservedField(VectorField):
         self.leap_frog(q0)
         self.fill_ghost_buffer()
 
-        self.post_integrate(q0)
+        return self.post_integrate()
 
     def runge_kutta3(self):
 
@@ -313,9 +376,55 @@ class ConservedField(VectorField):
                 self.field = 1 / 3 * q0 + 2 / 3 * tmp
                 self.fill_ghost_buffer()
 
-        self.post_integrate(q0)
+        return self.post_integrate()
 
-    def post_integrate(self, q0):
+    def check_p_reset(self):
+        if self.eos.GP.reset:
+            if self.wait_p_after_reset == 0:
+                if self.gp['wait'] < 0:
+                    # Go back to start and pause GP update for some steps
+                    self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+                self.num_resets += 1
+                self.wait_p_after_reset += 1
+                self.eos.ncalls = 0
+                return True
+            elif self.wait_p_after_reset < 2 * abs(self.gp['wait']):
+                # continue waiting
+                self.wait_p_after_reset += 1
+                return False
+            else:
+                # end waiting
+                self.wait_p_after_reset = 0
+                self.eos.GP.reset_reset()
+                return False
+        else:
+            return False
+
+    def check_tau_reset(self):
+        # in 2D, this checks if any of the two GP's is set to 'reset'
+        # if yes, both will be paused
+        if self.wall_stress.reset:
+            if self.wait_tau_after_reset == 0:
+                if self.gp['wait'] < 0:
+                    # Go back to start and pause GP update for some steps
+                    self.initialize(q_init=self.q_init, t_init=(self.time, self.dt), restart=True)
+                self.wait_tau_after_reset += 1
+                self.num_resets += 1
+                self.wall_stress.ncalls = 0
+                return True
+            elif self.wait_tau_after_reset < 2 * abs(self.gp['wait']):
+                # continue waiting
+                self.wait_tau_after_reset += 1
+                return False
+            else:
+                # end waiting
+                self.wait_tau_after_reset = 0
+                self.wall_stress.reset_reset()
+                return False
+        else:
+            return False
+
+    def post_integrate(self, skip=False):
         """
         Compute relative change of solution after time update.
         Update time, and, if adaptive time-stepping is used, also the time step.
@@ -327,30 +436,41 @@ class ConservedField(VectorField):
 
         """
 
-        ng = self.disc["nghost"]
+        if skip:
+            print('>>>> Active learning seems to stall. ', end='')
+            remaining_resets = self.gp["maxResets"] - self.num_resets
+            if remaining_resets < 0:
+                print('Stop immediately.')
+                return 3
+            else:
+                prefix = 'Continue anyways' if self.gp['wait'] > 0 else 'Restart'
+                print(f'{prefix}... ({remaining_resets} resets remaining, pause for {abs(self.gp["wait"])} steps).')
+                return -1
 
         self.time += self.dt
+        self.wall_stress.increment()
+        self.eos.GP.increment()
 
-        dx = np.array([self.disc["dx"], self.disc["dy"]])
-        vmax = np.array([self.vx_max, self.vy_max]) + self.vSound
-        dt_crit = dx / vmax
+        last_cfl = np.copy(self.cfl)
 
         if bool(self.numerics["adaptive"]):
-            CFL = self.numerics["C"]
-            self.dt = CFL * np.amin(dt_crit)
+            self.dt = self.numerics["C"] * self.dt_crit
+
+        self.eps = abs(self.ekin - self.Ekin_old) / self.Ekin_old / last_cfl
+        self.eps_buffer.append(self.eps)
+        self.Ekin_old = deepcopy(self.ekin)
+
+        # convergence
+        if np.all(np.array(self.eps_buffer) < self.numerics['tol']):
+            return 1
+        # maximum time reached
+        elif round(self.time, 15) >= self.numerics['maxT']:
+            return 2
+        # NaN detected
+        elif self.isnan > 0:
+            return 4
         else:
-            CFL = self.dt / np.amax(dt_crit)
-
-        diff = np.empty(1)
-        denom = np.empty(1)
-
-        local_diff = np.sum((self.inner[0] - q0[0, ng:-ng, ng:-ng])**2)
-        local_denom = np.sum(q0[0, ng:-ng, ng:-ng]**2)
-
-        self.comm.Allreduce(local_diff, diff, op=MPI.SUM)
-        self.comm.Allreduce(local_denom, denom, op=MPI.SUM)
-
-        self.eps = np.sqrt(diff[0] / denom[0]) / CFL
+            return 0
 
     def fill_ghost_buffer(self):
         """
@@ -367,7 +487,7 @@ class ConservedField(VectorField):
         (ls, ld), (rs, rd), (bs, bd), (ts, td) = self.get_neighbors()
 
         ng = self.disc["nghost"]
-        ngt = 2 * ng
+        ngt = ng + 1
 
         # Send to left, receive from right
         recvbuf = np.ascontiguousarray(self.field[:, -ng:, :])
@@ -377,9 +497,11 @@ class ConservedField(VectorField):
             self.field[:, -ng:, :] = recvbuf
         else:
             if np.any(x1 == "D"):
-                self.field[x1 == "D", -1, :] = 2. * self.bc["rhox1"] - self.field[x1 == "D", -2, :]
+                self.field[x1 == "D", -ng:,
+                           :] = self.dirichlet_bc_down(self.bc["rhox1"], self.field[x1 == "D", -ngt:-ng, :], ax=1)
             if np.any(x1 == "N"):
-                self.field[x1 == "N", -1, :] = self.field[x1 == "N", -2, :]
+
+                self.field[x1 == "N", -ng:, :] = self.neumann_bc_down(self.field[x1 == "N", -ngt:-ng, :], ax=1)
 
         # Send to right, receive from left
         recvbuf = np.ascontiguousarray(self.field[:, :ng, :])
@@ -389,9 +511,10 @@ class ConservedField(VectorField):
             self.field[:, :ng, :] = recvbuf
         else:
             if np.any(x0 == "D"):
-                self.field[x0 == "D", 0, :] = 2. * self.bc["rhox0"] - self.field[x0 == "D", 1, :]
+                self.field[x0 == "D", :ng, :] = self.dirichlet_bc_up(
+                    self.bc["rhox0"], self.field[x0 == "D", ng:ngt, :], ax=1)
             if np.any(x0 == "N"):
-                self.field[x0 == "N", 0, :] = self.field[x0 == "N", 1, :]
+                self.field[x0 == "N", :ng, :] = self.neumann_bc_up(self.field[x0 == "N", ng:ngt, :], ax=1)
 
         # Send to bottom, receive from top
         recvbuf = np.ascontiguousarray(self.field[:, :, -ng:])
@@ -401,9 +524,10 @@ class ConservedField(VectorField):
             self.field[:, :, -ng:] = recvbuf
         else:
             if np.any(y1 == "D"):
-                self.field[y1 == "D", :, -1] = 2. * self.bc["rhoy1"] - self.field[y1 == "D", :, -2]
+                self.field[y1 == "D", :, -
+                           ng:] = self.dirichlet_bc_down(self.bc["rhoy1"], self.field[y1 == "D", :, -ngt:-ng], ax=2)
             if np.any(y1 == "N"):
-                self.field[y1 == "N", :, -1] = self.field[y1 == "N", :, -2]
+                self.field[y1 == "N", :, -ng:] = self.neumann_bc_up(self.field[y1 == "N", :, -ngt:-ng], ax=2)
 
         # Send to top, receive from bottom
         recvbuf = np.ascontiguousarray(self.field[:, :, :ng])
@@ -413,9 +537,11 @@ class ConservedField(VectorField):
             self.field[:, :, :ng] = recvbuf
         else:
             if np.any(y0 == "D"):
-                self.field[y0 == "D", :, 0] = 2. * self.bc["rhoy0"] - self.field[y0 == "D", :, 1]
+                self.field[y0 == "D", :, :ng] = self.dirichlet_bc_up(
+                    self.bc["rhoy0"], self.field[y0 == "D", :, ng:ngt], ax=2)
             if np.any(y0 == "N"):
-                self.field[y0 == "N", :, 0] = self.field[y0 == "N", :, 1]
+                # self.field[y0 == "N", :, ng:ngt]
+                self.field[y0 == "N", :, :ng] = self.neumann_bc_up(self.field[y0 == "N", :, ng:ngt], ax=2)
 
     def get_source(self, q, h, Ls):
         """
@@ -470,7 +596,7 @@ class ConservedField(VectorField):
 
         return out
 
-    def predictor_corrector(self, q, h, dir):
+    def predictor_corrector(self, q, h, direction):
         """
         Compute predictor/corrector fluxes fro MacCormack's method.
 
@@ -480,7 +606,7 @@ class ConservedField(VectorField):
             Solution field.
         h : np.array
             Gap height (and gradients).
-        dir : int
+        direction : int
             Direction of the substep (-1: forwards / 1: backwards differencing)
 
         Returns
@@ -490,23 +616,25 @@ class ConservedField(VectorField):
 
         """
 
-        Fx = self.hyperbolicFlux(q, 1) - self.diffusiveFlux(q, h, self.slip_length.field, 1)
-        Fy = self.hyperbolicFlux(q, 2) - self.diffusiveFlux(q, h, self.slip_length.field, 2)
+        # GP: 1 pressure call
+        FxH, FyH = self.hyperbolicFlux(q)
+        FxD, FyD = self.diffusiveFlux(q, h, self.slip_length.field)
 
-        flux_x = -dir * (np.roll(Fx, dir, axis=1) - Fx)
-        flux_y = -dir * (np.roll(Fy, dir, axis=2) - Fy)
+        Fx = FxH + FxD
+        Fy = FyH + FyD
+
+        flux_x = -direction * (np.roll(Fx, direction, axis=1) - Fx)
+        flux_y = -direction * (np.roll(Fy, direction, axis=2) - Fy)
 
         return flux_x, flux_y
 
-    def hyperbolicFlux(self, q, ax):
+    def hyperbolicFlux(self, q):
         """Compute hyperbolic flux.
 
         Parameters
         ----------
         q : np.array
             Solution field.
-        ax : int
-            Axis parameter, 1 == x and 2 == y
 
         Returns
         -------
@@ -518,28 +646,29 @@ class ConservedField(VectorField):
         p = self.eos.get_pressure(q)
         inertialess = bool(self.numerics["stokes"])
 
-        F = np.zeros_like(q)
-        if ax == 1:
-            if inertialess:
-                F[0] = q[1]
-                F[1] = p
-            else:
-                F[0] = q[1]
-                F[1] = q[1] * q[1] / q[0] + p
-                F[2] = q[2] * q[1] / q[0]
+        Fx = np.zeros_like(q)
+        Fy = np.zeros_like(q)
 
-        elif ax == 2:
-            if inertialess:
-                F[0] = q[2]
-                F[2] = p
-            else:
-                F[0] = q[2]
-                F[1] = q[1] * q[2] / q[0]
-                F[2] = q[2] * q[2] / q[0] + p
+        if inertialess:
+            # x
+            Fx[0] = q[1]
+            Fx[1] = p
+            # y
+            Fy[0] = q[2]
+            Fy[2] = p
+        else:
+            # x
+            Fx[0] = q[1]
+            Fx[1] = q[1] * q[1] / q[0] + p
+            Fx[2] = q[2] * q[1] / q[0]
+            # y
+            Fy[0] = q[2]
+            Fy[1] = q[1] * q[2] / q[0]
+            Fy[2] = q[2] * q[2] / q[0] + p
 
-        return F
+        return Fx, Fy
 
-    def diffusiveFlux(self, q, h, Ls, ax):
+    def diffusiveFlux(self, q, h, Ls):
         """Compute diffusive flux.
 
         Parameters
@@ -550,8 +679,6 @@ class ConservedField(VectorField):
             Gap height (and gradients).
         Ls : np.array
             Slip length (lower surface)
-        ax : int
-            Axis parameter, 1 == x and 2 == y
 
         Returns
         -------
@@ -562,26 +689,39 @@ class ConservedField(VectorField):
 
         self.viscous_stress.set(q, h, Ls)
 
-        D = np.zeros_like(q)
-        if ax == 1:
-            D[1] = self.viscous_stress.field[0]
-            D[2] = self.viscous_stress.field[2]
+        Dx = np.zeros_like(q)
+        Dy = np.zeros_like(q)
 
-        elif ax == 2:
-            D[1] = self.viscous_stress.field[2]
-            D[2] = self.viscous_stress.field[1]
+        Dx[1] = self.viscous_stress.field[0]
+        Dx[2] = self.viscous_stress.field[2]
 
-        return D
+        Dy[1] = self.viscous_stress.field[2]
+        Dy[2] = self.viscous_stress.field[1]
+
+        return Dx, Dy
 
     def lax_step(self):
 
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, self.slip_length.field, 1)
-        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, self.slip_length.field, 2)
-        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, self.slip_length.field, 1)
-        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, self.slip_length.field, 2)
+        # GP: 2 pressure calls
+        FxHE, _ = self.hyperbolicFlux(self.edgeE)
+        _, FyHN = self.hyperbolicFlux(self.edgeN)
+        FxHW = np.roll(FxHE, 1, axis=1)
+        FyHS = np.roll(FyHN, 1, axis=2)
+
+        FxDE, _ = self.diffusiveFlux(self.edgeE, self.height.edgeE, self.slip_length.field)
+        FxDW, _ = self.diffusiveFlux(self.edgeW, self.height.edgeW, self.slip_length.field)
+        _, FyDN = self.diffusiveFlux(self.edgeN, self.height.edgeN, self.slip_length.field)
+        _, FyDS = self.diffusiveFlux(self.edgeS, self.height.edgeS, self.slip_length.field)
+
+        FE = FxHE - FxDE
+        FW = FxHW - FxDW
+        FN = FyHN - FyDN
+        FS = FyHS - FyDS
+
+        # GP: 1 wall_stress call
         src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
         self.field = self.field - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy - src)
@@ -591,10 +731,23 @@ class ConservedField(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        FE = self.hyperbolicFlux(self.edgeE, 1) - self.diffusiveFlux(self.edgeE, self.height.edgeE, self.slip_length.field, 1)
-        FN = self.hyperbolicFlux(self.edgeN, 2) - self.diffusiveFlux(self.edgeN, self.height.edgeN, self.slip_length.field, 2)
-        FW = self.hyperbolicFlux(self.edgeW, 1) - self.diffusiveFlux(self.edgeW, self.height.edgeW, self.slip_length.field, 1)
-        FS = self.hyperbolicFlux(self.edgeS, 2) - self.diffusiveFlux(self.edgeS, self.height.edgeS, self.slip_length.field, 2)
+        # GP: 2 pressure calls
+        FxHE, _ = self.hyperbolicFlux(self.edgeE)
+        _, FyHN = self.hyperbolicFlux(self.edgeN)
+        FxHW = np.roll(FxHE, 1, axis=1)
+        FyHS = np.roll(FyHN, 1, axis=2)
+
+        FxDE, _ = self.diffusiveFlux(self.edgeE, self.height.edgeE, self.slip_length.field)
+        FxDW, _ = self.diffusiveFlux(self.edgeW, self.height.edgeW, self.slip_length.field)
+        _, FyDN = self.diffusiveFlux(self.edgeN, self.height.edgeN, self.slip_length.field)
+        _, FyDS = self.diffusiveFlux(self.edgeS, self.height.edgeS, self.slip_length.field)
+
+        FE = FxHE - FxDE
+        FW = FxHW - FxDW
+        FN = FyHN - FyDN
+        FS = FyHS - FyDS
+
+        # GP: 1 wall_stree call
         src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
         self.field = q0 - self.dt * ((FE - FW) / dx + (FN - FS) / dy - src)
@@ -614,13 +767,132 @@ class ConservedField(VectorField):
 
         return Q
 
+    def dirichlet_bc_down(self, q0, qadj, ax):
+
+        if qadj.shape[ax] == 1:
+            a1 = 1. / 2.
+            a2 = 0.
+            q1 = qadj
+            q2 = 0.
+        elif qadj.shape[ax] == 2:
+            # weights proposed by Bell et al., PRE 76 (2007)
+            # a1 = (np.sqrt(7) + 1) / 4
+            # a2 = (np.sqrt(7) - 1) / 4
+
+            # weights from piecewise parabolic method (PPM)
+            # Collela and Woodward, J. Comp. Phys. 54 (1984)
+            a1 = 7 / 12
+            a2 = 1 / 12
+
+            if ax == 1:
+                q1 = qadj[:, 1:, :]
+                q2 = qadj[:, :1, :]
+            if ax == 2:
+                q1 = qadj[:, :, 1:]
+                q2 = qadj[:, :, :1]
+
+        Q = (q0 - a1 * q1 + a2 * q2) / (a1 - a2)
+
+        return Q
+
+    def dirichlet_bc_up(self, q0, qadj, ax):
+
+        if qadj.shape[ax] == 1:
+            # linear reconstruction (MC; LW)
+            a1 = 1. / 2.
+            a2 = 0.
+            q1 = qadj
+            q2 = 0.
+        elif qadj.shape[ax] == 2:
+            # PPM reconstruction (RK3)
+            # weights proposed by Bell et al., PRE 76 (2007)
+            # a1 = (np.sqrt(7) + 1) / 4
+            # a2 = (np.sqrt(7) - 1) / 4
+
+            # weights from piecewise parabolic method (PPM)
+            # Collela and Woodward, J. Comp. Phys. 54 (1984)
+            a1 = 7 / 12
+            a2 = 1 / 12
+
+            if ax == 1:
+                q1 = qadj[:, :1, :]
+                q2 = qadj[:, 1:, :]
+            if ax == 2:
+                q1 = qadj[:, :, :1]
+                q2 = qadj[:, :, 1:]
+
+        Q = (q0 - a1 * q1 + a2 * q2) / (a1 - a2)
+
+        return Q
+
+    def neumann_bc_down(self, qadj, ax):
+
+        if qadj.shape[ax] == 1:
+            # linear reconstruction (MC; LW)
+            a1 = 1. / 2.
+            a2 = 0.
+            q1 = qadj
+            q2 = 0.
+        elif qadj.shape[ax] == 2:
+            # PPM reconstruction (RK3)
+            # weights proposed by Bell et al., PRE 76 (2007)
+            # a1 = (np.sqrt(7) + 1) / 4
+            # a2 = (np.sqrt(7) - 1) / 4
+
+            # weights from piecewise parabolic method (PPM)
+            # Collela and Woodward, J. Comp. Phys. 54 (1984)
+            a1 = 7 / 12
+            a2 = 1 / 12
+
+            if ax == 1:
+                q1 = qadj[:, 1:, :]
+                q2 = qadj[:, :1, :]
+            if ax == 2:
+                q1 = qadj[:, :, 1:]
+                q2 = qadj[:, :, :1]
+
+        Q = ((1. - a1) * q1 + a2 * q2) / (a1 - a2)
+
+        return Q
+
+    def neumann_bc_up(self, qadj, ax):
+
+        if qadj.shape[ax] == 1:
+            # linear reconstruction (MC; LW)
+            a1 = 1. / 2.
+            a2 = 0.
+            q1 = qadj
+            q2 = 0.
+        elif qadj.shape[ax] == 2:
+            # PPM reconstruction (RK3)
+            # weights proposed by Bell et al., PRE 76 (2007)
+            # a1 = (np.sqrt(7) + 1) / 4
+            # a2 = (np.sqrt(7) - 1) / 4
+
+            # weights from piecewise parabolic method (PPM)
+            # Collela and Woodward, J. Comp. Phys. 54 (1984)
+            a1 = 7 / 12
+            a2 = 1 / 12
+
+            if ax == 1:
+                q1 = qadj[:, :1, :]
+                q2 = qadj[:, 1:, :]
+            if ax == 2:
+                q1 = qadj[:, :, :1]
+                q2 = qadj[:, :, 1:]
+
+        Q = ((1. - a1) * q1 + a2 * q2) / (a1 - a2)
+
+        return Q
+
     def hyperbolicTVD(self):
 
         Qx = self.cubicInterpolation(self.field, 1)
         Qy = self.cubicInterpolation(self.field, 2)
 
-        Fx = self.hyperbolicFlux(Qx, 1)
-        Fy = self.hyperbolicFlux(Qy, 2)
+        # GP: 2 pressure calls
+        Fx, _ = self.hyperbolicFlux(Qx)
+        _, Fy = self.hyperbolicFlux(Qy)
 
         flux_x = Fx - np.roll(Fx, 1, axis=1)
         flux_y = Fy - np.roll(Fy, 1, axis=2)
@@ -632,22 +904,17 @@ class ConservedField(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        F = self.hyperbolicFlux(q.field, ax)
+        # GP: 1 pressure call
+        FxH, FyH = self.hyperbolicFlux(q.field)
 
-        flux = np.roll(F, -1, axis=ax) - np.roll(F, 1, axis=ax)
+        Fx = np.roll(FxH, -1, axis=1) - np.roll(FxH, 1, axis=1) * dt / (2 * dx)
+        Fy = np.roll(FxH, -1, axis=2) - np.roll(FxH, 1, axis=2) * dt / (2 * dy)
 
-        if ax == 1:
-            dx = self.disc["dx"]
-            return dt / (2 * dx) * flux
-
-        elif ax == 2:
-            dy = self.disc["dy"]
-            return dt / (2 * dy) * flux
+        return Fx, Fy
 
     def diffusiveCD(self):
 
-        Dx = self.diffusiveFlux(self.field, self.height.field, self.slip_length.field, 1)
-        Dy = self.diffusiveFlux(self.field, self.height.field, self.slip_length.field, 2)
+        Dx, Dy = self.diffusiveFlux(self.field, self.height.field, self.slip_length.field)
 
         flux_x = np.roll(Dx, -1, axis=1) - np.roll(Dx, 1, axis=1)
         flux_y = np.roll(Dy, -1, axis=2) - np.roll(Dy, 1, axis=2)

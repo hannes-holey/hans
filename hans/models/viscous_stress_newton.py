@@ -75,8 +75,7 @@ def stress_bottom(q, h, U, V, eta, zeta, Ls, dqx=None, dqy=None, slip="top"):
     v2 = zeta - 2 / 3 * eta
 
     # Voigt ordering: xx, yy, zz, yz, xz, xy
-    _, nx, ny = q.shape
-    tau = np.zeros((6, nx, ny))
+    tau = np.zeros((6, *q.shape[1:]))
 
     if slip == "top":
         # slip top
@@ -295,8 +294,7 @@ def stress_top(q, h, U, V, eta, zeta, Ls, dqx=None, dqy=None, slip="top"):
     v2 = zeta - 2 / 3 * eta
 
     # Voigt ordering: xx, yy, zz, yz, xz, xy
-    _, nx, ny = q.shape
-    tau = np.zeros((6, nx, ny))
+    tau = np.zeros((6, *q.shape[1:]))
 
     # slip top
     if slip == "top":
@@ -604,8 +602,7 @@ def stress_avg(q, h, U, V, eta, zeta, Ls, dqx=None, dqy=None, slip="top"):
     v2 = zeta - 2 / 3 * eta
 
     # Ordering: xx, yy, xy
-    _, nx, ny = q.shape
-    tau = np.zeros((3, nx, ny))
+    tau = np.zeros((3, *q.shape[1:]))
 
     if slip == "top":
         # slip top

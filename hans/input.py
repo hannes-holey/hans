@@ -202,6 +202,10 @@ class Input:
         elif geometry["type"] == "parabolic":
             geometry["hmin"] = float(geometry['hmin'])
             geometry["hmax"] = float(geometry['hmax'])
+        elif geometry["type"] == "asperity":
+            geometry["hmin"] = float(geometry['hmin'])
+            geometry["hmax"] = float(geometry['hmax'])
+            geometry["nperside"] = int(geometry['nperside'])
         elif geometry["type"] == "twin_parabolic":
             geometry["hmin"] = float(geometry['hmin'])
             geometry["hmax"] = float(geometry['hmax'])
@@ -658,24 +662,28 @@ class Input:
     def sanitize_gp(self, gp):
         print("Checking GP parameters... ")
 
-        # Kernel hyperparameter and tolerances
-        mandatory_keys = ['lh', 'lrho', 'lj', 'var', 'pvar', 'tol', 'ptol', 'alpha']
+        # Tolerances
+        mandatory_keys = ['atolShear', 'atolPress']
         mandatory_types = len(mandatory_keys) * [float]
         gp = check_input(gp, mandatory_keys, mandatory_types)
 
-        assert gp['tol'] < gp['var']
-        assert gp['ptol'] < gp['pvar']
+        # Rtol, kernel and noise
+        optional_gp_keys = ['rtol',                                                         # Relative tolerance
+                            # 'scaleShear', 'scalePress', 'varShear', 'varPress',             # Kernel
+                            'noiseShear', 'noisePress', 'noiseFixed', 'heteroscedastic',    # Noise
+                            'optRestarts', 'maxSteps', 'maxResets', 'wait', 'verbose']      # Options
 
-        # Noise and optimizer
-        optional_gp_keys = ['sns', 'snp', 'fix', 'start', 'num_restarts', 'verbose']
-        optional_gp_types = 2 * [float] + 4 * [int]
-        optional_gp_defaults = [0., 0., 0, 1, 10, 1]
+        # optional_gp_types = [float] + 2 * [list] + 4 * [float] + 7 * [int]
+        optional_gp_types = 3 * [float] + 7 * [int]
+        optional_gp_defaults = [0.05,
+                                # [], [], -1., -1.,
+                                0., 0., 0, 0, 10, 5, 5, 100, 1]
         gp = check_input(gp, optional_gp_keys, optional_gp_types, optional_gp_defaults)
 
         # DB stuff
         optional_db_keys = ['remote', 'local', 'storage', 'Ninit', 'sampling']
         optional_db_types = [int, str, str, int, str]
-        optional_db_defaults = [0, '/tmp/dtool/', 's3://test-bucket', 3, 'lhc']
+        optional_db_defaults = [0, '/tmp/dtool/', 's3://test-bucket', 5, 'lhc']
 
         gp = check_input(gp, optional_db_keys, optional_db_types, optional_db_defaults)
 
@@ -684,8 +692,8 @@ class Input:
     def sanitize_md(self, md):
         print("Checking MD parameters... ")
 
-        keys = ['ncpu', 'infile', 'wallfile', 'cutoff', 'temp', 'vWall']
-        types = [int, str, str, float, float, float]
+        keys = ['ncpu', 'infile', 'wallfile', 'cutoff', 'temp', 'vWall', 'tsample']
+        types = [int, str, str, float, float, float, int]
 
         md = check_input(md, keys, types)
 

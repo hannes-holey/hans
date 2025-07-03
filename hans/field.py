@@ -1,5 +1,5 @@
 #
-# Copyright 2019-2021, 2023 Hannes Holey
+# Copyright 2019-2021, 2023-2024 Hannes Holey
 #
 # ### MIT License
 #
@@ -162,6 +162,11 @@ class Field:
     def inner(self):
         ng = self.disc["nghost"]
         return np.ascontiguousarray(self.field[:, ng:-ng, ng:-ng])
+
+    @inner.setter
+    def inner(self, field):
+        ng = self.disc["nghost"]
+        self.field[:, ng:-ng, ng:-ng] = field
 
     @property
     def edgeE(self):

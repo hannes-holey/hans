@@ -1,5 +1,5 @@
 #
-# Copyright 2024 Hannes Holey
+# Copyright 2024-2025 Hannes Holey
 #
 # ### MIT License
 #
@@ -24,6 +24,7 @@
 import os
 import numpy as np
 import dtoolcore
+from socket import gethostname
 try:
     import lammps
 except ImportError:
@@ -38,40 +39,73 @@ from scipy.stats import qmc
 
 from hans.tools import progressbar, bordered_text
 from hans.multiscale.md import run, mpirun
+from hans.multiscale.util import variance_of_mean
 
 
 class Database:
+    """
+    Holds the MD training data and controls generation of new MD runs.
+    """
 
-    def __init__(self, gp, md, height, eos_func, tau_func):
+    def __init__(self, gp, md, const_fields, eos_func, tau_func):
+        """
+
+        Parameters
+        ----------
+        gp : dict
+            GP configuration
+        md : dict
+            MD configuration
+        const_fields : dict
+            Holds constant fields which can be used as features for the GP
+        eos_func : callable
+            Computes the EoS if data does not come from MD
+        tau_func : callable
+            Computes the viscous stress if data does not come from MD
+        """
 
         self.eos_func = eos_func
         self.tau_func = tau_func
-        self.h = height
         self.gp = gp
         self.md = md
 
-        input_dim = 6
-        # h, dh_dx, dh_dy, rho, jx, jy
+        # select either wall slip or gap height as constant input
+        self.mode = self.gp.get('constInput', 'gap')
 
-        output_dim = 13
-        # p, tau_lower (6), tau_upper (6)
+        if self.mode == "slip":
+            self.c = const_fields['kappa']
+            self._features = ["slip_param", "density", "mass_flux_x", "mass_flux_y"]
+        else:  # mode == "gap""
+            self.c = const_fields['gap_height'][0][None, :, :]
+            self._features = ["gap_height", "density", "mass_flux_x", "mass_flux_y"]
 
-        if bool(self.gp['remote']):
-            self._init_remote(input_dim, output_dim)
-        else:
-            self._init_local(input_dim, output_dim)
+        self.h = const_fields['gap_height']
+
+        self._init_database(4, 13)
 
     def __del__(self):
         np.save('Xtrain.npy', self.Xtrain)
         np.save('Ytrain.npy', self.Ytrain)
+        np.save('Ytrainvar.npy', self.Yerr)
 
     @property
     def size(self):
         return self.Xtrain.shape[1]
 
-    def _init_remote(self, input_dim, output_dim):
-        # uses dtool_lookup_server configuration from your dtool config
-        # TODO: Possibility to pass a txtfile w/ uuids or query string
+    def _get_readme_list_remote(self):
+        """Get list of dtool README files for existing MD runs 
+        from a remote data server (via dtool_lookup_api)
+
+        In the future, one should be able to pass a valid MongoDB
+        query string to select data.
+
+        Returns
+        -------
+        list
+            List of dicts containing the readme content
+        """
+
+        # TODO: Pass a textfile w/ uuids or yaml with query string
         query_dict = {"readme.description": {"$regex": "Dummy"}}
         remote_ds_list = query(query_dict)
 
@@ -79,137 +113,222 @@ class Database:
                      for ds in progressbar(remote_ds_list,
                                            prefix="Loading remote datasets based on dtool query: ")]
 
-        if len(remote_ds) > 0:
+        yaml = YAML()
 
-            yaml = YAML()
-            Xtrain = []
-            Ytrain = []
+        readme_list = [yaml.load(ds.get_readme_content()) for ds in remote_ds]
 
-            for ds in remote_ds:
-                readme_string = ds.get_readme_content()
-                rm = yaml.load(readme_string)
+        return readme_list
 
-                Xtrain.append(rm['X'])
-                Ytrain.append(rm['Y'])
+    def _get_readme_list_local(self):
+        """Get list of dtool README files for existing MD runs 
+        from a local directory.
 
-            self.Xtrain = np.array(Xtrain).T
-            self.Ytrain = np.array(Ytrain).T
-        else:
-            print("No matching dtool datasets found. Start with empty database.")
-            self.Xtrain = np.empty((input_dim, 0))
-            self.Ytrain = np.empty((output_dim, 0))
-
-    def _init_local(self, input_dim, output_dim):
-        # All datsets in local directory
+        Returns
+        -------
+        list
+            List of dicts containing the readme content
+        """
 
         if not os.path.exists(self.gp['local']):
             os.makedirs(self.gp['local'])
+            return []
 
-        # Python 3.9+
-        # str.removeprefix (prefix = f'file://{gethostname()}')
-        readme_list = [os.path.join(os.sep, *ds.uri.split(os.sep)[3:], 'README.yml')
-                       for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
+        readme_paths = [os.path.join(ds.uri.removeprefix(f'file://{gethostname()}'), 'README.yml')
+                        for ds in dtoolcore.iter_datasets_in_base_uri(self.gp['local'])]
+
+        yaml = YAML()
+
+        readme_list = []
+        for readme in readme_paths:
+            with open(readme, 'r') as instream:
+                readme_list.append(yaml.load(instream))
+
+        print(f"Loading {len(readme_list)} local datasets in '{self.gp['local']}'.")
+
+        return readme_list
+
+    def _init_database(self, input_dim, output_dim):
+        """Initialize the buffers that store the training data with results from previous MD runs.
+        If no runs are available, empty buffers are created.
+
+        Parameters
+        ----------
+        input_dim : int
+            Number of input dimensions (features)
+        output_dim : int
+            Number of output dimensions
+        """
+
+        if bool(self.gp['remote']):
+            readme_list = self._get_readme_list_remote()
+        else:
+            readme_list = self._get_readme_list_local()
 
         if len(readme_list) > 0:
-            print(f"Loading {len(readme_list)} local datasets in '{self.gp['local']}'.")
 
-            yaml = YAML()
             Xtrain = []
             Ytrain = []
+            Yerr = []
 
-            for readme in readme_list:
-                with open(readme, 'r') as instream:
-                    rm = yaml.load(instream)
+            for rm in readme_list:
+                X = np.array(rm['X'])
+                Y = np.array(rm['Y'])
 
-                Xtrain.append(rm['X'])
-                Ytrain.append(rm['Y'])
+                # older readme files have the height gradients in X which is never used for training
+                # exclude these entries.
+                if len(rm['X']) == 6:
+                    X = X[[0, 3, 4, 5]]
+
+                Xtrain.append(X)
+                Ytrain.append(Y)
+
+                if 'Yerr' in rm.keys():
+                    Yerr.append(rm['Yerr'])
+                else:
+                    Yerr.append([0., 0., 0.])
 
             self.Xtrain = np.array(Xtrain).T
             self.Ytrain = np.array(Ytrain).T
+            self.Yerr = np.array(Yerr).T
+
         else:
             print("No matching dtool datasets found. Start with empty database.")
             self.Xtrain = np.empty((input_dim, 0))
             self.Ytrain = np.empty((output_dim, 0))
+            self.Yerr = np.empty((3, 0))
 
-    def update(self, Qnew, ix, iy):
-        self._update_inputs(Qnew, ix, iy)
-
-    def sampling(self, Q, Ninit, sampling='lhc'):
+    def initialize(self, Q, Ninit, sampling='lhc'):
         """Build initial database with different sampling strategies.
-
-        Select points in two-dimensional space (gap height, flux) to
-        initialize training database. Choose between random, latin hypercube, 
-        and Sobol sampling.
-
 
         Parameters
         ----------
-        Q : [type]
-            [description]
-        Ninit : [type]
-            [description]
+        Q : np.ndarray
+            Current solution (initial conditions in most cases)
+        Ninit : int
+            Number of initial datapoints
+        sampling: str
+            (Quasi-)random sampling strategy. Select one of Latin hypercube ('lhc'),
+            Sobol ('sobol') or random ('random') sampling. The default is 'lhc'.
         """
 
         Nsample = Ninit - self.size
 
         # Bounds for quasi random sampling of initial database
-        l_bounds = [np.amin(self.h[0]), 0.0]
-        u_bounds = [np.amax(self.h[0]), 2. * np.mean(Q[1, :])]
+        jabs = np.hypot(np.mean(Q[1, :]), np.mean(Q[2, :]))
+        rho = np.mean(Q[0, :])
+        l_bounds = np.array([np.amin(self.c), 0.99 * rho, 0.5 * jabs, 0.])
+        u_bounds = np.array([np.amax(self.c), 1.01 * rho, 1.5 * jabs, 0.5 * jabs])
 
         # Sampling
         if sampling == 'random':
-            h_init = l_bounds[0] + np.random.random_sample([Nsample, ]) * (u_bounds[1] - l_bounds[0])
-            jx_init = l_bounds[1] + np.random.random_sample([Nsample, ]) * (u_bounds[1] - l_bounds[0])
+            scaled_samples = l_bounds + np.random.random_sample([Nsample, 4]) * (u_bounds - l_bounds)
+
         elif sampling == 'lhc':
-
-            sampler = qmc.LatinHypercube(d=2)
+            sampler = qmc.LatinHypercube(d=4)
             sample = sampler.random(n=Nsample)
-
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
-            h_init = scaled_samples[:, 0]
-            jx_init = scaled_samples[:, 1]
-            # jy_init = scaled_samples[:, 2]
 
         elif sampling == 'sobol':
-            sampler = qmc.Sobol(d=2)
-
+            sampler = qmc.Sobol(d=4)
             m = int(np.log2(Nsample))
             if int(2**m) != Nsample:
                 m = int(np.ceil(np.log2(Nsample)))
                 print(f'Sample size should be a power of 2 for Sobol sampling. Use Ninit={2**m}.')
             sample = sampler.random_base2(m=m)
-
             scaled_samples = qmc.scale(sample, l_bounds, u_bounds)
-            h_init = scaled_samples[:, 0]
-            jx_init = scaled_samples[:, 1]
 
-        # Remaining inputs (constant)
-        rho_init = np.ones_like(jx_init) * np.mean(Q[0, :])
-        jy_init = np.zeros_like(jx_init)
-        h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])
-        h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
+        c_init = scaled_samples[:, 0]
+        rho_init = scaled_samples[:, 1]
+        jx_init = scaled_samples[:, 2]
+        jy_init = scaled_samples[:, 3]
+
+        if Q.shape[2] <= 3:
+            jy_init = np.zeros_like(jx_init)
 
         # Assemble
-        Hnew = np.vstack([h_init, h_gradx_init, h_grady_init])
+        if self.mode == "slip":
+            # The slip version only works with constant height (so far)
+            h_init = np.ones_like(c_init) * np.mean(self.h[0, :, 1])
+            h_gradx_init = np.zeros_like(h_init)
+            h_grady_init = np.zeros_like(h_init)
+        else:
+            h_init = c_init
+            h_gradx_init = np.ones_like(h_init) * np.mean(self.h[1, :, 1])
+            h_grady_init = np.ones_like(h_init) * np.mean(self.h[2, :, 1])
+
+        Hnew = np.vstack([h_init,
+                          h_gradx_init,
+                          h_grady_init
+                          ])
+
+        Cnew = np.vstack([c_init,
+                          ])
+
         Qnew = np.vstack([rho_init, jx_init, jy_init])
 
-        Xnew = np.vstack([Hnew, Qnew])
+        Xnew = np.vstack([Cnew, Qnew])
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
-        self._update_outputs(Xnew)
+        self._update_outputs(Xnew, Hnew)
+
+    def update(self, Q, ix, iy):
+        """Update the database.
+
+        Parameters
+        ----------
+        Q : numpy.ndarray
+            Current solution at (ix, iy)
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int
+            Location on the 2D Cartesian grid (y index)
+        """
+        Xnew = self._update_inputs(Q, ix, iy)
+        Hnew = self.get_gap_height(ix, iy)
+
+        self._update_outputs(Xnew, Hnew)
 
     def _update_inputs(self, Qnew, ix, iy):
+        """Fill training dataset with new inputs.
 
-        Hnew = self.gap_height(ix, iy)
-        Xnew = np.vstack([Hnew, Qnew])
+        Parameters
+        ----------
+        Qnew : numpy.ndarray
+            Current solution at (ix, iy)
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int
+            Location on the 2D Cartesian grid (y index)
 
+        Returns
+        -------
+        numpy.ndarray
+            New training data
+        """
+        Cnew = self.get_constant(ix, iy)
+        Xnew = np.vstack([Cnew, Qnew])
         self.Xtrain = np.hstack([self.Xtrain, Xnew])
 
-        self._update_outputs(Xnew)
+        return Xnew
 
-    def _update_outputs(self, Xnew):
+    def _update_outputs(self, Xnew, Hnew):
+        """Fill training dataset with new output.
+
+        Parameters
+        ----------
+        Xnew : numpy.ndarray
+            New inputs
+        Hnew : numpy.ndarray
+            Gap hieght at new input locations
+        """
 
         Ynew = np.zeros((13, Xnew.shape[1]))
+        Yerrnew = np.zeros((3, Xnew.shape[1]))
+
+        # In current version of heteroscedastic multi-output GP (single kernel):
+        # one error for normal and one for shear stress.
+        # Otherwise need individual kernels for tau_xy and tau_xy,
+        # and possibly correlations between outputs.
 
         for i in range(Xnew.shape[1]):
 
@@ -219,6 +338,16 @@ class Database:
             proto_ds = dtoolcore.create_proto_dataset(name=ds_name, base_uri=base_uri)
             proto_datapath = os.path.join(base_uri, ds_name, 'data')
 
+            data_acq = 'MD simulation' if self.md is not None else '"MD simulation"'
+
+            text = [f'Run next {data_acq} in: {proto_datapath}']
+            text.append('---')
+
+            for j, (X, f) in enumerate(zip(Xnew[:, i], self._features)):
+                text.append(f'Input {j+1}: {X:8.5f} ({f})')
+
+            print(bordered_text('\n'.join(text)))
+
             # Run LAMMPS...
             if self.md is not None:
 
@@ -226,34 +355,35 @@ class Database:
                 nworker = self.md['ncpu']
                 basedir = os.getcwd()
 
-                kw_args = dict(gap_height=Xnew[0, i],
-                               vWall=self.md['vWall'],
-                               density=Xnew[3, i],
-                               mass_flux_x=Xnew[4, i],
-                               mass_flux_y=Xnew[5, i],
-                               wallfile=os.path.join(basedir, self.md['wallfile']),
-                               inputfile=os.path.join(basedir, self.md['infile']))
+                # Move inputfiles to proto dataset
+                proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), 'in.wall')
+                proto_ds.put_item(os.path.join(basedir, self.md['infile']), 'in.run')
 
-                text = f"""Run next MD simulation in: {proto_datapath}
----
-Gap height: {Xnew[0, i]:.5f}
-Mass density: {Xnew[3, i]:.5f}
-Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
-"""
+                # write variables file (# FIXME: height, indices not hardcoded)
+                var_str = \
+                    f'variable input_gap equal {Hnew[0, i]}\n' + \
+                    f'variable input_dens equal {Xnew[1, i]}\n' + \
+                    f'variable input_fluxX equal {Xnew[2, i]}\n' + \
+                    f'variable input_fluxY equal {Xnew[3, i]}\n'
 
-                print(bordered_text(text))
+                if self.mode == "slip":
+                    var_str += f'variable input_kappa equal {Xnew[0, i]}\n'
+
+                excluded = ['infile', 'wallfile', 'ncpu']
+                for k, v in self.md.items():
+                    if k not in excluded:
+                        var_str += f'variable {k} equal {v}\n'
+
+                with open(os.path.join(proto_datapath, 'in.param'), 'w') as f:
+                    f.writelines(var_str)
 
                 # Run
                 os.chdir(proto_datapath)
 
                 if self.md['ncpu'] > 1:
-                    mpirun('slab', kw_args, nworker)
+                    mpirun('slab', nworker)
                 else:
-                    run('slab', kw_args)
-
-                # Move inputfiles to proto dataset
-                proto_ds.put_item(os.path.join(basedir, self.md['wallfile']), os.path.basename(self.md['wallfile']))
-                proto_ds.put_item(os.path.join(basedir, self.md['infile']), os.path.basename(self.md['infile']))
+                    run('slab')
 
                 # Get stress
                 md_data = np.loadtxt('stress_wall.dat')
@@ -268,6 +398,15 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[0, i] = press
                     Ynew[5, i] = tauL
                     Ynew[11, i] = tauU
+
+                    pL_err = variance_of_mean(md_data[:, 1])
+                    pU_err = variance_of_mean(md_data[:, 3])
+
+                    tauxzL_err = variance_of_mean(md_data[:, 2])
+                    tauxzU_err = variance_of_mean(md_data[:, 4])
+
+                    Yerrnew[0, i] = (pL_err + pU_err) / 2.
+                    Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
 
                 elif md_data.shape[1] == 7:
                     # 2D
@@ -284,17 +423,41 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                     Ynew[10, i] = tauyzU
                     Ynew[11, i] = tauxzU
 
+                    pL_err = variance_of_mean(md_data[:, 1])
+                    pU_err = variance_of_mean(md_data[:, 3])
+
+                    tauxzL_err = variance_of_mean(md_data[:, 2])
+                    tauxzU_err = variance_of_mean(md_data[:, 4])
+                    tauyzL_err = variance_of_mean(md_data[:, 5])
+                    tauyzU_err = variance_of_mean(md_data[:, 6])
+
+                    Yerrnew[0, i] = (pL_err + pU_err) / 2.
+                    Yerrnew[1, i] = (tauxzL_err + tauxzU_err) / 2.
+                    Yerrnew[2, i] = (tauyzL_err + tauyzU_err) / 2.
+
                 os.chdir(basedir)
 
             # ... or use a (possibly noisy) constitutive law
             else:
                 # Artificial noise
-                pnoise = np.random.normal(0., np.sqrt(self.gp['snp']), size=(1, Xnew.shape[1]))
-                snoise = np.random.normal(0., np.sqrt(self.gp['sns']), size=(12, Xnew.shape[1]))
-                Ynew[0, i] = self.eos_func(Xnew[3, i]) + pnoise[:, i]
-                Ynew[1:, i, None] = self.tau_func(Xnew[3:, i, None], Xnew[:3, i, None], 0.) + snoise[:, i, None]
+                pnoise = np.random.normal(0., np.sqrt(self.gp['noisePress']), size=(1, Xnew.shape[1]))
+                snoise = np.random.normal(0., np.sqrt(self.gp['noiseShear']), size=(1, Xnew.shape[1]))
 
-            self.write_readme(Xnew[:, i], Ynew[:, i], os.path.join(base_uri, ds_name))
+                # pressure
+                Ynew[0, i] = self.eos_func(Xnew[1, i]) + pnoise[:, i]
+
+                if self.mode == "slip":
+                    tau = self.tau_func(Xnew[1:, i, None], Hnew[:, i, None], Xnew[0, i, None][0])
+                else:
+                    tau = self.tau_func(Xnew[1:, i, None], Hnew[:, i, None], 0.)
+
+                Ynew[1:, i, None] = tau + snoise[:, i, None]
+
+                Yerrnew = np.zeros((3, Xnew.shape[1]))
+                Yerrnew[0, i] = self.gp['noisePress']
+                Yerrnew[1:, i] = self.gp['noiseShear']
+
+            self.write_readme(os.path.join(base_uri, ds_name), Xnew[:, i], Ynew[:, i], Yerrnew[:, i])
 
             proto_ds.freeze()
 
@@ -302,8 +465,22 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
                 dtoolcore.copy(proto_ds.uri, self.gp['storage'])
 
         self.Ytrain = np.hstack([self.Ytrain, Ynew])
+        self.Yerr = np.hstack([self.Yerr, Yerrnew])
 
-    def write_readme(self, Xnew, Ynew, path):
+    def write_readme(self, path, Xnew, Ynew, Yerrnew):
+        """Write dtool README.yml
+
+        Parameters
+        ----------
+        path : str
+            dtool proto dataset path
+        Xnew : numpy.ndarray
+            New input data
+        Ynew : numpy.ndarray
+            New output data
+        Yerrnew : numpy.ndarray
+            New output data error (signal noise)
+        """
 
         readme_template = """
         project: Multiscale Simulation of Lubrication
@@ -337,23 +514,64 @@ Mass flux: ({Xnew[4, i]:.5f}, {Xnew[5, i]:.5f})
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
         metadata["software_packages"][0]["version"] = str(lammps.__version__)
         if self.md is not None:
-            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall']}
+            metadata['parameters'] = {k: self.md[k] for k in ['cutoff', 'temp', 'vWall', 'tsample']}
 
         out_fname = os.path.join(path, 'README.yml')
 
         X = [float(item) for item in Xnew]
         Y = [float(item) for item in Ynew]
+        Yerr = [float(item) for item in Yerrnew]
 
         metadata['X'] = X
         metadata['Y'] = Y
+        metadata['Yerr'] = Yerr
 
         with open(out_fname, 'w') as outfile:
             yaml.dump(metadata, outfile)
 
-    def gap_height(self, ix, iy=1):
+    def get_gap_height(self, ix, iy=1):
+        """Get the gap height at the input location.
+
+        Parameters
+        ----------
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int, optional
+            Location on the 2D Cartesian grid (y index) 
+            (the default is 1, which [default_description])
+
+        Returns
+        -------
+        numpy.ndarray
+            Local gap height (and gradients)
+        """
 
         Hnew = self.h[:, ix, iy]
         if Hnew.ndim == 1:
             Hnew = Hnew[:, None]
 
         return Hnew
+
+    def get_constant(self, ix, iy=1):
+        """Get the constant field at the input location.
+        Currently, either gap height, or a variable quantifying wall slip.
+
+        Parameters
+        ----------
+        ix : int
+            Location on the 2D Cartesian grid (x index)
+        iy : int, optional
+            Location on the 2D Cartesian grid (y index) 
+            (the default is 1, which [default_description])
+
+        Returns
+        -------
+        numpy.ndarray
+            Local constant field
+        """
+
+        Cnew = self.c[:, ix, iy]
+        if Cnew.ndim == 1:
+            Cnew = Cnew[:, None]
+
+        return Cnew

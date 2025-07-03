@@ -37,6 +37,7 @@ import shutil
 from hans.material import Material
 from hans.plottools import adaptiveLimits
 from hans.integrate import ConservedField
+from hans.tools import handle_signals
 
 
 class Problem:
@@ -98,20 +99,14 @@ class Problem:
         # global write options
         writeInterval = self.options['writeInterval']
 
-        if "maxT" in self.numerics.keys():
-            maxT = self.numerics["maxT"]
-        else:
-            maxT = np.inf
-
-        if "maxIt" in self.numerics.keys():
-            maxIt = self.numerics["maxIt"]
-        else:
+        # TODO: should be done in input via defaults
+        if "maxT" not in self.numerics.keys():
+            self.numerics['maxT'] = np.inf
+        if "maxIt" not in self.numerics.keys():
             maxIt = np.inf
-
-        if "tol" in self.numerics.keys():
-            tol = self.numerics["tol"]
+            self.numerics["maxIt"] = maxIt
         else:
-            tol = 0.
+            maxIt = self.numerics["maxIt"]
 
         # Initial conditions
         q_init, t_init = self.get_initial_conditions()
@@ -127,7 +122,8 @@ class Problem:
                                 self.gp,
                                 self.md,
                                 q_init=q_init,
-                                t_init=t_init)
+                                t_init=t_init,
+                                fallback=self.options['writeRestart'])
 
         rank = self.q.comm.Get_rank()
 
@@ -135,12 +131,13 @@ class Problem:
         self.tStart = datetime.now()
 
         i = 0
-        self._write_mode = 0
+        mode = 0
+        self._stop = False
 
         # Header line for screen output
         if rank == 0:
             print(f"{'Step':10s}\t{'Timestep':12s}\t{'Time':12s}\t{'Epsilon':12s}", flush=True)
-            self.write_to_stdout(i, mode=self._write_mode)
+            self.write_to_stdout(i, mode=mode)
 
         if plot:
             # on-the-fly plotting
@@ -148,60 +145,42 @@ class Problem:
         else:
             nc = self.init_netcdf(out_dir, out_name, rank)
 
-            while self._write_mode == 0:
+            while mode <= 0 and i < maxIt:
 
                 # Perform time update
-                self.q.update(i)
+                mode = self.q.update(i)
 
                 # increase time step
-                i += 1
+                if mode >= 0:
+                    i += 1
 
                 # catch signals and execute signal handler
-                signal.signal(signal.SIGINT, self.receive_signal)
-                signal.signal(signal.SIGTERM, self.receive_signal)
-                signal.signal(signal.SIGHUP, self.receive_signal)
-                signal.signal(signal.SIGUSR1, self.receive_signal)
-                signal.signal(signal.SIGUSR2, self.receive_signal)
+                handle_signals(self.receive_signal)
 
-                # convergence
-                if i > 1 and self.q.eps < tol:
-                    self._write_mode = 1
+                if i == maxIt:
+                    mode = 3
+
+                if self._stop:
+                    mode = 5
                     break
 
-                # maximum time reached
-                if round(self.q.time, 15) >= maxT:
-                    self._write_mode = 2
-                    break
-
-                # maximum number of iterations reached
-                if i >= maxIt:
-                    self._write_mode = 3
-                    break
-
-                # GP stuck
-                if self.q.eps > 1e-3 and i > 5000:
-                    self._write_mode = 3
-                    break
-
-                # NaN detected
-                if self.q.isnan > 0:
-                    self._write_mode = 4
+                if mode > 0:
                     break
 
                 if i % writeInterval == 0:
-                    self.write_to_netcdf(i, nc, mode=self._write_mode)
+                    self.write_to_netcdf(i, nc, mode=mode)
                     if rank == 0:
-                        self.write_to_stdout(i, mode=self._write_mode)
+                        self.write_to_stdout(i, mode=mode)
 
-            self.write_to_netcdf(i, nc, mode=self._write_mode)
+            # write last step
+            self.write_to_netcdf(i, nc, mode=mode)
             if rank == 0:
-                self.write_to_stdout(i, mode=self._write_mode)
+                self.write_to_stdout(i, mode=mode)
 
             # Delete GP objects (and thereby close files)
             if self.gp is not None:
-                del self.q.wall_stress.GP
-                del self.q.eos.GP
-                # TODO: Delete database and trigger writing of all datasets
+                self.q.wall_stress.del_gp()
+                self.q.eos.GP.__del__()
 
     def get_initial_conditions(self):
         """
@@ -509,19 +488,20 @@ maximum number of iterations reached.", flush=True)
         # TODO: scalar quantities from GP
 
         if bool(self.options['writeRestart']):
-            with Dataset(f"{self.outpath.rstrip('.nc')}_restart.nc", "w") as dst:
-                # copy global attributes all at once via dictionary
-                dst.setncatts(nc.__dict__)
-                # copy dimensions
-                for name, dimension in nc.dimensions.items():
-                    dst.createDimension(
-                        name, (len(dimension) if not dimension.isunlimited() else None))
-                # copy all file data except for the excluded
-                for name, variable in nc.variables.items():
-                    x = dst.createVariable(name, variable.datatype, variable.dimensions)
-                    dst[name][:] = nc[name][:]
-                    # copy variable attributes all at once via dictionary
-                    dst[name].setncatts(nc[name].__dict__)
+            if i % self.options['writeRestart'] == 0:
+                with Dataset(f"{self.outpath.rstrip('.nc')}_restart.nc", "w") as dst:
+                    # copy global attributes all at once via dictionary
+                    dst.setncatts(nc.__dict__)
+                    # copy dimensions
+                    for name, dimension in nc.dimensions.items():
+                        dst.createDimension(
+                            name, (len(dimension) if not dimension.isunlimited() else None))
+                    # copy all file data except for the excluded
+                    for name, variable in nc.variables.items():
+                        x = dst.createVariable(name, variable.datatype, variable.dimensions)
+                        dst[name][:] = nc[name][:]
+                        # copy variable attributes all at once via dictionary
+                        dst[name].setncatts(nc[name].__dict__)
 
         if mode > 0:
             nc.setncattr(f"tEnd-{nc.restarts}", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
@@ -539,9 +519,8 @@ maximum number of iterations reached.", flush=True)
             Description of parameter `frame`.
 
         """
-
-        if signum in [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]:
-            self._write_mode = 5
+        signals = [signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGUSR1]
+        self._stop = signum in signals
 
     def plot(self, writeInterval):
         """

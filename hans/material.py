@@ -24,7 +24,6 @@
 
 
 import numpy as np
-from unittest.mock import Mock
 
 from hans.multiscale.gp import GP_pressure, GP_pressure2D
 
@@ -40,7 +39,6 @@ class Material:
         self.material = material
 
         self.gp = gp
-
         self.ncalls = 0
 
         self._eos_config()
@@ -48,52 +46,23 @@ class Material:
 
     def init_gp(self, q, db):
 
-        if self.gp is not None:
-            active_learning = {'max_iter': 200,
-                               'threshold': self.gp['ptol'],
-                               'start': self.gp['start'],
-                               'Ninit': self.gp['Ninit'],
-                               'alpha': self.gp['alpha'],
-                               'sampling': self.gp['sampling']}
-
-            kernel_dict = {'type': 'Mat32',
-                           # [self.gp['pvar'], self.gp['lh'], self.gp['lrho'], self.gp['lj'],  self.gp['lj']],
-                           'init_params': None,
-                           'ARD': True}
-
-            optimizer = {'type': 'bfgs',
-                         'num_restarts': self.gp['num_restarts'],
-                         'verbose': bool(self.gp['verbose'])}
-
-            noise = {'type': 'Gaussian',
-                     'fixed': bool(self.gp['fix']),
-                     'variance': self.gp['snp']}
-
-            if q.shape[-1] > 3:
-                # 2D
-                self.GP = GP_pressure2D(db, active_learning, kernel_dict, optimizer, noise)
-            else:
-                # 1D
-                self.GP = GP_pressure(db, active_learning, kernel_dict, optimizer, noise)
-
-            # Initialize
-            self.GP.setup(q)
+        if q.shape[-1] > 3:
+            # 2D
+            self.GP = GP_pressure2D(db, self.gp)
         else:
-            self.GP = Mock()
-            self.GP.dbsize = 0
+            # 1D
+            self.GP = GP_pressure(db, self.gp)
+
+        # Initialize
+        self.GP.setup(q)
 
     def get_pressure(self, q):
 
-        if self.gp is not None and self.ncalls > 4 * self.gp['start']:
+        if self.gp is not None:
             # In contrast to viscous stress, pressure is not stored internally but just returned.
-            # There are four calls to the EOS within one time step.
+            # There are two calls to the EOS within one time step (MC).
             # We want to perform an active learning step only once.
-            if self.ncalls % 4 == 0:
-                # Active learning needs full q, in order to write into global DB
-                p, cov = self.GP.active_learning_step(q)
-            else:
-                p, cov = self.GP.predict()
-
+            p, cov = self.GP.predict(q, self.ncalls % self.gp['_pCalls'] == 0)
             p = p[0]
         else:
             p = self.eos_pressure(q[0])
@@ -101,6 +70,16 @@ class Material:
         self.ncalls += 1
 
         return p
+
+    def get_sound_speed(self, q):
+
+        if self.gp is not None:
+            dp_dq, _ = self.GP.predict_gradient()
+            c = np.sqrt(np.amax(np.abs(dp_dq[1])))
+        else:
+            c = self.eos_sound_speed(q[0])
+
+        return c
 
     def eos_pressure(self, rho):
         pressure = self._eos_pressure_func(rho, *self._eos_args)

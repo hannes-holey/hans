@@ -1,5 +1,5 @@
 #
-# Copyright 2020, 2023 Hannes Holey
+# Copyright 2020, 2024 Hannes Holey
 #
 # ### MIT License
 #
@@ -44,7 +44,7 @@ def main():
                "vmax": r"Max. velocity $v_\mathrm{max}$",
                "vSound": r"Velocity of sound $c$",
                "dt": r"Time step $\Delta t$",
-               "eps": r"$\Vert\rho_{n+1} -\rho_n \Vert /(\Vert\rho_n\Vert\,CFL)$",
+               "eps": r"$|E_\mathsf{kin}^{n+1} - E_\mathsf{kin}^{n}| / |E_\mathsf{kin}^{n}\mathsf{CFL}|$",
                "ekin": r"Kinetic energy $E_\mathrm{kin}$"}
 
     parser = get_parser()

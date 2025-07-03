@@ -69,9 +69,8 @@ def stress_powerlaw_bottom(q, h, U, V, eta, n, method="exact"):
     s4_2 = (power(zmaxu, 1 / n) * (1 + 1 / n) * (1 + 2 * n) * (q[1] - U * q[0]) * h[0]) / (
         q[0] * (n * power(zmaxu - h[0], 2 + 1 / n) + power(zmaxu, 1 + 1 / n) * (-zmaxu * n + (1 + 2 * n) * h[0]))
     )
-
-    _, nx, ny = q.shape
-    tau = np.zeros((6, nx, ny))
+    
+    tau = np.zeros((6, q.shape[1:]))
 
     tau[3, maskV1] = eta * power(s3_1[maskV1], n)
     tau[3, maskV2] = eta * power(s3_2[maskV2], n)
@@ -189,8 +188,7 @@ def stress_powerlaw_top(q, h, U, V, eta, n, method="exact"):
         )
     )
 
-    _, nx, ny = q.shape
-    tau = np.zeros((6, nx, ny))
+    tau = np.zeros((6, q.shape[1:]))
 
     tau[0, maskU1] = eta * power(s0_1[maskU1], n)
     tau[0, maskU2] = eta * power(s0_2[maskU2], n)

@@ -1,22 +1,23 @@
-# STATE POINT
+# These variables will be defined in in.params
 
-variable 		input_gap equal 20.
-variable 		input_fluxX equal 0.08
-variable 		input_fluxY equal 0.08
-variable 		input_dens equal 0.8
-variable 		input_vWall equal 0.12
-variable 		slabfile index "wall.lmp" 
+## GP input
+# variable 		input_gap equal 20.
+# variable 		input_fluxX equal 0.08
+# variable 		input_dens equal 0.8
 
-variable    	cutoff equal 2.5
+## Additional parameters
+# variable 		vWall equal 0.12
+# variable    	cutoff equal 2.5
+# variable		temp equal 1.0
+# variable		tsample equal 100000
 
-variable		temp equal 1.0
-variable 		ndensAr equal ${input_dens}
+##############
 
 # TIME
-variable    	dt equal 0.005
-variable    	tinit equal 10000
-variable    	ttherm equal 20000 # 50000
-variable    	tsample equal 20000 # 100000
+variable		dt equal 0.005
+variable    	tinit equal 50000
+variable    	ttherm equal 50000
+
 
 # LJ PARAMETERS
 variable    	mAr equal 39.948            ## molar mass Argon (g/mole)
@@ -46,38 +47,20 @@ boundary        p p s
 units           lj
 
 read_data 		${slabfile} group surfL
-# read_data 		../single_wall.lammps group surfL
 
-variable		thickness equal bound(surfL,zmax)-bound(surfL,zmin)
+variable		thickness equal lz
 
 read_data		${slabfile} add append shift 0. 0. $(v_thickness+v_gapheight+v_sigFW) group surfU
 
 pair_style      lj/cut ${cutoff}            ## LJ potential with cutoff radius
 pair_modify     shift yes                   ## LJ shifted to zero at cutoff
 
-# One frozen layer
-variable		layer equal 1.2/sqrt(3)
-region	 		freezeU block INF INF INF INF $(lz-v_layer) INF
-group 			freezeU region freezeU
-region	 		freezeL block INF INF INF INF INF ${layer}
-group 			freezeL region freezeL
-
-# Thermalized layers (wall thermostat)
-variable 		thermal equal (${thickness}-${layer})/2
-region	 		thermL block INF INF INF INF ${layer} $(v_layer+v_thermal)
-region	 		thermU block INF INF INF INF $(lz-v_layer-v_thermal) $(lz-v_layer)
-group			thermL region thermL
-group			thermU region thermU
-group 			therm union thermL thermU
-
 group			solid type 1
-group 			frozen union freezeL freezeU
-group 			notfrozen subtract all frozen
 
-neigh_modify    exclude group frozen frozen
+neigh_modify    exclude group solid solid
 
 variable 		Vfluid equal (v_gapheight+v_sigFW)*lx*ly
-variable    	Natoms equal round(${ndensAr}*v_Vfluid)
+variable    	Natoms equal round(${input_dens}*v_Vfluid)
 variable 		dens equal v_Natoms/v_Vfluid
 
 region			fluid block INF INF INF INF $(bound(surfL,zmax)+v_sigFW/2.) $(bound(surfU,zmin)-v_sigFW/2.) units box
@@ -125,38 +108,23 @@ unfix			2
 ###############
 
 # Couette flow
-velocity		freezeL set v_input_vWall 0. 0. units box
+velocity		surfL set ${vWall} 0. 0. units box
 
 # Poiseuille flow
-variable 		gap equal bound(fluid,zmax)-bound(fluid,zmin)
-variable		uCOM equal ${input_fluxX}*(lx*ly*v_gap)/mass(fluid) 			
-variable		vCOM equal ${input_fluxY}*(lx*ly*v_gap)/mass(fluid) 			
-velocity		fluid set v_uCOM v_vCOM 0. sum yes units box 	
+variable		gap equal bound(fluid,zmax)-bound(fluid,zmin)
+variable		uCOM equal ${input_flux}*(lx*ly*v_gap)/mass(fluid) 			
+velocity		fluid set v_uCOM 0. 0. sum no units box
 
-# 2nd equilibration (Langevin walls)
-fix             1 fluid nve
+fix         	1 fluid nvt temp ${temp} ${temp} $(100.0*dt)
 fix 			2 solid nve
-fix 			2a therm langevin ${temp} ${temp} $(100.0*dt) 435623
-fix 			3 frozen store/force
-fix 			4 frozen setforce 0. 0. 0.
-fix 			5 fluid flow/gauss 1 1 0
+fix 			3 solid setforce 0. 0. 0. 
+fix 			4 fluid flow/gauss 1 0 0
 
-# Subtract COM velocity from wall atoms for thermostatting 
-compute			thermotemp_wall therm temp/com
-fix_modify 		2a temp thermotemp_wall
+compute			thermotemp_partial fluid temp/partial 0 1 0
+fix_modify		1 temp thermotemp_partial
 
-run 			${ttherm}
+run				${ttherm}
 reset_timestep 	0
-
-###############
-
-# Sampling
-
-# fix             1 fluid nve
-# fix 			2 solid nve
-# fix 			2a therm langevin ${temp} ${temp} $(100.0*dt) 435623
-# fix 			3 frozen store/force
-# fix 			4 frozen setforce 0.0 0.0 0.0
 
 
 # Define bins as chunks
@@ -193,27 +161,35 @@ compute 		forceU fluid group/group surfU
 variable		pressL equal -c_forceL[3]/(lx*ly)
 variable 		pressU equal -c_forceU[3]/(lx*ly)
 
-variable		shearxzL equal c_forceL[1]/(lx*ly)
-variable		shearxzU equal c_forceU[1]/(lx*ly)
-
-variable		shearyzL equal c_forceL[2]/(lx*ly)
-variable		shearyzU equal c_forceU[2]/(lx*ly)
+variable		shearL equal c_forceL[1]/(lx*ly)
+variable		shearU equal c_forceU[1]/(lx*ly)
 
 variable 		pressW equal (v_pressL+v_pressU)/2.
 	
+variable 		pressLsq equal v_pressL*v_pressL
+variable		pressUsq equal v_pressU*v_pressU
+variable		pressWsq equal v_pressW*v_pressW
+	
+variable 		shearLsq equal v_shearL*v_shearL
+variable 		shearUsq equal v_shearU*v_shearU
+
 # Averaged outputs
 # Z-PROFILES
 fix				avedens fluid ave/chunk 5 100 500 cchunk density/number ave running overwrite file dens_profile.dat
-fix 			avevelX fluid ave/chunk 5 100 500 cchunk vx ave running overwrite file velX_profile.dat
-fix 			avevelY fluid ave/chunk 5 100 500 cchunk vy ave running overwrite file velY_profile.dat
+fix 			avevel fluid ave/chunk 5 100 500 cchunk vx ave running overwrite file vel_profile.dat
 fix 			avebin fluid ave/time 5 100 500 c_binpress mode vector ave running overwrite file press_profile.dat
 fix 			avebinN fluid ave/time 5 100 500 c_binpressN mode vector ave running overwrite file pressN_profile.dat
 fix 			avebinT fluid ave/time 5 100 500 c_binpressT mode vector ave running overwrite file pressT_profile.dat
 
 # MEAN STRESS
-fix 			avewall all ave/time 5 100 500 v_pressL v_shearxzL v_pressU v_shearxzU v_shearyzL v_shearyzU file stress_wall.dat 
+fix 			avewall all ave/time 5 100 500 v_pressL v_shearL v_pressU v_shearU file stress_wall.dat 
 fix 			avecenter fluid ave/time 5 100 500 c_centerpress[*] file press_center.dat
+
+# STRESS FLUCTUATIONS
+fix 			avewallsq all ave/time 5 100 500 v_pressLsq v_shearLsq v_pressUsq v_shearUsq v_pressWsq file stress_sq_wall.dat 
+fix 			avecentersq fluid ave/time 5 100 500 v_pcentersq file press_sq_center.dat
 
 dump        	1 all custom 5000 out.xyz type id x y z
 
 run 			${tsample}
+
