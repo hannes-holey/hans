@@ -255,6 +255,21 @@ class VectorField(Field):
         super().__init__(disc, 3)
 
 
+class Vector4Field(Field):
+    """4 vector field for height field"""
+
+    def __init__(self, disc):
+        """Constructor.
+
+        Parameters
+        ----------
+        disc : dict
+            Discretization parameters.
+
+        """
+        super().__init__(disc, 4)
+        
+
 class TensorField(Field):
     """Symmetric tensor field derived from Field base class."""
 

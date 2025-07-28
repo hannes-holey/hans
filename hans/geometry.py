@@ -24,15 +24,16 @@
 #
 
 
+import math
 import numpy as np
 from mpi4py import MPI
 from scipy import signal
 
-from hans.field import ScalarField, VectorField
+from hans.field import ScalarField, Vector4Field
 from hans.tools import abort
 
 
-class GapHeight(VectorField):
+class GapHeight(Vector4Field):
 
     def __init__(self, disc, geometry, roughness=None):
 
@@ -332,7 +333,8 @@ class GapHeight(VectorField):
         dx = self.disc["dx"]
         dy = self.disc["dy"]
 
-        self.field[1:] = np.gradient(self.field[0], dx, dy, edge_order=2)
+        self.field[1:3] = np.gradient(self.field[0], dx, dy, edge_order=2)
+        self.field[3].fill(0.)
 
 
 def fourier_synthesis(shape, size, Hurst, rms_height=None, rms_slope=None,

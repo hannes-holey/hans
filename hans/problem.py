@@ -123,6 +123,7 @@ class Problem:
                                 self.md,
                                 q_init=q_init,
                                 t_init=t_init,
+                                options=self.options,
                                 fallback=self.options['writeRestart'])
 
         rank = self.q.comm.Get_rank()
@@ -146,9 +147,12 @@ class Problem:
             nc = self.init_netcdf(out_dir, out_name, rank)
 
             while mode <= 0 and i < maxIt:
+                
+                # perform wall update
+                self.q.update_wall(i)
 
-                # Perform time update
-                mode = self.q.update(i)
+                # perform fluid time update
+                mode = self.q.update_fluid(i)
 
                 # increase time step
                 if mode >= 0:
@@ -347,6 +351,66 @@ class Problem:
             nc.createVariable('eps', 'f8', ('step'))
             nc.createVariable('ekin', 'f8', ('step'))
 
+            # create wall acceleration and momentum variable
+            if self.material['wallmode'] == 'force':
+                nc.createVariable('wallforce_dp', 'f8', ('step'))
+                nc.createVariable('wallforce_u', 'f8', ('step'))
+                nc.createVariable('wallforce_dh', 'f8', ('step'))
+
+            # create height variables
+            var3_1 = nc.createVariable('height', 'f8', ('step', 'x', 'y'))
+            var3_2 = nc.createVariable('dh_dt', 'f8', ('step', 'x', 'y'))
+            var3_1.set_collective(True)
+            var3_2.set_collective(True)
+
+            # gradient analysis
+            if bool(self.options['gradientAnalysis']):
+                # create a dimension for pre and corrector values
+                nc.createDimension('pre_cor', 2)
+
+                # create gradient analysis variables
+                var_ga_rho_t = nc.createVariable('ga_rho_t', 'f8', ('step', 'x', 'y'))
+                var_ga_jx_x = nc.createVariable('ga_jx_x', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_h_t_rho = nc.createVariable('ga_h_t_rho', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_h_x_jx = nc.createVariable('ga_h_x_jx', 'f8', ('step', 'x', 'y', 'pre_cor'))
+
+                var_ga_jx_t = nc.createVariable('ga_jx_t', 'f8', ('step', 'x', 'y'))
+                var_ga_p_x = nc.createVariable('ga_p_x', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_uxjx_x = nc.createVariable('ga_uxjx_x', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_tauxx_x = nc.createVariable('ga_tauxx_x', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_h_x_uxjx = nc.createVariable('ga_h_x_uxjx', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_h_x_tauxx = nc.createVariable('ga_h_x_tauxx', 'f8', ('step', 'x', 'y', 'pre_cor'))
+
+                var_ga_tauxz = nc.createVariable('ga_tauxz', 'f8', ('step', 'x', 'y', 'pre_cor'))
+                var_ga_h_t_jx = nc.createVariable('ga_h_t_jx', 'f8', ('step', 'x', 'y', 'pre_cor'))
+
+                nc.createVariable('ga_mass', 'f8', ('step'))
+                var_ga_ux = nc.createVariable('ga_ux', 'f8', ('step', 'x', 'y'))
+                var_ga_ux_at_hmin = nc.createVariable('ga_ux_at_hmin', 'f8', ('step', 'x', 'y'))
+
+                var_p_prev = nc.createVariable('p_prev', 'f8', ('step', 'x', 'y'))
+                var_g_u = nc.createVariable('g_u', 'f8', ('step', 'x', 'y'))
+
+                # Set collective write mode for all variables
+                for var in [var_ga_rho_t, var_ga_jx_x, var_ga_h_t_rho, var_ga_h_x_jx,
+                           var_ga_jx_t, var_ga_p_x, var_ga_uxjx_x, var_ga_tauxx_x,
+                           var_ga_h_x_uxjx, var_ga_h_x_tauxx, var_ga_tauxz, var_ga_h_t_jx,
+                           var_ga_ux, var_ga_ux_at_hmin, var_p_prev, var_g_u]:
+                    var.set_collective(True)
+                
+            # create alpha, p, u variables
+            if bool(self.material["alpha"]):
+                var4 = nc.createVariable('f_alpha', 'f8', ('step', 'x', 'y'))
+                var4.set_collective(True)
+            
+            if bool(self.options['pressure']):
+                var5 = nc.createVariable('p', 'f8', ('step', 'x', 'y'))
+                var5.set_collective(True)
+            
+            if bool(self.material["elastic"]):
+                var6 = nc.createVariable('u', 'f8', ('step', 'x', 'y'))
+                var6.set_collective(True)
+
             # write metadata
             nc.setncattr(f"tStart-{nc.restarts}", self.tStart.strftime("%d/%m/%Y %H:%M:%S"))
             nc.setncattr("version", metadata.version('hans'))
@@ -485,6 +549,52 @@ maximum number of iterations reached.", flush=True)
         nc.variables["eps"][step] = self.q.eps
         nc.variables["ekin"][step] = self.q.ekin
 
+        # gradient analysis
+        if bool(self.options['gradientAnalysis']):
+            
+            nc.variables['ga_rho_t'][step, xrange, yrange] = self.q.ga_rho_t
+            nc.variables['ga_jx_t'][step, xrange, yrange] = self.q.ga_jx_t
+
+            for i in range(2):
+                nc.variables['ga_jx_x'][step, xrange, yrange, i] = self.q.ga_jx_x[i]
+                nc.variables['ga_h_t_rho'][step, xrange, yrange, i] = self.q.ga_h_t_rho[i]
+                nc.variables['ga_h_x_jx'][step, xrange, yrange, i] = self.q.ga_h_x_jx[i]
+
+                nc.variables['ga_p_x'][step, xrange, yrange, i] = self.q.ga_p_x[i]
+                nc.variables['ga_uxjx_x'][step, xrange, yrange, i] = self.q.ga_uxjx_x[i]
+                nc.variables['ga_tauxx_x'][step, xrange, yrange, i] = self.q.ga_tauxx_x[i]
+                nc.variables['ga_h_x_uxjx'][step, xrange, yrange, i] = self.q.ga_h_x_uxjx[i]
+                nc.variables['ga_h_x_tauxx'][step, xrange, yrange, i] = self.q.ga_h_x_tauxx[i]
+                nc.variables['ga_tauxz'][step, xrange, yrange, i] = self.q.ga_tauxz[i]
+                nc.variables['ga_h_t_jx'][step, xrange, yrange, i] = self.q.ga_h_t_jx[i]
+
+            nc.variables["ga_mass"][step] = self.q.ga_mass
+            nc.variables['ga_ux'][step, xrange, yrange] = self.q.ga_ux
+            nc.variables['ga_ux_at_hmin'][step, xrange, yrange] = self.q.ga_ux_at_hmin
+
+            nc.variables['p_prev'][step, xrange, yrange] = self.q.p_prev
+            nc.variables['g_u'][step, xrange, yrange] = self.q.g_u
+
+        # wall acceleration due to force
+        if self.material['wallmode'] == 'force':
+            nc.variables["wallforce_dp"][step] = self.q.delta_p_wallforce
+            nc.variables["wallforce_u"][step] = self.q.dh_dt_wallforce
+            nc.variables["wallforce_dh"][step] = self.q.int_dh_wallforce
+
+        # height field
+        nc.variables['height'][step, xrange, yrange] = self.q.height.inner[0]
+        nc.variables['dh_dt'][step, xrange, yrange] = self.q.height.inner[3]
+
+        # alpha, p, u
+        if bool(self.material["alpha"]):
+            nc.variables['f_alpha'][step, xrange, yrange] = self.q.alpha
+
+        if bool(self.options['pressure']):
+            nc.variables['p'][step, xrange, yrange] = self.q.p
+
+        if bool(self.material["elastic"]):
+            nc.variables['u'][step, xrange, yrange] = self.q.u
+
         # TODO: scalar quantities from GP
 
         if bool(self.options['writeRestart']):
@@ -582,7 +692,7 @@ maximum number of iterations reached.", flush=True)
 
         """
 
-        self.q.update(i)
+        self.q.update_fluid(i)
         fig.suptitle('time = {:.3g}'.format(self.q.time))
 
         ax[0, 0].lines[0].set_ydata(self.q.centerline_x[1])

@@ -194,7 +194,92 @@ class DatasetSelector:
             out.append((xdata, ydata))
 
         return out
+    
+    def get_pre_cor_centerlines(self, key=None, freq=1, dir='x', pre_cor_idx=None):
+        """Returns variable values of specified key in either x- or y-direction for predictor-corrector variables.
 
+        Parameters
+        ----------
+        key : str or None
+            Variable to read. If None, returns data for all available predictor-corrector variables.
+        freq : int, defaults to 1
+            Timestep sample step.
+        dir : str, defaults to 'x'
+            Spatial sampling direction ('x' or 'y').
+        pre_cor_idx : int or None, defaults to None
+            If 0, returns only predictor data. If 1, returns only corrector data.
+            If None, returns both as a tuple (predictor, corrector).
+
+        Returns
+        ----------
+        out : list of tuples
+            Each tuple contains:
+            - time: numpy array of timestamps
+            - xdata: numpy array of spatial coordinates
+            - ydata: if key is None, a dictionary mapping variable names to data
+                        if key is specified, the data for that variable
+                        if pre_cor_idx is None, data is a tuple (predictor, corrector)
+
+        Usage
+        ----------
+        # Get both predictor and corrector for a specific variable:
+        time, x, (predictor, corrector) = files.get_pre_cor_centerlines("ga_p_x")[0]
+        
+        # Get only predictor data:
+        time, x, predictor_data = files.get_pre_cor_centerlines("ga_p_x", pre_cor_idx=0)[0]
+        """
+
+        out = []
+        keys = [
+            "ga_jx_x",
+            "ga_h_t_rho",
+            "ga_h_x_jx",
+            "ga_p_x",
+            "ga_uxjx_x",
+            "ga_tauxx_x",
+            "ga_h_x_uxjx",
+            "ga_h_x_tauxx",
+            "ga_tauxz",
+            "ga_h_t_jx"
+        ]
+
+        for data in self._ds.values():
+            Nx, Ny, Lx, Ly = self._get_grid(data)
+
+            if dir == "x":
+                xdata = (np.arange(Nx) + 0.5) * Lx / Nx
+            elif dir == "y":
+                xdata = (np.arange(Ny) + 0.5) * Ly / Ny
+
+            time = np.array(data.variables["time"][::freq])
+            
+            # If a specific key is requested
+            try:
+                frames = np.array(data.variables[key][::freq])
+                
+                if dir == "x":
+                    if pre_cor_idx is None:
+                        predictor = frames[:, :, Ny // 2, 0]
+                        corrector = frames[:, :, Ny // 2, 1]
+                        ydata = (predictor, corrector)
+                    else:
+                        ydata = frames[:, :, Ny // 2, pre_cor_idx]
+                elif dir == "y":
+                    if pre_cor_idx is None:
+                        predictor = frames[:, Nx // 2, :, 0]
+                        corrector = frames[:, Nx // 2, :, 1]
+                        ydata = (predictor, corrector)
+                    else:
+                        ydata = frames[:, Nx // 2, :, pre_cor_idx]
+            except (KeyError, IndexError):
+                # Key not found or doesn't have the right dimensions
+                ydata = None
+                print(f"Warning: Variable {key} not found or doesn't have the expected dimensions")
+
+            out.append((time, xdata, predictor, corrector))
+
+        return out
+    
     def get_centerlines(self, key=None, freq=1, dir='x'):
         """returns variable values of specified key in either x- or y-direction. If key is pressure, it is calculated from rho using EOS
 
@@ -220,7 +305,9 @@ class DatasetSelector:
         """
 
         out = []
-        keys = ["rho", "p", "jx", "jy"]
+        keys = ["rho", "p", "jx", "jy", "height", "f_alpha", "u", 'ga_rho_t', 'drhou_dx', 's0', 
+                'ga_jx_t', 'drhou2_dx', 'dp_dx', 'dtauxx_dx', 'dtauxz', 'dh_dt_rhou', 'dh_dt',
+                'g_u', 'p_prev', 'dh_dx_source', 'ga_ux']
 
         for data in self._ds.values():
 
@@ -272,7 +359,8 @@ class DatasetSelector:
 
         out = []
 
-        keys = ["mass", "eps", "vSound", "vmax", "dt", "ekin"]
+        keys = ["mass", "eps", "vSound", "vmax", "dt", "ekin", "wallforce_dp", "wallforce_u", "wallforce_dh", 'ga_mass',
+                'pu_iter']
 
         for data in self._ds.values():
 

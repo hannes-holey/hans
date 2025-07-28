@@ -86,6 +86,10 @@ class Input:
             else:
                 ic = {"type": "restart", "file": self.restartFile}
 
+            # Combined logic
+            if bool(material['alpha']) or bool(material['elastic']) or (material['wallmode']=='force'):
+                options['pressure'] = 1
+
             print("Sanity checks completed. Start simulation!")
             print(60 * "-")
 
@@ -175,6 +179,15 @@ class Input:
                 options[k] = abs(t(options[k]))
             else:
                 options[k] = d
+
+        if not 'gradientAnalysis' in options.keys():
+            options['gradientAnalysis'] = 0
+
+        if not 'performanceAnalysis' in options.keys():
+            options['performanceAnalysis'] = 0
+
+        if not 'ignoreStresses' in options.keys():
+            options['ignoreStresses'] = 0
 
         return options
 
@@ -456,6 +469,14 @@ class Input:
             else:
                 material["PLmethod"] = "exact"
 
+        if not "alpha" in material.keys():
+            material['alpha'] = 0
+        if not "elastic" in material.keys():
+            material['elastic'] = 0
+        else:
+            material['E'] = float(material['E'])
+            material['v'] = float(material['v'])
+            
         return material
 
     def sanitize_BC(self, bc, disc, material):
