@@ -25,7 +25,8 @@ dependencies = [
 	"scipy>=1.12",
 	"GPy==1.13.2",
 	"dtool",
-	"dtool-lookup-api==0.5.1"
+	"dtool-lookup-api==0.5.1",
+	"ContactMechanics==1.6.1"
 ]
 
 [project.optional-dependencies]
