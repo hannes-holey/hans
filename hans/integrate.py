@@ -164,10 +164,10 @@ class ConservedField(VectorField):
                 self.eos.GP = Mock()
                 self.eos.GP.reset = False
                 self.eos.gp = None
-        
+
         if bool(self.options['gradientAnalysis']):
             self.initialize_gradientAnalysis()
-        
+
         if bool(self.material['elastic']):
             self.initialize_elasticDeform()
 
@@ -181,7 +181,7 @@ class ConservedField(VectorField):
         """initialize variables for gradient analysis
         """
         # gradient analysis variables
-        self.ga_rho_t = np.zeros_like(self.inner[0]) 
+        self.ga_rho_t = np.zeros_like(self.inner[0])
         self.ga_jx_x = [np.zeros_like(self.inner[0]), np.zeros_like(self.inner[0])]
         self.ga_h_t_rho = [np.zeros_like(self.inner[0]), np.zeros_like(self.inner[0])]
         self.ga_h_x_jx = [np.zeros_like(self.inner[0]), np.zeros_like(self.inner[0])]
@@ -204,17 +204,17 @@ class ConservedField(VectorField):
         """initialize variables for elastic deformation
         """
         self.elasticDeform = ElasticDeformation(size=(self.disc['Nx'], self.disc['Ny']),
-                                               dx=self.disc['dx'], dy=self.disc['dy'],
-                                               E=self.material['E'], v=self.material['v'],
-                                               perX=self.disc['pX'], perY=self.disc['pY'],
-                                               bc=self.bc)
+                                                dx=self.disc['dx'], dy=self.disc['dy'],
+                                                E=self.material['E'], v=self.material['v'],
+                                                perX=self.disc['pX'], perY=self.disc['pY'],
+                                                bc=self.bc)
 
         self.u = np.zeros_like(self.inner[0])
         self.g_u = np.zeros_like(self.inner[0])
         self.u_prev = np.zeros_like(self.field[0])
         self.du_dt = np.zeros_like(self.field[0])
         self.du_dt_prev = np.zeros_like(self.field[0])
-    
+
     def initialize_wallforce(self):
         """initialize variables for wallforce
         """
@@ -312,36 +312,38 @@ class ConservedField(VectorField):
         arr__ = arr.reshape(-1)
         arr_ = np.concatenate(([arr__[0]], arr__, [arr__[-1]]))
         arr_ext = np.tile(arr_[:, np.newaxis], (1, 3))
-        
+
         return arr_ext
 
     def update_wall(self, i):
 
-        u, du, u_p = self.elasticDeform.update_deformation_underrelax(self.p, self.u)
-        self.u = u
-        self.du_dt = du / self.dt
-        self.g_u = u_p
+        if bool(self.material["elastic"]):
 
-        h_min = np.min(self.height.field[0])
-        dh_wallforce = self.elasticDeform.update_wallforce_pi(self.p, h_min)
-        self.dh_dt_wallforce = dh_wallforce / self.dt
-        self.int_dh_wallforce += dh_wallforce
+            u, du, u_p = self.elasticDeform.update_deformation_underrelax(self.p, self.u)
+            self.u = u
+            self.du_dt = du / self.dt
+            self.g_u = u_p
 
-        dh_wallforce = 0.
-        du.fill(0.)
+            h_min = np.min(self.height.field[0])
+            dh_wallforce = self.elasticDeform.update_wallforce_pi(self.p, h_min)
+            self.dh_dt_wallforce = dh_wallforce / self.dt
+            self.int_dh_wallforce += dh_wallforce
 
-        dh = self.extend_inner(du) + dh_wallforce
+            dh_wallforce = 0.
+            du.fill(0.)
 
-        self.height.field[0] = self.height.field[0]  + dh
-        self.height.field[3] = dh / self.dt
-        self.height.field[1:3] = np.gradient(self.height.field[0], self.disc["dx"], 
-                                             self.disc["dy"], edge_order=2) # m/m
+            dh = self.extend_inner(du) + dh_wallforce
+
+            self.height.field[0] = self.height.field[0] + dh
+            self.height.field[3] = dh / self.dt
+            self.height.field[1:3] = np.gradient(self.height.field[0], self.disc["dx"],
+                                                 self.disc["dy"], edge_order=2)  # m/m
 
         return
-    
+
     def compute_gradientAnalysis_terms(self, direction, iter):
 
-        if (self.i+1) % self.options['writeInterval'] != 0:
+        if (self.i + 1) % self.options['writeInterval'] != 0:
             return
 
         # ---------------- density --------------------
@@ -461,7 +463,7 @@ class ConservedField(VectorField):
         cfl = np.copy(self.cfl)
         q0 = self.field.copy()
 
-        for i,d in enumerate(directions):
+        for i, d in enumerate(directions):
 
             fX, fY = self.predictor_corrector(self.field, self.height.field, d)
             if self.check_p_reset():
@@ -470,7 +472,7 @@ class ConservedField(VectorField):
             if self.check_tau_reset():
                 return self.post_integrate(skip=True)
 
-            if bool(self.options['gradientAnalysis']): # at this position because field is not updated yet but stress is computed
+            if bool(self.options['gradientAnalysis']):  # at this position because field is not updated yet but stress is computed
                 self.compute_gradientAnalysis_terms(direction=d, iter=i)
 
             self.field = self.field - self.dt * (fX / dx + fY / dy + src)
@@ -483,7 +485,7 @@ class ConservedField(VectorField):
             self.ga_rho_t = grad[0][1:-1, 1:-1] / self.dt
             self.ga_jx_t = grad[1][1:-1, 1:-1] / self.dt
             self.ga_ux = self.inner[1] / self.inner[0]
-            self.mass_sum = np.sum(self.inner[0] * self.height.inner[0] * dx * dy) # kg
+            self.mass_sum = np.sum(self.inner[0] * self.height.inner[0] * dx * dy)  # kg
 
         if "fluxLim" in self.numerics.keys():
             self.field += self.numerics["fluxLim"] * TVD_MC_correction(q0, cfl)
@@ -523,7 +525,7 @@ class ConservedField(VectorField):
             fX, fY = self.hyperbolicTVD()
             src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
-            tmp = self.field - self.dt * (fX / dx + fY / dy + dX / (2 * dx) + dY / (2 * dy) - src)
+            tmp = self.field - self.dt * (fX / dx + fY / dy + dX / (2 * dx) + dY / (2 * dy) + src)
 
             if stage == 1:
                 self.field = tmp
@@ -736,28 +738,21 @@ class ConservedField(VectorField):
         # origin bottom, U_top = 0, U_bottom = U
         out[0] = (q[1] * h[1] + q[2] * h[2]) / h[0]
 
-        if bool(self.numerics["stokes"]):
-            out[1] = ((stress[0] - self.wall_stress.upper[0]) * h[1] +
-                      (stress[2] - self.wall_stress.upper[5]) * h[2] -
-                      (self.wall_stress.upper[4] - self.wall_stress.lower[4])) / h[0]
+        if not bool(self.options['ignoreStresses']):
+            out[1] = -((stress[0] - self.wall_stress.upper[0]) * h[1] +
+                       (stress[2] - self.wall_stress.upper[5]) * h[2] +
+                       self.wall_stress.upper[4] - self.wall_stress.lower[4]) / h[0]
 
-            out[2] = ((stress[2] - self.wall_stress.upper[5]) * h[1] +
-                      (stress[1] - self.wall_stress.upper[1]) * h[2] -
-                      (self.wall_stress.upper[3] - self.wall_stress.lower[3])) / h[0]
-        else:
-            if bool(self.options['ignoreStresses']):
-                out[1] = (q[1] * q[1] / q[0] * h[1] + q[1] * q[2] / q[0] * h[2]) / h[0]
-                out[2] = (q[2] * q[1] / q[0] * h[1] + q[2] * q[2] / q[0] * h[2]) / h[0]
-            else:
-                out[1] = ((q[1] * q[1] / q[0] + stress[0] - self.wall_stress.upper[0]) * h[1] +
-                        (q[1] * q[2] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[2] -
-                        (self.wall_stress.upper[4] - self.wall_stress.lower[4])) / h[0]
-                out[2] = ((q[2] * q[1] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[1] +
-                        (q[2] * q[2] / q[0] + stress[1] - self.wall_stress.upper[1]) * h[2] -
-                        (self.wall_stress.upper[3] - self.wall_stress.lower[3])) / h[0]
+            out[2] = -((stress[2] - self.wall_stress.upper[5]) * h[1] +
+                       (stress[1] - self.wall_stress.upper[1]) * h[2] +
+                       self.wall_stress.upper[3] - self.wall_stress.lower[3]) / h[0]
+
+        if not bool(self.numerics["stokes"]):
+            out[1] += (q[1] * q[1] * h[1] + q[1] * q[2] * h[2]) / h[0] / q[0]
+            out[2] += (q[2] * q[1] * h[1] + q[2] * q[2] * h[2]) / h[0] / q[0]
 
         # source terms due to height change with time
-        cor0 = (h[3] * q[0]) / h[0] # m/s * kg/m^3 / m = kg/(m^3 s)
+        cor0 = (h[3] * q[0]) / h[0]  # m/s * kg/m^3 / m = kg/(m^3 s)
         cor1 = (h[3] * q[1]) / h[0]
         cor2 = (h[3] * q[2]) / h[0]
 
@@ -817,7 +812,7 @@ class ConservedField(VectorField):
         p = self.eos.get_pressure(q)
 
         if bool(self.options['pressure']):
-                self.p = p[1:-1, 1:-1]
+            self.p = p[1:-1, 1:-1]
 
         inertialess = bool(self.numerics["stokes"])
 
@@ -868,13 +863,11 @@ class ConservedField(VectorField):
         Dy = np.zeros_like(q)
 
         if bool(self.options['ignoreStresses']):
-            return Dx, Dy
+            Dx[1] += self.viscous_stress.field[0]
+            Dx[2] += self.viscous_stress.field[2]
 
-        Dx[1] = self.viscous_stress.field[0]
-        Dx[2] = self.viscous_stress.field[2]
-
-        Dy[1] = self.viscous_stress.field[2]
-        Dy[2] = self.viscous_stress.field[1]
+            Dy[1] += self.viscous_stress.field[2]
+            Dy[2] += self.viscous_stress.field[1]
 
         return Dx, Dy
 
@@ -902,7 +895,7 @@ class ConservedField(VectorField):
         # GP: 1 wall_stress call
         src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
-        self.field = self.field - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy - src)
+        self.field = self.field - self.dt / 2. * ((FE - FW) / dx + (FN - FS) / dy + src)
 
     def leap_frog(self, q0):
 
@@ -928,7 +921,7 @@ class ConservedField(VectorField):
         # GP: 1 wall_stree call
         src = self.get_source(self.field, self.height.field, self.slip_length.field)
 
-        self.field = q0 - self.dt * ((FE - FW) / dx + (FN - FS) / dy - src)
+        self.field = q0 - self.dt * ((FE - FW) / dx + (FN - FS) / dy + src)
 
     def cubicInterpolation(self, q, ax):
 

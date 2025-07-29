@@ -87,8 +87,10 @@ class Input:
                 ic = {"type": "restart", "file": self.restartFile}
 
             # Combined logic
-            if bool(material['alpha']) or bool(material['elastic']) or (material['wallmode']=='force'):
+            if bool(material['alpha']) or bool(material['elastic']) or (material['wallmode'] == 'force'):
                 options['pressure'] = 1
+            else:
+                options['pressure'] = 0
 
             print("Sanity checks completed. Start simulation!")
             print(60 * "-")
@@ -476,9 +478,9 @@ class Input:
         else:
             material['E'] = float(material['E'])
             material['v'] = float(material['v'])
-        
+
         if not "wallmode" in material.keys():
-            material['wallmode'] = 0
+            material['wallmode'] = "none"
 
         return material
 
