@@ -74,6 +74,7 @@ class ElasticDeformation:
 
         Lx = dx * size[0]
         Ly = dy * size[1]
+        self.area_per_cell = dx * dy
 
         # fully periodic
         if perX and perY:
@@ -110,8 +111,10 @@ class ElasticDeformation:
 
         # TODO: use boundary condition p
         p = p - 1e05
+
+        forces = p * self.area_per_cell
         
-        return -self.ElDef.evaluate_disp(pressures=p)
+        return -self.ElDef.evaluate_disp(forces)
 
     
     def get_G_real(self):

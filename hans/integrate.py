@@ -341,7 +341,7 @@ class ConservedField(VectorField):
     
     def compute_gradientAnalysis_terms(self, direction, iter):
 
-        if self.i % self.options['writeInterval'] != 0:
+        if (self.i+1) % self.options['writeInterval'] != 0:
             return
 
         # ---------------- density --------------------
@@ -366,7 +366,7 @@ class ConservedField(VectorField):
         # h_x_uxjx
         self.ga_h_x_uxjx[iter] = -((self.height.field[1] * self.field[1]**2 / self.field[0]) / self.height.field[0])[1:-1, 1:-1]
         # h_x_tauxx
-        self.ga_h_x_tauxx[iter] = -(self.height.field[1] * (self.viscous_stress.field[0] - self.wall_stress.upper[0]))[1:-1, 1:-1] / self.disc["dx"]
+        self.ga_h_x_tauxx[iter] = -(self.height.field[1] * (self.viscous_stress.field[0] - self.wall_stress.upper[0]) / self.height.field[0])[1:-1, 1:-1]
         # tauxz
         self.ga_tauxz[iter] = ((self.wall_stress.upper[4] - self.wall_stress.lower[4]) / self.height.field[0])[1:-1, 1:-1]
         # h_t_jx
@@ -738,29 +738,29 @@ class ConservedField(VectorField):
 
         if bool(self.numerics["stokes"]):
             out[1] = ((stress[0] - self.wall_stress.upper[0]) * h[1] +
-                      (stress[2] - self.wall_stress.upper[5]) * h[2] +
-                      self.wall_stress.upper[4] - self.wall_stress.lower[4]) / h[0]
+                      (stress[2] - self.wall_stress.upper[5]) * h[2] -
+                      (self.wall_stress.upper[4] - self.wall_stress.lower[4])) / h[0]
 
             out[2] = ((stress[2] - self.wall_stress.upper[5]) * h[1] +
-                      (stress[1] - self.wall_stress.upper[1]) * h[2] +
-                      self.wall_stress.upper[3] - self.wall_stress.lower[3]) / h[0]
+                      (stress[1] - self.wall_stress.upper[1]) * h[2] -
+                      (self.wall_stress.upper[3] - self.wall_stress.lower[3])) / h[0]
         else:
             if bool(self.options['ignoreStresses']):
                 out[1] = (q[1] * q[1] / q[0] * h[1] + q[1] * q[2] / q[0] * h[2]) / h[0]
                 out[2] = (q[2] * q[1] / q[0] * h[1] + q[2] * q[2] / q[0] * h[2]) / h[0]
             else:
                 out[1] = ((q[1] * q[1] / q[0] + stress[0] - self.wall_stress.upper[0]) * h[1] +
-                        (q[1] * q[2] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[2] +
-                        self.wall_stress.upper[4] - self.wall_stress.lower[4]) / h[0]
+                        (q[1] * q[2] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[2] -
+                        (self.wall_stress.upper[4] - self.wall_stress.lower[4])) / h[0]
                 out[2] = ((q[2] * q[1] / q[0] + stress[2] - self.wall_stress.upper[5]) * h[1] +
-                        (q[2] * q[2] / q[0] + stress[1] - self.wall_stress.upper[1]) * h[2] +
-                        self.wall_stress.upper[3] - self.wall_stress.lower[3]) / h[0]
+                        (q[2] * q[2] / q[0] + stress[1] - self.wall_stress.upper[1]) * h[2] -
+                        (self.wall_stress.upper[3] - self.wall_stress.lower[3])) / h[0]
 
         # source terms due to height change with time
         cor0 = (h[3] * q[0]) / h[0] # m/s * kg/m^3 / m = kg/(m^3 s)
         cor1 = (h[3] * q[1]) / h[0]
         cor2 = (h[3] * q[2]) / h[0]
-        
+
         #out[0] = out[0] - cor0
         #out[1] = out[1] - cor1
         #out[2] = out[2] - cor2

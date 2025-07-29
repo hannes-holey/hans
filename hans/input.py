@@ -476,7 +476,10 @@ class Input:
         else:
             material['E'] = float(material['E'])
             material['v'] = float(material['v'])
-            
+        
+        if not "wallmode" in material.keys():
+            material['wallmode'] = 0
+
         return material
 
     def sanitize_BC(self, bc, disc, material):

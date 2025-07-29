@@ -252,7 +252,7 @@ def gradientAnalysis(filename, savename):
         r"$-u \frac{\partial \rho u}{\partial x}$",
         r"$\frac{\partial \tau_{xx}}{\partial x}$", #
         r"$\frac{1}{h} \Delta \tau_{xz}$",
-        r"$-\frac{1}{h} \frac{\partial h}{\partial x} \rho u$",
+        r"$-\frac{1}{h} \frac{\partial h}{\partial x} \rho u^2$",
         r"$-\frac{1}{h} \frac{\partial h}{\partial x} \left( \tau_{xx}\vert_{h2} - \overline{\tau_{xx}} \right)$",
         r"$- \frac{1}{h}  \frac{\partial h}{\partial t} \rho u$", 
         r"$u_x$ in m/s", #
@@ -347,7 +347,7 @@ def gradientAnalysis(filename, savename):
 
     # contribution bars
     contribution_indices_rho = [2,3,4]
-    contribution_indices_rhou = [7,8,11,13] # stresses: 9,10,12
+    contribution_indices_rhou = [7,8,11,13,9,10,12] # stresses: 9,10,12
     contribution_groups = [contribution_indices_rho, contribution_indices_rhou]
     validity_check = [1,6] # indices of the overall gradient for validity check
     contribution_fills = init_contributions(contribution_groups, axes) # draws emtpy rectangles, returns fill objects
@@ -356,8 +356,8 @@ def gradientAnalysis(filename, savename):
     for i, item in enumerate(list):
         axis_lines = []
         if item in pre_cor_list:
-            line1, = axes[i].plot([], [], color='grey')
-            line2, = axes[i].plot([], [], color='grey')
+            line1, = axes[i].plot([], [], color='orange')
+            line2, = axes[i].plot([], [], color='green')
             line3, = axes[i].plot([], [], color=colors[0])
             axis_lines = [line1, line2, line3]
         else:
