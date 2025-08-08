@@ -78,7 +78,7 @@ def write_template(args, template_dir='.', output_dir="moltemplate_files"):
 
     # Settings
     Natoms = num_fluid_atoms + num_solid_atoms
-    mpi_grid = _get_MPI_grid(Natoms, n, max_cpu)
+    mpi_grid = _get_MPI_grid(Natoms, nx // 7, max_cpu)
 
     outfile = os.path.join(output_dir, 'system.lt')
     with open(outfile, 'w') as f:
