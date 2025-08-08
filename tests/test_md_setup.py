@@ -1,6 +1,8 @@
+import os
 import pytest
 
-from hans.multiscale.md_setup import _get_MPI_grid
+from hans.multiscale.lt_init import _get_MPI_grid
+from hans.multiscale.lt_fluid import _read_coords_from_lt
 
 
 @pytest.mark.parametrize("Na,size,max_cpu", [(1000, 2, 4),
@@ -15,3 +17,15 @@ def test_processors_grid(Na, size, max_cpu):
     nx, ny, nz = _get_MPI_grid(Na, size, max_cpu)
 
     assert nx * ny * nz <= max_cpu
+
+
+@pytest.mark.parametrize("fname,expected", [('pentane.lt', 5),
+                                            ('decane.lt', 10),
+                                            ('hexadecane.lt', 16)])
+def test_coords_from_lt(fname, expected):
+
+    fname_abspath = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                 '..', 'examples', 'templates', 'moltemplate_files', fname)
+
+    coords = _read_coords_from_lt(fname_abspath)
+    assert coords.shape == (expected, 3)
