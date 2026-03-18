@@ -1,19 +1,20 @@
 options:
-    output: /tmp/parabolic_slider_{solver}
+    output: data/parabolic_slider
     write_freq: 1000
     save_output: False
+    residual_analysis: True
 
 grid:
     Lx: 0.0762
     Ly: 0.01
     Nx: 100
-    Ny: {Ny}
+    Ny: 10
     xE: ['D', 'N', 'N']
     xW: ['D', 'N', 'N']
     yS: ['P', 'P', 'P']
     yN: ['P', 'P', 'P']
-    xE_D: {rho_bc}
-    xW_D: {rho_bc}
+    xE_D: 850.
+    xW_D: 850.
 
 geometry:
     type: parabolic
@@ -23,12 +24,10 @@ geometry:
     V: 0.
 
 numerics:
-    solver: {solver}
-    dt: {dt}
+    solver: fem
+    dt: 10.
     tol: 1e-08
-    max_it: {max_it}
-    adaptive: {adaptive}
-    CFL: {CFL}
+    max_it: 10
 
 properties:
     EOS: DH
@@ -47,5 +46,3 @@ fem_solver:
     physics:
         pspg: true
         gls: true
-    pspg_C_I: 2.
-    gls_C_I: 2.

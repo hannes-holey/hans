@@ -34,6 +34,8 @@ from typing import Tuple, Any
 import warnings
 
 from .parallel import DomainDecomposition, FFTDomainTranslation
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
 
 from ContactMechanics.FFTElasticHalfSpace import (
     PeriodicFFTElasticHalfSpace,
@@ -235,7 +237,8 @@ class Topography:
                  grid: dict,
                  geo: dict,
                  prop: dict,
-                 decomp: DomainDecomposition = None) -> None:
+                 force_balance: dict,
+                 decomp: DomainDecomposition) -> None:
         """Constructor
 
         Parameters
@@ -259,6 +262,7 @@ class Topography:
         self.dy = grid['dy']
 
         self.init_elastic(prop, grid, decomp, fc)
+        self.init_rigid_height_variation(force_balance, grid, decomp, fc)
 
         xx, yy = decomp.xx, decomp.yy
 
@@ -320,6 +324,18 @@ class Topography:
         else:
             self.elastic = False
 
+    def init_rigid_height_variation(self, force_balance, grid, decomp, fc):
+        """Initialize force balance."""
+
+        self.h0 = 0.
+
+        if isinstance(force_balance, dict) and force_balance['rigid_height_variation']['enabled']:
+            self.force_balance = True
+            self.ForceBalance = ForceBalance(force_balance, grid, decomp, fc)
+            self.rhv_history = []
+        else:
+            self.force_balance = False
+
     @staticmethod
     def compute_topography(xx, grid, geo, yy=None):
         """Predefined topography functions. Also externally used by dry_contact.
@@ -377,6 +393,9 @@ class Topography:
         For full periodicity, no reference needed (displacement sum is zero).
         For half/no periodicity, displacement at reference point is kept to zero.
         """
+        if not self.force_balance and not self.elastic:
+            return
+
         if self.elastic:
             if self.ElasticDeformation.periodicity in ['half', 'none']:
                 p_ref = self.get_reference_pressure()
@@ -388,7 +407,18 @@ class Topography:
                 p = self.__pressure.pg
                 deformation = self._calc_deformation(p)
             self.deformation = deformation
-            self.h = self.h_undeformed + deformation
+
+        if self.force_balance:
+            h_inner = (self.h_undeformed + self.deformation + self.h0)[1:-1, 1:-1]
+            self.h0 = self.ForceBalance.update(h_inner)
+            print(self.h0)
+            self.rhv_history.append(self.h0)
+
+        # Update height and gradients
+        self.h = self.h_undeformed + self.deformation + self.h0
+        h_inner = self.h[1:-1, 1:-1]
+        neg_values = (h_inner[h_inner < 0])
+        assert neg_values.size == 0, f"Negative values in h: {neg_values}"
 
     def _calc_deformation(self, p):
         """Calculate elastic deformation from pressure field."""
@@ -508,7 +538,7 @@ class Topography:
         1. Sync h ghost cells from MPI neighbors
         2. At domain boundaries (non-periodic): linear extrapolation of h
         3. Compute gradients on inner points using central differences
-        4. Sync gradient ghost cells from MPI neighbors
+        4. Sync gradient ghost values from MPI neighbors
         5. At domain boundaries: copy gradient from first inner line
         """
         d = self._decomp
@@ -559,6 +589,7 @@ class Topography:
 
     @h.setter
     def h(self, value: NDArray) -> None:
+        """Includes rigid height variation h0."""
         self.__field.pg[0] = value
         self._update_gradients()
 
@@ -740,7 +771,8 @@ class ElasticDeformation:
             with zero displacement.
         """
         # Extract inner cells (exclude ghost cells)
-        p_inner = p[1:-1, 1:-1]
+        p_inner_ = p[1:-1, 1:-1]
+        p_inner = np.maximum(p_inner_, 0.)
 
         # Allocate FFT domain buffer
         fft_shape = tuple(self.fft_translation.fft_engine.nb_subdomain_grid_pts)
@@ -805,3 +837,123 @@ class ElasticDeformation:
             middle slice of G_real in y-direction
         """
         return self.ElDef.get_G_real_slices()
+
+
+class ForceBalance:
+
+    def __init__(self,
+                 fb_dict: dict,
+                 grid: dict,
+                 decomp: DomainDecomposition,
+                 fc: Any):
+
+        self.fb_dict = fb_dict
+        self.force_imposed = self.get_force_imposed(grid)
+        self.p_ambient = fb_dict['rigid_height_variation']['ambient_pressure']
+        self.__pressure = Field(fc.get_real_field('pressure'))
+        self.dA = grid['dx'] * grid['dy']
+        self.decomp = decomp
+        self.h0_prev = 0.
+
+        self.method = fb_dict['rigid_height_variation']['method']
+
+        if self.method == 'PID':
+            self.init_PID()
+        elif self.method == 'Newton':
+            pass
+
+    def get_force_imposed(self, grid):
+
+        if 'force' in self.fb_dict:
+            force = self.fb_dict['force']
+        elif 'pressure' in self.fb_dict:
+            pressure = self.fb_dict['pressure']
+            area = grid['Lx'] * grid['Ly']
+            force = pressure * area
+        else:
+            raise IOError("Specify 'force' or 'pressure' in force_balance.")
+
+        assert force > 0., "Negative force was determined."
+        return force
+
+    def init_PID(self):
+        if self.decomp.rank == 0:
+            Kp = self.fb_dict['rigid_height_variation']['Kp']
+            Ki = self.fb_dict['rigid_height_variation']['Ki']
+            Kd = self.fb_dict['rigid_height_variation']['Kd']
+            self.PID = PIDController(Kp, Ki, Kd)
+        else:
+            self.PID = None
+
+    def update(self, h):
+        """Gathers global pressure field, computes force and residual,
+        gets PID update, and broadcasts new h0 to all ranks.
+        If residual > 0, film pressure force is larger, h0 increases.
+        If residual < 0, imposed force is larger, h0 decreases.
+
+        If height decreases and dh0 = O(h_min), dh0 is getting scaled
+        by dho / h_min * 10.
+
+        Returns
+        -------
+        h0 : float [m]
+            new rigid height variation
+        """
+        h_min = comm.allreduce(np.min(h), op=MPI.MIN)
+        p_local = np.maximum(self.__pressure.p, 0.)
+        p_full = self.decomp.gather_global(p_local)
+
+        if self.decomp.rank == 0:
+            print("h_min: ", h_min)
+            print("p_max: ", np.max(p_full))
+            p_reduced = p_full - self.p_ambient
+            force_measured = np.sum(p_reduced * self.dA)
+            residual = (force_measured / self.force_imposed) - 1
+            print("force measured: ", force_measured)
+            print("force_imposed: ", self.force_imposed)
+            print("residual: ", residual)
+            h0 = self.PID.update(residual)
+            h0 = self.solution_guards(h0, h_min)
+            print("h0: ", h0)
+        else:
+            h0 = None
+
+        self.h0_prev = h0
+        return self.decomp.broadcast_scalar(h0)
+
+    def solution_guards(self, h0, h_min):
+        """If dh0 = h_min, only 0.1 of dh0 is taken."""
+
+        dh0 = h0 - self.h0_prev
+
+        if dh0 < 0:
+            divisor = abs(dh0) / h_min * 50
+            divisor = max(divisor, 1.)
+            if divisor > 1.:
+                print("divisor: ", divisor)
+            dh0 = dh0 / divisor
+
+        return self.h0_prev + dh0
+
+
+class PIDController:
+
+    def __init__(self, Kp, Ki, Kd):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+
+        print("Kp: ", self.Kp)
+
+        self.Int = 0.
+        self.res_prev = 0.
+
+    def update(self, residual: float):
+        self.Int += self.res_prev
+        self.D = residual - self.res_prev
+
+        out = self.Kp * residual + self.Ki * self.Int + self.Kd * self.D
+
+        self.res_prev = residual
+
+        return out

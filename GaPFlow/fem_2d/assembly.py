@@ -168,6 +168,7 @@ class Assembly:
         # 1. Build block connectivity
         # parallel arrays with all valid (inner_pt, contrib_pt) pairs using LOCAL indexing
         inner_pts, contrib_pts = self._build_block_connectivity(grid_idx)
+
         self._nnz_per_block = len(inner_pts)
 
         # 2. Build matrix COO pattern
@@ -202,20 +203,34 @@ class Assembly:
         Parallel arrays with all valid (inner_pt, contrib_pt) pairs using 
         LOCAL indexing. No specific sorting done or required since COO lookup
         handles matching in the assembly template construction.
+
+        Note that we loop over nodes instead of squares which guarantees
+        unique contribution pairs.
+
+        Note also that the naive +-dx/dy method only works because we have
+        padding with ghost cells. Ensures that no contributor entry goes out of bound.
         """
+
+        # local indices
         m_inner = grid_idx.index_mask_inner_local
         m_padded = grid_idx._index_mask_padded_local('')
 
         inner_list = []
         contrib_list = []
 
-        inner_pts_2d = np.argwhere(m_inner >= 0)
+        # map local indices to x/y coordinates (with K valid entries)
+        inner_pts_2d = np.argwhere(m_inner >= 0)  # shape (K, 2), dtype=int
+
+        # use coordinates to get 1D array of local indices
+        inner_idx = m_inner[inner_pts_2d[:, 0], inner_pts_2d[:, 1]]  # shape (K,), dtype=int
 
         for dx, dy in TriangleQuadrature.STENCIL_OFFSETS:
+
+            # change of x/y coordinates
             nx = inner_pts_2d[:, 0] + dx
             ny = inner_pts_2d[:, 1] + dy
-
-            inner_idx = m_inner[inner_pts_2d[:, 0], inner_pts_2d[:, 1]]
+            
+            # map coordinates to contributor local indices
             contrib_idx = m_padded[nx, ny]
 
             valid = contrib_idx >= 0

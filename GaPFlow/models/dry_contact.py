@@ -68,7 +68,7 @@ class DryContact:
         domain_bounds = self.get_domain_bounds(contact_bounds)
         dict_new, h_new = self.update_input_dict(h, domain_bounds)
 
-        debug_plot(p, u, contact_bounds, domain_bounds, self.grid, h, h_new)
+        #debug_plot(p, u, contact_bounds, domain_bounds, self.grid, h, h_new)
 
         return dict_new
 

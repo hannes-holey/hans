@@ -676,6 +676,9 @@ R3Staby = NonLinearTerm(
 # -----------------------------------------------------------------------------
 
 # PSPG pressure gradient (replaces R1Stabx/R1Staby with tau_pspg)
+# Correct PSPG form: int tau * p * (dN/dx_k) dOmega
+# The pressure is evaluated locally at the quadrature point (no stencil on p),
+# only the test function carries the derivative.
 R1PSPG_Px = NonLinearTerm(
     name='R1PSPG_Px',
     description='PSPG pressure gradient x',
@@ -686,7 +689,7 @@ R1PSPG_Px = NonLinearTerm(
     der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['dp_drho']()],
     d_dx_resfun=True,
     d_dy_resfun=False,
-    der_testfun=True)
+    der_testfun='x')
 
 R1PSPG_Py = NonLinearTerm(
     name='R1PSPG_Py',
@@ -698,7 +701,7 @@ R1PSPG_Py = NonLinearTerm(
     der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['dp_drho']()],
     d_dx_resfun=False,
     d_dy_resfun=True,
-    der_testfun=True)
+    der_testfun='y')
 
 # PSPG temporal: tau * INT (dN/dx_k) * (-(jx-jx_prev)/dt) dOmega
 R1PSPG_Tx = NonLinearTerm(
@@ -959,13 +962,21 @@ def get_default_terms(fem_solver: dict) -> list[str]:
     if physics.get('body_force', False):
         terms.extend(['R25x', 'R25y'])
 
-    # Mass stabilization: PSPG (full) or Laplacian (legacy), mutually exclusive
-    if physics.get('pspg', False):
+    # Mass stabilization: combined fadeout plan, PSPG-only, or Laplacian-only
+    stab_plan = fem_solver.get('stab_plan', 'none')
+    if stab_plan == 'pspg+artdiff_fadeout':
+        # Both active simultaneously; artdiff is faded out during the run
+        terms.extend(['R1Stabx', 'R1Staby'])
         terms.extend(['R1PSPG_Px', 'R1PSPG_Py',
                       'R1PSPG_Tx', 'R1PSPG_Ty',
                       'R1PSPG_Wx', 'R1PSPG_Wy'])
-    elif physics.get('stabilization', True) and not physics.get('gls', False):
+    elif physics.get('pspg', False):
+        terms.extend(['R1PSPG_Px', 'R1PSPG_Py',
+                      'R1PSPG_Tx', 'R1PSPG_Ty',
+                      'R1PSPG_Wx', 'R1PSPG_Wy'])
+    elif physics.get('stabilization', True):
         terms.extend(['R1Stabx', 'R1Staby'])
+        print("pressure laplacian stabilization")
 
     # Momentum stabilization: GLS > Laplacian (mutually exclusive)
     if physics.get('gls', False):

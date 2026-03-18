@@ -182,7 +182,7 @@ class Problem:
         self.wall_stress_xz = WallStress(self.fc, prop, geo, direction='x', data=database, gp=gpx)
         self.wall_stress_yz = WallStress(self.fc, prop, geo, direction='y', data=database, gp=gpy)
         self.viscosity = Viscosity(self.fc, prop)
-        self.topo = Topography(self.fc, self.grid, geo, prop, decomp=self.decomp)
+        self.topo = Topography(self.fc, self.grid, geo, prop, force_balance, decomp=self.decomp)
 
         self.bEnergy = (self.numerics['solver'] == 'fem' and self.fem_solver['equations']['energy'])
         if self.bEnergy:

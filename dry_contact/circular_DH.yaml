@@ -1,0 +1,79 @@
+options:
+    output: data/parabolic_slider_2d
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.002
+    Ly: 0.002
+    Nx: 128
+    Ny: 128
+    xE: ['D', 'N', 'N']
+    xW: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xE_D: 877.7007
+    xW_D: 877.7007
+    yS_D: 877.7007
+    yN_D: 877.7007
+
+geometry:
+    #type: parabolic_2d
+    #hmax: 10e-05
+    #hmin: 1e-05
+    type: circular_contact
+    Rx: 15e-03
+    Ry: 15e-03
+    hmin: 1.0e-06
+    U: 1.
+
+numerics:
+    solver: fem
+    dt: 1.
+    tol: 0.
+    max_it: 100
+
+properties:
+    shear: 0.1
+    EOS: DH
+    P0: 101325.
+    rho0: 877.7007
+    T0: 323.15
+    C1: 3.5e10
+    C2: 1.23
+    elastic:
+        E: 210e09
+        nu: 0.3
+        alpha_underrelax: 0.05
+        reference_point: [0,25]
+
+force_balance:
+    force: 25
+    init_dry_contact:
+        enabled: True
+        domain_inlet: 4.5
+        domain_outlet: 1.5
+        domain_sides: 3.0
+    rigid_height_variation:
+        enabled: True
+        method: PID
+        Kp: 1e-07
+        Ki: 1e-08
+        Kd: 0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: iterative
+    newton_relax: 0.2
+    max_iter: 3
+    R_norm_tol: 1e-09
+    pspg_boundary_decay: 1.0
+    physics:
+        pspg: true
+        gls: false
+    pspg_C_I: 100.
+    #pressure_stab_alpha: 0.0003 # together with F=25N
+    pressure_stab_alpha: 0.001
+    momentum_stab_alpha: 0.001

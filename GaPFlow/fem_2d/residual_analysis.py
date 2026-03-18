@@ -403,7 +403,7 @@ def create_residual_analysis_plot(solver: "FEMSolver2D", output_path: str) -> No
         _style_axis(ax_x)
         _style_axis(ax_y)
 
-    plt.tight_layout()
+    #plt.tight_layout()
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     fig.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')

@@ -1,0 +1,53 @@
+options:
+    output: data/dimpled_flat_cavitation
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: False
+
+grid:
+    Lx: 0.002
+    Ly: 0.002
+    Nx: 128
+    Ny: 128
+    xE: ['D', 'N', 'N']
+    xW: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xE_D: 850.01
+    xW_D: 850.01
+    yS_D: 850.01
+    yN_D: 850.01
+
+geometry:
+    type: from_file
+    filepath: topography/dimpled_flat.npy
+    U: 100.
+
+numerics:
+    solver: fem
+    dt: 1.
+    tol: 0.
+    max_it: 3
+
+properties:
+    EOS: Bayada
+    rho0: 850.
+    shear: 0.039
+    bulk: 0.
+    cl: 1600.
+    cv: 352.
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: iterative
+    newton_relax: 0.2
+    max_iter: 5
+    R_norm_tol: 1e-09
+    pspg_boundary_decay: 2.0
+    physics:
+        pspg: false
+        gls: false
+    pspg_C_I: 1.
+    pressure_stab_alpha: 0.00002
+    momentum_stab_alpha: 0.001

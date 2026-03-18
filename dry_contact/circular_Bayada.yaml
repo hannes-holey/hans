@@ -1,0 +1,74 @@
+options:
+    output: data/parabolic_slider_2d
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.002
+    Ly: 0.002
+    Nx: 128
+    Ny: 128
+    xE: ['D', 'N', 'N']
+    xW: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xE_D: 850.01
+    xW_D: 850.01
+    yS_D: 850.01
+    yN_D: 850.01
+
+geometry:
+    type: circular_contact
+    Rx: 15e-03
+    Ry: 15e-03
+    hmin: 1.0e-6
+    U: 100.
+
+numerics:
+    solver: fem
+    dt: 1.
+    tol: 0.
+    max_it: 1
+
+properties:
+    EOS: Bayada
+    rho0: 850.
+    shear: 0.039
+    bulk: 0.
+    cl: 1600.
+    cv: 352.
+    elastic:
+        E: 210e09
+        nu: 0.3
+        alpha_underrelax: 0.1
+        reference_point: [0,25]
+
+force_balance:
+    force: 25
+    init_dry_contact:
+        enabled: True
+        domain_inlet: 4.0
+        domain_outlet: 4.0
+        domain_sides: 4.0
+    rigid_height_variation:
+        enabled: False
+        method: PID
+        Kp: 1e-06
+        Ki: 1e-07
+        Kd: 1e-07
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: iterative
+    newton_relax: 0.2
+    max_iter: 5
+    R_norm_tol: 1e-09
+    pspg_boundary_decay: 2.0
+    physics:
+        pspg: true
+        gls: true
+    pspg_C_I: 1.
+    pressure_stab_alpha: 0.00002
+    momentum_stab_alpha: 0.001

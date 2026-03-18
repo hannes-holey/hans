@@ -366,6 +366,22 @@ class DomainDecomposition:
 
         return local_inner
 
+    def broadcast_scalar(self, value: float | None) -> float:
+        """Broadcast a scalar float from rank 0 to all ranks.
+
+        Parameters
+        ----------
+        value : float or None
+            Value to broadcast. Must be valid on rank 0.
+            Other ranks can pass None.
+
+        Returns
+        -------
+        float
+            Broadcasted value on all ranks.
+        """
+        return self._mpi_comm.bcast(value, root=0)
+
     # ---------------------------
     # Ghost cell handling
     # ---------------------------

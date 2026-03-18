@@ -51,7 +51,7 @@ fem_solver:
     R_norm_tol: 1.0e-10
     linear_solver: iterative
     max_iter: 5
-    pressure_stab_alpha: 0.02
+    pressure_stab_alpha: 0.05
     momentum_stab_alpha: 3.2e-03
     physics:
         gap_shear: False

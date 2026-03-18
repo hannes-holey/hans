@@ -423,12 +423,40 @@ class FEMSolver2D:
         if hasattr(p, 'bulk_stress'):
             p.bulk_stress.update()
 
+    def _compute_fade_factor(self) -> None:
+        """Update artdiff_fade_factor for the pspg+artdiff_fadeout stab_plan.
+
+        Called once per time step before update_prev_quad(). Has no effect
+        when stab_plan != 'pspg+artdiff_fadeout' (fade factor stays 1.0).
+        """
+        fem_solver = self.problem.fem_solver
+        if fem_solver.get('stab_plan', 'none') != 'pspg+artdiff_fadeout':
+            return
+
+        step = self.problem.step
+        start = fem_solver['stab_plan_fadeout_start']
+        n = fem_solver['stab_plan_fadeout_steps']
+
+        if step < start:
+            self.artdiff_fade_factor = 1.0
+        elif step >= start + n:
+            self.artdiff_fade_factor = 0.0
+        else:
+            self.artdiff_fade_factor = 1.0 - (step - start) / n
+
+        if self.problem.decomp.rank == 0:
+            if start <= step < start + n:
+                print(f"  [stab_plan] artdiff fade: {self.artdiff_fade_factor:.3f}")
+            elif step == start + n:
+                print("  [stab_plan] artdiff fadeout complete — pure PSPG active")
+
     def update_dynamic(self) -> None:
         """Do a single dynamic time step update using PETSc."""
         p = self.problem
         fem_solver = p.fem_solver
 
         with self.timer("timestep"):
+            self._compute_fade_factor()
             self.update_prev_quad()
 
             tic = time.time()
@@ -571,6 +599,7 @@ class FEMSolver2D:
 
         self.time_inner = 0.0
         self.inner_iterations = 0
+        self.artdiff_fade_factor = 1.0
 
     def _init_linear_solver(self):
         """Initialize linear solver and scaling for sparse system solves."""

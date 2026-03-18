@@ -1,0 +1,75 @@
+options:
+    output: data/parabolic_slider_2d
+    write_freq: 1
+    save_output: False
+    output_plots: True
+
+grid:
+    Lx: 0.002
+    Ly: 0.002
+    Nx: 128
+    Ny: 128
+    xE: ['D', 'N', 'N']
+    xW: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xE_D: 1.1853
+    xW_D: 1.1853
+    yS_D: 1.1853
+    yN_D: 1.1853
+
+geometry:
+    #type: parabolic_2d
+    #hmax: 10e-05
+    #hmin: 1e-05
+    type: circular_contact
+    Rx: 15e-03
+    Ry: 15e-03
+    hmin: 1.0e-5
+    U: 50.
+
+numerics:
+    solver: fem
+    dt: 0.001
+    tol: 1e-12
+    max_it: 200
+
+properties:
+    EOS: PL
+    shear: 1.846e-5
+    bulk: 0.
+    P0: 101325
+    rho0: 1.1853
+    alpha: 0.
+    elastic:
+        E: 210e09
+        nu: 0.3
+        alpha_underrelax: 0.1
+        reference_point: [0,25]
+
+force_balance:
+    force: 25
+    init_dry_contact:
+        enabled: True
+        domain_inlet: 4.0
+        domain_outlet: 4.0
+        domain_sides: 4.0
+    rigid_height_variation:
+        enabled: True
+        method: PID
+        Kp: 1e-06
+        Ki: 1e-07
+        Kd: 1e-07
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: iterative
+    newton_relax: 0.5
+    max_iter: 1
+    R_norm_tol: 1e-09
+    pspg_boundary_decay: 2.0
+    physics:
+        pspg: false
+        gls: false
+    pspg_C_I: 100.0
+    gls_C_I: 100.0

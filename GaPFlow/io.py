@@ -520,6 +520,7 @@ def sanitize_fem_solver(d):
     out['pspg_boundary_decay'] = float(d.get('pspg_boundary_decay', 0.0))
 
     physics = d.get('physics', {})
+    energy = bool(physics.get('energy', False))
     out['physics'] = {
         # Momentum physics
         'gap_shear': bool(physics.get('gap_shear', True)),
@@ -527,12 +528,12 @@ def sanitize_fem_solver(d):
         'inertia': bool(physics.get('inertia', False)),
         'body_force': bool(physics.get('body_force', False)),
         # Energy physics (sub-flags only relevant if energy=True)
-        'energy': bool(physics.get('energy', False)),
-        'energy_convection': bool(physics.get('energy_convection', True)),
-        'pressure_work': bool(physics.get('pressure_work', True)),
-        'thermal_diffusion': bool(physics.get('thermal_diffusion', True)),
-        'wall_heat_balance': bool(physics.get('wall_heat_balance', True)),
-        'wall_shear_work': bool(physics.get('wall_shear_work', True)),
+        'energy': energy,
+        'energy_convection': bool(physics.get('energy_convection', energy)),
+        'pressure_work': bool(physics.get('pressure_work', energy)),
+        'thermal_diffusion': bool(physics.get('thermal_diffusion', energy)),
+        'wall_heat_balance': bool(physics.get('wall_heat_balance', energy)),
+        'wall_shear_work': bool(physics.get('wall_shear_work', energy)),
         # Numerical
         'stabilization': bool(physics.get('stabilization', True)),
         'pspg': bool(physics.get('pspg', False)),
@@ -541,6 +542,10 @@ def sanitize_fem_solver(d):
 
     out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
     out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))
+
+    out['stab_plan'] = str(d.get('stab_plan', 'none'))
+    out['stab_plan_fadeout_start'] = int(d.get('stab_plan_fadeout_start', 5))
+    out['stab_plan_fadeout_steps'] = int(d.get('stab_plan_fadeout_steps', 50))
 
     equations_energy = d.get('equations', {}).get('energy', None)
     if equations_energy is not None and 'energy' not in physics:
@@ -573,15 +578,35 @@ def sanitize_force_balance(d):
     else:
         raise IOError("Need to specify either 'force' or 'pressure' in force_balance.")
 
+    # Dry contact initialization
     idc = d.get('init_dry_contact', None)
-    if idc is not None and idc is not False:
+    enabled = idc.get('enabled', True) if isinstance(idc, dict) else False
+    if enabled:
         out['init_dry_contact'] = {'enabled': True}
-        if isinstance(idc, dict):
-            out['init_dry_contact']['domain_inlet'] = float(idc.get('domain_inlet', 4.5))
-            out['init_dry_contact']['domain_outlet'] = float(idc.get('domain_outlet', 1.5))
-            out['init_dry_contact']['domain_sides'] = float(idc.get('domain_sides', 3.0))
+        out['init_dry_contact']['domain_inlet'] = float(idc.get('domain_inlet', 4.5))
+        out['init_dry_contact']['domain_outlet'] = float(idc.get('domain_outlet', 1.5))
+        out['init_dry_contact']['domain_sides'] = float(idc.get('domain_sides', 3.0))
     else:
         out['init_dry_contact'] = {'enabled': False}
+
+    # Rigid height variation
+    rhv = d.get('rigid_height_variation', None)
+    enabled = rhv.get('enabled', True) if isinstance(rhv, dict) else False
+    if enabled:
+        out['rigid_height_variation'] = {'enabled': True}
+        out['rigid_height_variation']['method'] = rhv.get('method', 'PID')
+        if out['rigid_height_variation']['method'] == 'PID':
+            out['rigid_height_variation']['Kp'] = float(rhv.get('Kp', 0.001))
+            out['rigid_height_variation']['Ki'] = float(rhv.get('Ki', 0.02))
+            out['rigid_height_variation']['Kd'] = float(rhv.get('Kd', 0.001))
+        elif out['rigid_height_variation']['method'] == 'Newton':
+            out['rigid_height_variation']['stencil'] = rhv.get('stencil', '5pt')
+        else:
+            raise IOError("Invalid method. Must be 'PID' or 'Newton'.")
+        out['rigid_height_variation']['ambient_pressure'] = float(rhv.get('ambient_pressure', 1e05))
+
+    else:
+        out['rigid_height_variation'] = {'enabled': False}
 
     print_dict(out)
 

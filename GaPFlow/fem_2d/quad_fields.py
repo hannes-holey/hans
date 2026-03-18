@@ -321,7 +321,9 @@ class QuadFieldManager:
             tau_mass = np.full_like(rho, tau_mass_base)
             tau_mom = np.full_like(rho, tau_mom_base)
 
-        self.quad_fields['tau_mass'].pg[s] = tau_mass
+        # Apply artdiff fade factor if stab_plan is active (default 1.0 = no change)
+        fade = getattr(p.solver, 'artdiff_fade_factor', 1.0)
+        self.quad_fields['tau_mass'].pg[s] = tau_mass * fade
         self.quad_fields['tau_mom'].pg[s] = tau_mom
 
         # Energy stabilization (if enabled)

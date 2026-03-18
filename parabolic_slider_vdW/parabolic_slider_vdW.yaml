@@ -1,0 +1,68 @@
+options:
+    output: data/parabolic_slider_vdW
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: False
+
+# Parabolic 2D slider, Argon (vdW EOS), T = 130 K
+# Operating near the liquid-vapour coexistence → cavitation in diverging part.
+#
+# Key vdW parameters for Argon at T = 130 K (< T_c ≈ 150.7 K):
+#   rho_l_sat ≈ 1080 kg/m³,  rho_v_sat ≈ 30 kg/m³,  P_sat ≈ 1.5 MPa
+# Inlet density rho0 ≈ 1090 kg/m³ (just above rho_l_sat) at P0 ≈ 1.6 MPa.
+# The diverging part of the parabolic gap reduces pressure below P_sat,
+# triggering cavitation (density drop toward rho_v_sat).
+#
+# Run check_vdW_parameters.py to verify the rho-P curve and these values.
+
+grid:
+    Lx: 0.076
+    Ly: 0.076
+    Nx: 128
+    Ny: 128
+    xE: ['D', 'N', 'N']
+    xW: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xE_D: 635.0          # inlet/outlet density [kg/m³], slightly above rho_l_sat
+    xW_D: 635.0
+    yN_D: 635.0
+    yS_D: 635.0
+
+geometry:
+    type: parabolic_2d
+    hmin: 2.54e-5         # minimum gap [m]
+    hmax: 5.08e-5         # maximum gap [m]  (hmax/hmin = 2 → strong pressure variation)
+    U: 50.0               # wall velocity [m/s]
+    V: 0.0
+
+numerics:
+    solver: fem
+    dt: 1.0
+    tol: 0.0
+    max_it: 5
+
+properties:
+    EOS: vdW
+    rho0: 1090.0          # reference density [kg/m³]
+    M: 39.948             # molar mass [g/mol]  – Argon
+    T: 130.0              # temperature [K]  –  T/T_c ≈ 0.86, two-phase region
+    a: 1.355              # attraction [L^2 bar / mol^2]
+    b: 0.03201            # repulsion  [L / mol]
+    shear: 2.5e-4         # dynamic viscosity [Pa s]  (Argon liquid at ~130 K)
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: iterative
+    newton_relax: 0.1
+    max_iter: 20
+    R_norm_tol: 1e-8
+    pspg_boundary_decay: 2.0
+    physics:
+        pspg: false
+        gls: false
+    pspg_C_I: 1.0
+    pressure_stab_alpha: 0.0002
+    momentum_stab_alpha: 0.001
