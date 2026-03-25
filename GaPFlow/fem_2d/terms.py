@@ -719,7 +719,7 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
         terms.extend(['R24x', 'R24y'])
 
     if physics.get('plane_shear', True):
-        terms.extend(['R23xy', 'R23yx', 'R23xx', 'R23yy'])
+        terms.extend(['R23xy', 'R23yx'])#, 'R23xx', 'R23yy'])
 
     if physics.get('inertia', False):
         terms.extend(['R22xx', 'R22yy', 'R22xy', 'R22yx',

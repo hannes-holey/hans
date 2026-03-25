@@ -367,8 +367,11 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
     # Number of discrete color levels for sharp boundaries
     n_levels = 20
 
-    # Create figure with 2x3 subplots
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10), constrained_layout=True, facecolor='white')
+    # Gather pressure field
+    p_field = g(problem.pressure.pressure)
+
+    # Create figure with 3x3 subplots
+    fig, axes = plt.subplots(3, 3, figsize=(15, 14), constrained_layout=True, facecolor='white')
 
     def plot_field(ax, field, title, cmap='viridis'):
         """Plot a field with sharp color boundaries."""
@@ -384,7 +387,7 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
         ax.set_xlabel('x [mm]')
         ax.set_ylabel('y [mm]')
         ax.set_title(title)
-        ax.set_aspect('equal')
+        ax.set_aspect('auto')
         fig.colorbar(cf, ax=ax, shrink=0.8)
         return cf
 
@@ -429,6 +432,50 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
                  fontsize=11, verticalalignment='top', fontfamily='monospace',
                  bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     ax_info.set_title('Run Info')
+
+    # Pressure mid-section plots
+    # gather_global already strips ghost cells, p_field has shape (Nx, Ny)
+    p_inner = p_field
+
+    # Centre indices
+    ix_mid = Nx // 2
+    iy_mid = Ny // 2
+
+    # Auto-scale pressure to readable units
+    p_max = np.max(np.abs(p_inner))
+    if p_max >= 1e6:
+        p_scale, p_unit = 1e-6, 'MPa'
+    elif p_max >= 1e3:
+        p_scale, p_unit = 1e-3, 'kPa'
+    else:
+        p_scale, p_unit = 1.0, 'Pa'
+
+    # Pressure over x at y = y_mid
+    ax_px = axes[2, 0]
+    ax_px.plot(x * 1e3, p_inner[:, iy_mid] * p_scale,
+               color='steelblue', lw=1.5)
+    ax_px.fill_between(x * 1e3, p_inner[:, iy_mid] * p_scale,
+                       alpha=0.15, color='steelblue')
+    ax_px.set_xlabel('x [mm]')
+    ax_px.set_ylabel(f'p [{p_unit}]')
+    ax_px.set_title(f'Pressure vs x  (y = {y[iy_mid] * 1e3:.2f} mm)')
+    ax_px.grid(True, linestyle=':', alpha=0.5)
+    ax_px.set_box_aspect(1)
+
+    # Pressure over y at x = x_mid
+    ax_py = axes[2, 1]
+    ax_py.plot(y * 1e3, p_inner[ix_mid, :] * p_scale,
+               color='steelblue', lw=1.5)
+    ax_py.fill_between(y * 1e3, p_inner[ix_mid, :] * p_scale,
+                       alpha=0.15, color='steelblue')
+    ax_py.set_xlabel('y [mm]')
+    ax_py.set_ylabel(f'p [{p_unit}]')
+    ax_py.set_title(f'Pressure vs y  (x = {x[ix_mid] * 1e3:.2f} mm)')
+    ax_py.grid(True, linestyle=':', alpha=0.5)
+    ax_py.set_box_aspect(1)
+
+    # Pressure 2D field
+    plot_field(axes[2, 2], p_inner, r'Pressure $p$', 'coolwarm')
 
     # Main title
     fig.suptitle(f'GaPFlow Overview - Step {problem.step}', fontsize=14, fontweight='bold')

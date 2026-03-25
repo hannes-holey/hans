@@ -293,26 +293,38 @@ def bayada_chupin(dens, rho_l, rho_v, c_l, c_v):
         Computed pressure.
 
     """
-    N = rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l) / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
-    Pcav = rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
+    N = (
+        rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l)
+        / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2)
+    )
+
+    Pcav = rho_v * c_v**2 - N * jnp.log(
+        rho_v**2 * c_v**2 / (rho_l**2 * c_l**2)
+    )
+
     alpha = (dens - rho_l) / (rho_v - rho_l)
 
-    if np.isscalar(dens):
-        if alpha < 0:
-            p = Pcav + (dens - rho_l) * c_l**2
-        elif alpha >= 0 and alpha <= 1:
-            denominator = rho_l * (rho_v * c_v**2 * (1 - alpha) + rho_l * c_l**2 * alpha)
-            p = Pcav + N * np.log(rho_v * c_v**2 * dens / denominator)
-        else:
-            p = c_v**2 * dens
+    # --- Region 1: alpha < 0 (liquid)
+    p_liq = Pcav + (dens - rho_l) * c_l**2
 
-    else:
-        dens_mix = dens[np.logical_and(alpha <= 1, alpha >= 0)]
-        alpha_mix = alpha[np.logical_and(alpha <= 1, alpha >= 0)]
+    # --- Region 2: 0 <= alpha <= 1 (mixture)
+    denominator = rho_l * (
+        rho_v * c_v**2 * (1 - alpha)
+        + rho_l * c_l**2 * alpha
+    )
 
-        p = c_v**2 * dens
-        p[alpha < 0] = Pcav + (dens[alpha < 0] - rho_l) * c_l**2
-        denominator = rho_l * (rho_v * c_v**2 * (1 - alpha_mix) + rho_l * c_l**2 * alpha_mix)
-        p[np.logical_and(alpha <= 1, alpha >= 0)] = Pcav + N * np.log(rho_v * c_v**2 * dens_mix / denominator)
+    p_mix = Pcav + N * jnp.log(
+        rho_v * c_v**2 * dens / denominator
+    )
+
+    # --- Region 3: alpha > 1 (vapor)
+    p_vap = c_v**2 * dens
+
+    # --- Combine using jnp.where (no dynamic indexing!)
+    p = jnp.where(
+        alpha < 0,
+        p_liq,
+        jnp.where(alpha <= 1, p_mix, p_vap),
+    )
 
     return p

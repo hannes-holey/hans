@@ -21,9 +21,9 @@ Nx        = 3
 Ny        = 3
 Lx        = 10
 Ly        = 10
-term_list = ['R23xx']        # e.g. ['R1T'], ['R11x'], ['R1T','R11x','R11y']
+term_list = ['R25x']        # e.g. ['R1T'], ['R11x'], ['R1T','R11x','R11y']
 bc        = 'dirichlet'    # 'dirichlet' | 'periodic' | 'periodic_y'
-block     = ('momentum_x', 'jx')  # (residual, variable) block to print; None = full matrix
+block     = ('momentum_x', 'rho')  # (residual, variable) block to print; None = full matrix
 fd_eps    = 1e-6
 
 # =============================================================================
