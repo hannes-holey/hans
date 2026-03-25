@@ -417,6 +417,39 @@ class Assembly:
         )
 
     # ======================================================================
+    # Neumann ghost-square zeroing
+    # ======================================================================
+
+    def zero_neumann_ghost_squares(self, quad_vals: NDArray,
+                                   dep_vars: list) -> None:
+        """Zero quad field values on ghost squares at Neumann boundaries.
+
+        Ghost squares are outside the physical domain. For natural (homogeneous
+        Neumann) BCs, the variational formulation requires no contribution from
+        outside the domain — "do nothing" approach.
+
+        Parameters
+        ----------
+        quad_vals : (nb_sq, nb_quad_sq)
+            Quad field values to modify in-place.
+        dep_vars : list of str
+            Variable names of the term's dependent variables.
+        """
+        gi = self.grid_idx
+        spr = gi.sq_per_row  # squares per row (x-direction)
+
+        # Flat square index = iy * spr + ix  (ix varies fastest)
+        for var in dep_vars:
+            if gi.bc_at_W and gi._bc_neumann['xW'].get(var, False):
+                quad_vals[::spr, :] = 0.0                # ix=0
+            if gi.bc_at_E and gi._bc_neumann['xE'].get(var, False):
+                quad_vals[spr - 1::spr, :] = 0.0         # ix=last
+            if gi.bc_at_S and gi._bc_neumann['yS'].get(var, False):
+                quad_vals[:spr, :] = 0.0                  # iy=0
+            if gi.bc_at_N and gi._bc_neumann['yN'].get(var, False):
+                quad_vals[-spr:, :] = 0.0                 # iy=last
+
+    # ======================================================================
     # Assembly templates
     # ======================================================================
 
@@ -607,6 +640,7 @@ class Assembly:
                 entries_per_quad = self.assembly_templates[key]['entries_per_quad']
 
                 res_quad_field = term.evaluate_deriv(var, *dep_vars)  # shape (n_sq, n_quad_sq)
+                self.zero_neumann_ghost_squares(res_quad_field, term.dep_vars)
 
                 # shape (n_sq * n_quad_sq * entries_per_quad,)
                 quad_val_vec = np.repeat(res_quad_field.flatten(), entries_per_quad)
@@ -726,6 +760,7 @@ class Assembly:
                     for v in term.dep_vars
                 )
 
+            self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
             sw_vec = np.tile(sw, nb_sq)
 

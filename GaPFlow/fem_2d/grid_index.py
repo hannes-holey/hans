@@ -181,16 +181,18 @@ class GridIndexManager:
                     mask[x, y] = cur_val
                     cur_val += 1
 
-        # Neumann forwarding: ghost -> adjacent inner node
-        if var:
-            if self.bc_at_W and self._bc_neumann['xW'][var]:
-                mask[0, :] = mask[1, :]
-            if self.bc_at_E and self._bc_neumann['xE'][var]:
-                mask[self.Nx_p_padded - 1, :] = mask[self.Nx_p_padded - 2, :]
-            if self.bc_at_S and self._bc_neumann['yS'][var]:
-                mask[:, 0] = mask[:, 1]
-            if self.bc_at_N and self._bc_neumann['yN'][var]:
-                mask[:, self.Ny_p_padded - 1] = mask[:, self.Ny_p_padded - 2]
+        # Neumann forwarding removed: natural BC via "do nothing" approach.
+        # Ghost nodes at Neumann boundaries stay -1 (no DOF), same as Dirichlet.
+        # The zero-flux condition is enforced naturally by the variational formulation.
+        # if var:
+        #     if self.bc_at_W and self._bc_neumann['xW'][var]:
+        #         mask[0, :] = mask[1, :]
+        #     if self.bc_at_E and self._bc_neumann['xE'][var]:
+        #         mask[self.Nx_p_padded - 1, :] = mask[self.Nx_p_padded - 2, :]
+        #     if self.bc_at_S and self._bc_neumann['yS'][var]:
+        #         mask[:, 0] = mask[:, 1]
+        #     if self.bc_at_N and self._bc_neumann['yN'][var]:
+        #         mask[:, self.Ny_p_padded - 1] = mask[:, self.Ny_p_padded - 2]
 
         return mask
 
@@ -279,21 +281,21 @@ class GridIndexManager:
                     mask[x, y] = cur_val
                     cur_val += 1
 
-        # Neumann forwarding: both ghost layers forward to adjacent inner node
-        if var:
-            if self.bc_at_W and self._bc_neumann['xW'][var]:
-                # ghost1 = layer 1, ghost2 = layer 0; inner = layer 2
-                mask[1, :] = mask[2, :]
-                mask[0, :] = mask[2, :]
-            if self.bc_at_E and self._bc_neumann['xE'][var]:
-                mask[self.Nx_v_padded - 2, :] = mask[self.Nx_v_padded - 3, :]
-                mask[self.Nx_v_padded - 1, :] = mask[self.Nx_v_padded - 3, :]
-            if self.bc_at_S and self._bc_neumann['yS'][var]:
-                mask[:, 1] = mask[:, 2]
-                mask[:, 0] = mask[:, 2]
-            if self.bc_at_N and self._bc_neumann['yN'][var]:
-                mask[:, self.Ny_v_padded - 2] = mask[:, self.Ny_v_padded - 3]
-                mask[:, self.Ny_v_padded - 1] = mask[:, self.Ny_v_padded - 3]
+        # Neumann forwarding removed: natural BC via "do nothing" approach.
+        # Ghost nodes at Neumann boundaries stay -1 (no DOF), same as Dirichlet.
+        # if var:
+        #     if self.bc_at_W and self._bc_neumann['xW'][var]:
+        #         mask[1, :] = mask[2, :]
+        #         mask[0, :] = mask[2, :]
+        #     if self.bc_at_E and self._bc_neumann['xE'][var]:
+        #         mask[self.Nx_v_padded - 2, :] = mask[self.Nx_v_padded - 3, :]
+        #         mask[self.Nx_v_padded - 1, :] = mask[self.Nx_v_padded - 3, :]
+        #     if self.bc_at_S and self._bc_neumann['yS'][var]:
+        #         mask[:, 1] = mask[:, 2]
+        #         mask[:, 0] = mask[:, 2]
+        #     if self.bc_at_N and self._bc_neumann['yN'][var]:
+        #         mask[:, self.Ny_v_padded - 2] = mask[:, self.Ny_v_padded - 3]
+        #         mask[:, self.Ny_v_padded - 1] = mask[:, self.Ny_v_padded - 3]
 
         return mask
 

@@ -112,7 +112,7 @@ class TaylorHoodP2P1:
         self.dx = dx
         self.dy = dy
         self.sq_area = dx * dy
-        self.Quadrature = Quadrature4Points()
+        self.Quadrature = Quadrature6Points()
         self.P1 = self.P1(self.Quadrature)
         self.P2 = self.P2(self.Quadrature)
 
@@ -385,6 +385,23 @@ class Quadrature4Points:
                             [3/5, 1/5],
                             [1/5, 3/5]])
     weights = np.array([-27/96, 25/96, 25/96, 25/96])
+
+
+class Quadrature6Points:
+
+    nb_points = 6
+    coordinates = np.array([[0.091576213509771, 0.091576213509771],
+                            [0.816847572980459, 0.091576213509771],
+                            [0.091576213509771, 0.816847572980459],
+                            [0.445948490915965, 0.445948490915965],
+                            [0.108103018168070, 0.445948490915965],
+                            [0.445948490915965, 0.108103018168070]])
+    weights = np.array([0.054975871827661,
+                        0.054975871827661,
+                        0.054975871827661,
+                        0.111690794839006,
+                        0.111690794839006,
+                        0.111690794839006])
 
 
 class QuadOperator:
