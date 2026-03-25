@@ -514,7 +514,7 @@ class Topography:
         d = self._decomp
 
         # 1. Sync h ghost cells from MPI neighbors
-        d.communicate_ghosts(self._topo_field)
+        d._exchange_ghosts(self._topo_field)
 
         # 2. At domain boundaries: linear extrapolation of h (overrides periodic wrap)
         if d.is_at_xW and not d.periodic_x:
@@ -531,7 +531,7 @@ class Topography:
         self.dh_dy[1:-1, 1:-1] = (self.h[1:-1, 2:] - self.h[1:-1, :-2]) / (2 * self.dy)
 
         # 4. Sync gradient ghost cells from MPI neighbors
-        d.communicate_ghosts(self._topo_field)
+        d._exchange_ghosts(self._topo_field)
 
         # 5. At domain boundaries: copy gradient from first inner line (overrides periodic wrap)
         if d.is_at_xW and not d.periodic_x:
@@ -554,7 +554,7 @@ class Topography:
 
     @property
     def h(self) -> NDArray:
-        """Height field."""
+        """Height field with ghost cells."""
         return self.__field.pg[0]
 
     @h.setter
@@ -564,7 +564,7 @@ class Topography:
 
     @property
     def deformation(self) -> NDArray:
-        """Displacement field."""
+        """Displacement field with ghost cells."""
         return self.__field.pg[3]
 
     @deformation.setter
@@ -573,7 +573,7 @@ class Topography:
 
     @property
     def dh_dx(self) -> NDArray:
-        """Height gradient field (∂h/∂x)"""
+        """Height gradient field (∂h/∂x) with ghost cells."""
         return self.__field.pg[1]
 
     @dh_dx.setter
@@ -582,7 +582,7 @@ class Topography:
 
     @property
     def dh_dy(self) -> NDArray:
-        """Height gradient field (∂h/∂y)"""
+        """Height gradient field (∂h/∂y) with ghost cells."""
         return self.__field.pg[2]
 
     @dh_dy.setter

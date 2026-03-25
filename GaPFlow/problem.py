@@ -146,12 +146,12 @@ class Problem:
                 from .solver_fem_1d import FEMSolver1D
                 self.solver = FEMSolver1D(self)
             else:
-                from .solver_fem_2d import FEMSolver2D
-                self.solver = FEMSolver2D(self.fem_solver, self)
+                from .solver_fem_2d import FEMSolver2d
+                self.solver = FEMSolver2d(self.fem_solver, self)
 
         # Initialize domain decomposition and field collection
-        self.decomp = DomainDecomposition(grid)
-        self.fc = self.decomp.get_fc()
+        self.decomp = DomainDecomposition(grid, numerics)
+        self.fc = self.decomp.fc
 
         # Solution field
         self.step = None
@@ -532,8 +532,8 @@ class Problem:
 
         # Residual analysis for FEM 2D solver
         if self.options.get('residual_analysis', False):
-            from .solver_fem_2d import FEMSolver2D
-            if isinstance(self.solver, FEMSolver2D):
+            from .solver_fem_2d import FEMSolver2d
+            if isinstance(self.solver, FEMSolver2d) and hasattr(self.solver, 'run_residual_analysis'):
                 self.solver.run_residual_analysis()
 
         walltime = datetime.now() - self._tic
@@ -649,7 +649,7 @@ class Problem:
         Operations executed after each timestep: ghost cell comms, residual
         update, time advance, and adaptive dt update if enabled.
         """
-        self._communicate_ghost_buffers()
+        self._update_ghosts()
 
         E_kin_old = self.kinetic_energy_old
         self.residual = abs(self.kinetic_energy - E_kin_old) / (E_kin_old + 1e-12) / self.cfl
@@ -745,15 +745,18 @@ class Problem:
     # Ghost cell handling
     # ---------------------------
 
-    def _communicate_ghost_buffers(self) -> None:
-        """
-        Update ghost-cell values via MPI communication and boundary conditions.
-
-        Delegates to DomainDecomposition.communicate_ghost_buffers which handles:
-        1. MPI ghost exchange between ranks
-        2. Physical boundary condition application at domain boundaries
-        """
-        self.decomp.communicate_ghost_buffers(self)
+    def _update_ghosts(self) -> None:
+        """Update ghost-cell values via MPI communication and boundary conditions."""
+        sol = self.fc.get_real_field('solution')
+        self.decomp.update_ghosts(
+            exchange_specs=[(sol, 'P1')],
+            bc_specs=[
+                (self.q[0], 'rho', 'P1_cell'),
+                (self.q[1], 'jx',  'P1_cell'),
+                (self.q[2], 'jy',  'P1_cell'),
+            ],
+            problem=self,
+        )
 
     # ---------------------------
     # Plotting and animations

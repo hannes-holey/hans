@@ -28,11 +28,22 @@ Run with: mpirun -np 1 python -m pytest tests/test_fft_domain_translation.py -v
           mpirun -np 2 python -m pytest tests/test_fft_domain_translation.py -v
           mpirun -np 4 python -m pytest tests/test_fft_domain_translation.py -v
 """
+import math
+
 import numpy as np
 import pytest
 from mpi4py import MPI
 
 from GaPFlow.parallel import DomainDecomposition, FFTDomainTranslation
+
+comm = MPI.COMM_WORLD
+rank = comm.rank
+size = comm.size
+
+
+def _nx_ny_splits(n):
+    nx = int(math.floor(math.sqrt(n)))
+    return nx, n // nx
 
 
 def make_grid(Nx, Ny, periodic_x, periodic_y):
@@ -111,17 +122,145 @@ def test_roundtrip(Nx, Ny, px, py, _, __):
                                err_msg=f"Roundtrip failed for px={px}, py={py}")
 
 
-def test_needs_redistribution_flag():
-    """Verify _needs_redistribution is set correctly."""
-    # Fully periodic should not need redistribution
+def test_fft_grid_size_periodicity():
+    """Verify FFT grid sizes are set correctly based on periodicity."""
     grid_pp = make_grid(16, 16, True, True)
-    decomp_pp = DomainDecomposition(grid_pp)
-    fft_pp = FFTDomainTranslation(decomp_pp)
-    assert not fft_pp._needs_redistribution
+    fft_pp = FFTDomainTranslation(DomainDecomposition(grid_pp))
+    assert fft_pp.Nx_fft == 16 and fft_pp.Ny_fft == 16
 
-    # Any non-periodic direction needs redistribution
-    for px, py in [(True, False), (False, True), (False, False)]:
-        grid = make_grid(16, 16, px, py)
-        decomp = DomainDecomposition(grid)
-        fft = FFTDomainTranslation(decomp)
-        assert fft._needs_redistribution, f"Expected redistribution for px={px}, py={py}"
+    grid_pd = make_grid(16, 16, True, False)
+    fft_pd = FFTDomainTranslation(DomainDecomposition(grid_pd))
+    assert fft_pd.Nx_fft == 16 and fft_pd.Ny_fft == 31
+
+    grid_dp = make_grid(16, 16, False, True)
+    fft_dp = FFTDomainTranslation(DomainDecomposition(grid_dp))
+    assert fft_dp.Nx_fft == 31 and fft_dp.Ny_fft == 16
+
+    grid_dd = make_grid(16, 16, False, False)
+    fft_dd = FFTDomainTranslation(DomainDecomposition(grid_dd))
+    assert fft_dd.Nx_fft == 32 and fft_dd.Ny_fft == 32
+
+
+# ---------------------------------------------------------------------------
+# Multi-rank tests — correct behaviour requires nx_splits > 1 (e.g. 4 ranks)
+# ---------------------------------------------------------------------------
+
+# Grid sizes that are divisible by the expected splits for common rank counts.
+# 16x16 works for 1, 2, 4 ranks; 8x8 for 1, 2, 4.
+BLOCK_GRID_CASES = [
+    (16, 16, True,  True),
+    (16, 16, True,  False),
+    (16, 16, False, True),
+    (16, 16, False, False),
+    (8,  8,  False, False),
+    # Divisible by 3 in both axes — exercises 3-rank (1x3) and 6-rank (2x3) splits
+    (12, 12, True,  True),
+    (12, 12, False, False),
+    (18, 12, False, False),
+]
+
+
+@pytest.mark.parametrize("Nx,Ny,px,py", BLOCK_GRID_CASES)
+def test_exchange_plan_x_offsets(Nx, Ny, px, py):
+    """recv_map entries must carry the sender's X offset, not the global Nx.
+
+    This catches the old bug where buffer sizes were hardcoded to (self.Nx, ...).
+    Each recv entry's x_size must equal the sender's local subdomain width, and
+    x_start + x_size must not exceed Nx.
+    """
+    grid = make_grid(Nx, Ny, px, py)
+    decomp = DomainDecomposition(grid)
+    fft_trans = FFTDomainTranslation(decomp)
+
+    for other_rank, info in fft_trans.recv_map.items():
+        assert info['x_size'] <= Nx, \
+            f"rank {rank}: recv from {other_rank}: x_size {info['x_size']} > Nx {Nx}"
+        assert info['x_start'] + info['x_size'] <= Nx, \
+            f"rank {rank}: recv from {other_rank}: x_start+x_size overflows Nx"
+        # With block decomp and nx_splits > 1, no single sender covers full X
+        nx_splits, _ = _nx_ny_splits(size)
+        if nx_splits > 1:
+            assert info['x_size'] < Nx, \
+                f"rank {rank}: recv from {other_rank}: x_size == Nx implies stripe, not block"
+
+
+@pytest.mark.parametrize("Nx,Ny,px,py", BLOCK_GRID_CASES)
+def test_embed_global_content(Nx, Ny, px, py):
+    """After embed, gathering the FFT buffer across all ranks must reproduce
+    the original global field at the correct X/Y positions.
+
+    For non-periodic directions, rows/columns beyond Nx/Ny must be zero (padding).
+    """
+    grid = make_grid(Nx, Ny, px, py)
+    decomp = DomainDecomposition(grid)
+    fft_trans = FFTDomainTranslation(decomp)
+
+    # Build a global reference field: value at (i, j) = i * Ny + j (unique per cell)
+    x0 = decomp.subdomain_locations[0]
+    y0 = decomp.subdomain_locations[1]
+    nx_loc, ny_loc = decomp.nb_subdomain_grid_pts
+    src = np.array([[(x0 + i) * Ny + (y0 + j)
+                     for j in range(ny_loc)]
+                    for i in range(nx_loc)], dtype=float)
+
+    fft_Nx_loc, fft_Ny_loc = fft_trans.fft_engine.nb_subdomain_grid_pts
+    fft_buf = np.zeros((fft_Nx_loc, fft_Ny_loc), dtype=float)
+    fft_trans.embed(src, fft_buf)
+
+    # Gather FFT buffers to rank 0 and reconstruct global FFT field
+    fft_y0 = fft_trans.fft_engine.subdomain_locations[1]
+    all_bufs  = comm.gather(fft_buf,  root=0)
+    all_y0    = comm.gather(fft_y0,   root=0)
+    all_ny    = comm.gather(fft_Ny_loc, root=0)
+
+    if rank == 0:
+        global_fft = np.zeros((fft_trans.Nx_fft, fft_trans.Ny_fft), dtype=float)
+        for buf, gy0, gny in zip(all_bufs, all_y0, all_ny):
+            # FFT engine owns full X — buf has shape (Nx_fft, gny)
+            global_fft[:, gy0:gy0 + gny] = buf
+
+        # Within the physical domain [0:Nx, 0:Ny], values must match i*Ny+j
+        for i in range(Nx):
+            for j in range(Ny):
+                expected = i * Ny + j
+                assert global_fft[i, j] == expected, \
+                    f"global_fft[{i},{j}] = {global_fft[i,j]}, expected {expected}"
+
+        # Padding rows/cols must be zero
+        if not px:
+            assert np.all(global_fft[Nx:, :] == 0.0), "X-padding rows not zero"
+        if not py:
+            assert np.all(global_fft[:, Ny:] == 0.0), "Y-padding cols not zero"
+
+
+@pytest.mark.parametrize("Nx,Ny,px,py", BLOCK_GRID_CASES)
+def test_roundtrip_global_consistency(Nx, Ny, px, py):
+    """After embed+extract, each rank must recover exactly its original block —
+    not just any data, but the correct data at the correct position.
+
+    This is the definitive correctness test: it verifies that block-decomposed
+    data is correctly scattered to FFT stripes and gathered back.
+    """
+    grid = make_grid(Nx, Ny, px, py)
+    decomp = DomainDecomposition(grid)
+    fft_trans = FFTDomainTranslation(decomp)
+
+    # Use globally unique values so any misplacement is detectable
+    x0 = decomp.subdomain_locations[0]
+    y0 = decomp.subdomain_locations[1]
+    nx_loc, ny_loc = decomp.nb_subdomain_grid_pts
+    src = np.array([[(x0 + i) * Ny + (y0 + j)
+                     for j in range(ny_loc)]
+                    for i in range(nx_loc)], dtype=float)
+
+    fft_Nx_loc, fft_Ny_loc = fft_trans.fft_engine.nb_subdomain_grid_pts
+    fft_buf = np.zeros((fft_Nx_loc, fft_Ny_loc), dtype=float)
+    fft_trans.embed(src, fft_buf)
+
+    dst = np.zeros_like(src)
+    fft_trans.extract(fft_buf, dst)
+
+    np.testing.assert_array_equal(
+        dst, src,
+        err_msg=f"rank {rank}: roundtrip data mismatch at x0={x0}, y0={y0}"
+    )

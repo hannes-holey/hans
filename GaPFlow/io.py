@@ -506,6 +506,7 @@ def sanitize_fem_solver(d):
     out = {}
     out['dynamic'] = bool(d.get('dynamic', True))
     out['type'] = str(d.get('type', 'newton_alpha'))
+
     out['max_iter'] = int(d.get('max_iter', 100))
     out['R_norm_tol'] = float(d.get('R_norm_tol', 1e-6))
     # newton_relax: support both new name and legacy 'alpha'

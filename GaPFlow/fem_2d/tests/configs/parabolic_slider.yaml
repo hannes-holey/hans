@@ -1,0 +1,46 @@
+options:
+    output: /tmp/parabolic_slider_{solver}
+    write_freq: 1
+    save_output: False
+
+grid:
+    Lx: 0.0762
+    Ly: 0.01
+    Nx: 200
+    Ny: {Ny}
+    xE: ['P', 'P', 'P']
+    xW: ['P', 'P', 'P']
+    yS: ['P', 'P', 'P']
+    yN: ['P', 'P', 'P']
+    xE_D: {rho_bc}
+    xW_D: {rho_bc}
+
+geometry:
+    type: parabolic
+    hmin: 2.54e-5
+    hmax: 5.08e-5
+    U: 4.57
+    V: 0.
+
+numerics:
+    solver: {solver}
+    dt: {dt}
+    tol: 1e-010
+    max_it: {max_it}
+    adaptive: {adaptive}
+    CFL: {CFL}
+
+properties:
+    EOS: DH
+    shear: 0.039
+    bulk: 0.
+    P0: 101325
+    rho0: 850.
+    C1: 3.5e8
+    C2: 1.23
+
+fem_solver:
+    type: newton_alpha
+    alpha: 0.1
+    R_norm_tol: 1e-04
+    max_iter: 10

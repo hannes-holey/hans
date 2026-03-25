@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Christoph Huber
+# Copyright 2026 Christoph Huber
 #
 # ### MIT License
 #
@@ -21,36 +21,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-"""Quadrature field management for FEM assembly.
 
-Handles field storage, interpolation operators, update methods, and access
-for nodal and quadrature point fields on triangular elements.
-"""
-from typing import Any, Dict, List, Set, TYPE_CHECKING
+from typing import Dict, List, Set, TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
 from muGrid import Field
+from scipy.ndimage import zoom
 
-from .elements import TriangleQuadrature
+from .elements import TaylorHoodP2P1
 
 if TYPE_CHECKING:
     from ..problem import Problem
+    from ..parallel import DomainDecomposition
 
 NDArray = npt.NDArray[np.floating]
 
 
-# Field name sets for different physics
+# ---------------------------------------------------------------------------
+# Field name sets
+# ---------------------------------------------------------------------------
+
 BASE_FIELDS = {
     'rho', 'jx', 'jy',
     'p', 'h', 'dh_dx', 'dh_dy', 'eta',
     'U_bot', 'V_bot', 'U_top', 'V_top', 'Ls',
     'dp_drho',
     'rho_prev', 'jx_prev', 'jy_prev',
-    'tau_mass',
-    'tau_mom',
-    'tau_pspg',
-    'tau_gls',
     'force_x', 'force_y',
 }
 
@@ -69,390 +66,241 @@ ENERGY_FIELDS = {
     'T', 'dT_drho', 'dT_djx', 'dT_djy', 'dT_dE',
     'S', 'dS_drho', 'dS_djx', 'dS_djy', 'dS_dE',
     'E_prev',
-    'tau_energy',
 }
+
+# Fields whose nodal values live on the fine (mass-flux) grid
+_FINE_GRID_FIELDS = {'jx', 'jy'}
 
 
 class QuadFieldManager:
-    """Manages quadrature fields, operators, and updates for FEM.
-
-    Handles:
-    - Field storage (nodal and quadrature point fields)
-    - Interpolation operators (nodal → quad, derivatives)
-    - Field access methods (get values, compute derivatives)
-    - Physics updates (nodal fields, interpolation, derived quantities)
-    - Time stepping (store previous values)
+    """Manages nodal and quadrature fields for Taylor-Hood P2P1 assembly.
 
     Parameters
     ----------
     problem : Problem
-        Problem instance for physics model access.
+        Problem instance (coarse-grid state, physics models).
     energy : bool
-        Whether energy equation is active.
+        Whether the energy equation is active.
     variables : list of str
-        Variable names for time stepping (e.g., ['rho', 'jx', 'jy']).
+        Newton variables in order, e.g. ['jx', 'jy', 'rho'] or with 'E'.
+    elements : TaylorHoodP2P1
+        Element instance carrying P1 and P2 operators.
+    decomp : DomainDecomposition
+        Decomposition holding both coarse (_p) and fine (_v) grid info.
     """
 
-    def __init__(self, problem: "Problem", energy: bool, variables: List[str],
-                 quad: TriangleQuadrature):
+    def __init__(self, problem: "Problem",
+                 energy: bool,
+                 variables: List[str],
+                 elements: TaylorHoodP2P1,
+                 decomp: "DomainDecomposition") -> None:
         self.problem = problem
         self.energy = energy
         self.variables = variables
+        self.elements = elements
+        self.decomp = decomp
 
-        # Grid spacing from problem
         self.dx = problem.grid['dx']
         self.dy = problem.grid['dy']
 
-        # Field storage
-        self.nodal_fields: Dict[str, Any] = {}
-        self.quad_fields: Dict[str, Any] = {}
+        # Fine-grid ghost depth
+        self._ghost_v = 2
 
-        # Cache for boundary distance (computed on first use)
-        self._boundary_distance_cache = None
+        self.nodal_fields: Dict[str, Field] = {}
+        self.quad_fields: Dict[str, Field] = {}
 
-        # Initialize operators and fields
-        self._init_operators(quad)
         self._init_fields()
 
-    def _init_operators(self, quad: TriangleQuadrature) -> None:
-        """Initialize interpolation and derivative operators."""
-        self.quad_operator = quad.interpolation_operator
-        self.dx_operator = quad.dx_operator
-        self.dy_operator = quad.dy_operator
+    # =========================================================================
+    # Initialisation
+    # =========================================================================
 
     def _init_fields(self) -> None:
-        """Initialize nodal and quadrature point fields."""
-        fc = self.problem.fc
-        fc.set_nb_sub_pts("quad", 6)
-        fc.set_nb_sub_pts("quad_deriv", 2)
+        """Register all nodal and quadrature fields in the muGrid FieldCollections.
 
-        # Multi-component sources need single-component fields for interpolation
-        nodal_names = ['rho', 'jx', 'jy', 'h', 'dh_dx', 'dh_dy']
-        if self.energy:
-            nodal_names.extend(['E', 'Tb_top', 'Tb_bot'])
-        for name in nodal_names:
+        set_nb_sub_pts('quad', nb_quad_sq) must be called before any 'quad' field is
+        registered; it has no effect on already-registered fields or other tags.
+        'pixel' is a muGrid built-in (always 1 sub-point per cell, pre-registered).
+
+        - create new nodal fields for coarse-grid variables rho and h (to have individual fields)
+        - get reference to p, eta fields from problem
+        - create nodal fields for fine-grid variables jx, jy
+        - create placeholder field for on-the-fly derivative computation
+        - create quadrature fields for all needed variables
+        """
+        fc = self.decomp.fc
+
+        nb_quad_sq = self.elements.n_tri * self.elements.Quadrature.nb_points
+        fc.set_nb_sub_pts('quad', nb_quad_sq)
+
+        # Create new single-component nodal fields
+        for name in ['rho', 'h', 'dh_dx', 'dh_dy']:
             self.nodal_fields[name] = fc.real_field(f'{name}_nodal', 1, 'pixel')
 
-        # Existing single-component fields (pressure, viscosity)
-        self.nodal_fields['p'] = Field(fc.get_real_field('pressure'))
+        # Reference existing fields from fc
+        self.nodal_fields['p']   = Field(fc.get_real_field('pressure'))
         self.nodal_fields['eta'] = Field(fc.get_real_field('shear_viscosity'))
+        if self.energy:
+            self.nodal_fields['E']      = Field(fc.get_real_field('total_energy'))
+            self.nodal_fields['Tb_top'] = Field(fc.get_real_field('Tb_top'))
+            self.nodal_fields['Tb_bot'] = Field(fc.get_real_field('Tb_bot'))
 
-        # Quadrature output fields
-        for name in self.get_needed_fields():
-            self.quad_fields[name] = fc.real_field(f'{name}_q', 1, 'quad')
+        # Create fine-grid nodal fields
+        fc_v = self.decomp.fc_v
+        for name in ('jx', 'jy'):
+            self.nodal_fields[name] = fc_v.real_field(f'{name}_nodal', 1, 'pixel')
 
-        # Placeholder for derivative computation (reused)
-        self.deriv_placeholder = fc.real_field('deriv_placeholder', 1, 'quad_deriv')
+        # Placeholder for on-the-fly derivative computation
+        self._deriv_placeholder = fc.real_field('deriv_placeholder_p2p1', 1, 'quad')
 
-    def get_needed_fields(self) -> Set[str]:
-        """Get set of needed quadrature field names based on physics."""
+        # Create all quadrature fields
+        for name in self._needed_fields():
+            self.quad_fields[name] = fc.real_field(f'{name}_q_p2p1', 1, 'quad')
+
+    def _needed_fields(self) -> Set[str]:
         needed = BASE_FIELDS | STRESS_XZ_FIELDS | STRESS_YZ_FIELDS
         if self.energy:
             needed |= ENERGY_FIELDS
         return needed
 
     # =========================================================================
-    # Field Access
+    # Field access  (assembly calls these)
     # =========================================================================
 
-    def get(self, name: str) -> NDArray:
-        """Get quadrature field values for internal squares.
-
-        Returns shape (6, sq_per_row, sq_per_col).
+    def get_quad(self, name: str) -> NDArray:
+        """Quadrature values for all squares.
+        Returns shape (nb_sq, nb_quad_sq): squares x-major, quad innermost.
         """
-        return self.quad_fields[name].pg[..., :-1, :-1]
+        sq = self.quad_fields[name].pg[:, :-1, :-1]  # (nb_quad_sq, sq_per_row, sq_per_col)
+        return sq.transpose(2, 1, 0).reshape(-1, sq.shape[0])
 
     def get_deriv_dx(self, name: str) -> NDArray:
-        """Compute d(field)/dx at quad points.
-
-        Returns shape (2, sq_per_row, sq_per_col).
-        """
-        self.dx_operator.apply(self.nodal_fields[name], self.deriv_placeholder)
-        return self.deriv_placeholder.pg[..., :-1, :-1].copy()
+        """d(field)/dx at quad points, shape (nb_sq, nb_quad_sq)."""
+        op = (self.elements.P2.dx_operator if name in _FINE_GRID_FIELDS
+              else self.elements.P1.dx_operator)
+        op.apply(self.nodal_fields[name], self._deriv_placeholder)
+        sq = self._deriv_placeholder.pg[:, :-1, :-1]
+        return sq.transpose(2, 1, 0).reshape(-1, sq.shape[0]) / self.dx
 
     def get_deriv_dy(self, name: str) -> NDArray:
-        """Compute d(field)/dy at quad points.
-
-        Returns shape (2, sq_per_row, sq_per_col).
-        """
-        self.dy_operator.apply(self.nodal_fields[name], self.deriv_placeholder)
-        return self.deriv_placeholder.pg[..., :-1, :-1].copy()
+        """d(field)/dy at quad points, shape (nb_sq, nb_quad_sq)."""
+        op = (self.elements.P2.dy_operator if name in _FINE_GRID_FIELDS
+              else self.elements.P1.dy_operator)
+        op.apply(self.nodal_fields[name], self._deriv_placeholder)
+        sq = self._deriv_placeholder.pg[:, :-1, :-1]
+        return sq.transpose(2, 1, 0).reshape(-1, sq.shape[0]) / self.dy
 
     def interpolate_nodal_to_quad(self, name: str) -> None:
-        """Interpolate a single nodal field to quadrature points."""
-        self.quad_operator.apply(self.nodal_fields[name], self.quad_fields[name])
+        """Interpolate a single nodal field to its quad output field.
+        No return, but updates self.quad_fields[name] in-place."""
+        op = (self.elements.P2.interpolation_operator
+              if name in _FINE_GRID_FIELDS
+              else self.elements.P1.interpolation_operator)
+        op.apply(self.nodal_fields[name], self.quad_fields[name])
 
     # =========================================================================
-    # Field Updates (physics-dependent)
+    # Newton scatter / gather  (solver calls these)
     # =========================================================================
 
-    def update_nodal_fields(self) -> None:
-        """Update nodal fields from problem state.
+    def get_nodal_sol_val(self, var: str) -> NDArray:
+        """Extract inner nodal values as a flat vector for the Newton solve.
+        """
+        return self.nodal_fields[var].p[0].flatten(order='F')
 
-        - pressure
-        - topography, deformation, and derivatives
-        - pressure gradients and viscosity
-        - temperature if energy is active
+    def set_nodal_sol_val(self, var: str, values: NDArray) -> None:
+        """Scatter Newton solution vector back to the nodal field inner region.
+        """
+        self.nodal_fields[var].p[0] = values.reshape(
+            self.nodal_fields[var].p[0].shape, order='F')
+
+    # =========================================================================
+    # Sync gate: fine-grid jx/jy → problem.q  (for output / BCs)
+    # =========================================================================
+
+    def sync_to_problem_q(self) -> None:
+        """Sync Newton-owned nodal fields back to problem.q.
+        - E: direct reference to p.energy's field — always in sync, no copy needed.
         """
         p = self.problem
+        p.q[0] = self.nodal_fields['rho'].pg[0]
+        p.q[1] = self.nodal_fields['jx'].pg[0, ::2, ::2]
+        p.q[2] = self.nodal_fields['jy'].pg[0, ::2, ::2]
 
+    def sync_from_problem_q(self) -> None:
+        """Copy problem.q initial state to Newton-owned nodal fields.
+        Used at initialisation and after external state changes.
+        """
+        p = self.problem
+        Nx_p, Ny_p = self.decomp.local_shape_padded
+        Nx_v, Ny_v = self.decomp.local_shape_padded_v
+        zoom_factors = (Nx_v / Nx_p, Ny_v / Ny_p)
+
+        self.nodal_fields['rho'].pg[0] = p.q[0]
+        self.nodal_fields['jx'].pg[0] = zoom(p.q[1], zoom_factors, order=1)
+        self.nodal_fields['jy'].pg[0] = zoom(p.q[2], zoom_factors, order=1)
+        # E is a direct reference to p.energy's field — no copy needed
+
+    # =========================================================================
+    # Field updates  (called once per Newton step)
+    # =========================================================================
+
+    def update_physics(self) -> None:
+        """Update physics nodal fields after solution field update.
+        """
+        self.sync_to_problem_q()
+        p = self.problem
         p.pressure.update()
+        p.topo.update()
 
-        with p.solver.timer("topography_update"):
-            p.topo.update()
-
-        with p.solver.timer("viscosity_update"):
-            dp_dx = np.gradient(p.pressure.pressure, p.grid['dx'], axis=0)
-            dp_dy = np.gradient(p.pressure.pressure, p.grid['dy'], axis=1)
-            p.viscosity.update(p.pressure.pressure, dp_dx, dp_dy,
-                               p.topo.h,
-                               p.geo['U_bot'], p.geo['V_bot'],
-                               p.geo['U_top'], p.geo['V_top'])
-
+        dp_dx = np.gradient(p.pressure.pressure, self.dx, axis=0)
+        dp_dy = np.gradient(p.pressure.pressure, self.dy, axis=1)
+        p.viscosity.update(p.pressure.pressure, dp_dx, dp_dy,
+                           p.topo.h,
+                           p.geo['U_bot'], p.geo['V_bot'],
+                           p.geo['U_top'], p.geo['V_top'])
         if self.energy:
             p.energy.update_temperature()
 
-    def update_quad_nodal(self) -> None:
-        """Copy problem state to internal nodal fields and interpolate to quad points."""
+    def update_nodal_to_quad(self) -> None:
+        """Interpolate nodal fields to quad fields.
+        """
         p = self.problem
 
-        # Copy multi-component sources to single-component fields
-        self.nodal_fields['rho'].pg[0] = p.q[0]
-        self.nodal_fields['jx'].pg[0] = p.q[1]
-        self.nodal_fields['jy'].pg[0] = p.q[2]
-        self.nodal_fields['h'].pg[0] = p.topo.h
-        self.nodal_fields['dh_dx'].pg[0] = p.topo.dh_dx
-        self.nodal_fields['dh_dy'].pg[0] = p.topo.dh_dy
+        # rho, jx, jy, p, eta, E, Tb_top, Tb_bot are always in sync
+        self.nodal_fields['h'].pg[0]      = p.topo.h
+        self.nodal_fields['dh_dx'].pg[0]  = p.topo.dh_dx
+        self.nodal_fields['dh_dy'].pg[0]  = p.topo.dh_dy
 
+        # Interpolate all nodal fields to quad fields
+        coarse_interp = ['rho', 'p', 'h', 'dh_dx', 'dh_dy', 'eta']
         if self.energy:
-            self.nodal_fields['E'].pg[0] = p.energy.energy
-            self.nodal_fields['Tb_top'].pg[0] = p.energy.Tb_top
-            self.nodal_fields['Tb_bot'].pg[0] = p.energy.Tb_bot
-
-        # Interpolate nodal → quad using operator
-        interpolated = ['rho', 'jx', 'jy', 'p', 'h', 'dh_dx', 'dh_dy', 'eta']
-        if self.energy:
-            interpolated.extend(['E', 'Tb_top', 'Tb_bot'])
-        for name in interpolated:
+            coarse_interp.extend(['E', 'Tb_top', 'Tb_bot'])
+        for name in coarse_interp:
+            self.interpolate_nodal_to_quad(name)
+        for name in ('jx', 'jy'):
             self.interpolate_nodal_to_quad(name)
 
-        # Broadcast constants
+        # Broadcast scalar constants
         self.quad_fields['U_bot'].pg[:] = p.geo['U_bot']
         self.quad_fields['V_bot'].pg[:] = p.geo['V_bot']
         self.quad_fields['U_top'].pg[:] = p.geo['U_top']
         self.quad_fields['V_top'].pg[:] = p.geo['V_top']
-        self.quad_fields['Ls'].pg[:] = p.prop.get('slip_length', 0.0)
+        self.quad_fields['Ls'].pg[:]    = p.prop.get('slip_length', 0.0)
 
     def _apply_2d_vmap(self, func, *args):
-        """Reshape args for 2D vmap application and reshape result back."""
-        shape = args[0].shape  # (6, Ny, Nx)
+        shape = args[0].shape
         args_2d = [a.reshape(shape[0], -1) for a in args]
-        result_2d = func(*args_2d)
-        return result_2d.reshape(shape)
-
-    def _compute_boundary_distance(self, target_shape: tuple) -> NDArray:
-        """Compute distance (in grid cells) from each quad point to nearest Dirichlet boundary.
-
-        Parameters
-        ----------
-        target_shape : tuple
-            Target shape (6, nx, ny) to match the quad field slice shape.
-
-        Returns array of shape target_shape representing distance in cell units.
-        Points away from any Dirichlet boundary get a large value.
-        """
-        p = self.problem
-        grid = p.grid
-        decomp = p.decomp
-
-        Lx, Ly = grid['Lx'], grid['Ly']
-        h = np.sqrt(self.dx * self.dy)  # characteristic element size
-
-        # Grid dimensions from target shape
-        _, nx, ny = target_shape
-
-        # Physical coordinates for each grid point
-        x_coords = np.arange(nx) * self.dx
-        y_coords = np.arange(ny) * self.dy
-
-        # Broadcast to (nx, ny)
-        X, Y = np.meshgrid(x_coords, y_coords, indexing='ij')
-
-        # Distance to each boundary (in grid cells)
-        # Only consider non-periodic boundaries (Dirichlet)
-        # Use full_like to ensure consistent array shapes
-        dist_W = X / h if not decomp.periodic_x else np.full_like(X, np.inf)
-        dist_E = (Lx - X) / h if not decomp.periodic_x else np.full_like(X, np.inf)
-        dist_S = Y / h if not decomp.periodic_y else np.full_like(Y, np.inf)
-        dist_N = (Ly - Y) / h if not decomp.periodic_y else np.full_like(Y, np.inf)
-
-        # Minimum distance to any Dirichlet boundary
-        dist_boundary = np.minimum(np.minimum(dist_W, dist_E), np.minimum(dist_S, dist_N))
-
-        # Broadcast to (6, nx, ny) for all quad points
-        return np.broadcast_to(dist_boundary[np.newaxis, :, :], target_shape).copy()
-
-    def _compute_tau_stabilization(self, s, q) -> None:
-        """Compute stabilization parameters at quadrature points.
-
-        Uses user-specified alpha values as tau, with P0 normalization for
-        pressure/energy and optional boundary enhancement for Dirichlet BCs.
-        """
-        p = self.problem
-        rho = q('rho')
-        P0 = p.prop.get('P0', 1.0)
-
-        # Base tau values: pressure/energy normalized by P0, momentum direct
-        tau_mass_base = p.fem_solver['pressure_stab_alpha'] / P0
-        tau_mom_base = p.fem_solver['momentum_stab_alpha']
-
-        # Optional boundary enhancement
-        boundary_factor = p.fem_solver.get('boundary_stab_factor', 1.0)
-        boundary_decay = p.fem_solver.get('boundary_stab_decay', 2.0)
-
-        if boundary_factor > 1.0 and (not p.decomp.periodic_x or not p.decomp.periodic_y):
-            if self._boundary_distance_cache is None:
-                self._boundary_distance_cache = self._compute_boundary_distance(rho.shape)
-            dist = self._boundary_distance_cache
-            enhancement = 1.0 + (boundary_factor - 1.0) * np.exp(-dist / boundary_decay)
-            tau_mass = tau_mass_base * enhancement
-            tau_mom = tau_mom_base * enhancement
-        else:
-            tau_mass = np.full_like(rho, tau_mass_base)
-            tau_mom = np.full_like(rho, tau_mom_base)
-
-        self.quad_fields['tau_mass'].pg[s] = tau_mass
-        self.quad_fields['tau_mom'].pg[s] = tau_mom
-
-        # Energy stabilization (if enabled)
-        if self.energy:
-            tau_energy = p.fem_solver['energy_stab_alpha']
-            self.quad_fields['tau_energy'].pg[s] = np.full_like(rho, tau_energy)
-
-    def _compute_tau_pspg(self, s, q) -> None:
-        """Compute PSPG stabilization parameter using compressible Tezduyar formula.
-
-        tau_PSPG = [ (2/dt)^2
-                   + (ux^2 + c^2)/dx^2 + (uy^2 + c^2)/dy^2
-                   + C_I * nu_eff^2 * (1/dx^4 + 1/dy^4)
-                   ]^(-1/2)
-
-        where c^2 = dp/drho is the acoustic speed squared. Including the acoustic
-        speed in the advective velocity is the standard compressible generalization
-        (Hauke & Hughes 1998). For stiff EOS (large c), tau ~ dx/c which is small
-        and appropriate. No separate 1/dp_drho scaling is needed — the acoustic
-        speed naturally sets the stabilization magnitude.
-
-        Completely separate from the existing tau_mass / tau_mom computation.
-        Only called when pspg physics flag is active.
-        """
-        p = self.problem
-        rho = q('rho')
-        jx = q('jx')
-        jy = q('jy')
-        dp_drho = q('dp_drho')
-
-        dt = p.numerics['dt']
-        C_I = p.fem_solver['pspg_C_I']
-
-        # Element metric tensor G = diag(1/dx^2, 1/dy^2) for structured grid
-        inv_dx2 = 1.0 / self.dx**2
-        inv_dy2 = 1.0 / self.dy**2
-
-        # Temporal contribution: (2/dt)^2
-        tau_sq = 4.0 / dt**2
-
-        # Advective contribution with acoustic speed: (u^2 + c^2) * G
-        ux = jx / rho
-        uy = jy / rho
-        c_sq = dp_drho  # acoustic speed squared
-        tau_sq = tau_sq + (ux**2 + c_sq) * inv_dx2 + (uy**2 + c_sq) * inv_dy2
-
-        # Diffusive contribution: C_I * nu^2 * G:G
-        if p.fem_solver['physics'].get('plane_shear', False):
-            eta = q('eta')
-            _ = eta / rho
-            # G:G = 1/dx^4 + 1/dy^4
-            # G_sq = inv_dx2**2 + inv_dy2**2
-            # tau_sq = tau_sq + C_I * nu**2 * G_sq
-
-        tau = 1.0 / np.sqrt(tau_sq)
-        tau = tau * C_I
-
-        # Optional boundary damping: tau *= 1 - exp(-dist / decay)
-        decay = p.fem_solver.get('pspg_boundary_decay', 0.0)
-        if decay > 0 and (not p.decomp.periodic_x or not p.decomp.periodic_y):
-            if self._boundary_distance_cache is None:
-                self._boundary_distance_cache = self._compute_boundary_distance(
-                    rho.shape)
-            tau = tau * (1.0 - np.exp(-self._boundary_distance_cache / decay))
-
-        self.quad_fields['tau_pspg'].pg[s] = tau
-
-    def _compute_tau_gls(self, s, q) -> None:
-        """Compute GLS stabilization parameter (Tezduyar 1992).
-
-        Same formula as PSPG. Separate field to allow independent control.
-        Only called when gls physics flag is active.
-        """
-        p = self.problem
-        rho = q('rho')
-        jx = q('jx')
-        jy = q('jy')
-        dp_drho = q('dp_drho')
-
-        dt = p.numerics['dt']
-        C_I = p.fem_solver['gls_C_I']
-
-        inv_dx2 = 1.0 / self.dx**2
-        inv_dy2 = 1.0 / self.dy**2
-
-        tau_sq = 4.0 / dt**2
-
-        ux = jx / rho
-        uy = jy / rho
-        c_sq = dp_drho
-        tau_sq = tau_sq + (ux**2 + c_sq) * inv_dx2 + (uy**2 + c_sq) * inv_dy2
-
-        if p.fem_solver['physics'].get('plane_shear', False):
-            eta = q('eta')
-            _ = eta / rho
-            # G_sq = inv_dx2**2 + inv_dy2**2
-            # tau_sq = tau_sq + C_I * nu**2 * G_sq
-
-        tau = 1.0 / np.sqrt(tau_sq)
-        tau = tau * C_I
-
-        self.quad_fields['tau_gls'].pg[s] = tau
+        return func(*args_2d).reshape(shape)
 
     def update_quad_computed(self) -> None:
-        """Compute derived quantities at quadrature points.
-
-        Only computes on interior cells (excludes last row/column) where
-        interpolation produced valid data. Ghost cells are left as zero.
-
-        - dp_drho
-        - stabilization parameters
-        - wall stresses and derivatives
-        - temperature and wall heat flux if energy is active
-        """
+        """Compute derived quantities at quad points (wall stress, dp_drho, etc.)."""
         p = self.problem
-        # Interior slice accessor (excludes ghost cells at x=Nx+1, y=Ny+1)
         s = np.s_[..., :-1, :-1]
-        q = lambda name: self.quad_fields[name].pg[s]
+        q = lambda name: self.quad_fields[name].pg[s]  # only on valid squares
         apply = self._apply_2d_vmap
 
-        # Pressure gradient
         self.quad_fields['dp_drho'].pg[s] = apply(p.pressure.dp_drho, q('rho'))
 
-        # Stabilization parameter computation
-        self._compute_tau_stabilization(s, q)
-        if p.fem_solver['physics'].get('pspg', False):
-            self._compute_tau_pspg(s, q)
-        if p.fem_solver['physics'].get('gls', False):
-            self._compute_tau_gls(s, q)
-
-        # Wall stress xz
         args_xz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dx'),
                    q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'))
         for name in ['tau_xz', 'dtau_xz_drho', 'dtau_xz_djx',
@@ -460,7 +308,6 @@ class QuadFieldManager:
             self.quad_fields[name].pg[s] = apply(
                 getattr(p.wall_stress_xz, name), *args_xz)
 
-        # Wall stress yz
         args_yz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dy'),
                    q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'))
         for name in ['tau_yz', 'dtau_yz_drho', 'dtau_yz_djy',
@@ -468,36 +315,30 @@ class QuadFieldManager:
             self.quad_fields[name].pg[s] = apply(
                 getattr(p.wall_stress_yz, name), *args_yz)
 
-        # Body force (constant fields from properties, default 0)
-        force_x = p.prop.get('force_x', 0.0)
-        force_y = p.prop.get('force_y', 0.0)
-        self.quad_fields['force_x'].pg[s] = np.full_like(q('rho'), force_x)
-        self.quad_fields['force_y'].pg[s] = np.full_like(q('rho'), force_y)
+        self.quad_fields['force_x'].pg[s] = np.full_like(
+            q('rho'), p.prop.get('force_x', 0.0))
+        self.quad_fields['force_y'].pg[s] = np.full_like(
+            q('rho'), p.prop.get('force_y', 0.0))
 
         if self.energy:
-            # Temperature
             args_T = (q('rho'), q('jx'), q('jy'), q('E'))
             for name, func in [('T', 'T_func'), ('dT_drho', 'T_grad_rho'),
-                               ('dT_djx', 'T_grad_jx'), ('dT_djy', 'T_grad_jy'),
-                               ('dT_dE', 'T_grad_E')]:
+                                ('dT_djx', 'T_grad_jx'), ('dT_djy', 'T_grad_jy'),
+                                ('dT_dE', 'T_grad_E')]:
                 self.quad_fields[name].pg[s] = getattr(p.energy, func)(*args_T)
 
-            # Wall heat flux (constants captured in closure, only arrays passed)
             args_S = (q('h'), q('eta'), q('rho'), q('E'), q('jx'), q('jy'),
                       q('U_bot'), q('V_bot'), q('Tb_top'), q('Tb_bot'))
-            # TODO: heatflux expressions need re-derivation for U_top, V_top
             for name, func in [('S', 'q_wall_sum'), ('dS_drho', 'q_wall_grad_rho'),
-                               ('dS_djx', 'q_wall_grad_jx'),
-                               ('dS_djy', 'q_wall_grad_jy'),
-                               ('dS_dE', 'q_wall_grad_E')]:
+                                ('dS_djx', 'q_wall_grad_jx'),
+                                ('dS_djy', 'q_wall_grad_jy'),
+                                ('dS_dE', 'q_wall_grad_E')]:
                 self.quad_fields[name].pg[s] = apply(
                     getattr(p.energy, func), *args_S)
 
     def store_prev_values(self) -> None:
         """Store current quad values for time derivatives."""
         for var in self.variables:
-            curr_key = var
             prev_key = f'{var}_prev'
-            if curr_key in self.quad_fields and prev_key in self.quad_fields:
-                self.quad_fields[prev_key].pg[:] = np.copy(
-                    self.quad_fields[curr_key].pg)
+            if var in self.quad_fields and prev_key in self.quad_fields:
+                self.quad_fields[prev_key].pg[:] = self.quad_fields[var].pg.copy()

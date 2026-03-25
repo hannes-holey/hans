@@ -34,7 +34,7 @@ from mpi4py import MPI
 
 from GaPFlow import HAS_PETSC
 from GaPFlow.problem import Problem
-from GaPFlow.solver_fem_2d import FEMSolver2D
+from GaPFlow.solver_fem_2d import FEMSolver2d
 
 # Skip entire module if running in parallel without PETSc
 # (serial execution has SciPy fallback, but parallel requires PETSc)
@@ -141,7 +141,7 @@ def make_config(Nx: int, Ny: int, bc_config: dict, energy: bool = False) -> str:
     return config
 
 
-def compute_fd_jacobian(solver: FEMSolver2D, problem, eps: float = 1e-6) -> np.ndarray:
+def compute_fd_jacobian(solver: FEMSolver2d, problem, eps: float = 1e-6) -> np.ndarray:
     """Compute Jacobian using central finite differences.
 
     Uses relative perturbation for better accuracy across different variable scales
@@ -161,12 +161,12 @@ def compute_fd_jacobian(solver: FEMSolver2D, problem, eps: float = 1e-6) -> np.n
         q_minus[j] -= eps_j
 
         solver.set_q_nodal(q_plus)
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
         R_plus = solver.get_R().copy()
 
         solver.set_q_nodal(q_minus)
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
         R_minus = solver.get_R().copy()
 
@@ -174,7 +174,7 @@ def compute_fd_jacobian(solver: FEMSolver2D, problem, eps: float = 1e-6) -> np.n
 
     # Restore original state
     solver.set_q_nodal(q0)
-    problem.decomp.communicate_ghost_buffers(problem)
+    solver.exchange_ghosts()
     solver.update_quad()
 
     return J_fd
@@ -254,20 +254,15 @@ class TestJacobianFiniteDifference:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
         solver.update_prev_quad()  # Initialize prev values for time derivative terms
 
         M = solver.get_M_dense()
-        nb = solver.nb_inner_pts
-        n_vars = len(solver.variables)
-        M_inner = M[:, :n_vars * nb]
-
         J_fd = compute_fd_jacobian(solver, problem)
-        J_fd_inner = J_fd[:, :n_vars * nb]
 
-        diff_norm = np.linalg.norm(M_inner - J_fd_inner)
-        fd_norm = np.linalg.norm(J_fd_inner)
+        diff_norm = np.linalg.norm(M - J_fd)
+        fd_norm = np.linalg.norm(J_fd)
         rel_err = diff_norm / (fd_norm + 1e-15)
 
         # Periodic BCs give cleaner results
@@ -288,20 +283,15 @@ class TestJacobianFiniteDifference:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
         solver.update_prev_quad()
 
         M = solver.get_M_dense()
-        nb = solver.nb_inner_pts
-        n_vars = len(solver.variables)
-        M_inner = M[:, :n_vars * nb]
-
         J_fd = compute_fd_jacobian(solver, problem)
-        J_fd_inner = J_fd[:, :n_vars * nb]
 
-        diff_norm = np.linalg.norm(M_inner - J_fd_inner)
-        fd_norm = np.linalg.norm(J_fd_inner)
+        diff_norm = np.linalg.norm(M - J_fd)
+        fd_norm = np.linalg.norm(J_fd)
         rel_err = diff_norm / (fd_norm + 1e-15)
 
         tol = 1e-7 if bc_name == 'fully_periodic' else 5e-2
@@ -321,20 +311,18 @@ class TestJacobianFiniteDifference:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
         solver.update_prev_quad()
 
         M = solver.get_M_dense()
-        nb = solver.nb_inner_pts
-
         J_fd = compute_fd_jacobian(solver, problem)
 
         # Check each block
-        for i, res in enumerate(solver.residuals):
-            for j, var in enumerate(solver.variables):
-                M_block = M[i * nb:(i + 1) * nb, j * nb:(j + 1) * nb]
-                J_block = J_fd[i * nb:(i + 1) * nb, j * nb:(j + 1) * nb]
+        for res in solver.residuals:
+            for var in solver.variables:
+                M_block = M[solver._res_slices[res], solver._sol_slices[var]]
+                J_block = J_fd[solver._res_slices[res], solver._sol_slices[var]]
 
                 block_diff = np.linalg.norm(M_block - J_block)
                 block_norm = np.linalg.norm(J_block)
@@ -381,20 +369,15 @@ class TestStabilizationJacobian:
         problem.q[1][:] = 0.5
         problem.q[2][:] = 0.3
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
         solver.update_prev_quad()
 
         M = solver.get_M_dense()
-        nb = solver.nb_inner_pts
-        n_vars = len(solver.variables)
-        M_inner = M[:, :n_vars * nb]
-
         J_fd = compute_fd_jacobian(solver, problem)
-        J_fd_inner = J_fd[:, :n_vars * nb]
 
-        diff_norm = np.linalg.norm(M_inner - J_fd_inner)
-        fd_norm = np.linalg.norm(J_fd_inner)
+        diff_norm = np.linalg.norm(M - J_fd)
+        fd_norm = np.linalg.norm(J_fd)
         rel_err = diff_norm / (fd_norm + 1e-15)
 
         assert rel_err < 1e-7, (
@@ -467,18 +450,15 @@ class TestJacobianBlockStructure:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
 
         M = solver.get_M_dense()
-        nb = solver.nb_inner_pts
-
-        j_jx = solver.variables.index('jx')
-        i_mass = solver.residuals.index('mass')
-        M_mass_jx = M[i_mass * nb:(i_mass + 1) * nb, j_jx * nb:(j_jx + 1) * nb]
+        M_mass_jx = M[solver._res_slices['mass'], solver._sol_slices['jx']]
+        nb_mass = M_mass_jx.shape[0]
 
         # Each row should have at most a few nonzeros (sparse structure)
-        for i in range(nb):
+        for i in range(nb_mass):
             nnz = np.sum(np.abs(M_mass_jx[i, :]) > 1e-12)
             assert nnz <= 6, (
                 f"Row {i} of M[mass,jx] has too many nonzeros: {nnz}"
@@ -494,31 +474,25 @@ class TestJacobianBlockStructure:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
 
         M = solver.get_M_dense()
-        nb = solver.nb_inner_pts
-
-        i_mass = solver.residuals.index('mass')
-        i_mom_x = solver.residuals.index('momentum_x')
-        i_mom_y = solver.residuals.index('momentum_y')
-        j_E = solver.variables.index('E')
 
         # Check M[mass, E] is zero
-        M_mass_E = M[i_mass * nb:(i_mass + 1) * nb, j_E * nb:(j_E + 1) * nb]
+        M_mass_E = M[solver._res_slices['mass'], solver._sol_slices['E']]
         assert np.linalg.norm(M_mass_E) < 1e-12, (
             f"M[mass, E] should be zero, got norm={np.linalg.norm(M_mass_E):.2e}"
         )
 
         # Check M[momentum_x, E] is zero
-        M_momx_E = M[i_mom_x * nb:(i_mom_x + 1) * nb, j_E * nb:(j_E + 1) * nb]
+        M_momx_E = M[solver._res_slices['momentum_x'], solver._sol_slices['E']]
         assert np.linalg.norm(M_momx_E) < 1e-12, (
             f"M[momentum_x, E] should be zero, got norm={np.linalg.norm(M_momx_E):.2e}"
         )
 
         # Check M[momentum_y, E] is zero
-        M_momy_E = M[i_mom_y * nb:(i_mom_y + 1) * nb, j_E * nb:(j_E + 1) * nb]
+        M_momy_E = M[solver._res_slices['momentum_y'], solver._sol_slices['E']]
         assert np.linalg.norm(M_momy_E) < 1e-12, (
             f"M[momentum_y, E] should be zero, got norm={np.linalg.norm(M_momy_E):.2e}"
         )
@@ -540,7 +514,7 @@ class TestEnergyQuadFieldConsistency:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
 
         T = solver.quad_mgr.get('T')
@@ -557,7 +531,7 @@ class TestEnergyQuadFieldConsistency:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
 
         for name in ['dT_drho', 'dT_djx', 'dT_djy', 'dT_dE']:
@@ -577,7 +551,7 @@ class TestEnergyQuadFieldConsistency:
         solver = problem.solver
         solver.pre_run()
 
-        problem.decomp.communicate_ghost_buffers(problem)
+        solver.exchange_ghosts()
         solver.update_quad()
 
         S = solver.quad_mgr.get('S')

@@ -89,7 +89,7 @@ class ExplicitSolver:
 
             p.q = p.q - dt * (fX / dx + fY / dy - src)
 
-            p._communicate_ghost_buffers()
+            p._update_ghosts()
 
         # second-order temporal averaging (Crank-Nicolson-like)
         p.q = (p.q + q0) / 2.0

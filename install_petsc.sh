@@ -2,6 +2,16 @@
 #
 # Install PETSc and petsc4py for GaPFlow 2D FEM solver
 #
+# Tested with the following version combination (Ubuntu 24.04.2 LTS, WSL2):
+#   OS:               Ubuntu 24.04.2 LTS (kernel 6.6.87.2-microsoft-standard-WSL2)
+#   Python:           3.12.3
+#   GCC/G++/GFortran: 13.3.0  (Ubuntu 13.3.0-6ubuntu2~24.04.1)
+#   Open MPI:         4.1.6   (openmpi-bin/libopenmpi-dev 4.1.6-7ubuntu2)
+#   CMake:            3.28.3
+#   GNU Make:         4.3
+#   PETSc:            3.24.2
+#   petsc4py:         3.24.2
+#
 # Prerequisites:
 #   - MPI installed (openmpi-bin, libopenmpi-dev on Debian/Ubuntu)
 #   - C compiler (gcc)
@@ -21,7 +31,7 @@
 
 set -e
 
-PETSC_VERSION=3.22.2
+PETSC_VERSION=3.24.2
 PETSC_INSTALL_DIR="${PETSC_INSTALL_DIR:-$HOME/.local/petsc-$PETSC_VERSION}"
 PETSC_ARCH=arch-linux-c-opt
 NPROC="${NPROC:-$(nproc 2>/dev/null || echo 4)}"
@@ -99,7 +109,7 @@ echo "Downloading and building dependencies as needed..."
     PETSC_ARCH="$PETSC_ARCH" \
     --with-cc=mpicc \
     --with-cxx=mpicxx \
-    --with-fc=0 \
+	--with-fc=mpif90 \
     --with-debugging=0 \
     --with-shared-libraries=1 \
     --download-fblaslapack \
@@ -107,6 +117,7 @@ echo "Downloading and building dependencies as needed..."
     --download-scalapack \
     --download-parmetis \
     --download-metis \
+	--with-mpi=1 \
     COPTFLAGS='-O3 -march=native' \
     CXXOPTFLAGS='-O3 -march=native'
 

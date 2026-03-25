@@ -24,7 +24,34 @@
 
 # flake8: noqa: E501
 
+"""Height-Averaged Navier Stokes Terms
+
+Each NonLinearTerm carries:
+  name        : identifier
+  description : human-readable label
+  res         : residual equation name ('mass', 'momentum_x', 'momentum_y', 'energy')
+  dep_vars    : field variables (DOF)
+  dep_vals    : extra context fields such as height, which is not a DOF
+  fun         : function expression
+  der_funs    : partial derivatives w.r.t. field variables
+  d_dx_resfun : bool  — True if fun contains ∂/∂x acting on a dep_var
+  d_dy_resfun : bool  — True if fun contains ∂/∂y acting on a dep_var
+  der_testfun : False | 'x' | 'y'  — direction of test-function derivative (IBP)
+
+Derivative combinations (depvar_deriv, testfun_deriv):
+  ('none', False)     — standard Galerkin: ∫ Nᵢ · f dΩ
+  ('x', False)        — dep_var derivative only: fun receives ∂var/∂x
+  ('y', False)        — dep_var derivative only: fun receives ∂var/∂y
+  ('none', 'x')       — test-fun derivative only (PSPG): ∫ (∂Nᵢ/∂x) · f dΩ
+  ('none', 'y')       — test-fun derivative only (PSPG): ∫ (∂Nᵢ/∂y) · f dΩ
+  ('x', 'x')          — both (diffusion xx): ∫ (∂Nᵢ/∂x) · f(∂var/∂x) dΩ
+  ('y', 'y')          — both (diffusion yy): ∫ (∂Nᵢ/∂y) · f(∂var/∂y) dΩ
+  ('x', 'y')          — cross (diffusion xy): ∫ (∂Nᵢ/∂y) · f(∂var/∂x) dΩ
+  ('y', 'x')          — cross (diffusion yx): ∫ (∂Nᵢ/∂x) · f(∂var/∂y) dΩ
+"""
+
 from typing import Callable
+from typing import List
 import numpy as np
 import numpy.typing as npt
 
@@ -42,7 +69,7 @@ class NonLinearTerm():
                  der_funs: list[Callable],
                  d_dx_resfun: bool = False,
                  d_dy_resfun: bool = False,
-                 der_testfun: bool = False):
+                 der_testfun=False):
         self.name = name
         self.description = description
         self.res = res
@@ -70,6 +97,26 @@ class NonLinearTerm():
             raise Exception("Term not built")
         i = self.dep_vars.index(dep_var)
         return self.der_funs[i](*args)
+    
+    @property
+    def depvar_deriv(self):
+        """Direction of spatial derivative acting on dep_var: 'none', 'x', or 'y'."""
+        if self.d_dx_resfun:
+            return 'x'
+        elif self.d_dy_resfun:
+            return 'y'
+        else:
+            return 'none'
+
+    @property
+    def testfun_deriv(self):
+        """Direction of test-function derivative: False, 'x', or 'y'."""
+        return self.der_testfun
+
+    @property
+    def deriv_key(self):
+        """Return (depvar_deriv, testfun_deriv) tuple for template lookup."""
+        return (self.depvar_deriv, self.testfun_deriv)
 
 
 # -----------------------------------------------------------------------------
@@ -103,7 +150,7 @@ R11y = NonLinearTerm(
 
 R11Sx = NonLinearTerm(
     name='R11Sx',
-    description='flux divergence height source',
+    description='flux divergence height source x',
     res='mass',
     dep_vars=['jx'],
     dep_vals=['h', 'dh_dx'],
@@ -115,7 +162,7 @@ R11Sx = NonLinearTerm(
 
 R11Sy = NonLinearTerm(
     name='R11Sy',
-    description='flux divergence height source',
+    description='flux divergence height source y',
     res='mass',
     dep_vars=['jy'],
     dep_vals=['h', 'dh_dy'],
@@ -137,31 +184,6 @@ R1T = NonLinearTerm(
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
-
-# R1Stab: Pressure stabilization
-R1Stabx = NonLinearTerm(
-    name='R1Stabx',
-    description='pressure stabilization x',
-    res='mass',
-    dep_vars=['rho'],
-    dep_vals=[],
-    fun=lambda ctx: lambda rho: -ctx['tau_mass']() * ctx['p'](),
-    der_funs=[lambda ctx: lambda rho: -ctx['tau_mass']() * ctx['dp_drho']()],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
-    der_testfun=True)
-
-R1Staby = NonLinearTerm(
-    name='R1Staby',
-    description='pressure stabilization y',
-    res='mass',
-    dep_vars=['rho'],
-    dep_vals=[],
-    fun=lambda ctx: lambda rho: -ctx['tau_mass']() * ctx['p'](),
-    der_funs=[lambda ctx: lambda rho: -ctx['tau_mass']() * ctx['dp_drho']()],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=True)
 
 # -----------------------------------------------------------------------------
 # Momentum equation terms (R2*)
@@ -225,7 +247,7 @@ R22xxS = NonLinearTerm(
 
 R22yx = NonLinearTerm(
     name='R22yx',
-    description='convective momentum flux jx*jy in y',
+    description='convective momentum flux jx*jy in y (for momentum_x)',
     res='momentum_x',
     dep_vars=['rho', 'jx', 'jy'],
     dep_vals=[],
@@ -241,7 +263,7 @@ R22yx = NonLinearTerm(
 
 R22yxS = NonLinearTerm(
     name='R22yxS',
-    description='convective momentum flux jx*jy height source',
+    description='convective momentum flux jx*jy height source (for momentum_x)',
     res='momentum_x',
     dep_vars=['rho', 'jx', 'jy'],
     dep_vals=['h', 'dh_dy'],
@@ -257,7 +279,7 @@ R22yxS = NonLinearTerm(
 
 R22xy = NonLinearTerm(
     name='R22xy',
-    description='convective momentum flux jx*jy in x',
+    description='convective momentum flux jx*jy in x (for momentum_y)',
     res='momentum_y',
     dep_vars=['rho', 'jx', 'jy'],
     dep_vals=[],
@@ -273,7 +295,7 @@ R22xy = NonLinearTerm(
 
 R22xyS = NonLinearTerm(
     name='R22xyS',
-    description='convective momentum flux jx*jy height source',
+    description='convective momentum flux jx*jy height source (for momentum_y)',
     res='momentum_y',
     dep_vars=['rho', 'jx', 'jy'],
     dep_vals=['h', 'dh_dx'],
@@ -317,8 +339,9 @@ R22yyS = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
-# R23: In-plane shear stress (viscous diffusion)
-# Simplified diffusion form: exact for incompressible flow (div v = 0)
+# R23: In-plane shear stress (viscous diffusion, integrated by parts)
+# Weak form: ∫ (∂N_i/∂y) * η * ∂(jx/ρ)/∂y dΩ  for momentum_x
+# f(rho, jx) = -η * jx/ρ, dep_var derivative ∂/∂y, test function derivative ∂/∂y
 R23xy = NonLinearTerm(
     name='R23xy',
     description='shear viscous stress tau_xy in y (for momentum_x)',
@@ -332,8 +355,10 @@ R23xy = NonLinearTerm(
     ],
     d_dx_resfun=False,
     d_dy_resfun=True,
-    der_testfun=True)
+    der_testfun='y')
 
+# Weak form: ∫ (∂N_i/∂x) * η * ∂(jy/ρ)/∂x dΩ  for momentum_y
+# f(rho, jy) = -η * jy/ρ, dep_var derivative ∂/∂x, test function derivative ∂/∂x
 R23yx = NonLinearTerm(
     name='R23yx',
     description='shear viscous stress tau_xy in x (for momentum_y)',
@@ -347,12 +372,12 @@ R23yx = NonLinearTerm(
     ],
     d_dx_resfun=True,
     d_dy_resfun=False,
-    der_testfun=True)
+    der_testfun='x')
 
 # R24: Wall stress
 R24x = NonLinearTerm(
     name='R24x',
-    description='wall stress',
+    description='wall stress x',
     res='momentum_x',
     dep_vars=['rho', 'jx'],
     dep_vals=['h', 'tau_xz', 'dtau_xz_drho', 'dtau_xz_djx'],
@@ -365,7 +390,7 @@ R24x = NonLinearTerm(
 
 R24y = NonLinearTerm(
     name='R24y',
-    description='wall stress',
+    description='wall stress y',
     res='momentum_y',
     dep_vars=['rho', 'jy'],
     dep_vals=['h', 'tau_yz', 'dtau_yz_drho', 'dtau_yz_djy'],
@@ -376,8 +401,7 @@ R24y = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
-# R25: Body force (for driving flow with periodic BCs)
-# Force per unit mass (like gravity), contributes h*rho*force to momentum
+# R25: Body force
 R25x = NonLinearTerm(
     name='R25x',
     description='body force x',
@@ -405,7 +429,7 @@ R25y = NonLinearTerm(
 # R2T: Time derivative
 R2Tx = NonLinearTerm(
     name='R2Tx',
-    description='time derivative',
+    description='time derivative momentum_x',
     res='momentum_x',
     dep_vars=['jx'],
     dep_vals=[],
@@ -417,7 +441,7 @@ R2Tx = NonLinearTerm(
 
 R2Ty = NonLinearTerm(
     name='R2Ty',
-    description='time derivative',
+    description='time derivative momentum_y',
     res='momentum_y',
     dep_vars=['jy'],
     dep_vals=[],
@@ -426,31 +450,6 @@ R2Ty = NonLinearTerm(
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
-
-# R2Stab: Momentum stabilization
-R2Stabx = NonLinearTerm(
-    name='R2Stabx',
-    description='momentum stabilization x',
-    res='momentum_x',
-    dep_vars=['jx'],
-    dep_vals=[],
-    fun=lambda ctx: lambda jx: -ctx['tau_mom']() * jx,
-    der_funs=[lambda ctx: lambda jx: -ctx['tau_mom']() * np.ones_like(jx)],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
-    der_testfun=True)
-
-R2Staby = NonLinearTerm(
-    name='R2Staby',
-    description='momentum stabilization y',
-    res='momentum_y',
-    dep_vars=['jy'],
-    dep_vals=[],
-    fun=lambda ctx: lambda jy: -ctx['tau_mom']() * jy,
-    der_funs=[lambda ctx: lambda jy: -ctx['tau_mom']() * np.ones_like(jy)],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=True)
 
 # -----------------------------------------------------------------------------
 # Energy equation terms (R3*)
@@ -574,7 +573,6 @@ R34 = NonLinearTerm(
     dep_vars=['rho', 'jx', 'jy'],
     dep_vals=['h', 'tau_xz_bot', 'tau_yz_bot', 'dtau_xz_bot_drho', 'dtau_xz_bot_djx',
               'dtau_yz_bot_drho', 'dtau_yz_bot_djy', 'U_bot', 'V_bot'],
-    # TODO: add top-wall stress work contribution (tau_xz_top * U_top + tau_yz_top * V_top)
     fun=lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * (ctx['tau_xz_bot']() * ctx['U_bot']() + ctx['tau_yz_bot']() * ctx['V_bot']()),
     der_funs=[lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * (ctx['dtau_xz_bot_drho']() * ctx['U_bot']() + ctx['dtau_yz_bot_drho']() * ctx['V_bot']()),
               lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dtau_xz_bot_djx']() * ctx['U_bot'](),
@@ -583,7 +581,8 @@ R34 = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
-# R35: Thermal diffusion
+# R35: Thermal diffusion (integrated by parts)
+# ∫ (∂N_i/∂x) * k*T dΩ  for energy
 R35x = NonLinearTerm(
     name='R35x',
     description='thermal diffusion x',
@@ -595,9 +594,9 @@ R35x = NonLinearTerm(
               lambda ctx: lambda rho, jx, jy, E: - ctx['k']() * ctx['dT_djx'](),
               lambda ctx: lambda rho, jx, jy, E: - ctx['k']() * ctx['dT_djy'](),
               lambda ctx: lambda rho, jx, jy, E: - ctx['k']() * ctx['dT_dE']()],
-    d_dx_resfun=True,
+    d_dx_resfun=False,
     d_dy_resfun=False,
-    der_testfun=True)
+    der_testfun='x')
 
 R35y = NonLinearTerm(
     name='R35y',
@@ -611,10 +610,10 @@ R35y = NonLinearTerm(
               lambda ctx: lambda rho, jx, jy, E: - ctx['k']() * ctx['dT_djy'](),
               lambda ctx: lambda rho, jx, jy, E: - ctx['k']() * ctx['dT_dE']()],
     d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=True)
+    d_dy_resfun=False,
+    der_testfun='y')
 
-# R36: Wall heat balance (source term)
+# R36: Wall heat balance
 R36 = NonLinearTerm(
     name='R36',
     description='wall heat balance',
@@ -643,309 +642,49 @@ R3T = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
-# R3Stab: Energy stabilization
-R3Stabx = NonLinearTerm(
-    name='R3Stabx',
-    description='energy stabilization x',
-    res='energy',
-    dep_vars=['E'],
-    dep_vals=[],
-    fun=lambda ctx: lambda E: -ctx['tau_energy']() * E,
-    der_funs=[lambda ctx: lambda E: -ctx['tau_energy']() * np.ones_like(E)],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
-    der_testfun=True)
-
-R3Staby = NonLinearTerm(
-    name='R3Staby',
-    description='energy stabilization y',
-    res='energy',
-    dep_vars=['E'],
-    dep_vals=[],
-    fun=lambda ctx: lambda E: -ctx['tau_energy']() * E,
-    der_funs=[lambda ctx: lambda E: -ctx['tau_energy']() * np.ones_like(E)],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=True)
-
-
-# -----------------------------------------------------------------------------
-# PSPG stabilization terms (full momentum-residual PSPG for mass equation)
-# Activated by physics flag pspg: true, replaces R1Stabx/R1Staby.
-# Uses tau_pspg (Tezduyar 1992) instead of tau_mass.
-# -----------------------------------------------------------------------------
-
-# PSPG pressure gradient (replaces R1Stabx/R1Staby with tau_pspg)
-R1PSPG_Px = NonLinearTerm(
-    name='R1PSPG_Px',
-    description='PSPG pressure gradient x',
-    res='mass',
-    dep_vars=['rho'],
-    dep_vals=['tau_pspg', 'p', 'dp_drho'],
-    fun=lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['p'](),
-    der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['dp_drho']()],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
-    der_testfun=True)
-
-R1PSPG_Py = NonLinearTerm(
-    name='R1PSPG_Py',
-    description='PSPG pressure gradient y',
-    res='mass',
-    dep_vars=['rho'],
-    dep_vals=['tau_pspg', 'p', 'dp_drho'],
-    fun=lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['p'](),
-    der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['dp_drho']()],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=True)
-
-# PSPG temporal: tau * INT (dN/dx_k) * (-(jx-jx_prev)/dt) dOmega
-R1PSPG_Tx = NonLinearTerm(
-    name='R1PSPG_Tx',
-    description='PSPG temporal x',
-    res='mass',
-    dep_vars=['jx'],
-    dep_vals=['tau_pspg', 'jx_prev'],
-    fun=lambda ctx: lambda jx: -(ctx['tau_pspg']() / ctx['dt']) * (jx - ctx['jx_prev']()),
-    der_funs=[lambda ctx: lambda jx: np.full_like(jx, -1.0) * ctx['tau_pspg']() / ctx['dt']],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='x')
-
-R1PSPG_Ty = NonLinearTerm(
-    name='R1PSPG_Ty',
-    description='PSPG temporal y',
-    res='mass',
-    dep_vars=['jy'],
-    dep_vals=['tau_pspg', 'jy_prev'],
-    fun=lambda ctx: lambda jy: -(ctx['tau_pspg']() / ctx['dt']) * (jy - ctx['jy_prev']()),
-    der_funs=[lambda ctx: lambda jy: np.full_like(jy, -1.0) * ctx['tau_pspg']() / ctx['dt']],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='y')
-
-# PSPG wall shear: tau * INT (dN/dx_k) * (tau_xz/h) dOmega
-R1PSPG_Wx = NonLinearTerm(
-    name='R1PSPG_Wx',
-    description='PSPG wall shear x',
-    res='mass',
-    dep_vars=['rho', 'jx'],
-    dep_vals=['tau_pspg', 'tau_xz', 'h', 'dtau_xz_drho', 'dtau_xz_djx'],
-    fun=lambda ctx: lambda rho, jx: ctx['tau_pspg']() * ctx['tau_xz']() / ctx['h'](),
-    der_funs=[
-        lambda ctx: lambda rho, jx: ctx['tau_pspg']() * ctx['dtau_xz_drho']() / ctx['h'](),
-        lambda ctx: lambda rho, jx: ctx['tau_pspg']() * ctx['dtau_xz_djx']() / ctx['h'](),
-    ],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='x')
-
-R1PSPG_Wy = NonLinearTerm(
-    name='R1PSPG_Wy',
-    description='PSPG wall shear y',
-    res='mass',
-    dep_vars=['rho', 'jy'],
-    dep_vals=['tau_pspg', 'tau_yz', 'h', 'dtau_yz_drho', 'dtau_yz_djy'],
-    fun=lambda ctx: lambda rho, jy: ctx['tau_pspg']() * ctx['tau_yz']() / ctx['h'](),
-    der_funs=[
-        lambda ctx: lambda rho, jy: ctx['tau_pspg']() * ctx['dtau_yz_drho']() / ctx['h'](),
-        lambda ctx: lambda rho, jy: ctx['tau_pspg']() * ctx['dtau_yz_djy']() / ctx['h'](),
-    ],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='y')
-
-
-# -----------------------------------------------------------------------------
-# GLS stabilization terms (mass-residual cross-coupling into momentum)
-# Activated by physics flag gls: true, replaces R2Stabx/R2Staby.
-# Uses tau_gls (Tezduyar 1992). No Picard-frozen velocity (exact Jacobian).
-# Naming: R2GLS_{T|D|S}{test_dir}{res_dir}
-#   T = temporal, D = divergence, S = height source
-#   test_dir = momentum equation direction (x or y)
-#   res_dir = mass residual spatial direction (x or y)
-# -----------------------------------------------------------------------------
-
-# GLS temporal: tau * INT (dN/dx_k) * (-(rho-rho_prev)/dt) dOmega
-R2GLS_Tx = NonLinearTerm(
-    name='R2GLS_Tx',
-    description='GLS temporal x',
-    res='momentum_x',
-    dep_vars=['rho'],
-    dep_vals=['tau_gls', 'rho_prev'],
-    fun=lambda ctx: lambda rho: -ctx['tau_gls']() / ctx['dt'] * (rho - ctx['rho_prev']()),
-    der_funs=[lambda ctx: lambda rho: np.full_like(rho, -1.0) * ctx['tau_gls']() / ctx['dt']],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='x')
-
-R2GLS_Ty = NonLinearTerm(
-    name='R2GLS_Ty',
-    description='GLS temporal y',
-    res='momentum_y',
-    dep_vars=['rho'],
-    dep_vals=['tau_gls', 'rho_prev'],
-    fun=lambda ctx: lambda rho: -ctx['tau_gls']() / ctx['dt'] * (rho - ctx['rho_prev']()),
-    der_funs=[lambda ctx: lambda rho: np.full_like(rho, -1.0) * ctx['tau_gls']() / ctx['dt']],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='y')
-
-# GLS divergence: tau * INT (dN/dx_k) * (-djm/dxm) dOmega
-R2GLS_Dxx = NonLinearTerm(
-    name='R2GLS_Dxx',
-    description='GLS divergence x-x',
-    res='momentum_x',
-    dep_vars=['jx'],
-    dep_vals=['tau_gls'],
-    fun=lambda ctx: lambda jx: -ctx['tau_gls']() * jx,
-    der_funs=[lambda ctx: lambda jx: np.full_like(jx, -1.0) * ctx['tau_gls']()],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
-    der_testfun=True)
-
-R2GLS_Dxy = NonLinearTerm(
-    name='R2GLS_Dxy',
-    description='GLS divergence x-y',
-    res='momentum_x',
-    dep_vars=['jy'],
-    dep_vals=['tau_gls'],
-    fun=lambda ctx: lambda jy: -ctx['tau_gls']() * jy,
-    der_funs=[lambda ctx: lambda jy: np.full_like(jy, -1.0) * ctx['tau_gls']()],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun='x')
-
-R2GLS_Dyx = NonLinearTerm(
-    name='R2GLS_Dyx',
-    description='GLS divergence y-x',
-    res='momentum_y',
-    dep_vars=['jx'],
-    dep_vals=['tau_gls'],
-    fun=lambda ctx: lambda jx: -ctx['tau_gls']() * jx,
-    der_funs=[lambda ctx: lambda jx: np.full_like(jx, -1.0) * ctx['tau_gls']()],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
-    der_testfun='y')
-
-R2GLS_Dyy = NonLinearTerm(
-    name='R2GLS_Dyy',
-    description='GLS divergence y-y',
-    res='momentum_y',
-    dep_vars=['jy'],
-    dep_vals=['tau_gls'],
-    fun=lambda ctx: lambda jy: -ctx['tau_gls']() * jy,
-    der_funs=[lambda ctx: lambda jy: np.full_like(jy, -1.0) * ctx['tau_gls']()],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=True)
-
-# GLS height source: tau * INT (dN/dx_k) * (-(dh/dxm)/h * jm) dOmega
-R2GLS_Sxx = NonLinearTerm(
-    name='R2GLS_Sxx',
-    description='GLS height source x-x',
-    res='momentum_x',
-    dep_vars=['jx'],
-    dep_vals=['tau_gls', 'h', 'dh_dx'],
-    fun=lambda ctx: lambda jx: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dx']() * jx,
-    der_funs=[lambda ctx: lambda jx: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dx']()],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='x')
-
-R2GLS_Sxy = NonLinearTerm(
-    name='R2GLS_Sxy',
-    description='GLS height source x-y',
-    res='momentum_x',
-    dep_vars=['jy'],
-    dep_vals=['tau_gls', 'h', 'dh_dy'],
-    fun=lambda ctx: lambda jy: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dy']() * jy,
-    der_funs=[lambda ctx: lambda jy: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dy']()],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='x')
-
-R2GLS_Syx = NonLinearTerm(
-    name='R2GLS_Syx',
-    description='GLS height source y-x',
-    res='momentum_y',
-    dep_vars=['jx'],
-    dep_vals=['tau_gls', 'h', 'dh_dx'],
-    fun=lambda ctx: lambda jx: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dx']() * jx,
-    der_funs=[lambda ctx: lambda jx: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dx']()],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='y')
-
-R2GLS_Syy = NonLinearTerm(
-    name='R2GLS_Syy',
-    description='GLS height source y-y',
-    res='momentum_y',
-    dep_vars=['jy'],
-    dep_vals=['tau_gls', 'h', 'dh_dy'],
-    fun=lambda ctx: lambda jy: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dy']() * jy,
-    der_funs=[lambda ctx: lambda jy: -ctx['tau_gls']() / ctx['h']() * ctx['dh_dy']()],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun='y')
-
-
-# -----------------------------------------------------------------------------
-# Term list and selection functions
-# -----------------------------------------------------------------------------
-
+# Master list of all physical terms
 term_list = [
     # Mass equation
-    R11x, R11y, R11Sx, R11Sy, R1T, R1Stabx, R1Staby,
-    # PSPG mass stabilization (replaces R1Stabx/R1Staby when pspg=True)
-    R1PSPG_Px, R1PSPG_Py, R1PSPG_Tx, R1PSPG_Ty, R1PSPG_Wx, R1PSPG_Wy,
-    # Momentum equation (numerical order: R21 -> R22 -> R23 -> R24 -> R25 -> R2T -> R2Stab)
+    R11x, R11y, R11Sx, R11Sy, R1T,
+    # Momentum equation
     R21x, R21y,
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
     R23xy, R23yx,
     R24x, R24y,
     R25x, R25y,
     R2Tx, R2Ty,
-    R2Stabx, R2Staby,
-    # GLS momentum stabilization (when gls=True)
-    R2GLS_Tx, R2GLS_Ty,
-    R2GLS_Dxx, R2GLS_Dxy, R2GLS_Dyx, R2GLS_Dyy,
-    R2GLS_Sxx, R2GLS_Sxy, R2GLS_Syx, R2GLS_Syy,
     # Energy equation
-    R31x, R31y, R31Sx, R31Sy, R32x, R32y, R32Sx, R32Sy,
-    R34, R35x, R35y, R36, R3T, R3Stabx, R3Staby,
+    R31x, R31y, R31Sx, R31Sy,
+    R32x, R32y, R32Sx, R32Sy,
+    R34, R35x, R35y, R36,
+    R3T
 ]
 
 
-def get_default_terms(fem_solver: dict) -> list[str]:
-    """Build term list from physics flags.
+def _term_names_from_physics(fem_solver: dict) -> List[str]:
+    """Build term name list from physics flags.
 
-    Physics flags control which physical terms are included:
-    - gap_shear: Gap-averaged wall shear τ/h (R24x, R24y)
-    - plane_shear: In-plane viscous diffusion (R23xy, R23yx)
-    - inertia: Momentum convection (R22*)
-    - body_force: External body force (R25x, R25y)
-    - energy: Energy equation master switch
-    - energy_convection: Energy advection (R31*)
-    - pressure_work: Pressure-volume work (R32*)
-    - thermal_diffusion: Heat conduction (R35x, R35y)
-    - wall_heat_balance: Wall heat flux BC (R36)
-    - wall_shear_work: Wall stress work / shear heating (R34)
-    - stabilization: Stabilization for all equations
-
-    Note: Disabling wall_shear_work (R34) is consistent with gap_shear=False,
-    as both disable the gap-averaged wall stress contribution.
+    Physics flags (in fem_solver['physics']):
+    - gap_shear:          Gap-averaged wall shear τ/h (R24x, R24y)
+    - plane_shear:        In-plane viscous diffusion (R23xy, R23yx)
+    - inertia:            Momentum convection (R22*)
+    - body_force:         Body force (R25x, R25y)
+    - energy:             Energy equation master switch, subflags below default to True
+    - energy_convection:  Energy advection (R31*)
+    - pressure_work:      Pressure-volume work (R32*)
+    - thermal_diffusion:  Heat conduction (R35x, R35y)
+    - wall_heat_balance:  Wall heat flux BC (R36)
+    - wall_shear_work:    Wall stress work / shear heating (R34)
     """
+
     physics = fem_solver.get('physics', {})
 
-    # Always included: mass conservation, pressure gradient, time derivatives
+    # Mass conservation and pressure gradient always included
     terms = [
-        'R11x', 'R11y', 'R11Sx', 'R11Sy', 'R1T',  # Mass
-        'R21x', 'R21y', 'R2Tx', 'R2Ty',            # Momentum base
+        'R11x', 'R11y', 'R11Sx', 'R11Sy', 'R1T',
+        'R21x', 'R21y', 'R2Tx', 'R2Ty',
     ]
 
-    # Momentum physics
     if physics.get('gap_shear', True):
         terms.extend(['R24x', 'R24y'])
 
@@ -959,30 +698,9 @@ def get_default_terms(fem_solver: dict) -> list[str]:
     if physics.get('body_force', False):
         terms.extend(['R25x', 'R25y'])
 
-    # Mass stabilization: PSPG (full) or Laplacian (legacy), mutually exclusive
-    if physics.get('pspg', False):
-        terms.extend(['R1PSPG_Px', 'R1PSPG_Py',
-                      'R1PSPG_Tx', 'R1PSPG_Ty',
-                      'R1PSPG_Wx', 'R1PSPG_Wy'])
-    elif physics.get('stabilization', True) and not physics.get('gls', False):
-        terms.extend(['R1Stabx', 'R1Staby'])
-
-    # Momentum stabilization: GLS > Laplacian (mutually exclusive)
-    if physics.get('gls', False):
-        terms.extend([
-            'R2GLS_Tx', 'R2GLS_Ty',
-            'R2GLS_Dxx', 'R2GLS_Dxy', 'R2GLS_Dyx', 'R2GLS_Dyy',
-            'R2GLS_Sxx', 'R2GLS_Sxy', 'R2GLS_Syx', 'R2GLS_Syy',
-        ])
-    elif physics.get('stabilization', True):
-        terms.extend(['R2Stabx', 'R2Staby'])
-
-    # Energy physics
     if physics.get('energy', False):
-        # Time derivative (always included with energy)
         terms.append('R3T')
 
-        # Wall stress work / shear heating
         if physics.get('wall_shear_work', True):
             terms.append('R34')
 
@@ -998,23 +716,21 @@ def get_default_terms(fem_solver: dict) -> list[str]:
         if physics.get('wall_heat_balance', True):
             terms.append('R36')
 
-        # Energy stabilization
-        if physics.get('stabilization', True):
-            terms.extend(['R3Stabx', 'R3Staby'])
-
     return terms
 
 
-def get_active_terms(fem_solver: dict) -> list[NonLinearTerm]:
-    """Get active terms based on config.
+def get_active_terms(fem_solver: dict) -> List['NonLinearTerm']:
+    """Return active NonLinearTerm instances based on fem_solver config.
 
-    If user specified explicit term_list, use that (overrides all physics flags).
-    Otherwise, auto-select based on physics flags.
+    If fem_solver['equations']['term_list'] is set, use that explicit list.
+    Otherwise auto-select from physics flags via _term_names_from_physics().
     """
     user_terms = fem_solver['equations'].get('term_list')
     if user_terms is not None:
         requested = set(user_terms)
     else:
-        requested = set(get_default_terms(fem_solver))
+        requested = set(_term_names_from_physics(fem_solver))
 
-    return [t for t in term_list if t.name in requested]
+    term_obj_list = [t for t in term_list if t.name in requested]
+
+    return term_obj_list
