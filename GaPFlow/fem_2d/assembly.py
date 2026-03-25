@@ -426,9 +426,11 @@ class Assembly:
         Shape weighting depends on deriv_key; nnz_index depends only on (res, var).
         """
         self.assembly_templates = {}
+        print("build assembly")
 
         # Collect all (depvar_deriv, testfun_deriv) pairs from active terms
         deriv_keys = set(term.deriv_key for term in terms)
+        print(f"deriv_keys: {deriv_keys}")
 
         for res in self.residuals:
             for dd, td in deriv_keys:
@@ -439,6 +441,8 @@ class Assembly:
 
                     key = (res, var, dd, td)
                     self.assembly_templates[key] = {}
+
+                    print(key)
 
                     shape_weighting, entries_per_quad = self._build_weighting(res, var, dd, td)
                     self.assembly_templates[key]['w'] = shape_weighting
@@ -465,8 +469,12 @@ class Assembly:
                     return True
         return False
 
-    def _build_weighting(self, res: str, var: str, deriv_combo: str):
-        """Build shape_weighting for one (res, var, deriv_combo) combination.
+    def _build_weighting(self, res: str, var: str,
+                         depvar_deriv: str, der_testfun):
+        """Build shape_weighting for one (res, var, depvar_deriv, der_testfun) combination.
+
+        depvar_deriv : 'none', 'x', or 'y' — derivative acting on dep_var
+        der_testfun  : False, 'x', or 'y'  — derivative acting on test function
         """
         res_grid, var_grid = DOF_GRID[res], DOF_GRID[var]
 
@@ -476,34 +484,28 @@ class Assembly:
         nodes_tri_res = res_element.nodes_per_tri
         nodes_tri_var = var_element.nodes_per_tri
 
-        if deriv_combo == 'none':
-            var_N_tri = var_element.N  # (n_quad_tri, 3/6)
-            var_N = np.tile(var_N_tri, (2, 1))  # (n_quad_sq, 3/6)
-            res_N_tri = res_element.N
-            res_N = np.tile(res_N_tri, (2, 1))
-            deriv_scale = 1.0
-        elif res_grid == 'v':
-            # IBP: derivative on test function (P2), sign flip from IBP
+        # --- Trial function (var) shape functions ---
+        deriv_scale = 1.0
+        if depvar_deriv == 'none':
             var_N_tri = var_element.N
             var_N = np.tile(var_N_tri, (2, 1))
-            if deriv_combo == 'x':
-                res_N_tri = res_element.dN_dx
-                deriv_scale = -1.0 / self.element.dx
-            else:
-                res_N_tri = res_element.dN_dy
-                deriv_scale = -1.0 / self.element.dy
-            res_N = np.concatenate((res_N_tri, -res_N_tri))
         else:
-            # non-IBP: derivative on trial function (P2)
-            if deriv_combo == 'x':
-                var_N_tri = var_element.dN_dx
-                deriv_scale = 1.0 / self.element.dx
-            else:
-                var_N_tri = var_element.dN_dy
-                deriv_scale = 1.0 / self.element.dy
+            var_N_tri = var_element.dN_dx if depvar_deriv == 'x' else var_element.dN_dy
+            d = self.element.dx if depvar_deriv == 'x' else self.element.dy
             var_N = np.concatenate((var_N_tri, -var_N_tri))
+            deriv_scale *= 1.0 / d
+
+        # --- Test function (res) shape functions ---
+        if not der_testfun:
             res_N_tri = res_element.N
             res_N = np.tile(res_N_tri, (2, 1))
+        else:
+            res_N_tri = res_element.dN_dx if der_testfun == 'x' else res_element.dN_dy
+            d = self.element.dx if der_testfun == 'x' else self.element.dy
+            res_N = np.concatenate((res_N_tri, -res_N_tri))
+            deriv_scale *= -1.0 / d
+            if depvar_deriv != 'none':
+                print("two derivatives")
 
         entries_per_quad = nodes_tri_res * nodes_tri_var
         assert entries_per_quad == np.shape(res_N)[1] * np.shape(var_N)[1]
@@ -592,7 +594,7 @@ class Assembly:
 
         for term in terms:
 
-            dc = term.derivative_combo
+            dd, td = term.deriv_key
             dep_vars = [quad_fields[v] for v in term.dep_vars]
             res = term.res
             nb_sq = self.grid_idx.nb_sq
@@ -600,7 +602,7 @@ class Assembly:
 
             for var in term.dep_vars:
 
-                key = (res, var, dc)
+                key = (res, var, dd, td)
                 sw = self.assembly_templates[key]['w']
                 entries_per_quad = self.assembly_templates[key]['entries_per_quad']
 
@@ -621,7 +623,7 @@ class Assembly:
         return self._nnz_buf[:-1]
 
 
-    def _build_res_weighting(self, res: str, deriv_combo: str):
+    def _build_res_weighting(self, res: str, depvar_deriv: str, der_testfun):
         """Residual weighting arrays (n_quad_sq * nodes_tri_res,)
         """
         res_grid = DOF_GRID[res]
@@ -630,14 +632,14 @@ class Assembly:
 
         nodes_tri_res = res_element.nodes_per_tri
 
-        if res_grid == 'p' or deriv_combo == 'none':
-            res_N_tri = res_element.N  # (3, 3/6)
-            res_N = np.tile(res_N_tri, (2, 1))  # (6, 3/6)
+        if not der_testfun:
+            res_N_tri = res_element.N
+            res_N = np.tile(res_N_tri, (2, 1))
             factor = 1.0
-        else:  # res_grid == 'v':
-            res_N_tri = res_element.dN_dx if deriv_combo == 'x' else res_element.dN_dy  # (3, 3/6)
-            res_N = np.concatenate((res_N_tri, -res_N_tri))  # (6, 3/6)
-            factor = -1.0 / self.element.dx if deriv_combo == 'x' else -1.0 / self.element.dy
+        else:
+            res_N_tri = res_element.dN_dx if der_testfun == 'x' else res_element.dN_dy
+            res_N = np.concatenate((res_N_tri, -res_N_tri))
+            factor = -1.0 / self.element.dx if der_testfun == 'x' else -1.0 / self.element.dy
 
         # shape (n_quad_sq * nodes_tri_res,)
         # (q0, N0), (q0, N1), (q0, N2), (q1, N0), ...
@@ -703,37 +705,33 @@ class Assembly:
 
         for term in terms:
 
-            dc = term.derivative_combo
+            dd, td = term.deriv_key
             dep_vars = [quad_fields[v] for v in term.dep_vars]
             res = term.res
-            res_grid = DOF_GRID[res]
             nb_sq = self.grid_idx.nb_sq
             quad_per_tri = self.element.Quadrature.nb_points
 
-            key_res = (res, dc)
+            key_res = (res, dd, td)
 
             nnz = self.assembly_templates[key_res]['nnz']
             entries_per_quad = self.assembly_templates[key_res]['entries_per_quad']
             sw = self.assembly_templates[key_res]['w']
 
-            if dc == 'none':
+            if dd == 'none':
                 quad_vals = term.evaluate(*dep_vars)  # shape (n_sq, n_quad_sq)
             else:
-                if res_grid == 'p':
-                    # Chain rule: sum df/dvar * dvar/d{dc} over all dep_vars
-                    quad_vals = sum(
-                        term.evaluate_deriv(v, *dep_vars) * quad_fields[f'd_d{dc}_{v}']
-                        for v in term.dep_vars
-                    )
-                elif res_grid == 'v':
-                    quad_vals = term.evaluate(*dep_vars)  # shape (n_sq, n_quad_sq)
-            
+                # Chain rule: sum df/dvar * dvar/d{dd} over all dep_vars
+                quad_vals = sum(
+                    term.evaluate_deriv(v, *dep_vars) * quad_fields[f'd_d{dd}_{v}']
+                    for v in term.dep_vars
+                )
+
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
             sw_vec = np.tile(sw, nb_sq)
 
             q_vec = quad_val_vec * sw_vec
             assert len(q_vec) == nb_sq * quad_per_tri * 2 * entries_per_quad
-            
+
             ele_vec = q_vec.reshape(-1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
 
             np.add.at(self._rhs_buf, nnz, ele_vec)

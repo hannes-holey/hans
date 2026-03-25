@@ -20,11 +20,11 @@ import numpy as np
 # =============================================================================
 
 # Element type for each factor: 'P1' or 'P2'
-element_a = 'P1'
+element_a = 'P2'
 element_b = 'P2'
 
 # Derivative: 'none', 'dx', or 'dy'
-deriv_a = 'none'
+deriv_a = 'dx'
 deriv_b = 'dx'
 
 # =============================================================================

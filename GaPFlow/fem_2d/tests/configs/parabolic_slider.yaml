@@ -36,7 +36,7 @@ properties:
     bulk: 0.
     P0: 101325
     rho0: 850.
-    C1: 3.5e8
+    C1: 3.5e10
     C2: 1.23
 
 fem_solver:

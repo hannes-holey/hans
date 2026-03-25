@@ -21,9 +21,9 @@ Nx        = 3
 Ny        = 3
 Lx        = 10
 Ly        = 10
-term_list = ['R1T','R11x','R11y','R21x','R21y', 'R1Sx', 'R1Sy', 'R24x', 'R24y', 'R2T']        # e.g. ['R1T'], ['R11x'], ['R1T','R11x','R11y']
-bc        = 'periodic_y'    # 'dirichlet' | 'periodic' | 'periodic_y'
-block     = ('momentum_y', 'rho')  # (residual, variable) block to print; None = full matrix
+term_list = ['R23xx']        # e.g. ['R1T'], ['R11x'], ['R1T','R11x','R11y']
+bc        = 'dirichlet'    # 'dirichlet' | 'periodic' | 'periodic_y'
+block     = ('momentum_x', 'jx')  # (residual, variable) block to print; None = full matrix
 fd_eps    = 1e-6
 
 # =============================================================================
@@ -77,7 +77,7 @@ numerics:
 properties:
     EOS: PL
     rho0: 1.0
-    shear: 1e-3
+    shear: 10
     bulk: 0.
     P0: 101325
     alpha: 0.

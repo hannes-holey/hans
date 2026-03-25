@@ -374,6 +374,36 @@ R23yx = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun='x')
 
+R23xx = NonLinearTerm(
+    name='R23xx',
+    description='shear viscous stress tau_xx in x (for momentum_x)',
+    res='momentum_x',
+    dep_vars=['rho', 'jx'],
+    dep_vals=['eta'],
+    fun=lambda ctx: lambda rho, jx: - ctx['eta']() * jx / rho,
+    der_funs=[
+        lambda ctx: lambda rho, jx: ctx['eta']() * jx / (rho ** 2),
+        lambda ctx: lambda rho, jx: - ctx['eta']() / rho
+    ],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R23yy = NonLinearTerm(
+    name='R23yy',
+    description='shear viscous stress tau_yy in y (for momentum_y)',
+    res='momentum_y',
+    dep_vars=['rho', 'jy'],
+    dep_vals=['eta'],
+    fun=lambda ctx: lambda rho, jy: - ctx['eta']() * jy / rho,
+    der_funs=[
+        lambda ctx: lambda rho, jy: ctx['eta']() * jy / (rho ** 2),
+        lambda ctx: lambda rho, jy: - ctx['eta']() / rho
+    ],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
+
 # R24: Wall stress
 R24x = NonLinearTerm(
     name='R24x',
@@ -649,7 +679,7 @@ term_list = [
     # Momentum equation
     R21x, R21y,
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
-    R23xy, R23yx,
+    R23xy, R23yx, R23xx, R23yy,
     R24x, R24y,
     R25x, R25y,
     R2Tx, R2Ty,
@@ -688,8 +718,8 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     if physics.get('gap_shear', True):
         terms.extend(['R24x', 'R24y'])
 
-    if physics.get('plane_shear', False):
-        terms.extend(['R23xy', 'R23yx'])
+    if physics.get('plane_shear', True):
+        terms.extend(['R23xy', 'R23yx', 'R23xx', 'R23yy'])
 
     if physics.get('inertia', False):
         terms.extend(['R22xx', 'R22yy', 'R22xy', 'R22yx',

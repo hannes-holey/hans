@@ -142,7 +142,17 @@ class DomainDecomposition:
                 f"Choose Nx divisible by {nx_splits} and Ny divisible by {ny_splits}."
             )
 
-        self._nb_domain_grid_pts_v = (2 * self._Nx - 1, 2 * self._Ny - 1)
+        if self.periodic_x:
+            Nx_v = self._Nx * 2
+        else:
+            Nx_v = self._Nx * 2 - 1
+        
+        if self.periodic_y:
+            Ny_v = self._Ny * 2
+        else:
+            Ny_v = self._Ny * 2 - 1
+
+        self._nb_domain_grid_pts_v = (Nx_v, Ny_v)
 
         self._decomp_v = CartesianDecomposition(
             self._comm,

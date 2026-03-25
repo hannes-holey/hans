@@ -524,7 +524,7 @@ def sanitize_fem_solver(d):
     out['physics'] = {
         # Momentum physics
         'gap_shear': bool(physics.get('gap_shear', True)),
-        'plane_shear': bool(physics.get('plane_shear', False)),
+        'plane_shear': bool(physics.get('plane_shear', True)),
         'inertia': bool(physics.get('inertia', False)),
         'body_force': bool(physics.get('body_force', False)),
         # Energy physics (sub-flags only relevant if energy=True)

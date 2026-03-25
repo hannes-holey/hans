@@ -1,7 +1,8 @@
 options:
     output: data/parabolic_slider_2d
     write_freq: 1
-    save_output: False
+    save_output: True
+    output_plots: True
 
 grid:
     Lx: 0.1

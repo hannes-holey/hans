@@ -41,6 +41,6 @@ properties:
 fem_solver:
     type: newton_alpha
     R_norm_tol: 1e-10
-    alpha: 0.05
+    alpha: 0.01
     R_norm_tol: 1e-04
     max_iter: 2
