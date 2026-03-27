@@ -28,7 +28,7 @@ import numpy as np
 from copy import deepcopy
 from datetime import datetime
 from collections import deque
-from muGrid import GlobalFieldCollection, FileIONetCDF, OpenMode
+from muGrid import GlobalFieldCollection, FileIONetCDF
 
 from typing import Type
 import numpy.typing as npt
@@ -124,38 +124,40 @@ class Problem:
         # Initialize field collection
         nb_grid_pts = (self.grid['Nx'] + 2,
                        self.grid['Ny'] + 2)
-        fc = GlobalFieldCollection(nb_grid_pts)
+        self._fc = GlobalFieldCollection(nb_grid_pts)
 
         # Solution field
         self.step = None
-        self.__field = fc.real_field('solution', (3,))
+        self.__field = self._fc.real_field('solution', (3,))
         self._initialize(rho0=prop['rho0'], U=geo['U'], V=geo['V'])
 
         # Initialize extra field
         num_extra_features = 1 if database is None else database.num_features - 6
-        extra = fc.real_field('extra', (num_extra_features,))
+        extra = self._fc.real_field('extra', (num_extra_features,))
         if extra_field is not None:
             extra.p[...] = extra_field
 
         # Forward declaration of cross-dependent fields
-        fc.register_real_field('x')
-        fc.register_real_field('y')
-        fc.register_real_field('pressure')
-        fc.register_real_field('topography', (4,))
+        self._fc.register_real_field('x')
+        self._fc.register_real_field('y')
+        self._fc.register_real_field('pressure')
+        self._fc.register_real_field('topography', (4,))
 
         # Initialize stress and topography models
         gpx, gpy, gpz = self._select_gp_config(gp)
-        self.pressure = Pressure(fc, prop, geo, data=database, gp=gpz)
-        self.bulk_stress = BulkStress(fc, prop, geo, data=None, gp=None)
-        self.wall_stress_xz = WallStress(fc, prop, geo, direction='x', data=database, gp=gpx)
-        self.wall_stress_yz = WallStress(fc, prop, geo, direction='y', data=database, gp=gpy)
+        self.pressure = Pressure(self._fc, prop, geo, data=database, gp=gpz)
+        self.bulk_stress = BulkStress(self._fc, prop, geo, data=None, gp=None)
+        self.wall_stress_xz = WallStress(self._fc, prop, geo, direction='x', data=database, gp=gpx)
+        self.wall_stress_yz = WallStress(self._fc, prop, geo, direction='y', data=database, gp=gpy)
 
-        self.topo = Topography(fc, self.grid, geo, prop)
+        self.topo = Topography(self._fc, self.grid, geo, prop)
 
         # I/O
         if not self.options['silent']:
 
             self.outdir = create_output_directory(options['output'], options['use_tstamp'])
+            self.filename = os.path.join(self.outdir, 'sol.nc')
+            self.topofilename = os.path.join(self.outdir, 'topo.nc')
 
             # Reconfigure module loggers to write into the simulation output directory
             # so all components write into the same outdir logfile(s).
@@ -189,29 +191,27 @@ class Problem:
             write_yaml(full_dict, os.path.join(self.outdir, 'config.yml'))
 
             # Write gap height and gradients
-            # No elastic deformation - write once and close
-            # Elastic deformation - write initial topo and keep open
-            self.topofile = FileIONetCDF(os.path.join(self.outdir, 'topo.nc'), OpenMode.Overwrite)
-            self.topofile.register_field_collection(fc, field_names=['topography'])
+            self.topofile = FileIONetCDF(self.topofilename, open_mode='overwrite')
+            self.topofile.register_field_collection(self._fc, field_names=['topography'])
             self.topofile.append_frame().write()
-            if not self.prop['elastic']['enabled']:
-                self.topofile.close()
 
             # Solution fields
-            self.file = FileIONetCDF(os.path.join(self.outdir, 'sol.nc'), OpenMode.Overwrite)
-
-            field_names = ['solution', 'pressure', 'wall_stress_xz', 'wall_stress_yz']
+            self.file = FileIONetCDF(self.filename, open_mode='overwrite')
+            self.field_names = ['solution', 'pressure', 'wall_stress_xz', 'wall_stress_yz']
 
             if gpx is not None:
-                field_names.append('wall_stress_xz_var')
-
+                self.field_names.append('wall_stress_xz_var')
             if gpy is not None:
-                field_names.append('wall_stress_yz_var')
-
+                self.field_names.append('wall_stress_yz_var')
             if gpz:
-                field_names.append('pressure_var')
+                self.field_names.append('pressure_var')
 
-            self.file.register_field_collection(fc, field_names=field_names)
+            self.file.register_field_collection(self._fc, field_names=self.field_names)
+
+            # We open the solution file and close it immediately
+            # The write method will re-open the file in 'append' mode
+            self.file.close()
+            self.topofile.close()
 
     # ---------------------------
     # Constructors
@@ -469,11 +469,6 @@ class Problem:
         if self.step % self.options['write_freq'] != 0 and not self.options['silent']:
             self.write()
 
-        if not self.options['silent']:
-            self.file.close()  # need to be closed to be readable when animating from problem
-            if self.prop['elastic']['enabled']:
-                self.topofile.close()
-
         speed = self.step / walltime.total_seconds()
 
         # Print runtime
@@ -627,7 +622,10 @@ class Problem:
             self.history["vsound"].append(self.pressure.v_sound)
 
         if fields:
+            self.file = FileIONetCDF(self.filename, open_mode='append')
+            self.file.register_field_collection(self._fc, field_names=self.field_names)
             self.file.append_frame().write()
+            self.file.close()
 
         if params:
             self.pressure.write()
@@ -635,7 +633,10 @@ class Problem:
             self.wall_stress_yz.write()
 
         if self.prop['elastic']['enabled']:
+            self.topofile = FileIONetCDF(self.topofilename, open_mode='append')
+            self.topofile.register_field_collection(self._fc, field_names=['topography'])
             self.topofile.append_frame().write()
+            self.topofile.close()
 
     # ---------------------------
     # Initialization and update helpers
