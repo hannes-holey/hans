@@ -294,7 +294,7 @@ class WallStress(GaussianProcessSurrogate):
         if self.is_gp_model:
             self.params_init = {
                 "log_amp": jnp.log(1.),
-                "log_scale": jnp.log(jnp.std(self.Xtrain, axis=0))
+                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5)
             }
 
             self._train()
@@ -611,7 +611,7 @@ class Pressure(GaussianProcessSurrogate):
 
             self.params_init = {
                 "log_amp": jnp.log(1.),
-                "log_scale": jnp.log(jnp.std(self.Xtrain, axis=0))
+                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5)
             }
 
             self._train()
