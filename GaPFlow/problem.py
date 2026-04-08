@@ -182,7 +182,10 @@ class Problem:
         self.wall_stress_xz = WallStress(self.fc, prop, geo, direction='x', data=database, gp=gpx)
         self.wall_stress_yz = WallStress(self.fc, prop, geo, direction='y', data=database, gp=gpy)
         self.viscosity = Viscosity(self.fc, prop)
-        self.topo = Topography(self.fc, self.grid, geo, prop, decomp=self.decomp)
+        self.topo = Topography(self.fc, self.grid, geo, prop, decomp=self.decomp,
+                              force_balance=force_balance)
+        if self.topo._force_balance:
+            self.topo._fb_controller.set_problem(self)
 
         self.bEnergy = (self.numerics['solver'] == 'fem' and self.fem_solver['equations']['energy'])
         if self.bEnergy:
@@ -736,8 +739,8 @@ class Problem:
         Initialize solution field with given base density and mean velocities.
         """
         self.__field.pg[0] = rho0
-        self.__field.pg[1] = rho0 * (U_bot + U_top) / 2.0
-        self.__field.pg[2] = rho0 * (V_bot + V_top) / 2.0
+        self.__field.pg[1] = rho0 * (U_bot + U_top) / 2.1
+        self.__field.pg[2] = rho0 * (V_bot + V_top) / 2.1
 
         self.kinetic_energy_old = self.kinetic_energy
 

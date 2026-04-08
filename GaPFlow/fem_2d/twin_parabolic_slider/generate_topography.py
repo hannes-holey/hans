@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 # ── Domain / grid parameters (must match the YAML config) ──────────────────
 Lx = 0.09       # [m]  total domain length
 Ly = 0.004      # [m]  small periodic width
-Nx = 256
-Ny = 4
+Nx = 800
+Ny = 2
 
 dx = Lx / Nx
 dy = Ly / Ny
@@ -52,20 +52,20 @@ x_s2_end   = x_s2_start + 0.036      # 0.082
 h1d = np.full(Nx, hmax)
 
 # Slider 1 — symmetric parabola: hmin1 at centre, hmax at both edges.
-# Parabola is fitted to the first and last cell centres so edge cells are
-# exactly hmax regardless of dx.
+# Parabola is fitted to the physical region boundaries (cell faces) so that
+# h and dh/dx transition cleanly to the flat regions at the exact boundaries.
 mask1 = (x >= x_s1_start) & (x < x_s1_end)
 x1_cells = x[mask1]
-x1_lo, x1_hi = x1_cells[0], x1_cells[-1]   # first / last cell centre
-x1_mid = 0.5 * (x1_lo + x1_hi)
-h1d[mask1] = hmin1 + (hmax - hmin1) * ((x1_cells - x1_mid) / (x1_hi - x1_mid))**2
+x1_mid = 0.5 * (x_s1_start + x_s1_end)   # physical centre of slider 1
+x1_half = 0.5 * (x_s1_end - x_s1_start)  # physical half-length
+h1d[mask1] = hmin1 + (hmax - hmin1) * ((x1_cells - x1_mid) / x1_half)**2
 
 # Slider 2 — symmetric parabola: hmin2 at centre, hmax at both edges.
 mask2 = (x >= x_s2_start) & (x < x_s2_end)
 x2_cells = x[mask2]
-x2_lo, x2_hi = x2_cells[0], x2_cells[-1]
-x2_mid = 0.5 * (x2_lo + x2_hi)
-h1d[mask2] = hmin2 + (hmax - hmin2) * ((x2_cells - x2_mid) / (x2_hi - x2_mid))**2
+x2_mid = 0.5 * (x_s2_start + x_s2_end)   # physical centre of slider 2
+x2_half = 0.5 * (x_s2_end - x_s2_start)  # physical half-length
+h1d[mask2] = hmin2 + (hmax - hmin2) * ((x2_cells - x2_mid) / x2_half)**2
 
 # ── Extrude to 2-D (constant in y) ────────────────────────────────────────
 h2d = np.tile(h1d[:, np.newaxis], (1, Ny))   # shape (Nx, Ny)

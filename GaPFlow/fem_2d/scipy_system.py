@@ -99,6 +99,8 @@ class ScipySystem:
                               maxiter=1000)
             self._converged = (info == 0)
             self._iterations = info if info > 0 else 0
+            if not self._converged:
+                print(f"WARNING: GMRES did not converge (stagnated at iteration {info})")
         else:
             sol = spsolve(self._mat, self._rhs)
             self._converged = True

@@ -27,6 +27,7 @@ import os
 import numpy as np
 import copy
 from muGrid import Field
+from mpi4py import MPI
 
 import numpy.typing as npt
 from typing import Tuple, Any
@@ -34,6 +35,8 @@ from typing import Tuple, Any
 import warnings
 
 from .parallel import DomainDecomposition, FFTDomainTranslation
+
+_MPI_MIN = MPI.MIN
 
 from ContactMechanics.FFTElasticHalfSpace import (
     PeriodicFFTElasticHalfSpace,
@@ -235,7 +238,8 @@ class Topography:
                  grid: dict,
                  geo: dict,
                  prop: dict,
-                 decomp: DomainDecomposition = None) -> None:
+                 decomp: DomainDecomposition = None,
+                 force_balance: dict = None) -> None:
         """Constructor
 
         Parameters
@@ -250,6 +254,8 @@ class Topography:
             Material properties.
         decomp : DomainDecomposition
             Domain decomposition for MPI-parallel coordinate creation.
+        force_balance : dict or None
+            Force balance / load control settings.
         """
         self._decomp = decomp
         self._topo_field = fc.get_real_field('topography')
@@ -259,6 +265,7 @@ class Topography:
         self.dy = grid['dy']
 
         self.init_elastic(prop, grid, decomp, fc)
+        self._init_force_balance(force_balance, grid, decomp)
 
         xx, yy = decomp.xx, decomp.yy
 
@@ -270,6 +277,18 @@ class Topography:
             self.set_local_topography(h, dh_dx, dh_dy)
 
         self.check_flip(geo)
+
+    def _init_force_balance(self, force_balance, grid, decomp):
+        """Initialise rigid-height-variation force balance controller."""
+        self.h0 = 0.
+        self._fb_hold_next = False
+        rhv = (force_balance or {}).get('rigid_height_variation', {})
+        if rhv.get('enabled', False):
+            self._force_balance = True
+            self._fb_controller = ForceBalance(force_balance, grid, decomp)
+            self.rhv_history = []
+        else:
+            self._force_balance = False
 
     def set_local_topography(self, h, dh_dx, dh_dy):
         """Sets local topography field.
@@ -373,26 +392,46 @@ class Topography:
         return h
 
     def update(self) -> None:
-        """Updates the topography field in case of enabled elastic deformation.
+        """Updates the topography field in case of enabled elastic deformation
+        and/or rigid-height-variation force balance.
         For full periodicity, no reference needed (displacement sum is zero).
         For half/no periodicity, displacement at reference point is kept to zero.
         """
+        defo_disc = 0.0
         if self.elastic:
             if self.ElasticDeformation.periodicity in ['half', 'none']:
                 p_ref = self.get_reference_pressure()
                 p = self.__pressure.pg - p_ref
-                deformation = self._calc_deformation(p)
+                deformation, defo_disc = self._calc_deformation(p)
                 d_ref = self.get_reference_displacement(deformation)
                 deformation = deformation - d_ref
             else:
                 p = self.__pressure.pg
-                deformation = self._calc_deformation(p)
+                deformation, defo_disc = self._calc_deformation(p)
+            defo_disc = self._decomp._mpi_comm.allreduce(defo_disc, op=MPI.MAX)
             self.deformation = deformation
-            self.h = self.h_undeformed + deformation
+
+        if self._force_balance:
+            pid_hold_tol = self._fb_controller._pid_hold_tol
+            defo_hold = pid_hold_tol > 0. and defo_disc > pid_hold_tol
+            guard_hold = self._fb_hold_next
+            self._fb_hold_next = False
+            if defo_hold:
+                print(f"  [ForceBalance] PID on hold: defo_disc={defo_disc:.3e} > tol={pid_hold_tol:.3e}")
+                self.rhv_history.append(self.h0)
+            elif guard_hold:
+                print(f"  [ForceBalance] PID on hold: solution guard fired in previous Newton step")
+                self.rhv_history.append(self.h0)
+            else:
+                self.h0 = self._fb_controller.update(self)
+                self.rhv_history.append(self.h0)
+
+        if self.elastic or self._force_balance:
+            self.h = self.h_undeformed + self.deformation + self.h0
 
     def _calc_deformation(self, p):
         """Calculate elastic deformation from pressure field."""
-        return self.ElasticDeformation.get_deformation_underrelax(p)
+        return self.ElasticDeformation.get_deformation_underrelax(p, h=self.h)
 
     def set_mapped_height(self, h_arr: NDArray) -> None:
         """Set height from local array computed via coordinate mapping.
@@ -406,9 +445,9 @@ class Topography:
         h_arr : NDArray
             Height array with shape `local_shape` (includes ghost cells).
         """
-        if self.elastic:
+        if self.elastic or self._force_balance:
             self.h_undeformed = h_arr.copy()
-            self.h = self.h_undeformed + self.deformation
+            self.h = self.h_undeformed + self.deformation + self.h0
         else:
             self.h = h_arr
 
@@ -624,6 +663,129 @@ class Topography:
         return self._decomp.nb_domain_grid_pts
 
 
+class ForceBalance:
+    """PID-controlled rigid-height-variation for load/force balance.
+
+    Each timestep (after pressure is updated) computes the total film force,
+    compares it to the imposed load, and adjusts the rigid body height offset
+    h0 via a discrete PID controller.
+
+    The update is always performed on rank 0 (which holds the global pressure)
+    and the resulting h0 is broadcast to all ranks.
+    """
+
+    def __init__(self, fb_dict: dict, grid: dict, decomp) -> None:
+        self._fb_dict = fb_dict
+        self._decomp = decomp
+        self._comm = decomp._mpi_comm
+
+        self._dA = grid['dx'] * grid['dy']
+        self._p_ambient = fb_dict['rigid_height_variation']['ambient_pressure']
+        self._force_imposed = self._get_force_imposed(grid)
+        self._h0_prev = 0.
+        self._pid_hold_tol = float(fb_dict.get('pid_hold_tol', 0.0))
+
+        method = fb_dict['rigid_height_variation']['method']
+        if method == 'PID':
+            if decomp.rank == 0:
+                rhv = fb_dict['rigid_height_variation']
+                self._pid = PIDController(rhv['Kp'], rhv['Ki'], rhv['Kd'])
+            else:
+                self._pid = None
+        else:
+            raise IOError(f"Unknown rigid_height_variation method: '{method}'")
+
+    def _get_force_imposed(self, grid):
+        fb = self._fb_dict
+        if 'force' in fb:
+            force = float(fb['force'])
+        elif 'pressure' in fb:
+            force = float(fb['pressure']) * grid['Lx'] * grid['Ly']
+        else:
+            raise IOError("Need 'force' or 'pressure' in force_balance.")
+        assert force > 0., "force_balance: imposed force must be positive."
+        return force
+
+    def set_problem(self, problem) -> None:
+        """Bind the Problem instance so pressure can be read each timestep."""
+        self._problem = problem
+
+    def update(self, topo) -> float:
+        """Compute new rigid height offset h0.
+
+        Gathers the global pressure field to rank 0, evaluates the total film
+        force, computes the normalised residual, runs the PID step, applies
+        solution guards, and broadcasts h0 to all ranks.
+
+        Parameters
+        ----------
+        topo : Topography
+            Current Topography instance (provides h).
+
+        Returns
+        -------
+        float
+            Updated h0 [m].
+        """
+        # Pressure lives on the padded P1 grid; gather inner part to rank 0
+        p_local = np.maximum(self._problem.pressure.pressure, 0.)
+        p_global = self._decomp.gather_global(p_local)
+
+        h_min = self._comm.allreduce(float(np.min(topo.h[1:-1, 1:-1])), op=_MPI_MIN)
+
+        if self._decomp.rank == 0:
+            p_reduced = p_global - self._p_ambient
+            force_measured = float(np.sum(p_reduced * self._dA))
+            p_max = float(np.max(p_global))
+            residual = force_measured / self._force_imposed - 1.
+            print(f"  [ForceBalance] h_min={h_min:.3e}  p_max={p_max:.4g}  "
+                  f"F_film={force_measured:.4g}  F_imposed={self._force_imposed:.4g}  "
+                  f"residual={residual:.4g}")
+            h0 = self._pid.update(residual)
+            h0 = self._solution_guard(h0, h_min)
+            print(f"  [ForceBalance] h0={h0:.4e}")
+        else:
+            h0 = None
+
+        self._h0_prev = self._comm.bcast(h0, root=0)
+        return self._h0_prev
+
+    def _solution_guard(self, h0: float, h_min: float) -> float:
+        """Limit downward steps that would drive h_min to zero.
+
+        If the proposed step dh0 is negative and its magnitude exceeds h_min,
+        scale it down so the film cannot collapse in one step.
+        """
+        dh0 = h0 - self._h0_prev
+        if dh0 < 0:
+            divisor = max(1., abs(dh0) / h_min * 50.)
+            if divisor > 1.:
+                print(f"  [ForceBalance] solution_guard divisor={divisor:.2f}")
+            dh0 = dh0 / divisor
+        return self._h0_prev + dh0
+
+
+class PIDController:
+    """Discrete PID controller for scalar error signals.
+
+    out = Kp * e + Ki * integral(e) + Kd * d(e)/dt
+    """
+
+    def __init__(self, Kp: float, Ki: float, Kd: float) -> None:
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self._integral = 0.
+        self._prev = 0.
+
+    def update(self, residual: float) -> float:
+        self._integral += self._prev
+        derivative = residual - self._prev
+        out = self.Kp * residual + self.Ki * self._integral + self.Kd * derivative
+        self._prev = residual
+        return out
+
+
 class ElasticDeformation:
     """Thin wrapper around the FFTElasticHalfSpace classes from ContactMechanics.
 
@@ -763,24 +925,39 @@ class ElasticDeformation:
 
         return disp
 
-    def get_deformation_underrelax(self, p: NDArray) -> NDArray:
+    def get_deformation_underrelax(self, p: NDArray, h: NDArray | None = None) -> tuple:
         """Updates elastic deformation using underrelaxation
 
         Parameters
         ----------
         p : ndarray of shape (M, N)
             Pressure field.
+        h : ndarray of shape (M, N) or None
+            Gap height field (with ghost cells). If provided, the deformation
+            discrepancy metric max(|u_relaxed - u_computed| / h) is computed
+            over inner cells and returned as the second element of the tuple.
 
         Returns
         -------
         u_relaxed : ndarray of shape (M, N)
             Updated, underrelaxed deformation field.
+        disc : float
+            Maximum deformation discrepancy relative to gap height
+            (max over inner cells of |u_relaxed - u_computed| / h).
+            Zero if h is None.
         """
         u_computed = self.get_deformation(p)
         u_relaxed = (1 - self.alpha_underrelax) * self.u_prev + self.alpha_underrelax * u_computed
         self.u_prev = u_relaxed.copy()
 
-        return u_relaxed
+        if h is not None:
+            disc = float(np.max(
+                np.abs(u_relaxed[1:-1, 1:-1] - u_computed[1:-1, 1:-1]) / h[1:-1, 1:-1]
+            ))
+        else:
+            disc = 0.0
+
+        return u_relaxed, disc
 
     def get_G_real(self) -> NDArray:
         """For analysis and illustration purposes.

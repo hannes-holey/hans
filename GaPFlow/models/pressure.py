@@ -267,7 +267,7 @@ def bwr(dens, T, gamma=3.):
     return p
 
 
-def bayada_chupin(dens, rho_l, rho_v, c_l, c_v):
+def bayada_chupin(dens, rho_l, rho_v, c_l, c_v, smooth_width=0.0):
     """
     Computes pressure using the Bayada-Chupin cavitation model.
 

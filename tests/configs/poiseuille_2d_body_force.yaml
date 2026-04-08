@@ -23,9 +23,9 @@ geometry:
 
 numerics:
     solver: fem
-    dt: 0.001
+    dt: 1.0
     tol: 1e-10
-    max_it: 5
+    max_it: 30
 
 properties:
     EOS: PL
@@ -34,22 +34,25 @@ properties:
     shear: 0.1
     bulk: 0.
     alpha: 1e-8
-    force_x: 1e-05            # Body force in x (drives flow)
+    force_x: 1           # Body force in x (drives flow)
     force_y: 0.0
 
 fem_solver:
     type: newton_alpha
     dynamic: True
-    alpha: 0.01
+    alpha: 0.8
     R_norm_tol: 1e-8
-    max_iter: 20
+    max_iter: 1
+    solver: direct
     physics:
         gap_shear: False
         plane_shear: True
         body_force: True
+    newton_debug: False
 
 options:
     output: /tmp/poiseuille_2d_test
     write_freq: 1
     save_output: True
     output_plots: True
+

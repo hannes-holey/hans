@@ -19,7 +19,7 @@
 
 options:
     output: data/twin_parabolic_slider
-    write_freq: 1
+    write_freq: 10
     save_output: True
     output_plots: True
     residual_analysis: True
@@ -27,41 +27,47 @@ options:
 grid:
     Lx: 0.09
     Ly: 0.004
-    Nx: 64
-    Ny: 4
+    Nx: 800
+    Ny: 2
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
     yS: ['P', 'P', 'P']
     yN: ['P', 'P', 'P']
-    xW_D: 870        # inlet density [kg/m³] = rho_l (liquid)
-    xE_D: 870       # outlet density [kg/m³] = rho_l (liquid)
+    xW_D: 850.01      # inlet density [kg/m³] = rho_l (liquid)
+    xE_D: 850.015     # outlet density [kg/m³] = rho_l (liquid)
 
 geometry:
     type: from_file
     filepath: topography/twin_parabolic_slider.npy
-    U: 0.01           # wall velocity [m/s]
+    U: 2.           # wall velocity [m/s]
     V: 0.0
     flip: false
 
 numerics:
     solver: fem
     dt: 0.1
-    tol: 0.0
-    max_it: 3
+    tol: 0.
+    max_it: 2000
 
 properties:
+    rho0: 850.01
     EOS: Bayada
     rho_l: 850.0       # liquid density [kg/m³]
     rho_v: 0.019       # vapour density [kg/m³]
     c_l: 1600.0        # liquid speed of sound [m/s]
     c_v: 352.0         # vapour speed of sound [m/s]
-    rho0: 850.0        # reference density for initialisation
     shear: 0.039       # dynamic viscosity [Pa·s]
     bulk: 0.0
 
 fem_solver:
     type: newton_alpha
-    linear_solver: iterative
-    newton_relax: 0.01
-    max_iter: 10
-    R_norm_tol: 1e-9
+    linear_solver: direct
+    newton_relax: 0.02
+    physics:
+        gap_shear: true
+        plane_shear: true
+        inertia: false
+    max_iter: 1
+    R_norm_tol: 0.
+    newton_debug: False
+    scaling: True

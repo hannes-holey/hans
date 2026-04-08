@@ -459,11 +459,9 @@ class Assembly:
         Shape weighting depends on deriv_key; nnz_index depends only on (res, var).
         """
         self.assembly_templates = {}
-        print("build assembly")
 
         # Collect all (depvar_deriv, testfun_deriv) pairs from active terms
         deriv_keys = set(term.deriv_key for term in terms)
-        print(f"deriv_keys: {deriv_keys}")
 
         for res in self.residuals:
             for dd, td in deriv_keys:
@@ -474,8 +472,6 @@ class Assembly:
 
                     key = (res, var, dd, td)
                     self.assembly_templates[key] = {}
-
-                    print(key)
 
                     shape_weighting, entries_per_quad = self._build_weighting(res, var, dd, td)
                     self.assembly_templates[key]['w'] = shape_weighting
@@ -537,8 +533,6 @@ class Assembly:
             d = self.element.dx if der_testfun == 'x' else self.element.dy
             res_N = np.concatenate((res_N_tri, -res_N_tri))
             deriv_scale *= -1.0 / d
-            if depvar_deriv != 'none':
-                print("two derivatives")
 
         entries_per_quad = nodes_tri_res * nodes_tri_var
         assert entries_per_quad == np.shape(res_N)[1] * np.shape(var_N)[1]
@@ -640,7 +634,7 @@ class Assembly:
                 entries_per_quad = self.assembly_templates[key]['entries_per_quad']
 
                 res_quad_field = term.evaluate_deriv(var, *dep_vars)  # shape (n_sq, n_quad_sq)
-                self.zero_neumann_ghost_squares(res_quad_field, term.dep_vars)
+                # self.zero_neumann_ghost_squares(res_quad_field, term.dep_vars)
 
                 # shape (n_sq * n_quad_sq * entries_per_quad,)
                 quad_val_vec = np.repeat(res_quad_field.flatten(), entries_per_quad)
@@ -760,7 +754,7 @@ class Assembly:
                     for v in term.dep_vars
                 )
 
-            self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
+            #self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
             sw_vec = np.tile(sw, nb_sq)
 
@@ -772,3 +766,49 @@ class Assembly:
             np.add.at(self._rhs_buf, nnz, ele_vec)
 
         return self._rhs_buf[:-1]
+
+    def assemble_rhs_per_term(self,
+                              quad_fields: Dict[str, NDArray],
+                              terms: List[NonLinearTerm],
+                              ) -> Dict[str, NDArray]:
+        """Assemble residual contribution of each term individually.
+
+        Returns
+        -------
+        dict
+            Mapping term.name -> NDArray of shape (res_size,) for that term's
+            contribution to the residual vector.
+        """
+        result = {}
+        for term in terms:
+            self._rhs_buf[:] = 0.0
+
+            dd, td = term.deriv_key
+            dep_vars = [quad_fields[v] for v in term.dep_vars]
+            res = term.res
+            nb_sq = self.grid_idx.nb_sq
+            quad_per_tri = self.element.Quadrature.nb_points
+
+            key_res = (res, dd, td)
+            nnz = self.assembly_templates[key_res]['nnz']
+            entries_per_quad = self.assembly_templates[key_res]['entries_per_quad']
+            sw = self.assembly_templates[key_res]['w']
+
+            if dd == 'none':
+                quad_vals = term.evaluate(*dep_vars)
+            else:
+                quad_vals = sum(
+                    term.evaluate_deriv(v, *dep_vars) * quad_fields[f'd_d{dd}_{v}']
+                    for v in term.dep_vars
+                )
+
+            self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
+            quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
+            sw_vec = np.tile(sw, nb_sq)
+            ele_vec = (quad_val_vec * sw_vec).reshape(
+                -1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
+
+            np.add.at(self._rhs_buf, nnz, ele_vec)
+            result[term.name] = self._rhs_buf[:-1].copy()
+
+        return result

@@ -179,8 +179,8 @@ R1T = NonLinearTerm(
     res='mass',
     dep_vars=['rho'],
     dep_vals=[],
-    fun=lambda ctx: lambda rho: - (rho - ctx['rho_prev']()) / ctx['dt'],
-    der_funs=[lambda ctx: lambda rho: - np.full_like(rho, 1.0) / ctx['dt']],
+    fun=lambda ctx: lambda rho: - (rho - ctx['rho_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda rho: - np.full_like(rho, 1.0) / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -341,17 +341,18 @@ R22yyS = NonLinearTerm(
 
 # R23: In-plane shear stress (viscous diffusion, integrated by parts)
 # Weak form: ∫ (∂N_i/∂y) * η * ∂(jx/ρ)/∂y dΩ  for momentum_x
-# f(rho, jx) = -η * jx/ρ, dep_var derivative ∂/∂y, test function derivative ∂/∂y
+# f(rho, jx) = +η * jx/ρ; _build_weighting contributes -1/dy² for double derivative,
+# giving net -η/dy² * ∫ dN_i/dy * dN_j/dy * (∂jx/∂y) dΩ  (correct diffusion sign)
 R23xy = NonLinearTerm(
     name='R23xy',
     description='shear viscous stress tau_xy in y (for momentum_x)',
     res='momentum_x',
     dep_vars=['rho', 'jx'],
     dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jx: -ctx['eta']() * jx / rho,
+    fun=lambda ctx: lambda rho, jx: ctx['eta']() * jx / rho,
     der_funs=[
-        lambda ctx: lambda rho, jx: ctx['eta']() * jx / (rho ** 2),
-        lambda ctx: lambda rho, jx: -ctx['eta']() / rho
+        lambda ctx: lambda rho, jx: - ctx['eta']() * jx / (rho ** 2),
+        lambda ctx: lambda rho, jx: ctx['eta']() / rho
     ],
     d_dx_resfun=False,
     d_dy_resfun=True,
@@ -365,10 +366,10 @@ R23yx = NonLinearTerm(
     res='momentum_y',
     dep_vars=['rho', 'jy'],
     dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jy: -ctx['eta']() * jy / rho,
+    fun=lambda ctx: lambda rho, jy: ctx['eta']() * jy / rho,
     der_funs=[
-        lambda ctx: lambda rho, jy: ctx['eta']() * jy / (rho ** 2),
-        lambda ctx: lambda rho, jy: -ctx['eta']() / rho
+        lambda ctx: lambda rho, jy: - ctx['eta']() * jy / (rho ** 2),
+        lambda ctx: lambda rho, jy: ctx['eta']() / rho
     ],
     d_dx_resfun=True,
     d_dy_resfun=False,
@@ -380,10 +381,10 @@ R23xx = NonLinearTerm(
     res='momentum_x',
     dep_vars=['rho', 'jx'],
     dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jx: - ctx['eta']() * jx / rho,
+    fun=lambda ctx: lambda rho, jx: ctx['eta']() * jx / rho,
     der_funs=[
-        lambda ctx: lambda rho, jx: ctx['eta']() * jx / (rho ** 2),
-        lambda ctx: lambda rho, jx: - ctx['eta']() / rho
+        lambda ctx: lambda rho, jx: -ctx['eta']() * jx / (rho ** 2),
+        lambda ctx: lambda rho, jx: ctx['eta']() / rho
     ],
     d_dx_resfun=True,
     d_dy_resfun=False,
@@ -395,10 +396,10 @@ R23yy = NonLinearTerm(
     res='momentum_y',
     dep_vars=['rho', 'jy'],
     dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jy: - ctx['eta']() * jy / rho,
+    fun=lambda ctx: lambda rho, jy: ctx['eta']() * jy / rho,
     der_funs=[
-        lambda ctx: lambda rho, jy: ctx['eta']() * jy / (rho ** 2),
-        lambda ctx: lambda rho, jy: - ctx['eta']() / rho
+        lambda ctx: lambda rho, jy: -ctx['eta']() * jy / (rho ** 2),
+        lambda ctx: lambda rho, jy: ctx['eta']() / rho
     ],
     d_dx_resfun=False,
     d_dy_resfun=True,
@@ -463,8 +464,8 @@ R2Tx = NonLinearTerm(
     res='momentum_x',
     dep_vars=['jx'],
     dep_vals=[],
-    fun=lambda ctx: lambda jx: - (jx - ctx['jx_prev']()) / ctx['dt'],
-    der_funs=[lambda ctx: lambda jx: - np.full_like(jx, 1.0) / ctx['dt']],
+    fun=lambda ctx: lambda jx: - (jx - ctx['jx_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda jx: - np.full_like(jx, 1.0) / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -475,8 +476,8 @@ R2Ty = NonLinearTerm(
     res='momentum_y',
     dep_vars=['jy'],
     dep_vals=[],
-    fun=lambda ctx: lambda jy: - (jy - ctx['jy_prev']()) / ctx['dt'],
-    der_funs=[lambda ctx: lambda jy: - np.full_like(jy, 1.0) / ctx['dt']],
+    fun=lambda ctx: lambda jy: - (jy - ctx['jy_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda jy: - np.full_like(jy, 1.0) / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -666,8 +667,8 @@ R3T = NonLinearTerm(
     res='energy',
     dep_vars=['E'],
     dep_vals=[],
-    fun=lambda ctx: lambda E: - (E - ctx['E_prev']()) / ctx['dt'],
-    der_funs=[lambda ctx: lambda E: - np.full_like(E, 1.0) / ctx['dt']],
+    fun=lambda ctx: lambda E: - (E - ctx['E_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda E: - np.full_like(E, 1.0) / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -719,7 +720,7 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
         terms.extend(['R24x', 'R24y'])
 
     if physics.get('plane_shear', True):
-        terms.extend(['R23xy', 'R23yx'])#, 'R23xx', 'R23yy'])
+        terms.extend(['R23xy', 'R23yx', 'R23xx', 'R23yy'])
 
     if physics.get('inertia', False):
         terms.extend(['R22xx', 'R22yy', 'R22xy', 'R22yx',

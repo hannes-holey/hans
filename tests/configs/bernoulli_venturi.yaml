@@ -31,9 +31,9 @@ geometry:
 
 numerics:
     solver: fem
-    dt: 1.0e-5
+    dt: 0.1
     tol: 1.0e-10
-    max_it: 50
+    max_it: 100
 
 properties:
     shear: 0.1894
@@ -42,20 +42,20 @@ properties:
     P0: 101325.
     rho0: 1000.
     T0: 323.15
-    C1: 3.5e12
+    C1: 3.5e08
     C2: 1.23
 
 fem_solver:
     type: newton_alpha
-    alpha: 0.8
+    alpha: 0.05
     R_norm_tol: 1.0e-10
-    linear_solver: iterative
-    max_iter: 5
-    pressure_stab_alpha: 0.02
-    momentum_stab_alpha: 3.2e-03
+    linear_solver: direct
+    max_iter: 10
     physics:
         gap_shear: False
+        plane_shear: False
         inertia: True
+    newton_debug: False
 
 options:
     output: /tmp/bernoulli_quasi1d

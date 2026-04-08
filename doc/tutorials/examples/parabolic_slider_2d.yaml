@@ -48,3 +48,4 @@ fem_solver:
     physics:
         pspg: true
         gls: true
+    newton_debug: True

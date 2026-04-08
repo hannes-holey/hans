@@ -28,6 +28,7 @@
 from mpi4py import MPI
 import numpy as np
 import numpy.typing as npt
+from scipy.ndimage import zoom
 
 from dataclasses import dataclass
 from functools import cached_property
@@ -547,7 +548,7 @@ class DomainDecomposition:
         bc_callbacks = getattr(problem, '_bc_callbacks', {})
         is_P2 = (disc == 'P2_nodal')
 
-        for bnd in ['W', 'E', 'S', 'N']:
+        for bnd in ['N', 'S', 'W', 'E']:
             if not self._owns_boundary(bnd):
                 continue
 
@@ -571,8 +572,13 @@ class DomainDecomposition:
                                     self.xx_norm[ghost1], self.yy_norm[ghost1])
                     bc_values = callback(ctx)
                     if bc_values.shape != required_shape:
-                        raise ValueError(f"BC callback for {var_name}@{bnd}: "
-                                         f"got {bc_values.shape}, expected {required_shape}")
+                        if bc_values.shape[1] == required_shape[1]:
+                            zoom_factors = (required_shape[0] / bc_values.shape[0],
+                                            required_shape[1] / bc_values.shape[1])
+                            bc_values = zoom(bc_values, zoom_factors, order=1)
+                        else:
+                            raise ValueError(f"BC callback for {var_name}@{bnd}: "
+                                            f"got {bc_values.shape}, expected {required_shape}")
                     arr[ghost1] = bc_values
                     arr[ghost2] = bc_values
                 elif bc_type == 'D':

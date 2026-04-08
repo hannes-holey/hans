@@ -188,7 +188,8 @@ class QuadFieldManager:
               else self.elements.P1.dy_operator)
         op.apply(self.nodal_fields[name], self._deriv_placeholder)
         sq = self._deriv_placeholder.pg[:, :-1, :-1]
-        return sq.transpose(2, 1, 0).reshape(-1, sq.shape[0]) / self.dy
+        result = sq.transpose(2, 1, 0).reshape(-1, sq.shape[0]) / self.dy
+        return result
 
     def interpolate_nodal_to_quad(self, name: str) -> None:
         """Interpolate a single nodal field to its quad output field.

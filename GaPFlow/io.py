@@ -356,8 +356,8 @@ def sanitize_properties(d):
         defaults = [2., 3.0]
 
     elif out["EOS"] == "Bayada":
-        keys = ['rho_l', 'rho_v', 'c_l', 'c_v']
-        defaults = [850., 0.019, 1600., 352.]
+        keys = ['rho_l', 'rho_v', 'c_l', 'c_v', 'smooth_width']
+        defaults = [850., 0.019, 1600., 352., 0.0]
     elif out["EOS"] == "MD":
         keys = ['rho0']
         defaults = [1.]
@@ -511,7 +511,18 @@ def sanitize_fem_solver(d):
     out['R_norm_tol'] = float(d.get('R_norm_tol', 1e-6))
     # newton_relax: support both new name and legacy 'alpha'
     out['newton_relax'] = float(d.get('newton_relax', d.get('alpha', 1.0)))
+    raw = d.get('newton_debug', False)
+    if raw is False:
+        out['newton_debug'] = None
+    elif raw is True:
+        out['newton_debug'] = 0
+    else:
+        out['newton_debug'] = int(raw)
+    out['scaling'] = bool(d.get('scaling', True))
     out['linear_solver'] = str(d.get('linear_solver', 'direct'))
+
+    out['osc_threshold'] = float(d.get('osc_threshold', 0.3))
+    out['osc_alpha_min_factor'] = float(d.get('osc_alpha_min_factor', 0.125))
 
     out['pressure_stab_alpha'] = float(d.get('pressure_stab_alpha', 0.01))
     out['momentum_stab_alpha'] = float(d.get('momentum_stab_alpha', 0.1))
@@ -583,6 +594,22 @@ def sanitize_force_balance(d):
             out['init_dry_contact']['domain_sides'] = float(idc.get('domain_sides', 3.0))
     else:
         out['init_dry_contact'] = {'enabled': False}
+
+    out['pid_hold_tol'] = float(d.get('pid_hold_tol', 0.0))
+
+    rhv = d.get('rigid_height_variation', None)
+    if rhv is not None and rhv.get('enabled', False):
+        out['rigid_height_variation'] = {
+            'enabled': True,
+            'method': str(rhv.get('method', 'PID')),
+            'ambient_pressure': float(rhv.get('ambient_pressure', 0.0)),
+        }
+        if out['rigid_height_variation']['method'] == 'PID':
+            out['rigid_height_variation']['Kp'] = float(rhv['Kp'])
+            out['rigid_height_variation']['Ki'] = float(rhv['Ki'])
+            out['rigid_height_variation']['Kd'] = float(rhv['Kd'])
+    else:
+        out['rigid_height_variation'] = {'enabled': False}
 
     print_dict(out)
 

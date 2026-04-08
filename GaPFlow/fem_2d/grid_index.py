@@ -184,7 +184,7 @@ class GridIndexManager:
         # Neumann forwarding removed: natural BC via "do nothing" approach.
         # Ghost nodes at Neumann boundaries stay -1 (no DOF), same as Dirichlet.
         # The zero-flux condition is enforced naturally by the variational formulation.
-        if False:
+        if True:
             if var:
                 if self.bc_at_W and self._bc_neumann['xW'][var]:
                     mask[0, :] = mask[1, :]
@@ -284,7 +284,7 @@ class GridIndexManager:
 
         # Neumann forwarding removed: natural BC via "do nothing" approach.
         # Ghost nodes at Neumann boundaries stay -1 (no DOF), same as Dirichlet.
-        if False:
+        if True:
             if var:
                 if self.bc_at_W and self._bc_neumann['xW'][var]:
                     mask[1, :] = mask[2, :]

@@ -93,13 +93,14 @@ class PETScSystem:
         self.ksp.setOperators(self.mat)
 
         if self._solver_type == "iterative":
-            self.ksp.setType('gmres')
+            self.ksp.setType('bcgs')
             self.ksp.setTolerances(rtol=1e-8, atol=1e-12, max_it=1000)
+            self.ksp.setComputeSingularValues(True)
             pc = self.ksp.getPC()
             if self.comm.getSize() > 1:
                 pc.setType('bjacobi')
             else:
-                fill_level = 2 if local_size > self._ILU2_THRESHOLD else 1
+                fill_level = 2# if local_size > self._ILU2_THRESHOLD else 1
                 pc.setType('ilu')
                 pc.setFactorLevels(fill_level)
         else:
@@ -140,6 +141,25 @@ class PETScSystem:
             Flat solution vector.  The caller unpacks per-variable slices.
         """
         self.ksp.solve(self.vec_rhs, self.vec_sol)
+        reason = self.ksp.getConvergedReason()
+        if self._solver_type == "iterative":
+            smax, smin = self.ksp.computeExtremeSingularValues()
+            cond = smax / smin if smin > 0 else float('inf')
+            if reason < 0:
+                print(f"WARNING: KSP did not converge (reason={reason}, "
+                      f"iterations={self.ksp.getIterationNumber()}, cond~{cond:.2e})")
+            elif cond > 1e8:
+                print(f"WARNING: high condition number cond~{cond:.2e} — solution may be inaccurate")
+        elif reason < 0:
+            print(f"WARNING: KSP did not converge (reason={reason}, iterations={self.ksp.getIterationNumber()})")
+            if self._solver_type == "direct":
+                try:
+                    F = self.ksp.getPC().getFactorMatrix()
+                    info = F.getMumpsInfo(1)
+                    info2 = F.getMumpsInfo(2)
+                    print(f"  MUMPS INFOG(1)={info}, INFOG(2)={info2}")
+                except Exception as e:
+                    print(f"  (could not get MUMPS info: {e})")
         return self.vec_sol.getArray().copy()[self._info.rhs_global_rows]
 
     def get_convergence_info(self) -> dict:

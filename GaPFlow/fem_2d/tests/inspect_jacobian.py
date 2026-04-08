@@ -3,25 +3,30 @@
 Compares analytical assemble_matrix with finite-difference Jacobian
 for a chosen term subset, grid size, and BC configuration.
 
-Usage:
+Usage (synthetic config):
     /home/qd5728/fem_taylor_hood/venv/bin/python \
         GaPFlow/fem_2d/tests/inspect_jacobian.py
 
-Edit the CONFIG section at the bottom to change parameters.
+Usage (from YAML):
+    Set RUN_FROM_YAML = True and YAML_PATH below, then run as above.
+
+Edit the CONFIG / YAML CONFIG sections at the bottom to change parameters.
 """
 
+import os
 import numpy as np
+import yaml
 from GaPFlow.problem import Problem
 
 # =============================================================================
 # Config — edit these
 # =============================================================================
 
-Nx        = 3
-Ny        = 3
+Nx        = 2
+Ny        = 2
 Lx        = 10
 Ly        = 10
-term_list = ['R25x']        # e.g. ['R1T'], ['R11x'], ['R1T','R11x','R11y']
+term_list = ['R21x', 'R21y']        # e.g. ['R1T'], ['R11x'], ['R1T','R11x','R11y']
 bc        = 'dirichlet'    # 'dirichlet' | 'periodic' | 'periodic_y'
 block     = ('momentum_x', 'rho')  # (residual, variable) block to print; None = full matrix
 fd_eps    = 1e-6
@@ -89,8 +94,69 @@ fem_solver:
 """
 
 # =============================================================================
+# YAML CONFIG — used when RUN_FROM_YAML = True
+# =============================================================================
+
+RUN_FROM_YAML = True
+
+YAML_PATH = os.path.join(
+    os.path.dirname(__file__),
+    '../twin_parabolic_slider/twin_parabolic_slider.yaml',
+)
+
+# Overrides applied on top of the YAML before loading.
+# Use nested dicts matching the YAML structure, e.g.:
+#   {'grid': {'Nx': 8, 'Ny': 4}, 'fem_solver': {'scaling': False}}
+YAML_OVERRIDES = {
+    'grid': {'Nx': 4, 'Ny': 3},
+    'options': {'output': '/tmp/inspect_jac_yaml', 'write_freq': 1000,
+                'save_output': False, 'output_plots': False,
+                'residual_analysis': False},
+    'fem_solver': {'newton_debug': False, 'scaling': False},
+}
+
+# Block and FD settings for the YAML run (reuse same vars as synthetic)
+# Set YAML_block = None to skip per-block matrix printout (only summary shown)
+# ('momentum_x', 'jx')  
+YAML_block  = ('momentum_x', 'rho')
+YAML_fd_eps = 1e-9
+
+
+# =============================================================================
 # Build problem
 # =============================================================================
+
+def _deep_update(base, overrides):
+    """Recursively merge overrides into base dict (in-place)."""
+    for k, v in overrides.items():
+        if isinstance(v, dict) and isinstance(base.get(k), dict):
+            _deep_update(base[k], v)
+        else:
+            base[k] = v
+
+
+def make_solver_from_yaml(yaml_path, overrides=None):
+    """Load a Problem from a YAML file, apply overrides, return solver."""
+    with open(yaml_path) as f:
+        cfg = yaml.safe_load(f)
+    if overrides:
+        _deep_update(cfg, overrides)
+    # Write patched config to a temp string and load via from_string so that
+    # relative paths in the YAML are resolved from the YAML's own directory.
+    import tempfile
+    yaml_dir = os.path.dirname(os.path.abspath(yaml_path))
+    tmp = tempfile.NamedTemporaryFile(
+        mode='w', suffix='.yaml', dir=yaml_dir, delete=False)
+    try:
+        yaml.dump(cfg, tmp)
+        tmp.close()
+        problem = Problem.from_yaml(tmp.name)
+    finally:
+        os.unlink(tmp.name)
+    solver = problem.solver
+    solver.pre_run()
+    return solver
+
 
 def make_solver(Nx, Ny, Lx, Ly, bc, term_list):
     bc_cfg = BC_CONFIGS[bc]
@@ -111,7 +177,7 @@ def make_solver(Nx, Ny, Lx, Ly, bc, term_list):
 # FD Jacobian
 # =============================================================================
 
-def compute_fd_jacobian(solver, eps=1e-6):
+def compute_fd_jacobian(solver, eps=1e-8):
     q0 = solver.get_q_nodal().copy()
     n = len(q0)
     J = np.zeros((n, n))
@@ -220,9 +286,15 @@ def print_summary(M_anal, M_fd):
 # =============================================================================
 
 if __name__ == '__main__':
-    print(f'Grid: {Nx}x{Ny}  Lx={Lx} Ly={Ly}  bc={bc}  terms={term_list}')
-
-    solver = make_solver(Nx, Ny, Lx, Ly, bc, term_list)
+    if RUN_FROM_YAML:
+        print(f'Loading from YAML: {YAML_PATH}')
+        print(f'Overrides: {YAML_OVERRIDES}')
+        solver = make_solver_from_yaml(YAML_PATH, YAML_OVERRIDES)
+        block = YAML_block
+        fd_eps = YAML_fd_eps
+    else:
+        print(f'Grid: {Nx}x{Ny}  Lx={Lx} Ly={Ly}  bc={bc}  terms={term_list}')
+        solver = make_solver(Nx, Ny, Lx, Ly, bc, term_list)
 
     print(f'Variables : {solver.variables}')
     print(f'Residuals : {solver.residuals}')
@@ -252,10 +324,11 @@ if __name__ == '__main__':
         row_coords = None
         col_coords = None
 
-    print_matrix('Analytical' + label_suffix, M_b, row_coords, col_coords)
-    print_matrix('FD        ' + label_suffix, J_b, row_coords, col_coords)
-    print_ratio(M_b, J_b, row_coords, col_coords)
-    print_summary(M_b, J_b)
+    if block is not None:
+        print_matrix('Analytical' + label_suffix, M_b, row_coords, col_coords)
+        print_matrix('FD        ' + label_suffix, J_b, row_coords, col_coords)
+        print_ratio(M_b, J_b, row_coords, col_coords)
+        print_summary(M_b, J_b)
 
     # Check all blocks: rel_err per block
     print(f'\n{"="*70}')

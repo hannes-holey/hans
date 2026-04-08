@@ -1,0 +1,68 @@
+# Parabolic slider bearing — Bayada cavitation test case
+#
+# Single symmetric parabolic slider: hmax at both edges, hmin at centre.
+# Profile is constant in y (periodic).
+#
+# Geometry parameters from Bayada et al. test case:
+#   hmin = 2.54e-5 m,  hmax = 5.08e-5 m
+#   U    = 4.57 m/s
+#
+# Fluid: Bayada-Chupin EOS (oil-like liquid/vapour)
+#   rho_l = 850 kg/m³,  rho_v = 0.019 kg/m³
+#   c_l   = 1600 m/s,   c_v   = 352 m/s
+#   shear = 0.039 Pa·s
+
+options:
+    output: data/parabolic_slider
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.0762
+    Ly: 0.004
+    Nx: 256
+    Ny: 4
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['P', 'P', 'P']
+    yN: ['P', 'P', 'P']
+    xW_D: 850.
+    xE_D: 850.
+
+geometry:
+    type: parabolic
+    hmin: 2.54e-5
+    hmax: 5.08e-5
+    U: 4.57
+    V: 0.
+
+numerics:
+    solver: fem
+    dt: 0.1
+    tol: 0.0
+    max_it: 600
+
+properties:
+    rho0: 850.
+    EOS: Bayada
+    rho_l: 850.0
+    rho_v: 0.019
+    c_l: 1600.0
+    c_v: 352.0
+    shear: 0.039
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 0.1
+    physics:
+        gap_shear: true
+        plane_shear: true
+        inertia: false
+    max_iter: 1
+    R_norm_tol: 1e-9
+    newton_debug: False
+    scaling: False

@@ -375,10 +375,10 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
 
     def plot_field(ax, field, title, cmap='viridis'):
         """Plot a field with sharp color boundaries."""
-        vmin, vmax = np.min(field), np.max(field)
-        # Handle case where field is constant
-        if vmin == vmax:
-            vmax = vmin + 1e-10
+        vmin, vmax = np.nanmin(field), np.nanmax(field)
+        # Handle case where field is constant or all NaN
+        if not np.isfinite(vmin) or not np.isfinite(vmax) or np.isclose(vmin, vmax):
+            vmin, vmax = vmin - 0.5, vmin + 0.5
         levels = np.linspace(vmin, vmax, n_levels + 1)
         norm = BoundaryNorm(levels, plt.get_cmap(cmap).N)
 

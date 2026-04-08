@@ -42,6 +42,7 @@ from .fem_2d.assembly import Assembly
 from .fem_2d.terms import NonLinearTerm, get_active_terms
 from .fem_2d.scaling import build_scaling
 from .fem_2d.scipy_system import ScipySystem
+from .fem_2d.solution_guards import apply_guards
 
 if TYPE_CHECKING:
     from .problem import Problem
@@ -169,7 +170,7 @@ class FEMSolver2d:
         all_field_names = self.quad_mgr._needed_fields()
         for term in self.terms:
             ctx = {name: make_getter(name) for name in all_field_names}
-            ctx['dt'] = p.numerics['dt']
+            ctx['dt'] = lambda: p.numerics['dt']
             if self.energy:
                 ctx['k'] = lambda: p.energy.k
             term.build(ctx)
@@ -196,6 +197,38 @@ class FEMSolver2d:
 
         self.scaling = build_scaling(
             self.problem, self.energy, self.variables, self.assembly)
+
+        debug_from = self.problem.fem_solver.get('newton_debug', None)
+        if debug_from is not None:
+            from .fem_2d.newton_debug import NewtonDebugger
+            self.debugger = NewtonDebugger(
+                output_dir=self.problem.options['output'],
+                variables=self.variables,
+                residuals=self.residuals,
+                res_slices=self.assembly._res_slices,
+                sol_slices=self.assembly._sol_slices,
+                Nx_p=self.grid_idx.Nx_p_inner,
+                Ny_p=self.grid_idx.Ny_p_inner,
+                Nx_v=self.grid_idx.Nx_v_inner,
+                Ny_v=self.grid_idx.Ny_v_inner,
+                terms=self.terms,
+                problem=self.problem,
+            )
+            self._debug_from = debug_from
+            self._debug_steps_done = 0
+        else:
+            self.debugger = None
+            self._debug_from = None
+            self._debug_steps_done = 0
+
+    @property
+    def _debug_active(self) -> bool:
+        """True when newton_debug is enabled and the step threshold has been reached."""
+        return (
+            self.debugger is not None
+            and self.problem.step >= self._debug_from
+            and self._debug_steps_done < 5
+        )
 
     # =========================================================================
     # Quadrature field update
@@ -307,7 +340,7 @@ class FEMSolver2d:
         np.add.at(M, (block_rows, block_cols), coo)
         return M
 
-    def get_R(self, qf: dict = None) -> NDArray:
+    def get_R_(self, qf: dict = None) -> NDArray:
         """Assemble residual vector."""
         if qf is None:
             qf = self._build_all_quad_fields()
@@ -323,11 +356,30 @@ class FEMSolver2d:
 
     def solver_step_fun(self, q_guess: NDArray) -> Tuple[NDArray, NDArray]:
         self.set_q_nodal(q_guess)
+        self._exchange_ghosts()
         self.update_quad()
         qf = self._build_all_quad_fields()
         M = self.get_M(qf)
-        R = self.get_R(qf)
+        R = self.get_R_(qf).copy()
+        if self._debug_active:
+            self._last_R_per_term = self.assembly.assemble_rhs_per_term(qf, self.terms)
         return M, R
+
+    def get_R(self, q_guess: NDArray) -> float:
+        self.set_q_nodal(q_guess)
+        self._exchange_ghosts()
+        self.update_quad()
+        qf = self._build_all_quad_fields()
+        R = self.get_R_(qf).copy()
+        return R
+
+    def get_R_norm_global(self, R: NDArray) -> float:
+        p = self.problem
+        comm = p.decomp._mpi_comm
+        R_norm_local_sq = float(np.linalg.norm(R) ** 2)
+        R_norm_global_sq = comm.allreduce(R_norm_local_sq, op=MPI.SUM)
+        R_norm_global = float(np.sqrt(R_norm_global_sq))
+        return R_norm_global
 
     # =========================================================================
     # Output helpers
@@ -354,44 +406,70 @@ class FEMSolver2d:
         tic = time.time()
         q = self.get_q_nodal().copy()
 
-        max_iter  = fem_solver['max_iter']
-        tol       = fem_solver['R_norm_tol']
-        alpha     = fem_solver.get('newton_relax', 1.0)
+        max_iter = 1 if self._debug_active else fem_solver['max_iter']
+        tol = fem_solver['R_norm_tol']
+        alpha = fem_solver.get('newton_relax', 1.0)
+        alpha_init = alpha
+        dt_init = p.numerics['dt']
+        comm = p.decomp._mpi_comm
+        rank = p.decomp.rank
 
-        if p.decomp.rank == 0:
+        if rank == 0:
             self.R_norm_history.append([])
 
+        any_guard_fired = False
         for it in range(max_iter):
             M, R = self.solver_step_fun(q)
+            R_norm = self.get_R_norm_global(R)
 
-            R_norm_local_sq = float(np.linalg.norm(R) ** 2)
-            R_norm_global_sq = p.decomp._mpi_comm.allreduce(
-                R_norm_local_sq, op=MPI.SUM)
-            R_norm = float(np.sqrt(R_norm_global_sq))
-
-            if p.decomp.rank == 0:
+            if rank == 0:
                 self.R_norm_history[-1].append(R_norm)
+                print(R_norm)
 
             if R_norm < tol and it > 0:
                 break
 
-            #M_scaled, R_scaled = self.scaling.scale_system(M, R)
-
-            #self.linear_solver.assemble(M_scaled, R_scaled)
-            #dq_scaled = self.linear_solver.solve()
-            #dq = self.scaling.unscale_solution(dq_scaled)
-
-            self.linear_solver.assemble(M, R)
-            dq = self.linear_solver.solve()
+            if fem_solver.get('scaling', True):
+                M_scaled, R_scaled = self.scaling.scale_system(M, R)
+                self.linear_solver.assemble(M_scaled, R_scaled)
+                dq_scaled = self.linear_solver.solve()
+                dq = self.scaling.unscale_solution(dq_scaled)
+            else:
+                M_scaled = M
+                self.linear_solver.assemble(M, R)
+                dq = self.linear_solver.solve()
 
             q = q + alpha * dq
+
+            if fem_solver.get('line_search', False):
+                if p.step > 0:
+                    R_new = self.get_R(q)
+                    R_new_norm = self.get_R_norm_global(R_new)
+                    if R_new_norm < R_norm:
+                        if alpha < alpha_init:
+                            alpha = min(alpha_init, alpha * 1.5)
+                            p.numerics['dt'] = min(p.numerics['dt'] * 1.5, dt_init)
+                            print(f"Line search: accepted alpha={alpha:.2e}, increased from {alpha*2:.2e}, dt={p.numerics['dt']:.2e}")
+
+                    else:
+                        q = q - alpha * dq  # revert
+                        alpha *= 0.5  # reduce step size
+                        p.numerics['dt'] = max(p.numerics['dt'] * 0.5, 1e-2)
+                        print(f"Line search: rejected alpha={alpha*2:.2e}, reduced to {alpha:.2e}, dt={p.numerics['dt']:.2e}")
 
             self.set_q_nodal(q)
             self._exchange_ghosts()
 
+        p.numerics['dt'] = dt_init
+
         toc = time.time()
         self.time_inner = toc - tic
         self.inner_iterations = it + 1
+
+        # Signal the PID to hold during the next outer timestep if the
+        # solution guard had to intervene at any point in this timestep.
+        if any_guard_fired:
+            p.topo._fb_hold_next = True
 
         self.update_output_fields()
         p._post_update()
