@@ -57,7 +57,7 @@ def get_pipeline(path='.', silent=False, mode='select', name='sol.nc'):
                 s, e = inp.split('-')
                 mask.extend(np.arange(int(s), int(e) + 1).tolist())
             else:
-                mask.append(int(i))
+                mask.append(int(inp))
 
         files = [os.path.join(folders[i], name) for i in mask]
 
