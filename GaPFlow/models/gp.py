@@ -260,7 +260,7 @@ class GaussianProcessSurrogate:
     # Logging and summary
     # ------------------------------------------------------------------
 
-    def write(self) -> None:
+    def save_state(self) -> None:
         """Log current GP hyperparameters and diagnostics."""
         if self.is_gp_model:
             self.history['step'].append(self._step)
@@ -344,7 +344,7 @@ class GaussianProcessSurrogate:
         self._print_opt_summary(obj)
 
         if self._step > 0:
-            self.write()
+            self.save_state()
 
         if reason == 0:
             logger.info('#' + 50 * '-')

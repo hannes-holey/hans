@@ -403,7 +403,7 @@ class Problem:
             logger.info(61 * '-')
             logger.info(f"{'Step':6s} {'Timestep':10s} {'Time':10s} {'CFL':10s} {'Residual':10s}")
             logger.info(61 * '-')
-            self.write(params=False)
+            self.write()
 
         # Run
         self._tic = datetime.now()
@@ -433,9 +433,9 @@ class Problem:
         self.wall_stress_yz.init()
 
         if not self.options['silent']:
-            self.pressure.write()
-            self.wall_stress_xz.write()
-            self.wall_stress_yz.write()
+            self.pressure.save_state()
+            self.wall_stress_xz.save_state()
+            self.wall_stress_yz.save_state()
 
         # Numerics
         self.step = 0
@@ -489,20 +489,15 @@ class Problem:
         logger.info(33 * '=')
 
         if not self.options['silent']:
-            history_to_csv(os.path.join(self.outdir, 'history.csv'), self.history)
-
             if self.pressure.is_gp_model:
-                history_to_csv(os.path.join(self.outdir, 'gp_zz.csv'), self.pressure.history)
                 with open(os.path.join(self.outdir, 'gp_zz.txt'), 'w') as f:
                     print(self.pressure.gp, file=f)
 
             if self.wall_stress_xz.is_gp_model:
-                history_to_csv(os.path.join(self.outdir, 'gp_xz.csv'), self.wall_stress_xz.history)
                 with open(os.path.join(self.outdir, 'gp_xz.txt'), 'w') as f:
                     print(self.wall_stress_xz.gp, file=f)
 
             if self.wall_stress_yz.is_gp_model:
-                history_to_csv(os.path.join(self.outdir, 'gp_yz.csv'), self.wall_stress_yz.history)
                 with open(os.path.join(self.outdir, 'gp_yz.txt'), 'w') as f:
                     print(self.wall_stress_yz.gp, file=f)
 
@@ -609,28 +604,39 @@ class Problem:
     # I/O and state writing
     # ---------------------------
 
-    def write(self, scalars: bool = True, fields: bool = True, params: bool = True) -> None:
+    def _save_scalars(self):
+        self.history["step"].append(self.step)
+        self.history["time"].append(self.simtime)
+        self.history["ekin"].append(self.kinetic_energy)
+        self.history["residual"].append(self.residual)
+        self.history["vsound"].append(self.pressure.v_sound)
+
+    def write(self, scalars: bool = True, fields: bool = True) -> None:
         """
         Write scalars, fields and hyperparameters to disk as configured.
         """
         if scalars:
             logger.info(f"{self.step:<6d} {self.dt:.4e} {self.simtime:.4e} {self.cfl:.4e} {self.residual:.4e}")
-            self.history["step"].append(self.step)
-            self.history["time"].append(self.simtime)
-            self.history["ekin"].append(self.kinetic_energy)
-            self.history["residual"].append(self.residual)
-            self.history["vsound"].append(self.pressure.v_sound)
+            self._save_scalars()
+            history_to_csv(os.path.join(self.outdir, 'history.csv'), self.history)
+
+            if self.pressure.is_gp_model:
+                self.pressure.save_state()
+                history_to_csv(os.path.join(self.outdir, 'gp_zz.csv'), self.pressure.history)
+
+            if self.wall_stress_xz.is_gp_model:
+                self.wall_stress_xz.save_state()
+                history_to_csv(os.path.join(self.outdir, 'gp_xz.csv'), self.wall_stress_xz.history)
+
+            if self.wall_stress_yz.is_gp_model:
+                self.wall_stress_yz.save_state()
+                history_to_csv(os.path.join(self.outdir, 'gp_yz.csv'), self.wall_stress_yz.history)
 
         if fields:
             self.file = FileIONetCDF(self.filename, open_mode='append')
             self.file.register_field_collection(self._fc, field_names=self.field_names)
             self.file.append_frame().write()
             self.file.close()
-
-        if params:
-            self.pressure.write()
-            self.wall_stress_xz.write()
-            self.wall_stress_yz.write()
 
         if self.prop['elastic']['enabled']:
             self.topofile = FileIONetCDF(self.topofilename, open_mode='append')
