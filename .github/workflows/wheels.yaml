@@ -30,7 +30,7 @@ jobs:
         env:
           MACOSX_DEPLOYMENT_TARGET: 15.0
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           path: ./wheelhouse/*.whl
           name: ${{ matrix.os }}
@@ -49,7 +49,7 @@ jobs:
           python3 -m pip install build 
           python3 -m build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*.tar.gz
