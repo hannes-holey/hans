@@ -82,8 +82,7 @@ def plot_frame(file_list, dim=1, frame=-1, show=True):
 
 @mpl_style_context
 def plot_history(file_list,
-                 gp_files_0=[],
-                 gp_files_1=[],
+                 gp_files,
                  show=True):
     """Plot the time evolution of scalar quantities,
     e.g. kinetic energy, mass, GP variance etc.
@@ -92,36 +91,29 @@ def plot_history(file_list,
     ----------
     file_list : list
         List of CSV files
-    gp_files_0 : list, optional
-        List of gp history files plotted in a separate column of the figure
-        (the default is [], which means not a GP simulation)
-    gp_files_1 : list, optional
-        List of gp history files plotted in a separate column of the figure
-        (the default is [], which means not a GP simulation)
+    gp_files : dict
+        Dicitonary with list of CSV files for each GP model (zz, xz, yz)
     show : bool, optional
         Flag for plt.show() (the default is True)
     """
 
     ncol = 1
-    if len(gp_files_0) > 0:
-        ncol += 1
 
-    if len(gp_files_1) > 0:
-        ncol += 1
+    for v in gp_files.values():
+        if len(v) > 0:
+            ncol += 1
 
     fig, ax = plt.subplots(3, ncol, figsize=(ncol * 4, 9), sharex='col')
 
     for file in file_list:
-        _plot_history(ax[:, 0] if ncol > 1 else ax,
-                      file)
+        _plot_history(ax[:, 0] if ncol > 1 else ax, file)
 
     col = 1
-    for gp_file, k in gp_files_0:
-        _plot_gp_history(ax[:, col], gp_file, k)
-
-    col = 2 if len(gp_files_0) > 0 else 1
-    for gp_file, k in gp_files_1:
-        _plot_gp_history(ax[:, col], gp_file, k)
+    for key, flist in gp_files.items():
+        for i, f in enumerate(flist):
+            ax[0, col].set_title(key)
+            _plot_gp_history(ax[:, col], f, i)
+        col += 1
 
     if show:
         plt.show()
@@ -537,12 +529,13 @@ def _plot_history(ax, filename='history.csv'):
 
     ax[2].plot(df['time'], df['vsound'])
     ax[2].set_ylabel('Max. sound velocity')
-    ax[2].set_ylim(0.,)
 
     ax[-1].set_xlabel('Time')
 
 
-def _plot_gp_history(ax, filename='history.csv', index=0):
+def _plot_gp_history(ax,
+                     filename,
+                     index=0):
 
     df = pl.read_csv(filename)
 
@@ -552,5 +545,9 @@ def _plot_gp_history(ax, filename='history.csv', index=0):
     ax[1].plot(df['step'], df['maximum_variance'], color=f'C{index}')
     ax[1].plot(df['step'], df['variance_tol'], '--', color=f'C{index}')
     ax[1].set_ylabel('Variance')
+
+    if 'objective' in df.columns:
+        ax[2].plot(df['step'], df['objective'], color=f'C{index}')
+        ax[2].set_ylabel('Objective')
 
     ax[-1].set_xlabel('Step')

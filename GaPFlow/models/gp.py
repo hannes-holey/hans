@@ -98,6 +98,7 @@ class GaussianProcessSurrogate:
             self._last_fit_train_size = 0
             self._pause = 0
             self._tol_ratio = 0.
+            self._objective = jnp.inf
 
             # Initialize timers
             ref = datetime.now()
@@ -114,7 +115,8 @@ class GaussianProcessSurrogate:
                 'variance': [],
                 'obs_stddev': [],
                 'maximum_variance': [],
-                'variance_tol': []
+                'variance_tol': [],
+                'objective': []
             }
 
             for li in self.active_dims:
@@ -232,6 +234,11 @@ class GaussianProcessSurrogate:
         return self._cumtime_infer
 
     @property
+    def objective(self):
+        """Optimization objective (negative marginal log likelihood)"""
+        return self._objective
+
+    @property
     def _Xtest(self) -> JAXArray:
         """
         Flattened test input array from physical fields.
@@ -269,15 +276,17 @@ class GaussianProcessSurrogate:
             self.history['obs_stddev'].append(self.obs_stddev)
             self.history['maximum_variance'].append(self.maximum_variance)
             self.history['variance_tol'].append(self.variance_tol)
+            self.history['objective'].append(self.objective)
 
             for i, l in enumerate(self.active_dims):
                 self.history[f'lengthscale_{l}'].append(self.kernel_lengthscale[i])
 
-    def _print_opt_summary(self, obj: float) -> None:
+    def _print_opt_summary(self) -> None:
         """Print summary of optimization results."""
         # Consolidate multiple prints into a single log entry
         scale = ' '.join([f"{li:.5e}" for li in self.kernel_lengthscale])
-        msg = f"# Objective    : {obj:.5g}\n# Hyperparam   : {self.kernel_variance:.5e} {self.obs_stddev:.5e} {scale}"
+        msg = f"# Objective    : {self._objective:.5g}\n"
+        msg += f"# Hyperparam   : {self.kernel_variance:.5e} {self.obs_stddev:.5e} {scale}"
         logger.info(msg)
 
     # ------------------------------------------------------------------
@@ -340,8 +349,8 @@ class GaussianProcessSurrogate:
 
         self.gp = self.build_gp(soln.params, self.Xtrain, self.Yerr)
 
-        obj = soln.state.fun_val
-        self._print_opt_summary(obj)
+        self._objective = soln.state.fun_val
+        self._print_opt_summary()
 
         if self._step > 0:
             self.save_state()
