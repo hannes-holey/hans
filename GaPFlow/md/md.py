@@ -32,6 +32,7 @@ from getpass import getuser
 from urllib.parse import urlparse
 import scipy.constants as sci
 from copy import deepcopy
+from random import randint
 
 import jax.random as jr
 import jax.numpy as jnp
@@ -419,6 +420,7 @@ variable\tinput_fluxY equal {X[2]}
                 variables_str += f'variable\t{k} equal {v}\n'
 
         variables_str += 'variable\tslabfile index in.wall\n'
+        variables_str += f'variable\trandom_seed equal {randint(0, 1_000_000)}\n'
 
         with open(os.path.join(location, 'data', 'in.param'), 'w') as f:
             f.writelines(variables_str)

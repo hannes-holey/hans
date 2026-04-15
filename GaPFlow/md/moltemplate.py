@@ -26,6 +26,7 @@ import numpy as np
 import subprocess
 import scipy.constants as sci
 from ase.lattice.cubic import FaceCenteredCubic
+from random import randint
 
 from .utils import sanitize_num_cpus
 
@@ -601,6 +602,8 @@ def write_settings(args):
     # Dump trajectory
     variable        dumpfreq equal {dumpfreq}
 
+    # Random seed
+    variable        random_seed equal {randint(0, 1_000_000)}
 
     include         static/in.settings.lmp
 
