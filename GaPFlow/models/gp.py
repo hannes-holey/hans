@@ -96,7 +96,7 @@ class GaussianProcessSurrogate:
             self._cache = None
             self._database = database
             self._last_fit_train_size = 0
-            self._pause = 0
+            self._pause = self.pause_steps
             self._tol_ratio = 0.
             self._objective = jnp.inf
 
