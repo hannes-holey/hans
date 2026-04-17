@@ -1,5 +1,6 @@
 #
 # Copyright 2025-2026 Hannes Holey
+#           2026 Dan Waxman
 #           2025-2026 Christoph Huber
 #
 # ### MIT License
@@ -66,7 +67,7 @@ class Problem:
 
     Notes
     -----
-    Calling the constructor :meth:`__init__` directly expects properly formatted innput dictionaries.
+    Calling the constructor :meth:`__init__` directly expects properly formatted input dictionaries.
     It is recommended to use the :meth:`from_yaml` or :meth:`from_string` class methods, which automatically
     sanitize the simulation input.
 
@@ -507,8 +508,16 @@ class Problem:
 
     def update(self) -> None:
         """
-        Performs a single time step using the MacCormack predictor corrector scheme.
+        Performs a single time step using the MacCormack [1]_ predictor corrector scheme.
+
+        References
+        ----------
+        .. [1] MacCormack, R. W. (2003).
+               The effect of viscosity in hypervelocity impact cratering
+               Journal of Spacecraft and Rockets (reprint)
+               https://doi.org/10.2514/2.6901
         """
+
         switch = (self.step % 2 == 0) * 2 - 1 if self.numerics["MC_order"] == 0 else self.numerics["MC_order"]
         directions = [[-1, 1], [1, -1]][(switch + 1) // 2]
 
@@ -578,7 +587,7 @@ class Problem:
 
     def _finalize(self, q0: npt.NDArray) -> None:
         """
-        Reset the solution field to the one of the ols time step and update stresses.
+        Reset the solution field to the one of the old time step and update stresses.
         Sets the _stop flag to abort the simulation run.
 
         Parameters
@@ -779,7 +788,7 @@ class Problem:
     # Plotting and animations
     # ---------------------------
     def plot(self, ax=None) -> None:
-        """Plot a snaphsot of the solution and the current stress state.
+        """Plot a snapshot of the solution and the current stress state.
 
         Parameters
         ----------
@@ -861,7 +870,7 @@ class Problem:
         save: bool, optional
             Whether to save the animation as an .mp4 file, by default False.
         seconds: float, optional
-            Duration of the animation in seconds(if saved), by default 10.0
+            Duration of the animation in seconds (if saved), by default 10.0
         """
         if not getattr(self, "step", 0) > 0:
             raise RuntimeError("Cannot animate before running the simulation.")
@@ -873,10 +882,15 @@ class Problem:
         filename_topo = os.path.join(self.outdir, 'topo.nc')
 
         if self.grid['Ny'] == 1:
-            return animate_1d(filename_sol,
-                              filename_topo,
-                              seconds=seconds,
-                              save=save)
+            if self.has_gp_model:
+                return animate_1d_gp(filename_sol,
+                                     seconds=seconds,
+                                     save=save)
+            else:
+                return animate_1d(filename_sol,
+                                  filename_topo,
+                                  seconds=seconds,
+                                  save=save)
 
         else:
             return animate_2d(filename_sol,

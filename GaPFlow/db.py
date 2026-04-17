@@ -1,5 +1,6 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2026 Dan Waxman
+#           2025 Hannes Holey
 #
 # ### MIT License
 #
@@ -58,6 +59,7 @@ class Database:
         An instance of the MD runner object. Adding a data point will lead to calling its `run` method.
     db : dict
         Configuration dictionary with keys:
+
         - ``'dtool_path'`` : str, path where training data is stored and loaded from.
         - ``'init_size'`` : int, minimum dataset size.
         - ``'init_width'`` : float, relative sampling width.
