@@ -287,12 +287,20 @@ class GaussianProcessSurrogate:
             for i, l in enumerate(self.active_dims):
                 self.history[f'lengthscale_{l}'].append(self.kernel_lengthscale[i])
 
-    def _print_opt_summary(self) -> None:
+    def _print_opt_summary(self, params) -> None:
         """Print summary of optimization results."""
-        # Consolidate multiple prints into a single log entry
-        scale = ' '.join([f"{li:.5e}" for li in self.kernel_lengthscale])
-        msg = f"# Objective    : {self._objective:.5g}\n"
-        msg += f"# Hyperparam   : {self.kernel_variance:.5e} {self.obs_stddev:.5e} {scale}"
+
+        msg = f"# Objective    : {self.objective:.5g}\n"
+
+        msg += f"# Hyperparam   : \n"
+        scale = [f'{s:.5f}' for s in params['log_scale']]
+        msg += f"# - Log scale  : {' '.join(scale)}\n"
+        msg += f"# - Log amp    : {params['log_amp']:.5f}\n"
+        msg += f"# - Log noise  : {jnp.log(self.obs_stddev**2):.5f}"
+
+        if not self.fix_noise:
+            msg += f"# - Log jitter : {params['log_jitter']:.5f}\n"
+
         logger.info(msg)
 
     # ------------------------------------------------------------------
@@ -356,7 +364,7 @@ class GaussianProcessSurrogate:
         self.gp = self.build_gp(soln.params, self.Xtrain, self.Yerr)
 
         self._objective = soln.state.fun_val
-        self._print_opt_summary()
+        self._print_opt_summary(soln.params)
 
         if self._step > 0:
             self.save_state()
