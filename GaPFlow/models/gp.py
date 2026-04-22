@@ -63,6 +63,7 @@ class GaussianProcessSurrogate:
     is_gp_model: bool
     active_dims: list[int]
     use_active_learning: bool
+    fix_noise: bool
     rtol: float
     atol: float
     tol: str
@@ -121,6 +122,11 @@ class GaussianProcessSurrogate:
 
             for li in self.active_dims:
                 self.history[f'lengthscale_{li}'] = []
+
+            if self.fix_noise:
+                self.func = multi_in_single_out
+            else:
+                self.func = multi_in_single_out_jitter
 
     def init_database(self, dim: int) -> None:
         """Triggers the first database initialization.
@@ -312,7 +318,7 @@ class GaussianProcessSurrogate:
         tinygp.GaussianProcess
             Single-output GP model.
         """
-        return multi_in_single_out(params, X, yerr)
+        return self.func(params, X, yerr)
 
     def _train(self, reason: int = 0) -> None:
         """
@@ -779,3 +785,35 @@ def multi_in_single_out(params: dict,
     )
 
     return GaussianProcess(kernel, X, diag=yerr**2)
+
+
+def multi_in_single_out_jitter(params: dict,
+                               X: JAXArray,
+                               yerr: float | JAXArray) -> GaussianProcess:
+    """
+    Build a single-output GP with anisotropic Matérn kernel.
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary with kernel hyperparameters. Must contain:
+        - ``log_amp`` : logarithm of amplitude.
+        - ``log_scale`` : logarithm of length scale.
+    X : jax.Array
+        Input data.
+    yerr : float or jax.Array
+        Observation noise standard deviation.
+
+    Returns
+    -------
+    tinygp.GaussianProcess
+        Configured single-output GP model.
+    """
+    kernel = jnp.exp(params["log_amp"]) * transforms.Linear(
+        jnp.exp(-params["log_scale"]),
+        kernels.stationary.Matern32(distance=kernels.distance.L2Distance()),
+    )
+
+    diag = yerr**2 + jnp.exp(params['log_jitter'])
+
+    return GaussianProcess(kernel, X, diag=diag)

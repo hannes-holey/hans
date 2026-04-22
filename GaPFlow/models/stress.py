@@ -46,7 +46,7 @@ class WallStress(GaussianProcessSurrogate):
     Wall stress model (wall shear/stress in xz or yz direction).
 
     This class can operate in two modes:
-    
+
     - Deterministic: compute wall/boundary stresses from viscous models.
     - GP-based surrogate: train/predict wall stress using GaussianProcessSurrogate.
 
@@ -107,6 +107,7 @@ class WallStress(GaussianProcessSurrogate):
             self.similarity_check = gp['similarity_check']
             self.allowed_skips = gp['allowed_skips']
             self.perturb_target = gp['perturb_target']
+            self.fix_noise = gp['fix_noise']
 
         else:
             self.is_gp_model = False
@@ -296,7 +297,8 @@ class WallStress(GaussianProcessSurrogate):
         if self.is_gp_model:
             self.params_init = {
                 "log_amp": jnp.log(1.),
-                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5)
+                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5),
+                "log_jitter": jnp.log(1e-3)
             }
 
             self._train()
@@ -525,6 +527,7 @@ class Pressure(GaussianProcessSurrogate):
             self.similarity_check = gp['similarity_check']
             self.allowed_skips = gp['allowed_skips']
             self.perturb_target = gp['perturb_target']
+            self.fix_noise = gp['fix_noise']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
@@ -613,7 +616,8 @@ class Pressure(GaussianProcessSurrogate):
 
             self.params_init = {
                 "log_amp": jnp.log(1.),
-                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5)
+                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5),
+                "log_jitter": jnp.log(1e-3)
             }
 
             self._train()
