@@ -52,16 +52,16 @@ geometry:
 
 numerics:
     solver: fem
-    dt: 0.1
+    dt: 0.01
     tol: 0.0
-    max_it: 300
+    max_it: 800
 
 properties:
     rho0: 850.
     EOS: Bayada
     rho_l: 850.0       # liquid density [kg/m³]  — matched to DH rho0
     rho_v: 0.019       # vapour density [kg/m³]
-    c_l: 1989.28       # liquid speed of sound [m/s] — matched to DH at rho0
+    c_l: 5989.28       # liquid speed of sound [m/s] — matched to DH at rho0
     c_v: 352.0         # vapour speed of sound [m/s]
     shear: 0.01        # dynamic viscosity [Pa·s]  (Bertocchi mu0, constant)
     bulk: 0.0
@@ -69,12 +69,12 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 0.02
+    newton_relax: 0.005
     physics:
         gap_shear: true
         plane_shear: true
         inertia: true
-    max_iter: 1
+    max_iter: 5
     R_norm_tol: 1e-9
     newton_debug: False
-    scaling: False
+    scaling: True

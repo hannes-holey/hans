@@ -12,6 +12,46 @@ import numpy as np
 import pandas as pd
 import netCDF4 as nc
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+
+# ---------------------------------------------------------------------------
+# Style
+# ---------------------------------------------------------------------------
+def science_style():
+    plt.rcParams.update({
+        'font.family': 'sans-serif',
+        'font.size': 9,
+        'axes.labelsize': 10,
+        'axes.titlesize': 11,
+        'legend.fontsize': 8,
+        'xtick.labelsize': 8,
+        'ytick.labelsize': 8,
+        'axes.linewidth': 0.6,
+        'axes.grid': True,
+        'grid.linewidth': 0.4,
+        'grid.alpha': 0.3,
+        'xtick.direction': 'in',
+        'ytick.direction': 'in',
+        'xtick.major.size': 3.5,
+        'ytick.major.size': 3.5,
+        'xtick.minor.size': 2.0,
+        'ytick.minor.size': 2.0,
+        'xtick.major.width': 0.6,
+        'ytick.major.width': 0.6,
+        'xtick.minor.visible': True,
+        'ytick.minor.visible': True,
+        'xtick.top': True,
+        'ytick.right': True,
+        'lines.linewidth': 1.4,
+        'legend.frameon': True,
+        'legend.framealpha': 0.9,
+        'legend.edgecolor': '0.8',
+        'legend.fancybox': False,
+        'figure.dpi': 150,
+        'savefig.dpi': 300,
+        'savefig.bbox': 'tight',
+        'savefig.pad_inches': 0.05,
+    })
 
 # ---------------------------------------------------------------------------
 # Locate latest run directory
@@ -33,8 +73,7 @@ print(f"Using: {latest_dir}")
 # Load simulation pressure (last frame, averaged over y)
 # ---------------------------------------------------------------------------
 with nc.Dataset(os.path.join(latest_dir, "sol.nc")) as ds:
-    # pressure shape: (frame, nx, ny)
-    p_all = ds.variables["pressure"][:]          # (601, 256, 4)
+    p_all = ds.variables["pressure"][:]          # (frames, nx, ny)
 
 p_last = p_all[-1]                               # (nx, ny)
 p_x = p_last.mean(axis=1)                        # average over y
@@ -48,28 +87,28 @@ x_sim = np.linspace(0, Lx, Nx)
 # ---------------------------------------------------------------------------
 csv_path = os.path.join(script_dir, "twin_parabolic_Bayada.csv")
 ref = pd.read_csv(csv_path, skipinitialspace=True)  # columns: x, y
-# x is normalised (0–1)  →  physical: multiply by Lx
-# y=1 corresponds to 1e5 Pa
+# x is normalised (0-1), y=1 corresponds to 1e5 Pa
 ref_x = ref["x"].values * Lx
 ref_p = ref["y"].values * 1e5
 
 # ---------------------------------------------------------------------------
 # Plot
 # ---------------------------------------------------------------------------
-fig, ax = plt.subplots(figsize=(8, 4))
+science_style()
 
-ax.plot(x_sim * 1e3, p_x / 1e5, label="GaPFlow (FEM)", color="steelblue", lw=1.5)
-ax.scatter(ref_x * 1e3, ref_p / 1e5, label="Bayada (reference)", color="firebrick",
-           s=20, zorder=5)
+fig, ax = plt.subplots(figsize=(3.6, 2.0))
 
-ax.set_xlabel("x  [mm]")
-ax.set_ylabel("Pressure  [bar]")
-ax.set_title("Twin parabolic slider — pressure along x")
-ax.legend()
-ax.grid(True, alpha=0.3)
+ax.plot(x_sim * 1e3, p_x / 1e5, color='0.7', lw=1.4,
+        label='FEM (Taylor-Hood)')
+ax.scatter(ref_x * 1e3, ref_p / 1e5, color='#1f77b4', s=12, zorder=5,
+           label='Bayada (ref.)')
 
-plt.tight_layout()
+ax.set_xlabel(r'$x$ [mm]')
+ax.set_ylabel(r'$p$ [bar]')
+ax.legend(loc='best')
+ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=False))
+
 out_path = os.path.join(script_dir, "pressure_comparison.png")
-plt.savefig(out_path, dpi=150)
+fig.savefig(out_path)
 print(f"Saved: {out_path}")
-plt.show()
+plt.close(fig)

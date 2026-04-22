@@ -734,10 +734,28 @@ class Pressure(GaussianProcessSurrogate):
         if self.is_gp_model:
             raise NotImplementedError("Gradient of GP-based EOS not implemented.")
         else:
+            self.p_from_rho = jit(
+                vmap(
+                    vmap(
+                        lambda rho: eos_pressure(rho, self.prop),
+                        in_axes=0
+                    ),
+                    in_axes=0
+                )
+            )
             self.dp_drho = jit(
                 vmap(
                     vmap(
                         grad(lambda rho: eos_pressure(rho, self.prop), argnums=0),
+                        in_axes=0
+                    ),
+                    in_axes=0
+                )
+            )
+            self.d2p_drho2 = jit(
+                vmap(
+                    vmap(
+                        grad(grad(lambda rho: eos_pressure(rho, self.prop), argnums=0), argnums=0),
                         in_axes=0
                     ),
                     in_axes=0

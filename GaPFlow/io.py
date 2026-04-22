@@ -547,10 +547,12 @@ def sanitize_fem_solver(d):
         'wall_shear_work': bool(physics.get('wall_shear_work', True)),
         # Numerical
         'stabilization': bool(physics.get('stabilization', True)),
+        'mass_diffusion': bool(physics.get('mass_diffusion', False)),
         'pspg': bool(physics.get('pspg', False)),
         'gls': bool(physics.get('gls', False)),
     }
 
+    out['mass_diffusion_alpha'] = float(d.get('mass_diffusion_alpha', 1e-3))
     out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
     out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))
 

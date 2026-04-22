@@ -404,6 +404,29 @@ class Quadrature6Points:
                         0.111690794839006])
 
 
+class Quadrature7Points:
+
+    nb_points = 7
+    _a1 = 0.059715871789770
+    _b1 = 0.470142064105115
+    _a2 = 0.797426985353087
+    _b2 = 0.101286507323456
+    coordinates = np.array([[1/3, 1/3],
+                            [_a1, _b1],
+                            [_b1, _a1],
+                            [_b1, _b1],
+                            [_a2, _b2],
+                            [_b2, _a2],
+                            [_b2, _b2]])
+    weights = np.array([9.0/80.0,
+                        0.066197076394253,
+                        0.066197076394253,
+                        0.066197076394253,
+                        0.062969590272414,
+                        0.062969590272414,
+                        0.062969590272414])
+
+
 class QuadOperator:
     """Wraps GenericLinearOperator with an optional numpy backend.
 

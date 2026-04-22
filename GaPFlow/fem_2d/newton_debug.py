@@ -48,6 +48,13 @@ _RES_LABEL = {'momentum_x': 'R mom_x', 'momentum_y': 'R mom_y',
               'mass': 'R mass', 'energy': 'R energy'}
 
 
+def _minmax_title(label, field):
+    """Build a title string with min/max (x,y) locations."""
+    imin = np.unravel_index(np.argmin(field), field.shape)
+    imax = np.unravel_index(np.argmax(field), field.shape)
+    return f'{label}\nmin@({imin[0]},{imin[1]})  max@({imax[0]},{imax[1]})'
+
+
 class NewtonDebugger:
     """Captures and plots Newton iteration diagnostics.
 
@@ -201,7 +208,7 @@ class NewtonDebugger:
             field = self._to_2d(R, name, is_residual=True)
             im = ax.imshow(field.T, origin='lower', aspect='auto',
                            cmap='RdBu_r')
-            ax.set_title(_RES_LABEL[name], fontsize=9)
+            ax.set_title(_minmax_title(_RES_LABEL[name], field), fontsize=7)
             fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         for col in range(n_res, n_cols):
             axes[0, col].set_visible(False)
@@ -212,7 +219,7 @@ class NewtonDebugger:
             field = self._to_2d(dq, name, is_residual=False)
             im = ax.imshow(field.T, origin='lower', aspect='auto',
                            cmap='RdBu_r')
-            ax.set_title(_VAR_LABEL[name], fontsize=9)
+            ax.set_title(_minmax_title(_VAR_LABEL[name], field), fontsize=7)
             fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         for col in range(n_vars, n_cols):
             axes[1, col].set_visible(False)
@@ -254,7 +261,7 @@ class NewtonDebugger:
                 field = self._to_2d_res(R_per_term[term_name], res_name)
                 im = ax.imshow(field.T, origin='lower', aspect='auto',
                                cmap='RdBu_r')
-                ax.set_title(f'{_RES_LABEL[res_name]}\n{term_name}', fontsize=8)
+                ax.set_title(_minmax_title(f'{_RES_LABEL[res_name]} {term_name}', field), fontsize=6)
                 fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
             for col in range(len(term_names), n_cols):
                 axes[row, col].set_visible(False)
@@ -284,7 +291,7 @@ class NewtonDebugger:
 
         for ax, (field, title, cmap) in zip(axes, fields):
             im = ax.imshow(field.T, origin='lower', aspect='auto', cmap=cmap)
-            ax.set_title(title, fontsize=9)
+            ax.set_title(_minmax_title(title, field), fontsize=7)
             fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
         fname = os.path.join(self.plot_dir,

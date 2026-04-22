@@ -19,7 +19,7 @@
 
 options:
     output: data/twin_parabolic_slider
-    write_freq: 10
+    write_freq: 1
     save_output: True
     output_plots: True
     residual_analysis: True
@@ -33,7 +33,7 @@ grid:
     xE: ['D', 'N', 'N']
     yS: ['P', 'P', 'P']
     yN: ['P', 'P', 'P']
-    xW_D: 850.01      # inlet density [kg/m³] = rho_l (liquid)
+    xW_D: 850.013      # inlet density [kg/m³] = rho_l (liquid)
     xE_D: 850.015     # outlet density [kg/m³] = rho_l (liquid)
 
 geometry:
@@ -45,12 +45,12 @@ geometry:
 
 numerics:
     solver: fem
-    dt: 0.1
+    dt: 0.08
     tol: 0.
-    max_it: 2000
+    max_it: 70
 
 properties:
-    rho0: 850.01
+    rho0: 850.
     EOS: Bayada
     rho_l: 850.0       # liquid density [kg/m³]
     rho_v: 0.019       # vapour density [kg/m³]
@@ -67,7 +67,7 @@ fem_solver:
         gap_shear: true
         plane_shear: true
         inertia: false
-    max_iter: 1
+    max_iter: 20
     R_norm_tol: 0.
     newton_debug: False
     scaling: True

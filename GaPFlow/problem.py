@@ -635,6 +635,18 @@ class Problem:
             raise ValueError(f"boundary must be 'W', 'E', 'S', or 'N', got '{boundary}'")
         self._bc_callbacks.setdefault(var_name, {})[boundary] = callback
 
+    def set_eos_function(self, fn: callable) -> None:
+        """Set a custom equation of state function.
+
+        Parameters
+        ----------
+        fn : callable
+            Scalar JAX-differentiable function fn(rho) -> p.
+        """
+        self.prop['EOS'] = 'user'
+        self.prop['EOS_user'] = fn
+        self.pressure.build_grad()
+
     # ---------------------------
     # Single time step (update)
     # ---------------------------

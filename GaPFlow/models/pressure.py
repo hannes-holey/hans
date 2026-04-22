@@ -64,6 +64,8 @@ def eos_pressure(density, prop):
     elif prop['EOS'] == 'Bayada':
         func = bayada_chupin
         args = ['rho_l', 'rho_v', 'c_l', 'c_v']
+    elif prop['EOS'] == 'user':
+        return prop['EOS_user'](density)
 
     # TODO: split EOS and stress arguments already in input
     kwargs = {k: v for k, v in prop.items() if k in args}

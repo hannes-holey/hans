@@ -46,7 +46,8 @@ BASE_FIELDS = {
     'rho', 'jx', 'jy',
     'p', 'h', 'dh_dx', 'dh_dy', 'eta',
     'U_bot', 'V_bot', 'U_top', 'V_top', 'Ls',
-    'dp_drho',
+    'dp_drho', 'd2p_drho2',
+    'd_dx_rho', 'd_dy_rho',
     'rho_prev', 'jx_prev', 'jy_prev',
     'force_x', 'force_y',
 }
@@ -301,6 +302,15 @@ class QuadFieldManager:
         apply = self._apply_2d_vmap
 
         self.quad_fields['dp_drho'].pg[s] = apply(p.pressure.dp_drho, q('rho'))
+        self.quad_fields['d2p_drho2'].pg[s] = apply(p.pressure.d2p_drho2, q('rho'))
+
+        # Density gradients at quad points (for pressure gradient Jacobian correction)
+        op_dx = self.elements.P1.dx_operator
+        op_dy = self.elements.P1.dy_operator
+        op_dx.apply(self.nodal_fields['rho'], self.quad_fields['d_dx_rho'])
+        self.quad_fields['d_dx_rho'].pg[:] /= self.dx
+        op_dy.apply(self.nodal_fields['rho'], self.quad_fields['d_dy_rho'])
+        self.quad_fields['d_dy_rho'].pg[:] /= self.dy
 
         args_xz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dx'),
                    q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'))

@@ -185,19 +185,165 @@ R1T = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
+# R1Lx / R1Ly: Simple Laplacian density diffusion for mass equation.
+# Adds α_stab * ∫ (∂Nᵢ/∂x_k)(∂ρ/∂x_k) dΩ with a fixed, tunable coefficient.
+# Activated by physics flag mass_diffusion: true.
+# Coefficient set via fem_solver.mass_diffusion_alpha (default 1e-3).
+R1Lx = NonLinearTerm(
+    name='R1Lx',
+    description='Laplacian density diffusion x',
+    res='mass',
+    dep_vars=['rho'],
+    dep_vals=[],
+    fun=lambda ctx: lambda rho: ctx['mass_diff_alpha']() * rho,
+    der_funs=[lambda ctx: lambda rho: np.full_like(rho, ctx['mass_diff_alpha']())],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1Ly = NonLinearTerm(
+    name='R1Ly',
+    description='Laplacian density diffusion y',
+    res='mass',
+    dep_vars=['rho'],
+    dep_vals=[],
+    fun=lambda ctx: lambda rho: ctx['mass_diff_alpha']() * rho,
+    der_funs=[lambda ctx: lambda rho: np.full_like(rho, ctx['mass_diff_alpha']())],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
+
+# -----------------------------------------------------------------------------
+# PSPG stabilization terms (mass equation, test-function derivatives)
+# Activated by physics flag pspg: true.
+# Uses tau_pspg (Tezduyar 1992, compressible) for stabilization parameter.
+# -----------------------------------------------------------------------------
+
+# PSPG pressure gradient: tau * ∫ (∂Nᵢ/∂x_k) · (-∂p/∂x_k) dΩ
+# Strong-form momentum residual has -∂p/∂x_k.  Both test function and
+# dep_var carry a spatial derivative → Laplacian stencil (d_d{x,y}_resfun + der_testfun).
+R1PSPG_Px = NonLinearTerm(
+    name='R1PSPG_Px',
+    description='PSPG pressure gradient x',
+    res='mass',
+    dep_vars=['rho'],
+    dep_vals=['tau_pspg', 'p', 'dp_drho'],
+    fun=lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['p'](),
+    der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['dp_drho']()],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1PSPG_Py = NonLinearTerm(
+    name='R1PSPG_Py',
+    description='PSPG pressure gradient y',
+    res='mass',
+    dep_vars=['rho'],
+    dep_vals=['tau_pspg', 'p', 'dp_drho'],
+    fun=lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['p'](),
+    der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['dp_drho']()],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
+
+# PSPG pressure gradient Jacobian correction:
+# d/drho(-tau * dp/drho * drho/dx) has a second term  -tau * d2p/drho2 * drho/dx * Nj
+# that the main R1PSPG_P{x,y} terms miss (they only give -tau * dp/drho * dNj/dx).
+# Zero residual contribution — Jacobian-only.
+R1PSPG_Px2 = NonLinearTerm(
+    name='R1PSPG_Px2',
+    description='PSPG pressure gradient x Jacobian correction',
+    res='mass',
+    dep_vars=['rho'],
+    dep_vals=['tau_pspg', 'd2p_drho2', 'd_dx_rho'],
+    fun=lambda ctx: lambda rho: 0.0 * rho,
+    der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['d2p_drho2']() * ctx['d_dx_rho']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1PSPG_Py2 = NonLinearTerm(
+    name='R1PSPG_Py2',
+    description='PSPG pressure gradient y Jacobian correction',
+    res='mass',
+    dep_vars=['rho'],
+    dep_vals=['tau_pspg', 'd2p_drho2', 'd_dy_rho'],
+    fun=lambda ctx: lambda rho: 0.0 * rho,
+    der_funs=[lambda ctx: lambda rho: -ctx['tau_pspg']() * ctx['d2p_drho2']() * ctx['d_dy_rho']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun='y')
+
+# PSPG temporal: tau * ∫ (∂Nᵢ/∂x_k) · (-(j - j_prev)/dt) dΩ
+R1PSPG_Tx = NonLinearTerm(
+    name='R1PSPG_Tx',
+    description='PSPG temporal x',
+    res='mass',
+    dep_vars=['jx'],
+    dep_vals=['tau_pspg', 'jx_prev'],
+    fun=lambda ctx: lambda jx: -(ctx['tau_pspg']() / ctx['dt']()) * (jx - ctx['jx_prev']()),
+    der_funs=[lambda ctx: lambda jx: -ctx['tau_pspg']() / ctx['dt']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1PSPG_Ty = NonLinearTerm(
+    name='R1PSPG_Ty',
+    description='PSPG temporal y',
+    res='mass',
+    dep_vars=['jy'],
+    dep_vals=['tau_pspg', 'jy_prev'],
+    fun=lambda ctx: lambda jy: -(ctx['tau_pspg']() / ctx['dt']()) * (jy - ctx['jy_prev']()),
+    der_funs=[lambda ctx: lambda jy: -ctx['tau_pspg']() / ctx['dt']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun='y')
+
+# PSPG wall shear: tau * ∫ (∂Nᵢ/∂x_k) · (tau_xz/h) dΩ
+R1PSPG_Wx = NonLinearTerm(
+    name='R1PSPG_Wx',
+    description='PSPG wall shear x',
+    res='mass',
+    dep_vars=['rho', 'jx'],
+    dep_vals=['tau_pspg', 'tau_xz', 'h', 'dtau_xz_drho', 'dtau_xz_djx'],
+    fun=lambda ctx: lambda rho, jx: ctx['tau_pspg']() * ctx['tau_xz']() / ctx['h'](),
+    der_funs=[
+        lambda ctx: lambda rho, jx: ctx['tau_pspg']() * ctx['dtau_xz_drho']() / ctx['h'](),
+        lambda ctx: lambda rho, jx: ctx['tau_pspg']() * ctx['dtau_xz_djx']() / ctx['h'](),
+    ],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1PSPG_Wy = NonLinearTerm(
+    name='R1PSPG_Wy',
+    description='PSPG wall shear y',
+    res='mass',
+    dep_vars=['rho', 'jy'],
+    dep_vals=['tau_pspg', 'tau_yz', 'h', 'dtau_yz_drho', 'dtau_yz_djy'],
+    fun=lambda ctx: lambda rho, jy: ctx['tau_pspg']() * ctx['tau_yz']() / ctx['h'](),
+    der_funs=[
+        lambda ctx: lambda rho, jy: ctx['tau_pspg']() * ctx['dtau_yz_drho']() / ctx['h'](),
+        lambda ctx: lambda rho, jy: ctx['tau_pspg']() * ctx['dtau_yz_djy']() / ctx['h'](),
+    ],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun='y')
+
 # -----------------------------------------------------------------------------
 # Momentum equation terms (R2*)
 # -----------------------------------------------------------------------------
 
-# R21: Pressure gradient
+# R21: Pressure gradient (explicit form: ∫ Nᵢ · (-∂p/∂x) dΩ)
+# Uses chain rule: -∂p/∂x = -dp/drho · ∂rho/∂x
 R21x = NonLinearTerm(
     name='R21x',
     description='pressure gradient x',
     res='momentum_x',
     dep_vars=['rho'],
     dep_vals=[],
-    fun=lambda ctx: lambda *args: -ctx['p'](),
-    der_funs=[lambda ctx: lambda *args: -ctx['dp_drho']()],
+    fun=lambda ctx: lambda rho: -ctx['p'](),
+    der_funs=[lambda ctx: lambda rho: -ctx['dp_drho']()],
     d_dx_resfun=True,
     d_dy_resfun=False,
     der_testfun=False)
@@ -208,10 +354,37 @@ R21y = NonLinearTerm(
     res='momentum_y',
     dep_vars=['rho'],
     dep_vals=[],
-    fun=lambda ctx: lambda *args: -ctx['p'](),
-    der_funs=[lambda ctx: lambda *args: -ctx['dp_drho']()],
+    fun=lambda ctx: lambda rho: -ctx['p'](),
+    der_funs=[lambda ctx: lambda rho: -ctx['dp_drho']()],
     d_dx_resfun=False,
     d_dy_resfun=True,
+    der_testfun=False)
+
+# R21 Jacobian correction: -d²p/drho² · ∂rho/∂x · Nⱼ
+# (missing from main R21x/R21y because assembly only gives -dp/drho · dNⱼ/dx)
+# Zero residual contribution — Jacobian-only.
+R21x_corr = NonLinearTerm(
+    name='R21x_corr',
+    description='pressure gradient x Jacobian correction',
+    res='momentum_x',
+    dep_vars=['rho'],
+    dep_vals=['d2p_drho2', 'd_dx_rho'],
+    fun=lambda ctx: lambda rho: 0.0 * rho,
+    der_funs=[lambda ctx: lambda rho: -ctx['d2p_drho2']() * ctx['d_dx_rho']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+R21y_corr = NonLinearTerm(
+    name='R21y_corr',
+    description='pressure gradient y Jacobian correction',
+    res='momentum_y',
+    dep_vars=['rho'],
+    dep_vals=['d2p_drho2', 'd_dy_rho'],
+    fun=lambda ctx: lambda rho: 0.0 * rho,
+    der_funs=[lambda ctx: lambda rho: -ctx['d2p_drho2']() * ctx['d_dy_rho']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
     der_testfun=False)
 
 # R22: Convective momentum flux
@@ -677,8 +850,13 @@ R3T = NonLinearTerm(
 term_list = [
     # Mass equation
     R11x, R11y, R11Sx, R11Sy, R1T,
+    # Laplacian density diffusion
+    R1Lx, R1Ly,
+    # PSPG mass stabilization
+    R1PSPG_Px, R1PSPG_Py, R1PSPG_Px2, R1PSPG_Py2,
+    R1PSPG_Tx, R1PSPG_Ty, R1PSPG_Wx, R1PSPG_Wy,
     # Momentum equation
-    R21x, R21y,
+    R21x, R21y, R21x_corr, R21y_corr,
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
     R23xy, R23yx, R23xx, R23yy,
     R24x, R24y,
@@ -696,6 +874,8 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     """Build term name list from physics flags.
 
     Physics flags (in fem_solver['physics']):
+    - mass_diffusion:     Laplacian density diffusion (R1Lx, R1Ly)
+    - pspg:               PSPG stabilization for mass eq (R1PSPG_*)
     - gap_shear:          Gap-averaged wall shear τ/h (R24x, R24y)
     - plane_shear:        In-plane viscous diffusion (R23xy, R23yx)
     - inertia:            Momentum convection (R22*)
@@ -713,8 +893,17 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     # Mass conservation and pressure gradient always included
     terms = [
         'R11x', 'R11y', 'R11Sx', 'R11Sy', 'R1T',
-        'R21x', 'R21y', 'R2Tx', 'R2Ty',
+        'R21x', 'R21y', 'R21x_corr', 'R21y_corr', 'R2Tx', 'R2Ty',
     ]
+
+    if physics.get('mass_diffusion', False):
+        terms.extend(['R1Lx', 'R1Ly'])
+
+    if physics.get('pspg', False):
+        terms.extend(['R1PSPG_Px', 'R1PSPG_Py',
+                      'R1PSPG_Px2', 'R1PSPG_Py2',
+                      'R1PSPG_Tx', 'R1PSPG_Ty',
+                      'R1PSPG_Wx', 'R1PSPG_Wy'])
 
     if physics.get('gap_shear', True):
         terms.extend(['R24x', 'R24y'])

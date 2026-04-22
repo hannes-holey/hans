@@ -1,0 +1,82 @@
+# Twin identical parabolic slider — Giacopini et al. (2010) benchmark
+#
+# Reference: Giacopini, M. et al. "A mass-conserving complementarity
+#   formulation to study lubricant films in the presence of cavitation."
+#   J. Tribology 132(4), 041702 (2010).
+#
+# Geometry: two identical symmetric parabolic sliders (hmax at edges,
+#   hmin at centre), each occupying half the domain. No flat regions.
+#   Profile is constant in y. Topography loaded from file.
+#
+# Domain: Lx = 0.0762 m (bearing length a), Ly = 0.004 m (periodic in y)
+#
+# Fluid: Bayada-Chupin EOS with c_l matched to DH (C1=2.22e9, C2=1.66):
+#   c_l = sqrt(C1/rho0 * C2/(C2-1)^2) = 3154.84 m/s
+#   rho_l = 850 kg/m³, rho_v = 0.019 kg/m³, c_v = 352 m/s
+#   shear = 0.039 Pa·s
+#
+# Wall velocity: U = 4.57 m/s
+#
+# BCs: P1 = 3.36414e5 Pa at inlet  -> rho = 850.02746 kg/m³
+#      P2 = 0 Pa at outlet         -> rho = 849.99366 kg/m³
+#      (via Bayada liquid branch: p = Pcav + (rho - rho_l)*c_l^2)
+
+options:
+    output: data/twin_parabolic_slider_id
+    write_freq: 10
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.1524
+    Ly: 0.004
+    Nx: 1500
+    Ny: 2
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['N', 'N', 'N']
+    yN: ['N', 'N', 'N']
+    xW_D: 850.02746     # rho for P1 = 3.36414e5 Pa
+    xE_D: 849.99366     # rho for P2 = 0 Pa
+
+geometry:
+    type: from_file
+    filepath: topography/twin_parabolic_slider_id.npy
+    U: 4.57
+    V: 0.0
+    flip: false
+
+numerics:
+    solver: fem
+    dt: 0.1
+    tol: 0.0
+    max_it: 450
+
+properties:
+    rho0: 850.
+    EOS: Bayada
+    rho_l: 850.0
+    rho_v: 0.019
+    c_l: 3154.84        # matched to DH (C1=2.22e9, C2=1.66) at rho0
+    c_v: 352.0
+    shear: 0.039
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 1.
+    physics:
+        gap_shear: true
+        plane_shear: true
+        inertia: true
+        pspg: false
+        mass_diffusion: false
+    mass_diffusion_alpha: 1e-04
+    pspg_C_I: 500.
+    max_iter: 10
+    R_norm_tol: 1e-9
+    newton_debug: False
+    scaling: True
+    line_search: True

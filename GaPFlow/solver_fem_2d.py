@@ -42,7 +42,7 @@ from .fem_2d.assembly import Assembly
 from .fem_2d.terms import NonLinearTerm, get_active_terms
 from .fem_2d.scaling import build_scaling
 from .fem_2d.scipy_system import ScipySystem
-from .fem_2d.solution_guards import apply_guards
+from .fem_2d.solution_guards import linearization_guard  # noqa: F401 (apply_guards available but deactivated)
 
 if TYPE_CHECKING:
     from .problem import Problem
@@ -171,6 +171,8 @@ class FEMSolver2d:
         for term in self.terms:
             ctx = {name: make_getter(name) for name in all_field_names}
             ctx['dt'] = lambda: p.numerics['dt']
+            ctx['mass_diff_alpha'] = lambda: p.fem_solver.get(
+                'mass_diffusion_alpha', 1e-3)
             if self.energy:
                 ctx['k'] = lambda: p.energy.k
             term.build(ctx)
@@ -394,6 +396,272 @@ class FEMSolver2d:
             p.bulk_stress.update()
 
     # =========================================================================
+    # Conservative density smoothing
+    # =========================================================================
+
+    def smooth_rho(self, q: NDArray, beta: float, delta: float) -> NDArray:
+        """Apply one conservative flux-based smoothing sweep to the rho component.
+
+        Smoothing is localised around rho_l using a Gaussian weight:
+          w(rho) = exp(-((rho - rho_l) / delta)^2)
+        so at rho = rho_l +/- 3*delta the weight is ~0.0001 (negligible).
+        Set delta = eps / 3 so the smoothing support matches the EoS blend window.
+
+        For each pair of neighboring nodes, the flux is weighted by the
+        maximum of the two neighbors' weights, so smoothing activates if
+        *either* node is near the cavitation front. Mass is exactly conserved.
+
+        Parameters
+        ----------
+        q : NDArray
+            Flat Newton solution vector (modified in-place and returned).
+        beta : float
+            Smoothing strength in (0, 0.25) for stability.
+        delta : float
+            Gaussian half-width in density units. 3*delta ~ effective support.
+        """
+        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
+        rho_slice = self._sol_slice('rho')
+        Nx, Ny = self.problem.decomp.nb_subdomain_grid_pts
+        rho = q[rho_slice].reshape((Nx, Ny), order='F')
+
+        w = np.exp(-((rho - rho_l) / delta) ** 2)
+
+        # x-direction fluxes (between i and i+1)
+        w_x = np.maximum(w[:-1, :], w[1:, :])
+        flux_x = beta * w_x * (rho[:-1, :] - rho[1:, :])
+        rho[:-1, :] -= flux_x
+        rho[1:, :] += flux_x
+
+        # y-direction fluxes (between j and j+1)
+        w_y = np.maximum(w[:, :-1], w[:, 1:])
+        flux_y = beta * w_y * (rho[:, :-1] - rho[:, 1:])
+        rho[:, :-1] -= flux_y
+        rho[:, 1:] += flux_y
+
+        q[rho_slice] = rho.flatten(order='F')
+        return q
+
+    # =========================================================================
+    # Cavitation guard
+    # =========================================================================
+
+    def _detect_rho_oscillations(self, rho: np.ndarray) -> np.ndarray:
+        """Detect spurious density oscillations (checkerboard / wiggles).
+
+        A node is flagged if the density gradient changes sign between its
+        left and right neighbors (local extremum) in either x or y direction.
+        Only flags nodes near rho_l (within 5 * grid spacing worth of density
+        variation) to avoid flagging physical features far from cavitation.
+
+        Returns a boolean mask of shape (Nx, Ny) where True = oscillating.
+        """
+        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
+        Nx, Ny = rho.shape
+
+        osc = np.zeros_like(rho, dtype=bool)
+
+        # x-direction: sign change in diff between consecutive pairs
+        if Nx >= 3:
+            dx = np.diff(rho, axis=0)  # (Nx-1, Ny)
+            sign_change_x = dx[:-1, :] * dx[1:, :] < 0  # (Nx-2, Ny)
+            osc[1:-1, :] |= sign_change_x
+
+        # y-direction: same logic
+        if Ny >= 3:
+            dy = np.diff(rho, axis=1)  # (Nx, Ny-1)
+            sign_change_y = dy[:, :-1] * dy[:, 1:] < 0  # (Nx, Ny-2)
+            osc[:, 1:-1] |= sign_change_y
+
+        # Restrict to vicinity of rho_l
+        near_cav = np.abs(rho - rho_l) < 5.0
+        osc &= near_cav
+
+        n_osc = int(np.sum(osc))
+        if n_osc > 0:
+            osc_rho = rho[osc]
+            ix, iy = np.where(osc)
+            print(f"  Cavitation guard: {n_osc} oscillating nodes detected "
+                  f"(rho range [{osc_rho.min():.4f}, {osc_rho.max():.4f}], "
+                  f"x=[{ix.min()},{ix.max()}], y=[{iy.min()},{iy.max()}])")
+        return osc
+
+    def _detect_rho_crossings(self, rho_old: np.ndarray,
+                               rho_new: np.ndarray) -> np.ndarray:
+        """Detect nodes where rho crossed rho_l during the Newton update.
+
+        A crossing means the node switched between liquid (rho > rho_l)
+        and mixture (rho < rho_l) in a single Newton step, which can cause
+        the solver to oscillate between branches of the piecewise EoS.
+
+        Returns a boolean mask of shape (Nx, Ny) where True = crossed.
+        """
+        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
+
+        crossed = (rho_old - rho_l) * (rho_new - rho_l) < 0
+
+        n_cross = int(np.sum(crossed))
+        if n_cross > 0:
+            # Which direction: liquid->mixture or mixture->liquid
+            to_mix = crossed & (rho_old > rho_l)
+            to_liq = crossed & (rho_old < rho_l)
+            delta = np.abs(rho_new[crossed] - rho_old[crossed])
+            ix, iy = np.where(crossed)
+            print(f"  Cavitation guard: {n_cross} rho_l crossings "
+                  f"({int(np.sum(to_mix))} liq->mix, "
+                  f"{int(np.sum(to_liq))} mix->liq, "
+                  f"max |drho|={delta.max():.4f}, "
+                  f"x=[{ix.min()},{ix.max()}], y=[{iy.min()},{iy.max()}])")
+        return crossed
+
+    def _pressure_liquid(self, rho: np.ndarray) -> np.ndarray:
+        """Fast inline pressure for liquid branch: p = Pcav + (rho - rho_l) * c_l²."""
+        prop = self.problem.prop
+        rho_l = prop.get('rho_l', prop.get('rho0'))
+        c_l = prop.get('c_l', 1.0)
+        if not hasattr(self, '_Pcav'):
+            from .models.pressure import eos_pressure
+            self._Pcav = float(eos_pressure(np.array(rho_l), prop))
+        return self._Pcav + (rho - rho_l) * c_l**2
+
+    def _limit_pressure_change(self, rho_old: np.ndarray, rho_new: np.ndarray,
+                               p_old: np.ndarray, p_new: np.ndarray,
+                               max_rel_dp: float = 0.5) -> float:
+        """Compute step limiting factor from pressure change on liquid-side nodes.
+
+        For nodes with rho > rho_l where |dp/p_old| exceeds max_rel_dp,
+        compute the density that gives exactly the 50% capped pressure,
+        then derive the limiting factor from drho_limited / drho.
+
+        On the liquid branch: p = Pcav + (rho - rho_l) * c_l², so
+        rho(p) = rho_l + (p - Pcav) / c_l².
+
+        Returns the global minimum limiting factor (1.0 if no limiting needed).
+        """
+        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
+        c_l = self.problem.prop.get('c_l', 1.0)
+        if not hasattr(self, '_Pcav'):
+            from .models.pressure import eos_pressure
+            self._Pcav = float(eos_pressure(np.array(rho_l), self.problem.prop))
+        p_cav = self._Pcav
+
+        # Only consider liquid-side nodes (rho_old > rho_l)
+        liquid = rho_old > rho_l
+        if not np.any(liquid):
+            return 1.0
+
+        p_o = p_old[liquid]
+        p_n = p_new[liquid]
+        rel_dp = np.abs(p_n - p_o) / (np.abs(p_o) + 1e-10)
+
+        exceeds = rel_dp > max_rel_dp
+        if not np.any(exceeds):
+            return 1.0
+
+        # For each exceeding node, compute limited pressure and corresponding rho
+        drho_full = rho_new[liquid] - rho_old[liquid]
+        sign_dp = np.sign(p_n - p_o)
+        p_limited = p_o + sign_dp * max_rel_dp * np.abs(p_o)
+        # Invert liquid branch: rho = rho_l + (p - Pcav) / c_l²
+        rho_limited = rho_l + (p_limited - p_cav) / c_l**2
+        drho_limited = rho_limited - rho_old[liquid]
+
+        # Per-node factor: drho_limited / drho (only for exceeding nodes)
+        # Avoid div-by-zero for nodes with drho ~ 0
+        factors = np.where(
+            exceeds & (np.abs(drho_full) > 1e-15),
+            np.abs(drho_limited) / (np.abs(drho_full) + 1e-30),
+            1.0,
+        )
+        f_min = float(np.min(factors))
+
+        rank = self.problem.decomp.rank
+        if rank == 0:
+            n_exc = int(np.sum(exceeds))
+            ix_all, iy_all = np.where(liquid)
+            iworst = np.argmax(rel_dp)
+            print(f"  Pressure guard: {n_exc} nodes exceed {max_rel_dp:.0%} dp, "
+                  f"max |dp/p|={rel_dp[iworst]:.2e} "
+                  f"at ({ix_all[iworst]},{iy_all[iworst]}), "
+                  f"f_min={f_min:.4f}")
+        return f_min
+
+    def cavitation_guard(self, q_old: NDArray, q_new: NDArray) -> NDArray:
+        """Check for cavitation-related issues and limit the step if needed.
+
+        Detects:
+          1. Spurious rho oscillations (checkerboard pattern near rho_l)
+          2. Nodes where rho crossed rho_l during the update
+
+        If crossings are detected, the step is reduced so that the most
+        critical node barely crosses rho_l (plus eps), with a 0.5 safety
+        factor. This limits the full dq vector, not just rho.
+
+        Parameters
+        ----------
+        q_old : NDArray
+            Flat solution vector before the Newton update.
+        q_new : NDArray
+            Flat solution vector after the Newton update (= q_old + alpha*dq).
+
+        Returns
+        -------
+        NDArray
+            Possibly reduced solution vector.
+        """
+        rho_slice = self._sol_slice('rho')
+        Nx, Ny = self.problem.decomp.nb_subdomain_grid_pts
+
+        rho_old = q_old[rho_slice].reshape((Nx, Ny), order='F')
+        rho_new = q_new[rho_slice].reshape((Nx, Ny), order='F')
+
+        # Early exit: if no node is near rho_l, skip all checks
+        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
+        near_threshold = 5.0
+        if not (np.any(np.abs(rho_old - rho_l) < near_threshold)
+                or np.any(np.abs(rho_new - rho_l) < near_threshold)):
+            return q_new
+
+        osc_mask = self._detect_rho_oscillations(rho_new)
+        cross_mask = self._detect_rho_crossings(rho_old, rho_new)
+
+        # Liquid-branch pressure (fast inline, no EoS dispatcher)
+        p_old = self._pressure_liquid(rho_old)
+        p_new = self._pressure_liquid(rho_new)
+
+        # Pressure change limiter
+        max_rel_dp = self.problem.fem_solver.get('cavitation_guard_max_rel_dp', 0.1)
+        f_pressure = self._limit_pressure_change(
+            rho_old, rho_new, p_old, p_new, max_rel_dp)
+
+        # Crossing limiter
+        f_crossing = 1.0
+        if np.any(cross_mask):
+            rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
+            eps = self.problem.fem_solver.get('cavitation_guard_eps', 1e-3)
+            safety = self.problem.fem_solver.get('cavitation_guard_safety', 0.1)
+
+            drho = rho_new[cross_mask] - rho_old[cross_mask]
+            target = rho_l + np.sign(drho) * eps
+            f = (target - rho_old[cross_mask]) / drho
+
+            f_min = float(np.min(f))
+            f_crossing = f_min * safety
+
+            rank = self.problem.decomp.rank
+            if rank == 0:
+                print(f"  Cavitation guard: crossing limiter f={f_crossing:.4f} "
+                      f"(f_min={f_min:.4f}, {int(np.sum(cross_mask))} crossings)")
+
+        # Apply the most restrictive factor
+        f_total = min(f_crossing, f_pressure)
+        if f_total < 1.0:
+            dq_full = q_new - q_old
+            return q_old + f_total * dq_full
+
+        return q_new
+
+    # =========================================================================
     # Time step
     # =========================================================================
 
@@ -411,6 +679,8 @@ class FEMSolver2d:
         alpha = fem_solver.get('newton_relax', 1.0)
         alpha_init = alpha
         dt_init = p.numerics['dt']
+        md_alpha_init = fem_solver.get('mass_diffusion_alpha', 1e-3)
+        md_alpha_max = fem_solver.get('mass_diffusion_alpha_max', md_alpha_init * 1e5)
         comm = p.decomp._mpi_comm
         rank = p.decomp.rank
 
@@ -429,7 +699,7 @@ class FEMSolver2d:
             if R_norm < tol and it > 0:
                 break
 
-            if fem_solver.get('scaling', True):
+            if fem_solver.get('scaling', False):
                 M_scaled, R_scaled = self.scaling.scale_system(M, R)
                 self.linear_solver.assemble(M_scaled, R_scaled)
                 dq_scaled = self.linear_solver.solve()
@@ -439,28 +709,126 @@ class FEMSolver2d:
                 self.linear_solver.assemble(M, R)
                 dq = self.linear_solver.solve()
 
+            if self._debug_active:
+                self.debugger.step(
+                    timestep=p.step, it=it, R=R, dq=dq, q=q,
+                    R_per_term=self._last_R_per_term, M_scaled=M_scaled)
+                self._debug_steps_done += 1
+
+            q_before = q.copy()
             q = q + alpha * dq
 
-            if fem_solver.get('line_search', False):
-                if p.step > 0:
-                    R_new = self.get_R(q)
-                    R_new_norm = self.get_R_norm_global(R_new)
-                    if R_new_norm < R_norm:
-                        if alpha < alpha_init:
-                            alpha = min(alpha_init, alpha * 1.5)
-                            p.numerics['dt'] = min(p.numerics['dt'] * 1.5, dt_init)
-                            print(f"Line search: accepted alpha={alpha:.2e}, increased from {alpha*2:.2e}, dt={p.numerics['dt']:.2e}")
+            # Linearization guard: limit step so dp/drho stays within tolerance
+            q, fired = linearization_guard(q_before, q - q_before, self)
+            any_guard_fired |= fired
 
+            if fem_solver.get('line_search', False):
+                dq_guarded = q - q_before
+                R_new = self.get_R(q)
+                R_new_norm = self.get_R_norm_global(R_new)
+                if rank == 0:
+                    print(f"  [LineSearch] R: {R_norm:.6e} -> {R_new_norm:.6e}"
+                          f" ({'OK' if R_new_norm < R_norm else 'INCREASED'})")
+                if R_new_norm >= R_norm:
+                    ls_alpha = 0.5
+                    ls_min = fem_solver.get('line_search_alpha_min', 1e-8)
+                    accepted = False
+                    while ls_alpha >= ls_min:
+                        q_trial = q_before + ls_alpha * dq_guarded
+                        R_trial = self.get_R(q_trial)
+                        R_trial_norm = self.get_R_norm_global(R_trial)
+                        if R_trial_norm < R_norm:
+                            q = q_trial
+                            accepted = True
+                            if rank == 0:
+                                print(f"  [LineSearch] accepted ls_alpha={ls_alpha:.2e},"
+                                      f" R {R_norm:.4e} -> {R_trial_norm:.4e}")
+                            break
+                        ls_alpha *= 0.5
+                    if not accepted:
+                        q = q_before
+                        if rank == 0:
+                            print(f"  [LineSearch] exhausted (ls_min={ls_min:.2e}),"
+                                  f" reverting step, stopping simulation")
+                        p._stop = True
+                        break
+
+            if fem_solver.get('mass_diffusion_adaptive', False):
+                R_new = self.get_R(q)
+                R_new_norm = self.get_R_norm_global(R_new)
+                print(f"new R norm: {R_new_norm:.4e}, old R norm: {R_norm:.4e}")
+                md_alpha = fem_solver['mass_diffusion_alpha']
+                if R_new_norm > R_norm:
+                    q = q - alpha * dq
+                    md_alpha_new = min(md_alpha * 2.0, md_alpha_max)
+                    fem_solver['mass_diffusion_alpha'] = md_alpha_new
+                    if rank == 0:
+                        print(f"Mass diffusion: R increased, "
+                              f"alpha {md_alpha:.2e} -> {md_alpha_new:.2e}")
+                    md_alpha = md_alpha_new
+                else:
+                    if md_alpha > md_alpha_init:
+                        md_alpha_new = max(md_alpha / 1.5, md_alpha_init)
+                        fem_solver['mass_diffusion_alpha'] = md_alpha_new
+                        if rank == 0:
+                            print(f"Mass diffusion: R decreased, "
+                                  f"alpha {md_alpha:.2e} -> {md_alpha_new:.2e}")
+                        md_alpha = md_alpha_new
+
+
+            if fem_solver.get('rho_smoothing', False):
+                R_new = self.get_R(q)
+                R_new_norm = self.get_R_norm_global(R_new)
+                if R_new_norm > R_norm:
+                    q = q - alpha * dq
+                    beta = fem_solver.get('rho_smoothing_beta', 1e-03)
+                    delta = fem_solver.get('rho_smoothing_delta', 0.01/3)
+                    q = self.smooth_rho(q, beta, delta)
+                    if rank == 0:
+                        print(f"Rho smoothing: R increased "
+                              f"({R_norm:.2e} -> {R_new_norm:.2e}), "
+                              f"applied beta={beta:.2e}")
+
+            if fem_solver.get('line_search_then_smooth', False):
+                alpha_min = fem_solver.get('line_search_alpha_min', 1e-8)
+                R_new = self.get_R(q)
+                R_new_norm = self.get_R_norm_global(R_new)
+                if R_new_norm > R_norm:
+                    # Phase 1: backtrack alpha until R decreases or alpha_min reached
+                    q = q - alpha * dq  # revert
+                    trial_alpha = alpha * 0.5
+                    while trial_alpha >= alpha_min:
+                        q_trial = q + trial_alpha * dq
+                        R_trial = self.get_R(q_trial)
+                        R_trial_norm = self.get_R_norm_global(R_trial)
+                        if R_trial_norm < R_norm:
+                            q = q_trial
+                            if rank == 0:
+                                print(f"LS+smooth: accepted alpha={trial_alpha:.2e}")
+                            alpha = trial_alpha
+                            break
+                        trial_alpha *= 0.5
                     else:
-                        q = q - alpha * dq  # revert
-                        alpha *= 0.5  # reduce step size
-                        p.numerics['dt'] = max(p.numerics['dt'] * 0.5, 1e-2)
-                        print(f"Line search: rejected alpha={alpha*2:.2e}, reduced to {alpha:.2e}, dt={p.numerics['dt']:.2e}")
+                        # Phase 2: line search exhausted, apply smoothing
+                        beta = fem_solver.get('rho_smoothing_beta', 1e-3)
+                        delta = fem_solver.get('rho_smoothing_delta', 0.01/3)
+                        q = self.smooth_rho(q, beta, delta)
+                        if rank == 0:
+                            print(f"LS+smooth: line search exhausted "
+                                  f"(alpha_min={alpha_min:.2e}), "
+                                  f"applied rho smoothing beta={beta:.2e}")
+
+            # if fem_solver.get('cavitation_guard', True):
+            #     q = self.cavitation_guard(q_before, q)
+
+            # q, fired = apply_guards(q_before, q - q_before, self)
+            # any_guard_fired |= fired
 
             self.set_q_nodal(q)
             self._exchange_ghosts()
 
         p.numerics['dt'] = dt_init
+        fem_solver['mass_diffusion_alpha'] = md_alpha_init
 
         toc = time.time()
         self.time_inner = toc - tic
@@ -470,6 +838,9 @@ class FEMSolver2d:
         # solution guard had to intervene at any point in this timestep.
         if any_guard_fired:
             p.topo._fb_hold_next = True
+
+        if self.debugger is not None and self._debug_steps_done >= 5:
+            p._stop = True
 
         self.update_output_fields()
         p._post_update()

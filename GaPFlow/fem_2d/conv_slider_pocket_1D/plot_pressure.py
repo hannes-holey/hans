@@ -1,6 +1,6 @@
 """
 Plot pressure along x (y-averaged) from the latest simulation result,
-compared against digitised Bayada reference data.
+compared against digitised reference data.
 
 Usage:
     python plot_pressure.py
@@ -60,7 +60,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 data_dir = os.path.join(script_dir, "data")
 
 run_dirs = sorted(
-    d for d in glob.glob(os.path.join(data_dir, "*_parabolic_slider"))
+    d for d in glob.glob(os.path.join(data_dir, "*_conv_slider_pocket_1D"))
     if os.path.isfile(os.path.join(d, "sol.nc"))
 )
 if not run_dirs:
@@ -73,22 +73,22 @@ print(f"Using: {latest_dir}")
 # Load simulation pressure (last frame, averaged over y)
 # ---------------------------------------------------------------------------
 with nc.Dataset(os.path.join(latest_dir, "sol.nc")) as ds:
-    p_all = ds.variables["pressure"][:]      # (frames, nx, ny)
+    p_all = ds.variables["pressure"][:]
 
-p_last = p_all[-1]                           # (nx, ny)
-p_x = p_last.mean(axis=1)                   # average over y
+p_last = p_all[-1]
+p_x = p_last.mean(axis=1)
 
 Nx = p_x.shape[0]
-Lx = 0.0762                                 # m  (from config)
+Lx = 0.020  # m (from config)
 x_sim = np.linspace(0, Lx, Nx)
 
 # ---------------------------------------------------------------------------
-# Load Bayada reference data
+# Load reference data (x normalised 0-1, y in MPa)
 # ---------------------------------------------------------------------------
-csv_path = os.path.join(script_dir, "parabolic_Bayada.csv")
-ref = pd.read_csv(csv_path, skipinitialspace=True)  # columns: x, y
-ref_x = ref["x"].values * Lx               # normalised [0,1] -> physical [m]
-ref_p = ref["y"].values                    # already in Pa
+csv_path = os.path.join(script_dir, "plot-data.csv")
+ref = pd.read_csv(csv_path, skipinitialspace=True)
+ref_x = ref["x"].values * Lx       # normalised -> physical [m]
+ref_p = ref["y"].values * 1e6      # MPa -> Pa
 
 # ---------------------------------------------------------------------------
 # Plot
@@ -97,14 +97,14 @@ science_style()
 
 fig, ax = plt.subplots(figsize=(3.6, 2.0))
 
-ax.plot(x_sim * 1e3, p_x / 1e5, color='0.7', lw=1.4,
+ax.plot(x_sim * 1e3, p_x / 1e6, color='0.7', lw=1.4,
         label='FEM (Taylor-Hood)')
-ax.scatter(ref_x * 1e3, ref_p / 1e5, color='#1f77b4', s=12, zorder=5,
-           label='Bayada (ref.)')
+ax.scatter(ref_x * 1e3, ref_p / 1e6, color='#1f77b4', s=12, zorder=5,
+           label='Reference')
 
 ax.set_xlabel(r'$x$ [mm]')
-ax.set_ylabel(r'$p$ [bar]')
-ax.legend(loc='best')
+ax.set_ylabel(r'$p$ [MPa]')
+#ax.legend(loc='best')
 ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=False))
 
 out_path = os.path.join(script_dir, "pressure_comparison.png")

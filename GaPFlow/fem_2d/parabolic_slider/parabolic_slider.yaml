@@ -42,7 +42,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 600
+    max_it: 1000
 
 properties:
     rho0: 850.
