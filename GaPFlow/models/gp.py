@@ -299,7 +299,7 @@ class GaussianProcessSurrogate:
         msg += f"# - Log noise  : {jnp.log(self.obs_stddev**2):.5f}"
 
         if not self.fix_noise:
-            msg += f"# - Log jitter : {params['log_jitter']:.5f}\n"
+            msg += f"\n# - Log jitter : {params['log_jitter']:.5f}"
 
         logger.info(msg)
 
