@@ -42,7 +42,9 @@ from .fem_2d.assembly import Assembly
 from .fem_2d.terms import NonLinearTerm, get_active_terms
 from .fem_2d.scaling import build_scaling
 from .fem_2d.scipy_system import ScipySystem
-from .fem_2d.solution_guards import linearization_guard  # noqa: F401 (apply_guards available but deactivated)
+from .fem_2d.solution_guards import (linearization_guard, linearization_guard_p,  # noqa: F401
+                                      report_jacobian_block_changes)
+from .models.pressure import eos_pressure, eos_rho
 
 if TYPE_CHECKING:
     from .problem import Problem
@@ -51,7 +53,7 @@ if TYPE_CHECKING:
 NDArray = npt.NDArray[np.floating]
 
 # Variable-to-grid mapping: which grid each variable lives on
-_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'E': 'p'}
+_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p'}
 # Residual-to-grid mapping: which grid each residual equation lives on
 _RES_TO_GRID = {
     'momentum_x': 'v',
@@ -88,11 +90,13 @@ class FEMSolver2d:
         self.dx = p.grid['dx']
         self.dy = p.grid['dy']
 
-        self.variables = ['jx', 'jy', 'rho']
+        self.variables = ['jx', 'jy', 'p']
         self.residuals = ['momentum_x', 'momentum_y', 'mass']
         if self.energy:
             self.variables.append('E')
             self.residuals.append('energy')
+
+        self._sync_rho = p.fem_solver.get('sync_rho_before_exchange', True)
 
         self.var_to_grid = {v: _VAR_TO_GRID[v] for v in self.variables}
         self.res_to_grid = {r: _RES_TO_GRID[r] for r in self.residuals}
@@ -173,6 +177,8 @@ class FEMSolver2d:
             ctx['dt'] = lambda: p.numerics['dt']
             ctx['mass_diff_alpha'] = lambda: p.fem_solver.get(
                 'mass_diffusion_alpha', 1e-3)
+            ctx['p_cav'] = lambda: p.prop['p_cav']
+            ctx['pen_eps'] = lambda: p.fem_solver.get('pen_eps', 0.0)
             if self.energy:
                 ctx['k'] = lambda: p.energy.k
             term.build(ctx)
@@ -199,6 +205,11 @@ class FEMSolver2d:
 
         self.scaling = build_scaling(
             self.problem, self.energy, self.variables, self.assembly)
+
+        if self.problem.decomp.rank == 0:
+            p_ref = self.scaling.char_scales['p']
+            print(f"[FEMSolver2d] Using reference pressure p_ref = "
+                  f"{p_ref:.3e} Pa for scaling")
 
         debug_from = self.problem.fem_solver.get('newton_debug', None)
         if debug_from is not None:
@@ -265,13 +276,24 @@ class FEMSolver2d:
     # =========================================================================
 
     def _exchange_ghosts(self) -> None:
-        """Exchange ghost cells for all grids after Newton update."""
+        """Exchange ghost cells for all grids after Newton update.
+
+        Pressure-based ghost exchange (Approach B):
+          - MPI halo exchange on p, rho (P1), jx, jy (P2). p and rho are
+            both exchanged so rank-boundary ghosts of both are consistent
+            (neighbour set rho = eos_rho(p) before sending).
+          - User BC callback fills rho at physical boundaries (unchanged API).
+          - Post-step: fill p at physical-boundary ghosts from the freshly
+            BC-applied rho via EoS forward.
+        """
         p = self.problem
         rho = self.quad_mgr.nodal_fields['rho']
+        p_field = self.quad_mgr.nodal_fields['p']
         jx  = self.quad_mgr.nodal_fields['jx']
         jy  = self.quad_mgr.nodal_fields['jy']
         p.decomp.update_ghosts(
-            exchange_specs=[(rho, 'P1'), (jx, 'P2'), (jy, 'P2')],
+            exchange_specs=[(rho, 'P1'), (p_field, 'P1'),
+                            (jx, 'P2'), (jy, 'P2')],
             bc_specs=[
                 (rho.pg[0], 'rho', 'P1_nodal'),
                 (jx.pg[0],  'jx',  'P2_nodal'),
@@ -279,6 +301,60 @@ class FEMSolver2d:
             ],
             problem=p,
         )
+        self._fill_p_at_physical_boundaries()
+
+    def _fill_p_at_physical_boundaries(self) -> None:
+        """Fill p at physical-boundary ghost strips from the BC-applied rho.
+
+        Only touches ghosts at physical (non-periodic) boundaries; rank-
+        boundary ghosts already hold correct p from the MPI exchange.
+        Also pushes the updated p to problem.pressure for downstream readers.
+        """
+        p = self.problem
+        decomp = p.decomp
+        rho = self.quad_mgr.nodal_fields['rho'].pg[0]
+        p_ng = self.quad_mgr.nodal_fields['p'].pg[0]
+        if decomp.bc_at_W:
+            p_ng[0, :] = eos_pressure(rho[0, :], p.prop)
+        if decomp.bc_at_E:
+            p_ng[-1, :] = eos_pressure(rho[-1, :], p.prop)
+        if decomp.bc_at_S:
+            p_ng[:, 0] = eos_pressure(rho[:, 0], p.prop)
+        if decomp.bc_at_N:
+            p_ng[:, -1] = eos_pressure(rho[:, -1], p.prop)
+        self.quad_mgr._push_p_to_pressure_field()
+
+    def _log_bc_pressures(self) -> None:
+        """Print pressure at each active Dirichlet boundary ghost strip.
+
+        Called once from pre_run so the user can verify that xW_D/xE_D map to
+        the intended pressures via the EoS.  Warns if the pressure at a
+        boundary differs from prop['p_cav'] by more than 1 Pa.
+        """
+        p = self.problem
+        decomp = p.decomp
+        p_ng = self.quad_mgr.nodal_fields['p'].pg[0]
+        grid = p.grid
+        rank = decomp._mpi_comm.Get_rank()
+
+        bnd_info = [
+            ('W', decomp.bc_at_W, grid.get('bc_xW'), p_ng[0,  :]),
+            ('E', decomp.bc_at_E, grid.get('bc_xE'), p_ng[-1, :]),
+            ('S', decomp.bc_at_S, grid.get('bc_yS'), p_ng[:,  0]),
+            ('N', decomp.bc_at_N, grid.get('bc_yN'), p_ng[:, -1]),
+        ]
+
+        for label, owns, bc_types, strip in bnd_info:
+            if not owns:
+                continue
+            if bc_types is None or not any(b == 'D' for b in bc_types):
+                continue
+            p_mean = float(np.mean(strip))
+            p_min  = float(np.min(strip))
+            p_max  = float(np.max(strip))
+            if rank == 0:
+                print(f"  BC pressure {label}: mean={p_mean:.6g} Pa  "
+                      f"min={p_min:.6g}  max={p_max:.6g}")
 
     # =========================================================================
     # Assembly
@@ -352,14 +428,41 @@ class FEMSolver2d:
         """Exchange ghost cells (public wrapper for tests)."""
         self._exchange_ghosts()
 
+    def _sync_rho_before_exchange(self) -> None:
+        """Re-derive rho from current p before ghost exchange.
+
+        In the pressure-based solver, rho is not a Newton DOF — it is derived
+        from p in update_physics (called after the exchange). If a Neumann rho
+        BC is active, _apply_field_bcs sets rho_ghost = rho_interior. When
+        set_q_nodal has just written a new p but rho hasn't been updated yet,
+        rho_interior is stale (from the previous Newton step), and the Neumann
+        BC propagates that stale value into the p ghost strips via
+        _fill_p_at_physical_boundaries. Updating rho from the current inner p
+        here ensures the BC reads the p-consistent rho.
+        Controlled by fem_solver.sync_rho_before_exchange (default True).
+        """
+        qm = self.quad_mgr
+        qm.nodal_fields['rho'].pg[0] = eos_rho(
+            qm.nodal_fields['p'].pg[0], self.problem.prop)
+        qm.sync_to_problem_q()
+
     # =========================================================================
     # Solver step
     # =========================================================================
 
     def solver_step_fun(self, q_guess: NDArray) -> Tuple[NDArray, NDArray]:
         self.set_q_nodal(q_guess)
+        if self._sync_rho:
+            self._sync_rho_before_exchange()
         self._exchange_ghosts()
         self.update_quad()
+        if getattr(self, '_diag_d_dx_jx_done', False) is False:
+            self._diag_d_dx_jx_done = True
+            d_stored = self.quad_mgr.get_quad('d_dx_jx')
+            d_fresh = self.quad_mgr.get_deriv_dx('jx')
+            print(f"[DIAG d_dx_jx] stored: min={d_stored.min():.4e}  max={d_stored.max():.4e}  mean={d_stored.mean():.4e}")
+            print(f"[DIAG d_dx_jx]  fresh: min={d_fresh.min():.4e}  max={d_fresh.max():.4e}  mean={d_fresh.mean():.4e}")
+            print(f"[DIAG jx nodal] min={self.quad_mgr.nodal_fields['jx'].pg.min():.4e}  max={self.quad_mgr.nodal_fields['jx'].pg.max():.4e}")
         qf = self._build_all_quad_fields()
         M = self.get_M(qf)
         R = self.get_R_(qf).copy()
@@ -369,6 +472,8 @@ class FEMSolver2d:
 
     def get_R(self, q_guess: NDArray) -> float:
         self.set_q_nodal(q_guess)
+        if self._sync_rho:
+            self._sync_rho_before_exchange()
         self._exchange_ghosts()
         self.update_quad()
         qf = self._build_all_quad_fields()
@@ -688,16 +793,28 @@ class FEMSolver2d:
             self.R_norm_history.append([])
 
         any_guard_fired = False
+        _M_prev = None
         for it in range(max_iter):
             M, R = self.solver_step_fun(q)
             R_norm = self.get_R_norm_global(R)
 
             if rank == 0:
                 self.R_norm_history[-1].append(R_norm)
-                print(R_norm)
+                p_bc_e = ''
+                if p.decomp.bc_at_E:
+                    p_ng = self.quad_mgr.nodal_fields['p'].pg[0]
+                    p_bc_e = f'  p_E(interior)={float(p_ng[-2, 0]):.4g} Pa  p_E(ghost)={float(p_ng[-1, 0]):.4g} Pa'
+                print(f'{R_norm}{p_bc_e}')
 
             if R_norm < tol and it > 0:
                 break
+
+            if fem_solver.get('linearization_guard', False):
+                if _M_prev is not None:
+                    report_jacobian_block_changes(
+                        _M_prev, M, self.assembly.block_order,
+                        p.decomp._mpi_comm)
+                _M_prev = M.copy()
 
             if fem_solver.get('scaling', False):
                 M_scaled, R_scaled = self.scaling.scale_system(M, R)
@@ -718,20 +835,23 @@ class FEMSolver2d:
             q_before = q.copy()
             q = q + alpha * dq
 
-            # Linearization guard: limit step so dp/drho stays within tolerance
-            q, fired = linearization_guard(q_before, q - q_before, self)
-            any_guard_fired |= fired
+            if fem_solver.get('linearization_guard', True):
+                q, fired = linearization_guard_p(q_before, q - q_before, self)
+                any_guard_fired |= fired
+            else:
+                fired = False
 
-            if fem_solver.get('line_search', False):
+            if fem_solver.get('line_search', True):
                 dq_guarded = q - q_before
                 R_new = self.get_R(q)
                 R_new_norm = self.get_R_norm_global(R_new)
+                print("R_new_norm:", R_new_norm)
                 if rank == 0:
                     print(f"  [LineSearch] R: {R_norm:.6e} -> {R_new_norm:.6e}"
                           f" ({'OK' if R_new_norm < R_norm else 'INCREASED'})")
                 if R_new_norm >= R_norm:
                     ls_alpha = 0.5
-                    ls_min = fem_solver.get('line_search_alpha_min', 1e-8)
+                    ls_min = fem_solver.get('line_search_alpha_min', 1e-12)
                     accepted = False
                     while ls_alpha >= ls_min:
                         q_trial = q_before + ls_alpha * dq_guarded
@@ -865,6 +985,7 @@ class FEMSolver2d:
         # Populate fine-grid corners from problem.q initial state
         self.quad_mgr.sync_from_problem_q()
         self._exchange_ghosts()
+        self._log_bc_pressures()
 
         self.update_quad()
         self.update_prev_quad()

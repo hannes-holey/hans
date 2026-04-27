@@ -1,0 +1,78 @@
+# Parabolic slider bearing — penalty cavitation with Dowson-Higginson EOS
+#
+# Same geometry as the Bayada parabolic_slider test case.
+# Cavitation is enforced via a penalty term (R_cav_pen) rather than the
+# Bayada mixture EOS.  DH is used as a single-branch smooth bulk EOS.
+#
+# Correction terms (R11x_corr etc.) are excluded: with a smooth single-branch
+# EOS d2p_drho2 is well-behaved, but they are not needed for the penalty
+# approach and keeping the term list minimal aids validation.
+
+options:
+    output: data/parabolic_slider_penalty
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.0762
+    Ly: 0.004
+    Nx: 256
+    Ny: 4
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['P', 'P', 'P']
+    yN: ['P', 'P', 'P']
+    xW_D: 850.
+    xE_D: 850.
+
+geometry:
+    type: parabolic
+    hmin: 2.54e-5
+    hmax: 5.08e-5
+    U: 4.57
+    V: 0.
+
+numerics:
+    solver: fem
+    dt: 0.1
+    tol: 0.0
+    max_it: 300
+
+properties:
+    P0: 1.0e5
+    rho0: 850.
+    EOS: DH
+    C1: 3.5e8
+    C2: 1.23
+    shear: 0.039
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 0.05
+    pen_eps: 1.0e8
+    physics:
+        gap_shear: true
+        plane_shear: false
+        inertia: false
+    max_iter: 1
+    R_norm_tol: 1e-9
+    newton_debug: 200
+    scaling: False
+    equations:
+        term_list:
+            - R11x
+            - R11y
+            - R11Sx
+            - R11Sy
+            - R1T
+            - R21x
+            - R21y
+            - R24x
+            - R24y
+            - R2Tx
+            - R2Ty
+            - R_cav_pen

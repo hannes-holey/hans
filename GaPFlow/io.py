@@ -369,6 +369,9 @@ def sanitize_properties(d):
     if 'rho0' not in out.keys():
         out['rho0'] = float(d.get('rho0', 1.))
 
+    # Cavitation threshold (penalty solver); falls back to P0 if not specified
+    out['p_cav'] = float(d.get('p_cav', out.get('P0', 0.0)))
+
     # Non-Newtonian behavior
     # Piezoviscosity: Barus, Roelands
     available_piezo = ['Barus', 'Roelands', 'Dukler', 'McAdams']
@@ -535,7 +538,7 @@ def sanitize_fem_solver(d):
     out['physics'] = {
         # Momentum physics
         'gap_shear': bool(physics.get('gap_shear', True)),
-        'plane_shear': bool(physics.get('plane_shear', True)),
+        'plane_shear': bool(physics.get('plane_shear', False)),
         'inertia': bool(physics.get('inertia', False)),
         'body_force': bool(physics.get('body_force', False)),
         # Energy physics (sub-flags only relevant if energy=True)
@@ -555,6 +558,7 @@ def sanitize_fem_solver(d):
     out['mass_diffusion_alpha'] = float(d.get('mass_diffusion_alpha', 1e-3))
     out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
     out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))
+    out['pen_eps'] = float(d.get('pen_eps', 0.0))
 
     equations_energy = d.get('equations', {}).get('energy', None)
     if equations_energy is not None and 'energy' not in physics:

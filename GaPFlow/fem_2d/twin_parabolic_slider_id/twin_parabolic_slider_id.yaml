@@ -23,7 +23,7 @@
 
 options:
     output: data/twin_parabolic_slider_id
-    write_freq: 10
+    write_freq: 1
     save_output: True
     output_plots: True
     residual_analysis: True
@@ -51,7 +51,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 450
+    max_it: 1000
 
 properties:
     rho0: 850.
@@ -66,16 +66,16 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 1.
+    newton_relax: 0.002
     physics:
         gap_shear: true
-        plane_shear: true
-        inertia: true
+        plane_shear: false
+        inertia: false
         pspg: false
         mass_diffusion: false
     mass_diffusion_alpha: 1e-04
     pspg_C_I: 500.
-    max_iter: 10
+    max_iter: 1
     R_norm_tol: 1e-9
     newton_debug: False
     scaling: True

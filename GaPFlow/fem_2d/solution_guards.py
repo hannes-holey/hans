@@ -24,8 +24,11 @@
 import warnings
 
 import numpy as np
+import jax.numpy as jnp
 from mpi4py import MPI
 from typing import TYPE_CHECKING
+
+from ..models.pressure import eos_drho_dp
 
 if TYPE_CHECKING:
     from ..solver_fem_2d import FEMSolver2d
@@ -39,7 +42,7 @@ RHO_MIN = 1e-10
 ABS_FLOOR = 1e-10
 
 # Linearization guard: max allowed relative change in dp/drho
-DPDRHO_MAX_REL_CHANGE = 0.3
+DPDRHO_MAX_REL_CHANGE = 0.9
 # Maximum bisection iterations
 DPDRHO_BISECT_MAX_ITER = 25
 
@@ -183,6 +186,168 @@ def linearization_guard(q: np.ndarray, dq: np.ndarray,
     q_new[rho_sl] = np.maximum(q_new[rho_sl], RHO_MIN)
 
     return q_new, True
+
+
+def report_jacobian_block_changes(M_old: np.ndarray, M_new: np.ndarray,
+                                   block_order: dict, comm) -> None:
+    """Print a table of per-block Frobenius relative changes in the Jacobian.
+
+    For each (res, var) block in the assembled COO Jacobian, computes
+
+        rel = ||M_new_block - M_old_block||_F / ||M_old_block||_F
+
+    and prints rows sorted by descending relative change. Useful for
+    identifying which physical coupling drives Jacobian variation between
+    Newton iterations.
+
+    Parameters
+    ----------
+    M_old, M_new : ndarray, shape (n_nnz,)
+        COO value arrays from two consecutive assemble_matrix calls.
+    block_order : dict
+        assembly.block_order — maps (res, var) -> {'nnz_idx_start', 'nb_nnz'}.
+    comm : MPI communicator
+    """
+    results = []
+    for (res, var), block in block_order.items():
+        s = block['nnz_idx_start']
+        n = block['nb_nnz']
+        diff = M_new[s:s + n] - M_old[s:s + n]
+        diff_sq = comm.allreduce(float(np.sum(diff**2)), op=MPI.SUM)
+        old_sq = comm.allreduce(float(np.sum(M_old[s:s + n]**2)), op=MPI.SUM)
+        rel = np.sqrt(diff_sq) / max(np.sqrt(old_sq), ABS_FLOOR)
+        results.append(((res, var), rel))
+
+    if comm.Get_rank() == 0:
+        results.sort(key=lambda x: x[1], reverse=True)
+        print("  [JacBlock] Frobenius relative changes:")
+        for (res, var), rel in results:
+            print(f"    ({res:12s}, {var:3s})  rel={rel:.4e}")
+
+
+def _eval_dpdrho_from_p(p_flat: np.ndarray, Nx: int, Ny: int,
+                        prop: dict) -> np.ndarray:
+    """Evaluate dp/drho = 1 / (drho/dp) at given pressure values.
+
+    Parameters
+    ----------
+    p_flat : ndarray, shape (Nx*Ny,)
+        Pressure values in Fortran-order flat layout.
+    Nx, Ny : int
+        P1 inner grid dimensions.
+    prop : dict
+        Material properties passed to eos_drho_dp.
+
+    Returns
+    -------
+    ndarray, shape (Nx*Ny,)
+        dp/drho at each node, same flat layout as input.
+    """
+    p_2d = jnp.asarray(p_flat.reshape((Nx, Ny), order='F'))
+    drho_dp_2d = np.asarray(eos_drho_dp(p_2d, prop))
+    return (1.0 / drho_dp_2d).ravel(order='F')
+
+
+def linearization_guard_p(q: np.ndarray, dq: np.ndarray,
+                           solver: "FEMSolver2d",
+                           max_rel_change: float = DPDRHO_MAX_REL_CHANGE,
+                           ) -> tuple:
+    """Limit the Newton update so that dp/drho does not change too much.
+
+    Pressure-based analogue of linearization_guard. The Jacobian is built
+    from dp/drho evaluated at the current pressure state. If the Newton step
+    moves p into a region where dp/drho differs significantly, the
+    linearization is no longer valid. This guard uses bisection to find the
+    largest scaling factor f in (0, 1] such that
+
+        max_nodes |dp/drho(p + f*dp) - dp/drho(p)| / |dp/drho(p)|
+            <= max_rel_change
+
+    dp/drho is evaluated as 1 / eos_drho_dp(p, prop), consistent with the
+    EOS used in the solver.
+
+    Parameters
+    ----------
+    q : ndarray
+        Current solution vector (inner DOFs).
+    dq : ndarray
+        Proposed Newton update (already multiplied by alpha).
+    solver : FEMSolver2d
+        Solver instance (needs _sol_slices, problem.prop, problem.decomp).
+    max_rel_change : float
+        Maximum allowed relative change in dp/drho (default 0.3 = 30%).
+
+    Returns
+    -------
+    q_new : ndarray
+        Updated solution with the guard-limited step applied.
+    guard_fired : bool
+        True if the step had to be reduced.
+    """
+    comm = solver.problem.decomp._mpi_comm
+    p_sl = solver._sol_slices['p']
+    Nx, Ny = solver.problem.decomp.nb_subdomain_grid_pts
+    prop = solver.problem.prop
+
+    p_old = q[p_sl]
+    dp = dq[p_sl]
+    dpdrho_old = _eval_dpdrho_from_p(p_old, Nx, Ny, prop)
+
+    # --- Check full step (f = 1) first ---
+    dpdrho_new = _eval_dpdrho_from_p(p_old + dp, Nx, Ny, prop)
+    rel_full = np.abs(dpdrho_new - dpdrho_old) / np.maximum(np.abs(dpdrho_old), ABS_FLOOR)
+    worst_rel_glob = comm.allreduce(float(np.max(rel_full)), op=MPI.MAX)
+
+    if worst_rel_glob <= max_rel_change:
+        return q + dq, False
+
+    # --- Bisect to find the largest safe scaling factor ---
+    f_lo = 0.0
+    f_hi = 1.0
+    bisect_rtol = 0.1
+
+    for _ in range(DPDRHO_BISECT_MAX_ITER):
+        f_mid = 0.5 * (f_lo + f_hi)
+        dpdrho_trial = _eval_dpdrho_from_p(p_old + f_mid * dp, Nx, Ny, prop)
+        rel_trial = np.abs(dpdrho_trial - dpdrho_old) / np.maximum(
+            np.abs(dpdrho_old), ABS_FLOOR)
+        trial_rel_glob = comm.allreduce(float(np.max(rel_trial)), op=MPI.MAX)
+
+        if trial_rel_glob <= max_rel_change:
+            f_lo = f_mid
+        else:
+            f_hi = f_mid
+
+        if f_lo > 0.0 and (f_hi - f_lo) < bisect_rtol * f_lo:
+            break
+
+    f = f_lo if f_lo > 0.0 else f_hi
+
+    if comm.Get_rank() == 0:
+        dpdrho_accepted = _eval_dpdrho_from_p(p_old + f * dp, Nx, Ny, prop)
+        rel_accepted = np.abs(dpdrho_accepted - dpdrho_old) / np.maximum(
+            np.abs(dpdrho_old), ABS_FLOOR)
+        rel_accepted_2d = rel_accepted.reshape((Nx, Ny), order='F')
+        imax = np.unravel_index(np.argmax(rel_accepted_2d), rel_accepted_2d.shape)
+        dpdrho_old_2d = dpdrho_old.reshape((Nx, Ny), order='F')
+        dpdrho_accepted_2d = dpdrho_accepted.reshape((Nx, Ny), order='F')
+        achieved_rel = float(rel_accepted_2d[imax])
+        satisfied = f_lo > 0.0
+        status = "achieved" if satisfied else "best effort"
+        print(f"  [LinGuard-p] f={f:.4e}, node ({imax[0]},{imax[1]}):"
+              f" dp/drho {dpdrho_old_2d[imax]:.4e} -> {dpdrho_accepted_2d[imax]:.4e}"
+              f" ({achieved_rel:.3f}/{max_rel_change}) [{status}]")
+        if not satisfied:
+            warnings.warn(
+                f"LinearizationGuardP: bisection did not converge after "
+                f"{DPDRHO_BISECT_MAX_ITER} iterations at f={f:.6e}. "
+                f"Achieved rel. change {achieved_rel:.3f} "
+                f"(target {max_rel_change}). "
+                f"This likely indicates a near-discontinuity in dp/drho "
+                f"(e.g. EOS phase boundary). Consider using a smoothed EOS.",
+                stacklevel=2)
+
+    return q + f * dq, True
 
 
 def apply_guards(q: np.ndarray, dq: np.ndarray, solver: "FEMSolver2d") -> tuple:

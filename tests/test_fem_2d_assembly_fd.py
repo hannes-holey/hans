@@ -22,15 +22,12 @@
 # SOFTWARE.
 #
 """
-Progressive finite difference verification of assemble_matrix and assemble_rhs.
+Finite difference verification of assemble_matrix and assemble_rhs.
 
-Levels build up complexity:
-  1: single none-combo term (R1T)
-  2: single d/dx term (R11x)
-  3: full mass equation
-  4: single momentum term (R21x)
-  5: full no-energy system, multiple grids and BCs
-  6: block structure checks
+Assumes the pressure-based Taylor-Hood P2/P1 formulation throughout.
+Two EOS configurations:
+  - DH  (Dowson-Higginson): smooth, no cavitation
+  - Bayada: cavitation EOS, tests terms near the mixture/liquid boundary
 """
 import numpy as np
 import pytest
@@ -39,12 +36,12 @@ from GaPFlow.problem import Problem
 from GaPFlow.solver_fem_2d import FEMSolver2d
 
 # =============================================================================
-# Configuration
+# YAML config templates
 # =============================================================================
 
-_CONFIG_TEMPLATE = """
+_COMMON_GRID = """
 options:
-    output: /tmp/fem2d_fd_test
+    output: /tmp/fem2d_fd_test_{label}
     write_freq: 1000
     silent: True
 
@@ -67,21 +64,13 @@ geometry:
     hmax: 2e-5
     hmin: 1e-5
     U: 1.0
-    V: 0.0
+    V: 2.0
 
 numerics:
     solver: fem
     dt: 1e-8
     tol: 1e-6
     max_it: 100
-
-properties:
-    EOS: PL
-    rho0: 1.0
-    shear: 1e-3
-    bulk: 0.
-    P0: 101325
-    alpha: 0.
 
 fem_solver:
     type: newton_alpha
@@ -90,6 +79,36 @@ fem_solver:
         {term_list_entry}
 """
 
+_PROPS_DH = """
+properties:
+    EOS: DH
+    rho0: 877.7007
+    P0: 101325
+    C1: 3.5e10
+    C2: 1.23
+    shear: 0.0794
+    bulk: 0.
+"""
+
+_PROPS_BAYADA = """
+properties:
+    EOS: Bayada
+    rho0: 850.0
+    rho_l: 850.0
+    rho_v: 0.019
+    c_l: 1600.0
+    c_v: 352.0
+    shear: 0.039
+    bulk: 0.0
+"""
+
+_CONFIG_DH = _COMMON_GRID + _PROPS_DH
+_CONFIG_BAYADA = _COMMON_GRID + _PROPS_BAYADA
+
+# =============================================================================
+# Boundary condition presets
+# =============================================================================
+
 BC_CONFIGS = {
     'periodic': {
         'xE': "['P', 'P', 'P']",
@@ -97,7 +116,7 @@ BC_CONFIGS = {
         'yS': "['P', 'P', 'P']",
         'yN': "['P', 'P', 'P']",
     },
-    'dirichlet_rho': {
+    'dirichlet': {
         'xE': "['D', 'N', 'N']",
         'xW': "['D', 'N', 'N']",
         'yS': "['D', 'N', 'N']",
@@ -115,26 +134,23 @@ BC_CONFIGS = {
 # Helpers
 # =============================================================================
 
-def make_problem(Nx: int, Ny: int, bc: str = 'periodic',
+def make_problem(eos: str, Nx: int, Ny: int, bc: str = 'periodic',
                  term_list: list = None) -> tuple:
-    """Create and initialize a (problem, solver) pair.
+    """Create and pre-run a (problem, solver) pair.
 
     Parameters
     ----------
-    Nx, Ny : int
-        Grid dimensions.
-    bc : str
-        Key into BC_CONFIGS.
-    term_list : list of str, optional
-        If given, restricts active terms to this subset via fem_solver.equations.term_list.
+    eos : {'DH', 'Bayada'}
+    Nx, Ny : grid dimensions
+    bc : key into BC_CONFIGS
+    term_list : restrict active terms to this subset (passed through YAML)
     """
+    template = _CONFIG_DH if eos == 'DH' else _CONFIG_BAYADA
     bc_cfg = BC_CONFIGS[bc]
-    if term_list is not None:
-        term_list_entry = f"term_list: {term_list}"
-    else:
-        term_list_entry = ""
+    term_list_entry = f"term_list: {term_list}" if term_list is not None else ""
 
-    config = _CONFIG_TEMPLATE.format(
+    config = template.format(
+        label=eos.lower(),
         Nx=Nx, Ny=Ny,
         xE=bc_cfg['xE'], xW=bc_cfg['xW'],
         yS=bc_cfg['yS'], yN=bc_cfg['yN'],
@@ -145,13 +161,67 @@ def make_problem(Nx: int, Ny: int, bc: str = 'periodic',
     solver = problem.solver
     solver.pre_run()
 
+    if eos == 'Bayada':
+        _init_bayada_straddling(solver)
+
     return problem, solver
 
 
-def compute_fd_jacobian(solver: FEMSolver2d, eps: float = 1e-6) -> np.ndarray:
-    """Central finite difference Jacobian of get_R w.r.t. nodal DOFs.
+def _pcav(prop: dict) -> float:
+    """Cavitation pressure for the Bayada EOS."""
+    rho_l, rho_v = prop['rho_l'], prop['rho_v']
+    c_l, c_v = prop['c_l'], prop['c_v']
+    N = (rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l)
+         / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2))
+    return rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
-    Uses relative perturbation for robustness across variable scales.
+
+def _init_bayada_straddling(solver: FEMSolver2d) -> None:
+    """Set p as a ramp straddling Pcav so correction terms are nonzero."""
+    Pcav = _pcav(solver.problem.prop)
+    delta = 0.05 * abs(Pcav)
+    q = solver.get_q_nodal().copy()
+    p_sl = solver._sol_slices['p']
+    n_p = p_sl.stop - p_sl.start
+    q[p_sl] = np.linspace(Pcav - delta, Pcav + delta, n_p)
+    _set_and_sync(solver, q)
+
+
+def _set_and_sync(solver: FEMSolver2d, q: np.ndarray) -> None:
+    """Mirror the solver's own set→sync_rho→exchange→update_quad sequence."""
+    solver.set_q_nodal(q)
+    solver._sync_rho_before_exchange()
+    solver.exchange_ghosts()
+    solver.update_quad()
+
+
+def build_scale_array(solver: FEMSolver2d,
+                      scales: dict = None) -> np.ndarray:
+    """Build a per-DOF scale array from per-variable characteristic scales.
+
+    Parameters
+    ----------
+    scales : dict, optional
+        Maps variable name to characteristic scale, e.g.
+        {'p': 1e5, 'jx': 1.0, 'jy': 1.0}.
+        Defaults to 1.0 for any variable not listed.
+    """
+    if scales is None:
+        scales = {}
+    q0 = solver.get_q_nodal()
+    scale = np.ones(len(q0))
+    for var, sl in solver._sol_slices.items():
+        scale[sl] = scales.get(var, 1.0)
+    return scale
+
+
+def compute_fd_jacobian(solver: FEMSolver2d, eps: float = 1e-6,
+                        scale: np.ndarray = None) -> np.ndarray:
+    """Central finite difference Jacobian of get_R_ w.r.t. nodal DOFs.
+
+    The step for DOF j is  eps_j = eps * scale[j].
+    If scale is None, falls back to a relative perturbation:
+      eps_j = eps * max(1, |q0[j]|).
     Restores original state before returning.
     """
     q0 = solver.get_q_nodal().copy()
@@ -159,28 +229,21 @@ def compute_fd_jacobian(solver: FEMSolver2d, eps: float = 1e-6) -> np.ndarray:
     J_fd = np.zeros((n, n))
 
     for j in range(n):
-        eps_j = max(eps, eps * abs(q0[j]))
+        eps_j = eps * scale[j] if scale is not None else eps * max(1.0, abs(q0[j]))
 
         q_plus = q0.copy()
         q_plus[j] += eps_j
-        solver.set_q_nodal(q_plus)
-        solver.exchange_ghosts()
-        solver.update_quad()
+        _set_and_sync(solver, q_plus)
         R_plus = solver.get_R_().copy()
 
         q_minus = q0.copy()
         q_minus[j] -= eps_j
-        solver.set_q_nodal(q_minus)
-        solver.exchange_ghosts()
-        solver.update_quad()
+        _set_and_sync(solver, q_minus)
         R_minus = solver.get_R_().copy()
 
         J_fd[:, j] = (R_plus - R_minus) / (2.0 * eps_j)
 
-    solver.set_q_nodal(q0)
-    solver.exchange_ghosts()
-    solver.update_quad()
-
+    _set_and_sync(solver, q0)
     return J_fd
 
 
@@ -188,688 +251,282 @@ def rel_err(M_anal: np.ndarray, M_fd: np.ndarray) -> float:
     return np.linalg.norm(M_anal - M_fd) / (np.linalg.norm(M_fd) + 1e-15)
 
 
-# =============================================================================
-# Level 1 — single none-combo term: R1T
-# =============================================================================
-
-class TestLevel1SingleNoneTerm:
-    """R1T only: mass time derivative, dc='none', linear in rho."""
-
-    def test_jacobian_r1t(self):
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R1T'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R1T Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_residual_r1t_nonzero(self):
-        """R1T residual should be nonzero since rho != rho_prev after pre_run."""
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R1T'])
-        R = solver.get_R_()
-        # After pre_run, rho and rho_prev are identical (update_prev_quad called),
-        # so the residual should be zero (rho - rho_prev == 0)
-        assert np.linalg.norm(R) < 1e-12, (
-            f"R1T residual should be zero at init: ||R||={np.linalg.norm(R):.2e}")
-
-
-# =============================================================================
-# Level 2 — single d/dx term: R11x
-# =============================================================================
-
-class TestLevel2SingleDxTerm:
-    """R11x only: mass flux divergence in x, dc='x', linear in jx."""
-
-    def test_jacobian_r11x(self):
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R11x'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R11x Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_jacobian_r11y(self):
-        """R11y: mass flux divergence in y, dc='y', linear in jy."""
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R11y'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R11y Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-
-# =============================================================================
-# Level 3 — full mass equation
-# =============================================================================
-
-class TestLevel3MassEquation:
-    """R11x + R11y + R1T: complete mass equation."""
-
-    @pytest.mark.parametrize("Nx,Ny", [(3, 2), (4, 3)])
-    def test_jacobian_mass(self, Nx, Ny):
-        _, solver = make_problem(Nx, Ny, bc='periodic',
-                                 term_list=['R11x', 'R11y', 'R1T'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"Mass Jacobian mismatch ({Nx}x{Ny}): rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_mass_block_only(self):
-        """Non-mass blocks should be zero (no momentum terms active)."""
-        _, solver = make_problem(4, 3, bc='periodic',
-                                 term_list=['R11x', 'R11y', 'R1T'])
-
-        M = solver.get_M_dense()
-
-        for res in solver.residuals:
-            for var in solver.variables:
-                block = M[solver._res_slices[res], solver._sol_slices[var]]
-                if res != 'mass':
-                    assert np.linalg.norm(block) < 1e-12, (
-                        f"Block M[{res},{var}] should be zero: "
-                        f"norm={np.linalg.norm(block):.2e}")
-
-
-# =============================================================================
-# Level 4 — single momentum pressure gradient term
-# =============================================================================
-
-class TestLevel4MomentumPressure:
-    """R21x / R21y: pressure gradient in momentum equations (explicit form)."""
-
-    def test_jacobian_r21x(self):
-        _, solver = make_problem(3, 2, bc='periodic',
-                                 term_list=['R21x', 'R21x_corr'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R21x Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_jacobian_r21y(self):
-        _, solver = make_problem(3, 2, bc='periodic',
-                                 term_list=['R21y', 'R21y_corr'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R21y Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_jacobian_r24x_wall_stress(self):
-        """R24x: nonlinear wall stress term, dc='none'."""
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R24x'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R24x Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-
-# =============================================================================
-# Level 5 — full no-energy system
-# =============================================================================
-
-class TestLevel5FullSystem:
-    """Full active term set, no energy, multiple grids and BCs."""
-
-    @pytest.mark.parametrize("Nx,Ny", [(3, 2), (4, 3), (4, 4)])
-    @pytest.mark.parametrize("bc,tol", [
-        ('periodic', 1e-7),
-        ('dirichlet_rho', 5e-2),
-        ('periodic_y', 5e-2),
-    ])
-    def test_jacobian_full(self, Nx, Ny, bc, tol):
-        _, solver = make_problem(Nx, Ny, bc=bc)
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        err = rel_err(M, J_fd)
-        assert err < tol, (
-            f"Full Jacobian mismatch ({Nx}x{Ny}, {bc}): rel_err={err:.2e}")
-
-    @pytest.mark.parametrize("Nx,Ny", [(4, 3), (4, 4)])
-    def test_jacobian_blocks_periodic(self, Nx, Ny):
-        """Check each block individually for periodic BCs."""
-        _, solver = make_problem(Nx, Ny, bc='periodic')
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        for res in solver.residuals:
-            for var in solver.variables:
-                M_b = M[solver._res_slices[res], solver._sol_slices[var]]
-                J_b = J_fd[solver._res_slices[res], solver._sol_slices[var]]
-                n_fd = np.linalg.norm(J_b)
-                if n_fd > 1e-10:
-                    err = np.linalg.norm(M_b - J_b) / n_fd
-                    assert err < 1e-7, (
-                        f"Block M[{res},{var}] mismatch ({Nx}x{Ny}): "
-                        f"rel_err={err:.2e}")
-                else:
-                    assert np.linalg.norm(M_b) < 1e-10, (
-                        f"Block M[{res},{var}] should be zero ({Nx}x{Ny}): "
-                        f"norm={np.linalg.norm(M_b):.2e}")
-
-
-# =============================================================================
-# Level 6 — block structure
-# =============================================================================
-
-class TestLevel6BlockStructure:
-    """Sparsity and zero-block checks."""
-
-    @pytest.mark.parametrize("Nx,Ny", [(4, 3), (5, 4)])
-    def test_mass_jx_block_sparse(self, Nx, Ny):
-        """M[mass, jx] block should be sparse (not fully dense)."""
-        _, solver = make_problem(Nx, Ny, bc='dirichlet_rho')
-
-        M = solver.get_M_dense()
-        block = M[solver._res_slices['mass'], solver._sol_slices['jx']]
-
-        density = np.count_nonzero(np.abs(block) > 1e-12) / block.size
-        assert density < 0.5, (
-            f"M[mass,jx] block too dense: {density:.1%} nonzero")
-
-    def test_momentum_rho_block_nonzero(self):
-        """M[momentum_x, rho] should be nonzero (pressure gradient coupling)."""
-        _, solver = make_problem(4, 3, bc='periodic')
-
-        M = solver.get_M_dense()
-        block = M[solver._res_slices['momentum_x'], solver._sol_slices['rho']]
-        assert np.linalg.norm(block) > 1e-10, (
-            "M[momentum_x, rho] should be nonzero (pressure gradient)")
-
-    def test_mass_jy_block_nonzero(self):
-        """M[mass, jy] should be nonzero (divergence coupling)."""
-        _, solver = make_problem(4, 3, bc='periodic')
-
-        M = solver.get_M_dense()
-        block = M[solver._res_slices['mass'], solver._sol_slices['jy']]
-        assert np.linalg.norm(block) > 1e-10, (
-            "M[mass, jy] should be nonzero (divergence)")
-
-
-# =============================================================================
-# Level 4b — in-plane shear diffusion terms (R23)
-# =============================================================================
-
-class TestLevel4bInPlaneShear:
-    """R23xy / R23yx: viscous diffusion with derivatives on both test and trial."""
-
-    def test_jacobian_r23xy(self):
-        """R23xy: ∫ (∂Nᵢ/∂y) · η · ∂(f(rho,jx))/∂y dΩ"""
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R23xy'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R23xy Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_jacobian_r23yx(self):
-        """R23yx: ∫ (∂Nᵢ/∂x) · η · ∂(f(rho,jy))/∂x dΩ"""
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R23yx'])
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        assert rel_err(M, J_fd) < 1e-7, (
-            f"R23yx Jacobian mismatch: rel_err={rel_err(M, J_fd):.2e}")
-
-    def test_residual_r23xy_nonzero(self):
-        """R23xy residual should be nonzero for non-uniform jx field."""
-        _, solver = make_problem(3, 2, bc='periodic', term_list=['R23xy'])
-
-        # Perturb jx to create spatial variation
-        q = solver.get_q_nodal().copy()
-        jx_slice = solver._sol_slices['jx']
-        q[jx_slice] += np.linspace(0, 0.1, jx_slice.stop - jx_slice.start)
-        solver.set_q_nodal(q)
-        solver.exchange_ghosts()
-        solver.update_quad()
-
-        R = solver.get_R_()
-        assert np.linalg.norm(R) > 1e-15, (
-            "R23xy residual should be nonzero for non-uniform jx")
-
-
-# =============================================================================
-# Level 7 — global↔block roundtrip via solve comparison
-# =============================================================================
-
-class TestLevel7GlobalBlockRoundtrip:
-    """Verify that the sparse solver (global-interleaved ordering) returns the
-    same dq as a dense block-ordered solve."""
-
-    @pytest.mark.parametrize("Nx,Ny", [(3, 2), (4, 3)])
-    @pytest.mark.parametrize("bc", ['periodic', 'dirichlet_rho', 'periodic_y'])
-    def test_solve_roundtrip(self, Nx, Ny, bc):
-        _, solver = make_problem(Nx, Ny, bc=bc)
-
-        M_dense = solver.get_M_dense()
-        M_coo = solver.get_M()
-        R = solver.get_R_()
-
-        # Block-only solve (no global translation)
-        dq_block = np.linalg.solve(M_dense, -R)
-
-        # Sparse solve via ScipySystem (full block→global→solve→global→block)
-        solver.linear_solver.assemble(M_coo, R)
-        dq_sparse = solver.linear_solver.solve()
-
-        assert np.allclose(dq_block, dq_sparse, rtol=1e-10, atol=1e-14), (
-            f"Solve roundtrip mismatch ({Nx}x{Ny}, {bc}): "
-            f"max diff={np.max(np.abs(dq_block - dq_sparse)):.2e}")
-
-
-# =============================================================================
-# Level 8 — PSPG stabilization terms
-# =============================================================================
-
-_CONFIG_PSPG = """
-options:
-    output: /tmp/fem2d_fd_test_pspg
-    write_freq: 1000
-    silent: True
-
-grid:
-    Lx: 0.1
-    Ly: 0.1
-    Nx: {Nx}
-    Ny: {Ny}
-    xE: {xE}
-    xW: {xW}
-    yS: {yS}
-    yN: {yN}
-    xE_D: 1.1
-    xW_D: 1.0
-    yS_D: 1.05
-    yN_D: 1.05
-
-geometry:
-    type: parabolic_2d
-    hmax: 2e-5
-    hmin: 1e-5
-    U: 1.0
-    V: 0.0
-
-numerics:
-    solver: fem
-    dt: 1e-8
-    tol: 1e-6
-    max_it: 100
-
-properties:
-    EOS: PL
-    rho0: 1.0
-    shear: 1e-3
-    bulk: 0.
-    P0: 101325
-    alpha: 0.
-
-fem_solver:
-    type: newton_alpha
-    physics:
-        pspg: true
-    equations:
-        energy: False
-        {term_list_entry}
-"""
-
-
-def make_problem_pspg(Nx: int, Ny: int, bc: str = 'periodic',
-                      term_list: list = None) -> tuple:
-    bc_cfg = BC_CONFIGS[bc]
-    if term_list is not None:
-        term_list_entry = f"term_list: {term_list}"
-    else:
-        term_list_entry = ""
-
-    config = _CONFIG_PSPG.format(
-        Nx=Nx, Ny=Ny,
-        xE=bc_cfg['xE'], xW=bc_cfg['xW'],
-        yS=bc_cfg['yS'], yN=bc_cfg['yN'],
-        term_list_entry=term_list_entry,
-    )
-
-    problem = Problem.from_string(config)
-    solver = problem.solver
-    solver.pre_run()
-
-    return problem, solver
-
-
-@pytest.mark.skip(reason="PSPG disabled for Taylor-Hood elements")
-class TestLevel8PSPG:
-    """PSPG stabilization terms: Jacobian FD verification."""
-
-    @pytest.mark.parametrize("term_name", [
-        'R1PSPG_Px', 'R1PSPG_Py',
-        'R1PSPG_Tx', 'R1PSPG_Ty',
-        'R1PSPG_Wx', 'R1PSPG_Wy',
-    ])
-    def test_jacobian_single_pspg_term(self, term_name):
-        _, solver = make_problem_pspg(3, 2, bc='periodic',
-                                      term_list=[term_name])
-
-        # Perturb state away from uniform to get nonzero tau_pspg gradients
-        q = solver.get_q_nodal().copy()
-        n = len(q)
-        rng = np.random.default_rng(42)
-        q += rng.normal(0, 1e-3, n) * np.abs(q + 1e-6)
-        solver.set_q_nodal(q)
-        solver.exchange_ghosts()
-        solver.update_quad()
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        err = rel_err(M, J_fd)
-        assert err < 1e-5, (
-            f"{term_name} Jacobian mismatch: rel_err={err:.2e}")
-
-    @pytest.mark.parametrize("bc", ['periodic', 'periodic_y'])
-    def test_jacobian_all_pspg_terms(self, bc):
-        pspg_terms = ['R1PSPG_Px', 'R1PSPG_Py',
-                      'R1PSPG_Tx', 'R1PSPG_Ty',
-                      'R1PSPG_Wx', 'R1PSPG_Wy']
-        _, solver = make_problem_pspg(3, 2, bc=bc, term_list=pspg_terms)
-
-        q = solver.get_q_nodal().copy()
-        rng = np.random.default_rng(42)
-        q += rng.normal(0, 1e-3, len(q)) * np.abs(q + 1e-6)
-        solver.set_q_nodal(q)
-        solver.exchange_ghosts()
-        solver.update_quad()
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        err = rel_err(M, J_fd)
-        assert err < 1e-5, (
-            f"All PSPG Jacobian mismatch ({bc}): rel_err={err:.2e}")
-
-
-class TestLevel9LaplacianDiffusion:
-    """R1Lx / R1Ly: Laplacian density diffusion for mass equation."""
-
-    @pytest.mark.parametrize("term_name", ['R1Lx', 'R1Ly'])
-    def test_jacobian_single(self, term_name):
-        _, solver = make_problem(3, 2, bc='periodic', term_list=[term_name])
-
-        q = solver.get_q_nodal().copy()
-        rng = np.random.default_rng(42)
-        q += rng.normal(0, 1e-3, len(q)) * np.abs(q + 1e-6)
-        solver.set_q_nodal(q)
-        solver.exchange_ghosts()
-        solver.update_quad()
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        err = rel_err(M, J_fd)
-        assert err < 1e-7, (
-            f"{term_name} Jacobian mismatch: rel_err={err:.2e}")
-
-    def test_jacobian_both(self):
-        _, solver = make_problem(3, 2, bc='periodic',
-                                 term_list=['R1Lx', 'R1Ly'])
-
-        q = solver.get_q_nodal().copy()
-        rng = np.random.default_rng(42)
-        q += rng.normal(0, 1e-3, len(q)) * np.abs(q + 1e-6)
-        solver.set_q_nodal(q)
-        solver.exchange_ghosts()
-        solver.update_quad()
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver)
-
-        err = rel_err(M, J_fd)
-        assert err < 1e-7, (
-            f"R1Lx+R1Ly Jacobian mismatch: rel_err={err:.2e}")
-
-
-# =============================================================================
-# Level 10 — PSPG with Bayada EOS near cavitation boundary
-# =============================================================================
-
-_CONFIG_PSPG_BAYADA = """
-options:
-    output: /tmp/fem2d_fd_test_pspg_bayada
-    write_freq: 1000
-    silent: True
-
-grid:
-    Lx: 0.1
-    Ly: 0.1
-    Nx: {Nx}
-    Ny: {Ny}
-    xE: {xE}
-    xW: {xW}
-    yS: {yS}
-    yN: {yN}
-
-geometry:
-    type: parabolic_2d
-    hmax: 2e-5
-    hmin: 1e-5
-    U: 1.0
-    V: 0.0
-
-numerics:
-    solver: fem
-    dt: 1e-8
-    tol: 1e-6
-    max_it: 100
-
-properties:
-    EOS: Bayada
-    rho0: 850.0
-    rho_l: 850.0
-    rho_v: 0.019
-    c_l: 3154.84
-    c_v: 352.0
-    shear: 0.039
-    bulk: 0.0
-
-fem_solver:
-    type: newton_alpha
-    physics:
-        pspg: true
-    equations:
-        energy: False
-        {term_list_entry}
-"""
-
-
-def make_problem_pspg_bayada(Nx: int, Ny: int, bc: str = 'periodic',
-                             term_list: list = None) -> tuple:
-    bc_cfg = BC_CONFIGS[bc]
-    if term_list is not None:
-        term_list_entry = f"term_list: {term_list}"
-    else:
-        term_list_entry = ""
-
-    config = _CONFIG_PSPG_BAYADA.format(
-        Nx=Nx, Ny=Ny,
-        xE=bc_cfg['xE'], xW=bc_cfg['xW'],
-        yS=bc_cfg['yS'], yN=bc_cfg['yN'],
-        term_list_entry=term_list_entry,
-    )
-
-    problem = Problem.from_string(config)
-    solver = problem.solver
-    solver.pre_run()
-
-    return problem, solver
-
-
-def _set_cavitation_boundary_state(solver, seed=42):
-    """Set rho values clustered around rho_l=850 (cavitation boundary)."""
-    q = solver.get_q_nodal().copy()
-    rho_slice = solver._sol_slices['rho']
-    jx_slice = solver._sol_slices['jx']
-    jy_slice = solver._sol_slices['jy']
-    rng = np.random.default_rng(seed)
-    q[rho_slice] = 850.0 + rng.uniform(-2.0, 2.0,
-                                        size=rho_slice.stop - rho_slice.start)
-    q[jx_slice] += rng.normal(0, 10.0, jx_slice.stop - jx_slice.start)
-    q[jy_slice] += rng.normal(0, 10.0, jy_slice.stop - jy_slice.start)
-    solver.set_q_nodal(q)
-    solver.exchange_ghosts()
-    solver.update_quad()
-
-
-@pytest.mark.skip(reason="PSPG disabled for Taylor-Hood elements")
-class TestLevel10PSPGBayada:
-    """PSPG pressure gradient Jacobian with Bayada EOS near cavitation.
-
-    d2p/drho2 is large near rho_l, so the Jacobian correction terms
-    R1PSPG_Px2 / R1PSPG_Py2 are essential for a correct tangent matrix.
-    Uses eps=1e-8 for FD to stay in the linear regime of the sharp EOS.
+# Correction terms have zero residual contribution; they only complete the
+# analytic Jacobian for the implicit p→ρ→dp/dρ dependence.  Testing a base
+# term without its correction will always fail the FD check.
+_TERM_GROUPS = [
+    ['R11x',  'R11x_corr'],
+    ['R11y',  'R11y_corr'],
+    ['R11Sx', 'R11Sx_corr'],
+    ['R11Sy', 'R11Sy_corr'],
+    ['R1T'],
+    ['R21x'],
+    ['R21y'],
+    ['R2Tx'],
+    ['R2Ty'],
+    ['R24x'],
+    ['R24y'],
+]
+
+
+def check_all_terms(
+    eos: str = 'Bayada',
+    Nx: int = 3,
+    Ny: int = 2,
+    bc: str = 'periodic_y',
+    eps: float = 1e-6,
+    scale: np.ndarray = None,
+) -> dict:
+    """Check each term group against its FD Jacobian, broken down by dep-var column block.
+
+    Creates one problem, then swaps solver.terms for each group.
+    Returns a nested dict: results[group_label][dep_var] = rel_err,
+    plus results[group_label]['total'] = overall rel_err.
     """
+    _, solver = make_problem(eos, Nx, Ny, bc=bc)
+    all_terms = solver.terms
+    term_by_name = {t.name: t for t in all_terms}
+    sol_slices = solver._sol_slices   # {'jx': slice, 'jy': slice, 'p': slice}
 
-    @pytest.mark.parametrize("term_names", [
-        ['R1PSPG_Px', 'R1PSPG_Px2'],
-        ['R1PSPG_Py', 'R1PSPG_Py2'],
-    ])
-    def test_jacobian_pspg_pressure_gradient(self, term_names):
-        _, solver = make_problem_pspg_bayada(3, 2, bc='periodic',
-                                             term_list=term_names)
-        _set_cavitation_boundary_state(solver)
-
+    results = {}
+    for group in _TERM_GROUPS:
+        members = [term_by_name[n] for n in group if n in term_by_name]
+        if not members:
+            continue
+        label = '+'.join(t.name for t in members)
+        print(f"  eps={eps:.0e}  {label}", flush=True)
+        solver.terms = members
         M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver, eps=1e-8)
+        J = compute_fd_jacobian(solver, eps=eps, scale=scale)
+        diff = M - J
 
-        err = rel_err(M, J_fd)
-        assert err < 1e-5, (
-            f"{term_names} Bayada Jacobian mismatch: rel_err={err:.2e}")
+        block_errs = {}
+        for var, sl in sol_slices.items():
+            J_col = J[:, sl]
+            d_col = diff[:, sl]
+            J_n = np.linalg.norm(J_col)
+            d_n = np.linalg.norm(d_col)
+            block_errs[var] = 0.0 if (J_n == 0.0 and d_n == 0.0) else d_n / (J_n + 1e-15)
+        entry = dict(block_errs)
+        entry['total'] = max(block_errs.values())
+        results[label] = entry
 
-    def test_jacobian_all_pspg_bayada(self):
-        _, solver = make_problem_pspg_bayada(3, 2, bc='periodic')
-        _set_cavitation_boundary_state(solver)
-
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver, eps=1e-8)
-
-        err = rel_err(M, J_fd)
-        assert err < 1e-5, (
-            f"All PSPG Bayada Jacobian mismatch: rel_err={err:.2e}")
-
-
-# =============================================================================
-# Level 11 — Pressure gradient with Bayada EOS near cavitation boundary
-# =============================================================================
-
-_CONFIG_BAYADA_PRESSURE = """
-options:
-    output: /tmp/fem2d_fd_test_bayada_pressure
-    write_freq: 1000
-    silent: True
-
-grid:
-    Lx: 0.1
-    Ly: 0.1
-    Nx: {Nx}
-    Ny: {Ny}
-    xE: {xE}
-    xW: {xW}
-    yS: {yS}
-    yN: {yN}
-
-geometry:
-    type: parabolic_2d
-    hmax: 2e-5
-    hmin: 1e-5
-    U: 1.0
-    V: 0.0
-
-numerics:
-    solver: fem
-    dt: 1e-8
-    tol: 1e-6
-    max_it: 100
-
-properties:
-    EOS: Bayada
-    rho0: 850.0
-    rho_l: 850.0
-    rho_v: 0.019
-    c_l: 3154.84
-    c_v: 352.0
-    shear: 0.039
-    bulk: 0.0
-
-fem_solver:
-    type: newton_alpha
-    physics:
-        pspg: false
-        gls: false
-    equations:
-        energy: False
-        {term_list_entry}
-"""
+    solver.terms = all_terms
+    return results
 
 
-def make_problem_bayada_pressure(Nx, Ny, bc='periodic', term_list=None):
-    bc_cfg = BC_CONFIGS[bc]
-    term_list_entry = f"term_list: {term_list}" if term_list else ""
-
-    config = _CONFIG_BAYADA_PRESSURE.format(
-        Nx=Nx, Ny=Ny,
-        xE=bc_cfg['xE'], xW=bc_cfg['xW'],
-        yS=bc_cfg['yS'], yN=bc_cfg['yN'],
-        term_list_entry=term_list_entry,
-    )
-
-    problem = Problem.from_string(config)
-    solver = problem.solver
-    solver.pre_run()
-    return problem, solver
+def print_term_check(results: dict) -> None:
+    """Pretty-print the output of check_all_terms."""
+    dep_vars = ['jx', 'jy', 'p']
+    header = f"{'term':<30s}  {'total':>8s}" + ''.join(f"  {'d/d'+v:>8s}" for v in dep_vars)
+    print(header)
+    print('-' * len(header))
+    for label, entry in results.items():
+        total = entry['total']
+        flag = '' if total < 1e-4 else ' ✗'
+        row = f"{label:<30s}  {total:>8.2e}"
+        for v in dep_vars:
+            row += f"  {entry.get(v, float('nan')):>8.2e}"
+        print(row + flag)
 
 
-class TestLevel11PressureGradientBayada:
-    """Pressure gradient Jacobian with Bayada EOS near cavitation.
+def eps_sensitivity(
+    eos: str = 'Bayada',
+    Nx: int = 3,
+    Ny: int = 2,
+    bc: str = 'periodic_y',
+    eps_list: list = None,
+    var_scales: dict = None,
+) -> None:
+    """Run check_all_terms for each eps in eps_list.
 
-    d2p/drho2 is large near rho_l, so the Jacobian correction terms
-    R21x_corr / R21y_corr are essential for a correct tangent matrix.
+    Prints one sub-table per eps value showing total error and per-dep-var
+    column block errors (d/djx, d/djy, d/dp).
+
+    Parameters
+    ----------
+    eps_list : list of float
+        FD step sizes to sweep. Default: [1e-4, 1e-5, 1e-6, 1e-7, 1e-8].
+    var_scales : dict, optional
+        Per-variable characteristic scales for build_scale_array,
+        e.g. {'p': 1e5, 'jx': 1.0, 'jy': 1.0}.
+        If None, falls back to the relative-perturbation default.
     """
+    if eps_list is None:
+        eps_list = [1e-4, 1e-6, 1e-8]
 
-    @pytest.mark.parametrize("term_names", [
-        ['R21x', 'R21x_corr'],
-        ['R21y', 'R21y_corr'],
-    ])
-    def test_jacobian_pressure_gradient(self, term_names):
-        _, solver = make_problem_bayada_pressure(3, 2, bc='periodic',
-                                                  term_list=term_names)
-        _set_cavitation_boundary_state(solver)
+    _, solver = make_problem(eos, Nx, Ny, bc=bc)
+    scale = build_scale_array(solver, var_scales) if var_scales is not None else None
 
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver, eps=1e-8)
+    dep_vars = ['jx', 'jy', 'p']
+    col_w = 9
+    header = (f"  {'term':<28s}  {'total':>{col_w}s}"
+              + ''.join(f"  {'d/d'+v:>{col_w}s}" for v in dep_vars))
+    sep = '  ' + '-' * (len(header) - 2)
 
-        err = rel_err(M, J_fd)
-        assert err < 1e-5, (
-            f"{term_names} Bayada Jacobian mismatch: rel_err={err:.2e}")
+    print(f"\nEOS={eos}  grid={Nx}x{Ny}  bc={bc}"
+          + (f"  scales={var_scales}" if var_scales else "  scales=relative"))
 
-    def test_jacobian_pressure_gradient_dirichlet(self):
-        _, solver = make_problem_bayada_pressure(3, 2, bc='periodic_y',
-                                                  term_list=['R21x', 'R21x_corr',
-                                                             'R21y', 'R21y_corr'])
-        _set_cavitation_boundary_state(solver)
+    for eps in eps_list:
+        r = check_all_terms(eos, Nx, Ny, bc=bc, eps=eps, scale=scale)
+        print(f"\n  eps = {eps:.0e}")
+        print(header)
+        print(sep)
+        for label, entry in r.items():
+            total = entry['total']
+            flag = ' ✗' if total > 1e-4 else ''
+            row = (f"  {label:<28s}  {total:>{col_w}.2e}"
+                   + ''.join(f"  {entry.get(v, float('nan')):>{col_w}.2e}"
+                              for v in dep_vars))
+            print(row + flag)
 
-        M = solver.get_M_dense()
-        J_fd = compute_fd_jacobian(solver, eps=1e-8)
 
-        err = rel_err(M, J_fd)
-        assert err < 1e-5, (
-            f"Pressure gradient Bayada (dirichlet) Jacobian mismatch: rel_err={err:.2e}")
+# =============================================================================
+# Diagnostic: element-wise matrix comparison for a single term/block/eps
+# =============================================================================
+
+def compare_matrices(
+    term: str,
+    block: str,
+    eps: float = 1e-6,
+    eos: str = 'Bayada',
+    Nx: int = 3,
+    Ny: int = 2,
+    bc: str = 'periodic_y',
+    var_scales: dict = None,
+    fmt: str = '11.2e',
+) -> None:
+    """Print analytic and FD Jacobian side-by-side for one term, one dep-var column block.
+
+    Parameters
+    ----------
+    term : str
+        Name of a single term (e.g. 'R11x') or a '+'-joined group (e.g. 'R11x+R11x_corr').
+        Correction terms must be included together with their base term.
+    block : str
+        Dependent variable whose column block to show: 'jx', 'jy', or 'p'.
+    eps : float
+        FD step size.
+    eos : {'DH', 'Bayada'}
+    Nx, Ny : grid dimensions
+    bc : key into BC_CONFIGS
+    var_scales : dict, optional
+        Per-variable scales for build_scale_array.
+    fmt : str
+        Python format spec for each matrix entry (default '11.2e').
+    """
+    _, solver = make_problem(eos, Nx, Ny, bc=bc)
+    scale = build_scale_array(solver, var_scales) if var_scales is not None else None
+
+    term_by_name = {t.name: t for t in solver.terms}
+    names = [n.strip() for n in term.split('+')]
+    members = [term_by_name[n] for n in names if n in term_by_name]
+    missing = [n for n in names if n not in term_by_name]
+    if missing:
+        raise ValueError(f"Terms not found: {missing}. Available: {sorted(term_by_name)}")
+
+    solver.terms = members
+    M = solver.get_M_dense()
+    J = compute_fd_jacobian(solver, eps=eps, scale=scale)
+
+    col_sl = solver._sol_slices.get(block)
+    if col_sl is None:
+        raise ValueError(f"block={block!r} not in {list(solver._sol_slices)}")
+
+    # rows: union of res_slices for all residuals the selected terms write to
+    res_names = sorted({t.res for t in members}, key=lambda r: solver._res_slices[r].start)
+    row_indices = []
+    for res in res_names:
+        rs = solver._res_slices[res]
+        row_indices.extend(range(rs.start, rs.stop))
+    col_indices = list(range(col_sl.start, col_sl.stop))
+
+    M_blk = M[np.ix_(row_indices, col_indices)]
+    J_blk = J[np.ix_(row_indices, col_indices)]
+    diff = M_blk - J_blk
+
+    n_rows, n_cols = M_blk.shape
+    entry_w = len(f'{0:{fmt}}')
+    gap = '  '
+    col_w = entry_w + len(gap)
+    row_label_w = max(4, len(str(max(row_indices))))
+
+    print(f"\nterm={term}  block=d/d{block}  eps={eps:.0e}  "
+          f"EOS={eos}  grid={Nx}x{Ny}  bc={bc}")
+    print(f"rows: {', '.join(f'{r}[{solver._res_slices[r].start}:{solver._res_slices[r].stop}]' for r in res_names)}  "
+          f"cols: {block}[{col_sl.start}:{col_sl.stop}]")
+    rel = np.linalg.norm(diff) / (np.linalg.norm(J_blk) + 1e-15)
+    print(f"rel_err = {rel:.3e}")
+
+    col_hdr = ' ' * (row_label_w + 2) + ''.join(f'{c:>{col_w}d}' for c in col_indices)
+    sep_line = '-' * len(col_hdr)
+
+    def _row_str(mat, r):
+        return ''.join(
+            gap + (' ' * entry_w if mat[r, c] == 0.0 else f'{mat[r, c]:{fmt}}')
+            for c in range(n_cols)
+        )
+
+    for title, mat in [('analytic (M)', M_blk), ('FD (J)', J_blk), ('diff (M-J)', diff)]:
+        print(f"\n  {title}")
+        print(col_hdr)
+        print(sep_line)
+        for r, global_r in enumerate(row_indices):
+            print(f"  {global_r:<{row_label_w}}{_row_str(mat, r)}")
+
+
+# =============================================================================
+# Diagnostic: plot initial pressure field
+# =============================================================================
+
+def plot_initial_p(eos: str = 'Bayada', Nx: int = 6, Ny: int = 4,
+                   bc: str = 'periodic_y') -> None:
+    """Plot the initial p field after make_problem initialisation.
+
+    For Bayada, the ramp straddling Pcav is visible as a smooth gradient
+    with the cavitation pressure marked as a contour line.
+    Run directly:  python tests/test_fem_2d_assembly_fd.py
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as ticker
+
+    _, solver = make_problem(eos, Nx, Ny, bc=bc)
+
+    gi = solver.grid_idx
+    Nx_p = gi.Nx_p_inner
+    Ny_p = gi.Ny_p_inner
+
+    q = solver.get_q_nodal()
+    p_sl = solver._sol_slices['p']
+    p2d = q[p_sl].reshape((Nx_p, Ny_p), order='F') / 1e5   # MPa
+
+    Lx = solver.problem.decomp.grid['Lx']
+    Ly = solver.problem.decomp.grid['Ly']
+    x = np.linspace(0, Lx * 1e3, Nx_p)   # mm
+    y = np.linspace(0, Ly * 1e3, Ny_p)   # mm
+
+    plt.rcParams.update({
+        'font.family': 'sans-serif', 'font.size': 9,
+        'axes.labelsize': 10, 'figure.dpi': 150,
+        'savefig.facecolor': 'white', 'figure.facecolor': 'white',
+    })
+
+    fig, ax = plt.subplots(figsize=(5.0, 3.0), layout='constrained')
+    im = ax.pcolormesh(x, y, p2d.T, shading='auto', cmap='RdBu_r')
+    cb = fig.colorbar(im, ax=ax)
+    cb.set_label(r'$p$ [bar]')
+
+    ax.set_xlabel('$x$ [mm]')
+    ax.set_ylabel('$y$ [mm]')
+    ax.set_title(f'Initial $p$ — {eos}, {Nx}×{Ny}, {bc}')
+    plt.show()
+
+
+if __name__ == '__main__':
+    #plot_initial_p(eos='Bayada', Nx=6, Ny=4, bc='periodic')
+    #eps_sensitivity(eos='Bayada', Nx=5, Ny=3, bc='periodic_y')
+
+    #compare_matrices('R11x', 'p', eps=1e-6)
+    compare_matrices('R11x+R11x_corr', 'p', eps=1e-6)
+    #compare_matrices('R2Tx', 'jx', eps=1e-6, eos='DH')
+    #compare_matrices('R24x', 'p', eps=1e-6, eos='Bayada')

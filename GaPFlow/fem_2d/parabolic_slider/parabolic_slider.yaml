@@ -42,9 +42,10 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 1000
+    max_it: 100
 
 properties:
+    P0: 1e05
     rho0: 850.
     EOS: Bayada
     rho_l: 850.0
@@ -57,10 +58,10 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 0.1
+    newton_relax: 0.01
     physics:
         gap_shear: true
-        plane_shear: true
+        plane_shear: false
         inertia: false
     max_iter: 1
     R_norm_tol: 1e-9

@@ -107,8 +107,8 @@ rho_v = problem.prop['rho_v']
 c_l = problem.prop['c_l']
 c_v = problem.prop['c_v']
 
-problem.set_eos_function(
-    lambda rho: bayada_chupin_c3(rho, rho_l, rho_v, c_l, c_v, eps_l=0.01, eps_r=0.01)
-)
+#problem.set_eos_function(
+#    lambda rho: bayada_chupin_c3(rho, rho_l, rho_v, c_l, c_v, eps_l=0.01, eps_r=0.01)
+#)
 
 problem.run()

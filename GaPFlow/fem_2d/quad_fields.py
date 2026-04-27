@@ -30,6 +30,7 @@ from muGrid import Field
 from scipy.ndimage import zoom
 
 from .elements import TaylorHoodP2P1
+from ..models.pressure import eos_pressure, eos_rho, eos_drho_dp
 
 if TYPE_CHECKING:
     from ..problem import Problem
@@ -46,9 +47,9 @@ BASE_FIELDS = {
     'rho', 'jx', 'jy',
     'p', 'h', 'dh_dx', 'dh_dy', 'eta',
     'U_bot', 'V_bot', 'U_top', 'V_top', 'Ls',
-    'dp_drho', 'd2p_drho2',
-    'd_dx_rho', 'd_dy_rho',
-    'rho_prev', 'jx_prev', 'jy_prev',
+    'dp_drho', 'drho_dp', 'd2p_drho2',
+    'd_dx_jx', 'd_dy_jy',
+    'p_prev', 'jx_prev', 'jy_prev',
     'force_x', 'force_y',
 }
 
@@ -134,12 +135,16 @@ class QuadFieldManager:
         nb_quad_sq = self.elements.n_tri * self.elements.Quadrature.nb_points
         fc.set_nb_sub_pts('quad', nb_quad_sq)
 
-        # Create new single-component nodal fields
-        for name in ['rho', 'h', 'dh_dx', 'dh_dy']:
+        # Create new single-component nodal fields (including 'p' — the P1
+        # DOF for the pressure-based solver). We intentionally do NOT wrap
+        # the pre-existing 'pressure' muGrid field here because it has a
+        # different `.pg` shape (2D, no component axis); a fresh field keeps
+        # all nodal_fields uniform as (1, Nx_pad, Ny_pad). The 'pressure'
+        # field is kept in sync via `_push_p_to_pressure` on each update.
+        for name in ['rho', 'p', 'h', 'dh_dx', 'dh_dy']:
             self.nodal_fields[name] = fc.real_field(f'{name}_nodal', 1, 'pixel')
 
         # Reference existing fields from fc
-        self.nodal_fields['p']   = Field(fc.get_real_field('pressure'))
         self.nodal_fields['eta'] = Field(fc.get_real_field('shear_viscosity'))
         if self.energy:
             self.nodal_fields['E']      = Field(fc.get_real_field('total_energy'))
@@ -221,6 +226,8 @@ class QuadFieldManager:
 
     def sync_to_problem_q(self) -> None:
         """Sync Newton-owned nodal fields back to problem.q.
+        - problem.q[0] stays ρ-based (canonical external representation).
+        - nodal rho is already current (derived from p in update_physics).
         - E: direct reference to p.energy's field — always in sync, no copy needed.
         """
         p = self.problem
@@ -230,6 +237,7 @@ class QuadFieldManager:
 
     def sync_from_problem_q(self) -> None:
         """Copy problem.q initial state to Newton-owned nodal fields.
+        q[0] is ρ (user-specified IC); derive p via forward EoS.
         Used at initialisation and after external state changes.
         """
         p = self.problem
@@ -238,9 +246,19 @@ class QuadFieldManager:
         zoom_factors = (Nx_v / Nx_p, Ny_v / Ny_p)
 
         self.nodal_fields['rho'].pg[0] = p.q[0]
+        self.nodal_fields['p'].pg[0]   = eos_pressure(p.q[0], p.prop)
+        self._push_p_to_pressure_field()
         self.nodal_fields['jx'].pg[0] = zoom(p.q[1], zoom_factors, order=1)
         self.nodal_fields['jy'].pg[0] = zoom(p.q[2], zoom_factors, order=1)
         # E is a direct reference to p.energy's field — no copy needed
+
+    def _push_p_to_pressure_field(self) -> None:
+        """Copy current nodal p into problem.pressure's underlying field so
+        downstream readers (topography, IO, etc.) stay current.
+        """
+        pressure_arr = np.asarray(self.problem.pressure.pressure)
+        src = self.nodal_fields['p'].pg[0]
+        pressure_arr[...] = src.reshape(pressure_arr.shape)
 
     # =========================================================================
     # Field updates  (called once per Newton step)
@@ -248,15 +266,31 @@ class QuadFieldManager:
 
     def update_physics(self) -> None:
         """Update physics nodal fields after solution field update.
+
+        In the pressure-based solver, `p` is the authoritative nodal DOF
+        (just set by Newton). Derive `rho` nodally via the inverse EoS,
+        then sync to problem.q so other backends (IO, BCs) see consistent
+        ρ. `p.pressure.update()` is NOT called — the pressure field
+        (`nodal_fields['p']` alias of `fc.get_real_field('pressure')`) is
+        already the DOF.
         """
-        self.sync_to_problem_q()
         p = self.problem
-        p.pressure.update()
+        p_nodal = self.nodal_fields['p'].pg[0]
+
+        # Derive rho nodally from the authoritative p (inverse EoS).
+        self.nodal_fields['rho'].pg[0] = eos_rho(p_nodal, p.prop)
+
+        # Keep problem.pressure.pressure in sync for downstream readers.
+        self._push_p_to_pressure_field()
+
+        # Expose ρ to problem.q (user BCs, IO, other backends) and jx/jy.
+        self.sync_to_problem_q()
+
         p.topo.update()
 
-        dp_dx = np.gradient(p.pressure.pressure, self.dx, axis=0)
-        dp_dy = np.gradient(p.pressure.pressure, self.dy, axis=1)
-        p.viscosity.update(p.pressure.pressure, dp_dx, dp_dy,
+        dp_dx = np.gradient(p_nodal, self.dx, axis=0)
+        dp_dy = np.gradient(p_nodal, self.dy, axis=1)
+        p.viscosity.update(p_nodal, dp_dx, dp_dy,
                            p.topo.h,
                            p.geo['U_bot'], p.geo['V_bot'],
                            p.geo['U_top'], p.geo['V_top'])
@@ -273,8 +307,10 @@ class QuadFieldManager:
         self.nodal_fields['dh_dx'].pg[0]  = p.topo.dh_dx
         self.nodal_fields['dh_dy'].pg[0]  = p.topo.dh_dy
 
-        # Interpolate all nodal fields to quad fields
-        coarse_interp = ['rho', 'p', 'h', 'dh_dx', 'dh_dy', 'eta']
+        # Interpolate all nodal fields to quad fields.
+        # rho is excluded: in the pressure-based solver it is derived from p_q
+        # in update_quad_computed(), ensuring residual/Jacobian consistency.
+        coarse_interp = ['p', 'h', 'dh_dx', 'dh_dy', 'eta']
         if self.energy:
             coarse_interp.extend(['E', 'Tb_top', 'Tb_bot'])
         for name in coarse_interp:
@@ -295,22 +331,30 @@ class QuadFieldManager:
         return func(*args_2d).reshape(shape)
 
     def update_quad_computed(self) -> None:
-        """Compute derived quantities at quad points (wall stress, dp_drho, etc.)."""
+        """Compute derived quantities at quad points (wall stress, drho_dp, etc.)."""
         p = self.problem
         s = np.s_[..., :-1, :-1]
         q = lambda name: self.quad_fields[name].pg[s]  # only on valid squares
         apply = self._apply_2d_vmap
 
-        self.quad_fields['dp_drho'].pg[s] = apply(p.pressure.dp_drho, q('rho'))
-        self.quad_fields['d2p_drho2'].pg[s] = apply(p.pressure.d2p_drho2, q('rho'))
+        # drho_dp and dp_drho both evaluated directly from p_q (one-step path).
+        # dp_drho = 1/drho_dp avoids the lossy two-step path p_q → rho_q →
+        # dp_drho(rho_q), where Δrho can fall below 1 ULP near the mixture
+        # region (rho ≈ 850, Δrho ~ 1e-13 < 1 ULP). The identity
+        # d(1/drho_dp)/dp_q = d2p_drho2 * drho_dp ensures R11x_corr remains exact.
+        drho_dp_q = eos_drho_dp(q('p'), p.prop)
+        self.quad_fields['drho_dp'].pg[s] = drho_dp_q
+        self.quad_fields['dp_drho'].pg[s] = 1.0 / drho_dp_q
 
-        # Density gradients at quad points (for pressure gradient Jacobian correction)
-        op_dx = self.elements.P1.dx_operator
-        op_dy = self.elements.P1.dy_operator
-        op_dx.apply(self.nodal_fields['rho'], self.quad_fields['d_dx_rho'])
-        self.quad_fields['d_dx_rho'].pg[:] /= self.dx
-        op_dy.apply(self.nodal_fields['rho'], self.quad_fields['d_dy_rho'])
-        self.quad_fields['d_dy_rho'].pg[:] /= self.dy
+        rho_q = eos_rho(q('p'), p.prop)
+        self.quad_fields['rho'].pg[s] = rho_q
+        self.quad_fields['d2p_drho2'].pg[s] = apply(p.pressure.d2p_drho2, rho_q)
+
+        self.elements.P2.dx_operator.apply(self.nodal_fields['jx'], self._deriv_placeholder)
+        self.quad_fields['d_dx_jx'].pg[s] = self._deriv_placeholder.pg[s] / self.dx
+
+        self.elements.P2.dy_operator.apply(self.nodal_fields['jy'], self._deriv_placeholder)
+        self.quad_fields['d_dy_jy'].pg[s] = self._deriv_placeholder.pg[s] / self.dy
 
         args_xz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dx'),
                    q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'))

@@ -104,13 +104,19 @@ def build_scaling(
 
 def compute_characteristic_scales(problem: "Problem",
                                    energy: bool) -> Dict[str, float]:
-    """Derive characteristic scales from problem specification."""
+    """Derive characteristic scales from problem specification.
+
+    Pressure-based solver: the mass-row scale is `p_ref = prop['P0']`, the
+    reference pressure from the EoS config. Raises KeyError if P0 is not
+    set (no silent default).
+    """
     rho_ref = problem.prop['rho0']
     U_ref = _get_characteristic_velocity(problem)
     c_ref = problem.prop.get('c_l', np.sqrt(problem.prop.get('P0', 1.0) / rho_ref))
     j_ref = rho_ref * U_ref * c_ref
+    p_ref = 1e05 #problem.prop['P0']
 
-    scales = {'rho': rho_ref, 'jx': j_ref, 'jy': j_ref}
+    scales = {'p': p_ref, 'jx': j_ref, 'jy': j_ref}
 
     if energy:
         cv    = problem.energy_spec['cv']

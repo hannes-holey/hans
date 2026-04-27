@@ -47,7 +47,7 @@ numerics:
     solver: fem
     dt: 0.08
     tol: 0.
-    max_it: 70
+    max_it: 100
 
 properties:
     rho0: 850.
@@ -62,10 +62,10 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 0.02
+    newton_relax: 0.01
     physics:
         gap_shear: true
-        plane_shear: true
+        plane_shear: false
         inertia: false
     max_iter: 20
     R_norm_tol: 0.

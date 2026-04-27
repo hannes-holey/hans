@@ -112,7 +112,7 @@ class TaylorHoodP2P1:
         self.dx = dx
         self.dy = dy
         self.sq_area = dx * dy
-        self.Quadrature = Quadrature6Points()
+        self.Quadrature = Quadrature7Points()
         self.P1 = self.P1(self.Quadrature)
         self.P2 = self.P2(self.Quadrature)
 

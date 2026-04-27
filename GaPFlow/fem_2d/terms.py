@@ -123,15 +123,16 @@ class NonLinearTerm():
 # Mass equation terms (R1*)
 # -----------------------------------------------------------------------------
 
-# R11: Flux divergence
+# R11: Flux divergence (pressure form: picks up (dp/drho) prefactor from
+# the mass-equation × (dp/drho) reformulation — see pressure_formulation.md §3).
 R11x = NonLinearTerm(
     name='R11x',
     description='flux divergence x',
     res='mass',
     dep_vars=['jx'],
-    dep_vals=[],
-    fun=lambda ctx: lambda jx: -jx,
-    der_funs=[lambda ctx: lambda jx: np.full_like(jx, -1.0)],
+    dep_vals=['dp_drho'],
+    fun=lambda ctx: lambda jx: -ctx['dp_drho']() * jx,
+    der_funs=[lambda ctx: lambda jx: -ctx['dp_drho']()],
     d_dx_resfun=True,
     d_dy_resfun=False,
     der_testfun=False)
@@ -141,9 +142,9 @@ R11y = NonLinearTerm(
     description='flux divergence y',
     res='mass',
     dep_vars=['jy'],
-    dep_vals=[],
-    fun=lambda ctx: lambda jy: -jy,
-    der_funs=[lambda ctx: lambda jy: np.full_like(jy, -1.0)],
+    dep_vals=['dp_drho'],
+    fun=lambda ctx: lambda jy: -ctx['dp_drho']() * jy,
+    der_funs=[lambda ctx: lambda jy: -ctx['dp_drho']()],
     d_dx_resfun=False,
     d_dy_resfun=True,
     der_testfun=False)
@@ -153,9 +154,9 @@ R11Sx = NonLinearTerm(
     description='flux divergence height source x',
     res='mass',
     dep_vars=['jx'],
-    dep_vals=['h', 'dh_dx'],
-    fun=lambda ctx: lambda jx: -1 / ctx['h']() * ctx['dh_dx']() * jx,
-    der_funs=[lambda ctx: lambda jx: -1 / ctx['h']() * ctx['dh_dx']()],
+    dep_vals=['h', 'dh_dx', 'dp_drho'],
+    fun=lambda ctx: lambda jx: -ctx['dp_drho']() * (1 / ctx['h']()) * ctx['dh_dx']() * jx,
+    der_funs=[lambda ctx: lambda jx: -ctx['dp_drho']() * (1 / ctx['h']()) * ctx['dh_dx']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -165,22 +166,96 @@ R11Sy = NonLinearTerm(
     description='flux divergence height source y',
     res='mass',
     dep_vars=['jy'],
-    dep_vals=['h', 'dh_dy'],
-    fun=lambda ctx: lambda jy: -1 / ctx['h']() * ctx['dh_dy']() * jy,
-    der_funs=[lambda ctx: lambda jy: -1 / ctx['h']() * ctx['dh_dy']()],
+    dep_vals=['h', 'dh_dy', 'dp_drho'],
+    fun=lambda ctx: lambda jy: -ctx['dp_drho']() * (1 / ctx['h']()) * ctx['dh_dy']() * jy,
+    der_funs=[lambda ctx: lambda jy: -ctx['dp_drho']() * (1 / ctx['h']()) * ctx['dh_dy']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
 
-# R1T: Time derivative
+# R11x_corr / R11y_corr / R11Sx_corr / R11Sy_corr: Jacobian correction for the
+# implicit p-dependence of dp/drho in R11x/R11y/R11Sx/R11Sy.
+#
+# R11x residual is  -∂/∂x(dp/drho(rho(p)) · jx).  Taking d/dp:
+#   d/dp[dp/drho · jx] = d(dp/drho)/dp · jx = (d²p/drho² · drho/dp) · jx
+# The correction Jacobian is therefore  -(d²p/drho² · drho/dp) · jx,
+# with the same spatial derivative structure as the parent term (d_dx_resfun).
+# Zero residual contribution — Jacobian-only.
+R11x_corr = NonLinearTerm(
+    name='R11x_corr',
+    description='flux divergence x Jacobian correction (d(dp/drho)/dp)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'd_dx_jx'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * ctx['d_dx_jx']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+R11y_corr = NonLinearTerm(
+    name='R11y_corr',
+    description='flux divergence y Jacobian correction (d(dp/drho)/dp)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'd_dy_jy'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * ctx['d_dy_jy']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+R11Sx_corr = NonLinearTerm(
+    name='R11Sx_corr',
+    description='flux divergence height source x Jacobian correction (d(dp/drho)/dp)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'jx', 'h', 'dh_dx'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 / ctx['h']()) * ctx['dh_dx']() * ctx['jx']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+R11Sy_corr = NonLinearTerm(
+    name='R11Sy_corr',
+    description='flux divergence height source y Jacobian correction (d(dp/drho)/dp)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'jy', 'h', 'dh_dy'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 / ctx['h']()) * ctx['dh_dy']() * ctx['jy']()],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+# R_cav_pen: Penalty enforcement of p >= p_cav (cavitation constraint).
+# Adds ε·max(p_cav−p, 0) to the mass residual — zero in full-film, positive source
+# in the cavitated zone. Jacobian is the raw Heaviside step (see notes in
+# pressure_penalty_cavitation.md; Heaviside treatment is an open question).
+# Requires ctx['p_cav'] (= prop['P0']) and ctx['pen_eps'] (= fem_solver['pen_eps']).
+R_cav_pen = NonLinearTerm(
+    name='R_cav_pen',
+    description='cavitation penalty: enforces p >= p_cav in mass eq.',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['p_cav', 'pen_eps'],
+    fun=lambda ctx: lambda p: ctx['pen_eps']() * np.maximum(ctx['p_cav']() - p, 0.0),
+    der_funs=[lambda ctx: lambda p: -ctx['pen_eps']() * (p < ctx['p_cav']()).astype(float)],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+# R1T: Time derivative (pressure form: -(p - p_prev)/dt).
+# No chain rule — p is the DOF. Jacobian slot is the trivial -1/dt.
 R1T = NonLinearTerm(
     name='R1T',
     description='time derivative',
     res='mass',
-    dep_vars=['rho'],
+    dep_vars=['p'],
     dep_vals=[],
-    fun=lambda ctx: lambda rho: - (rho - ctx['rho_prev']()) / ctx['dt'](),
-    der_funs=[lambda ctx: lambda rho: - np.full_like(rho, 1.0) / ctx['dt']()],
+    fun=lambda ctx: lambda p: - (p - ctx['p_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda p: - np.full_like(p, 1.0) / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -334,16 +409,16 @@ R1PSPG_Wy = NonLinearTerm(
 # Momentum equation terms (R2*)
 # -----------------------------------------------------------------------------
 
-# R21: Pressure gradient (explicit form: ∫ Nᵢ · (-∂p/∂x) dΩ)
-# Uses chain rule: -∂p/∂x = -dp/drho · ∂rho/∂x
+# R21: Pressure gradient (pressure form: ∫ Nᵢ · (-∂p/∂x) dΩ)
+# p is the DOF, so der is the trivial -1 — no chain rule, no _corr term.
 R21x = NonLinearTerm(
     name='R21x',
     description='pressure gradient x',
     res='momentum_x',
-    dep_vars=['rho'],
+    dep_vars=['p'],
     dep_vals=[],
-    fun=lambda ctx: lambda rho: -ctx['p'](),
-    der_funs=[lambda ctx: lambda rho: -ctx['dp_drho']()],
+    fun=lambda ctx: lambda p: -p,
+    der_funs=[lambda ctx: lambda p: np.full_like(p, -1.0)],
     d_dx_resfun=True,
     d_dy_resfun=False,
     der_testfun=False)
@@ -352,52 +427,28 @@ R21y = NonLinearTerm(
     name='R21y',
     description='pressure gradient y',
     res='momentum_y',
-    dep_vars=['rho'],
+    dep_vars=['p'],
     dep_vals=[],
-    fun=lambda ctx: lambda rho: -ctx['p'](),
-    der_funs=[lambda ctx: lambda rho: -ctx['dp_drho']()],
+    fun=lambda ctx: lambda p: -p,
+    der_funs=[lambda ctx: lambda p: np.full_like(p, -1.0)],
     d_dx_resfun=False,
     d_dy_resfun=True,
     der_testfun=False)
 
-# R21 Jacobian correction: -d²p/drho² · ∂rho/∂x · Nⱼ
-# (missing from main R21x/R21y because assembly only gives -dp/drho · dNⱼ/dx)
-# Zero residual contribution — Jacobian-only.
-R21x_corr = NonLinearTerm(
-    name='R21x_corr',
-    description='pressure gradient x Jacobian correction',
-    res='momentum_x',
-    dep_vars=['rho'],
-    dep_vals=['d2p_drho2', 'd_dx_rho'],
-    fun=lambda ctx: lambda rho: 0.0 * rho,
-    der_funs=[lambda ctx: lambda rho: -ctx['d2p_drho2']() * ctx['d_dx_rho']()],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun=False)
-
-R21y_corr = NonLinearTerm(
-    name='R21y_corr',
-    description='pressure gradient y Jacobian correction',
-    res='momentum_y',
-    dep_vars=['rho'],
-    dep_vals=['d2p_drho2', 'd_dy_rho'],
-    fun=lambda ctx: lambda rho: 0.0 * rho,
-    der_funs=[lambda ctx: lambda rho: -ctx['d2p_drho2']() * ctx['d_dy_rho']()],
-    d_dx_resfun=False,
-    d_dy_resfun=False,
-    der_testfun=False)
+# R21x_corr / R21y_corr deleted in the pressure formulation: they existed to
+# add the d²p/dρ² chain-rule contribution that is absent once p is the DOF.
 
 # R22: Convective momentum flux
 R22xx = NonLinearTerm(
     name='R22xx',
     description='convective momentum flux jx*jx in x',
     res='momentum_x',
-    dep_vars=['rho', 'jx'],
-    dep_vals=[],
-    fun=lambda ctx: lambda rho, jx: -(jx * jx) / rho,
+    dep_vars=['p', 'jx'],
+    dep_vals=['rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jx: -(jx * jx) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx: (jx * jx) / (rho ** 2),
-        lambda ctx: lambda rho, jx: -2 * jx / rho
+        lambda ctx: lambda p, jx: (jx * jx) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx: -2 * jx / ctx['rho']()
     ],
     d_dx_resfun=True,
     d_dy_resfun=False,
@@ -407,12 +458,12 @@ R22xxS = NonLinearTerm(
     name='R22xxS',
     description='convective momentum flux jx*jx height source',
     res='momentum_x',
-    dep_vars=['rho', 'jx'],
-    dep_vals=['h', 'dh_dx'],
-    fun=lambda ctx: lambda rho, jx: -1 / ctx['h']() * ctx['dh_dx']() * (jx * jx) / rho,
+    dep_vars=['p', 'jx'],
+    dep_vals=['h', 'dh_dx', 'rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jx: -1 / ctx['h']() * ctx['dh_dx']() * (jx * jx) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx: 1 / ctx['h']() * ctx['dh_dx']() * (jx * jx) / (rho ** 2),
-        lambda ctx: lambda rho, jx: -1 / ctx['h']() * ctx['dh_dx']() * 2 * jx / rho
+        lambda ctx: lambda p, jx: 1 / ctx['h']() * ctx['dh_dx']() * (jx * jx) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx: -1 / ctx['h']() * ctx['dh_dx']() * 2 * jx / ctx['rho']()
     ],
     d_dx_resfun=False,
     d_dy_resfun=False,
@@ -422,13 +473,13 @@ R22yx = NonLinearTerm(
     name='R22yx',
     description='convective momentum flux jx*jy in y (for momentum_x)',
     res='momentum_x',
-    dep_vars=['rho', 'jx', 'jy'],
-    dep_vals=[],
-    fun=lambda ctx: lambda rho, jx, jy: -(jx * jy) / rho,
+    dep_vars=['p', 'jx', 'jy'],
+    dep_vals=['rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jx, jy: -(jx * jy) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx, jy: (jx * jy) / (rho ** 2),
-        lambda ctx: lambda rho, jx, jy: -jy / rho,
-        lambda ctx: lambda rho, jx, jy: -jx / rho
+        lambda ctx: lambda p, jx, jy: (jx * jy) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx, jy: -jy / ctx['rho'](),
+        lambda ctx: lambda p, jx, jy: -jx / ctx['rho']()
     ],
     d_dx_resfun=False,
     d_dy_resfun=True,
@@ -438,13 +489,13 @@ R22yxS = NonLinearTerm(
     name='R22yxS',
     description='convective momentum flux jx*jy height source (for momentum_x)',
     res='momentum_x',
-    dep_vars=['rho', 'jx', 'jy'],
-    dep_vals=['h', 'dh_dy'],
-    fun=lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dh_dy']() * (jx * jy) / rho,
+    dep_vars=['p', 'jx', 'jy'],
+    dep_vals=['h', 'dh_dy', 'rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jx, jy: -1 / ctx['h']() * ctx['dh_dy']() * (jx * jy) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx, jy: 1 / ctx['h']() * ctx['dh_dy']() * (jx * jy) / (rho ** 2),
-        lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dh_dy']() * jy / rho,
-        lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dh_dy']() * jx / rho
+        lambda ctx: lambda p, jx, jy: 1 / ctx['h']() * ctx['dh_dy']() * (jx * jy) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx, jy: -1 / ctx['h']() * ctx['dh_dy']() * jy / ctx['rho'](),
+        lambda ctx: lambda p, jx, jy: -1 / ctx['h']() * ctx['dh_dy']() * jx / ctx['rho']()
     ],
     d_dx_resfun=False,
     d_dy_resfun=False,
@@ -454,13 +505,13 @@ R22xy = NonLinearTerm(
     name='R22xy',
     description='convective momentum flux jx*jy in x (for momentum_y)',
     res='momentum_y',
-    dep_vars=['rho', 'jx', 'jy'],
-    dep_vals=[],
-    fun=lambda ctx: lambda rho, jx, jy: -(jx * jy) / rho,
+    dep_vars=['p', 'jx', 'jy'],
+    dep_vals=['rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jx, jy: -(jx * jy) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx, jy: (jx * jy) / (rho ** 2),
-        lambda ctx: lambda rho, jx, jy: -jy / rho,
-        lambda ctx: lambda rho, jx, jy: -jx / rho
+        lambda ctx: lambda p, jx, jy: (jx * jy) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx, jy: -jy / ctx['rho'](),
+        lambda ctx: lambda p, jx, jy: -jx / ctx['rho']()
     ],
     d_dx_resfun=True,
     d_dy_resfun=False,
@@ -470,13 +521,13 @@ R22xyS = NonLinearTerm(
     name='R22xyS',
     description='convective momentum flux jx*jy height source (for momentum_y)',
     res='momentum_y',
-    dep_vars=['rho', 'jx', 'jy'],
-    dep_vals=['h', 'dh_dx'],
-    fun=lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dh_dx']() * (jx * jy) / rho,
+    dep_vars=['p', 'jx', 'jy'],
+    dep_vals=['h', 'dh_dx', 'rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jx, jy: -1 / ctx['h']() * ctx['dh_dx']() * (jx * jy) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx, jy: 1 / ctx['h']() * ctx['dh_dx']() * (jx * jy) / (rho ** 2),
-        lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dh_dx']() * jy / rho,
-        lambda ctx: lambda rho, jx, jy: -1 / ctx['h']() * ctx['dh_dx']() * jx / rho
+        lambda ctx: lambda p, jx, jy: 1 / ctx['h']() * ctx['dh_dx']() * (jx * jy) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx, jy: -1 / ctx['h']() * ctx['dh_dx']() * jy / ctx['rho'](),
+        lambda ctx: lambda p, jx, jy: -1 / ctx['h']() * ctx['dh_dx']() * jx / ctx['rho']()
     ],
     d_dx_resfun=False,
     d_dy_resfun=False,
@@ -486,12 +537,12 @@ R22yy = NonLinearTerm(
     name='R22yy',
     description='convective momentum flux jy*jy in y',
     res='momentum_y',
-    dep_vars=['rho', 'jy'],
-    dep_vals=[],
-    fun=lambda ctx: lambda rho, jy: -(jy * jy) / rho,
+    dep_vars=['p', 'jy'],
+    dep_vals=['rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jy: -(jy * jy) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jy: (jy * jy) / (rho ** 2),
-        lambda ctx: lambda rho, jy: -2 * jy / rho
+        lambda ctx: lambda p, jy: (jy * jy) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jy: -2 * jy / ctx['rho']()
     ],
     d_dx_resfun=False,
     d_dy_resfun=True,
@@ -501,12 +552,12 @@ R22yyS = NonLinearTerm(
     name='R22yyS',
     description='convective momentum flux jy*jy height source',
     res='momentum_y',
-    dep_vars=['rho', 'jy'],
-    dep_vals=['h', 'dh_dy'],
-    fun=lambda ctx: lambda rho, jy: -1 / ctx['h']() * ctx['dh_dy']() * (jy * jy) / rho,
+    dep_vars=['p', 'jy'],
+    dep_vals=['h', 'dh_dy', 'rho', 'drho_dp'],
+    fun=lambda ctx: lambda p, jy: -1 / ctx['h']() * ctx['dh_dy']() * (jy * jy) / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jy: 1 / ctx['h']() * ctx['dh_dy']() * (jy * jy) / (rho ** 2),
-        lambda ctx: lambda rho, jy: -1 / ctx['h']() * ctx['dh_dy']() * 2 * jy / rho
+        lambda ctx: lambda p, jy: 1 / ctx['h']() * ctx['dh_dy']() * (jy * jy) / ctx['rho']() ** 2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jy: -1 / ctx['h']() * ctx['dh_dy']() * 2 * jy / ctx['rho']()
     ],
     d_dx_resfun=False,
     d_dy_resfun=False,
@@ -578,15 +629,15 @@ R23yy = NonLinearTerm(
     d_dy_resfun=True,
     der_testfun='y')
 
-# R24: Wall stress
+# R24: Wall stress (chain rule on p-slot: ∂f/∂p = ∂f/∂ρ · dρ/dp)
 R24x = NonLinearTerm(
     name='R24x',
     description='wall stress x',
     res='momentum_x',
-    dep_vars=['rho', 'jx'],
-    dep_vals=['h', 'tau_xz', 'dtau_xz_drho', 'dtau_xz_djx'],
+    dep_vars=['p', 'jx'],
+    dep_vals=['h', 'tau_xz', 'dtau_xz_drho', 'dtau_xz_djx', 'drho_dp'],
     fun=lambda ctx: lambda *args: 1 / ctx['h']() * ctx['tau_xz'](),
-    der_funs=[lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_drho'](),
+    der_funs=[lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_drho']() * ctx['drho_dp'](),
               lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_djx']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
@@ -596,10 +647,10 @@ R24y = NonLinearTerm(
     name='R24y',
     description='wall stress y',
     res='momentum_y',
-    dep_vars=['rho', 'jy'],
-    dep_vals=['h', 'tau_yz', 'dtau_yz_drho', 'dtau_yz_djy'],
+    dep_vars=['p', 'jy'],
+    dep_vals=['h', 'tau_yz', 'dtau_yz_drho', 'dtau_yz_djy', 'drho_dp'],
     fun=lambda ctx: lambda *args: 1 / ctx['h']() * ctx['tau_yz'](),
-    der_funs=[lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_yz_drho'](),
+    der_funs=[lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_yz_drho']() * ctx['drho_dp'](),
               lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_yz_djy']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
@@ -846,17 +897,20 @@ R3T = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
-# Master list of all physical terms
+# Master list of all physical terms.
 term_list = [
     # Mass equation
-    R11x, R11y, R11Sx, R11Sy, R1T,
-    # Laplacian density diffusion
+    R11x, R11y, R11Sx, R11Sy,
+    R11x_corr, R11y_corr, #R11Sx_corr, R11Sy_corr,
+    R_cav_pen,
+    R1T,
+    # Laplacian density diffusion (dormant; physics.mass_diffusion default False)
     R1Lx, R1Ly,
-    # PSPG mass stabilization
-    R1PSPG_Px, R1PSPG_Py, R1PSPG_Px2, R1PSPG_Py2,
+    # PSPG mass stabilization (dormant; physics.pspg default False)
+    R1PSPG_Px, R1PSPG_Py,
     R1PSPG_Tx, R1PSPG_Ty, R1PSPG_Wx, R1PSPG_Wy,
     # Momentum equation
-    R21x, R21y, R21x_corr, R21y_corr,
+    R21x, R21y,
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
     R23xy, R23yx, R23xx, R23yy,
     R24x, R24y,
@@ -890,10 +944,12 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
 
     physics = fem_solver.get('physics', {})
 
-    # Mass conservation and pressure gradient always included
+    # Mass conservation and pressure gradient always included.
     terms = [
-        'R11x', 'R11y', 'R11Sx', 'R11Sy', 'R1T',
-        'R21x', 'R21y', 'R21x_corr', 'R21y_corr', 'R2Tx', 'R2Ty',
+        'R11x', 'R11y', 'R11Sx', 'R11Sy',
+        'R11x_corr', 'R11y_corr', 'R11Sx_corr', 'R11Sy_corr',
+        'R1T',
+        'R21x', 'R21y', 'R2Tx', 'R2Ty',
     ]
 
     if physics.get('mass_diffusion', False):
@@ -901,14 +957,17 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
 
     if physics.get('pspg', False):
         terms.extend(['R1PSPG_Px', 'R1PSPG_Py',
-                      'R1PSPG_Px2', 'R1PSPG_Py2',
                       'R1PSPG_Tx', 'R1PSPG_Ty',
                       'R1PSPG_Wx', 'R1PSPG_Wy'])
 
     if physics.get('gap_shear', True):
         terms.extend(['R24x', 'R24y'])
 
-    if physics.get('plane_shear', True):
+    # plane_shear default flipped to False for the pressure-based first
+    # iteration. R23* terms themselves remain in density form in the
+    # source (not yet migrated); enabling this flag would require their
+    # §4-rewrite first.
+    if physics.get('plane_shear', False):
         terms.extend(['R23xy', 'R23yx', 'R23xx', 'R23yy'])
 
     if physics.get('inertia', False):

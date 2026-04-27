@@ -103,12 +103,17 @@ class GridIndexManager:
 
         # ------------------------------------------------------------------
         # _bc_neumann['xW']['jx'] == True means jx has Neumann BC on West side.
+        # User-facing BC list order in problem config stays ρ-based; the
+        # FEM2D pressure-based internals may query with var='p', which
+        # resolves to the 'rho' BC entry via the alias below.
         # ------------------------------------------------------------------
         self._bc_neumann = {}
         _BC_LIST_ORDER = ['rho', 'jx', 'jy']
+        _BC_VAR_ALIAS = {'p': 'rho'}  # internal DOF name → user-facing BC name
 
         def _is_neumann(side, var):
-            return decomp.grid[f'bc_{side}'][_BC_LIST_ORDER.index(var)] == 'N'
+            bc_var = _BC_VAR_ALIAS.get(var, var)
+            return decomp.grid[f'bc_{side}'][_BC_LIST_ORDER.index(bc_var)] == 'N'
 
         for side in ('xW', 'xE', 'yS', 'yN'):
             self._bc_neumann[side] = {}

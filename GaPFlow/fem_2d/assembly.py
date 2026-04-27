@@ -69,11 +69,11 @@ class AssemblyTemplate:
 # Residual, Variable
 BLOCK = (('p', 'p'), ('p', 'v'), ('v', 'p'), ('v', 'v'))
 DOF_GRID = {
-    'jx': 'v', 'jy': 'v', 'rho': 'p', 'E': 'p',
+    'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p',
     'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p',
 }
 DOF_IDX = {
-    'jx': 0, 'jy': 1, 'rho': 2, 'E': 3,
+    'jx': 0, 'jy': 1, 'p': 2, 'E': 3,
     'momentum_x': 0, 'momentum_y': 1, 'mass': 2, 'energy': 3,
 }
 

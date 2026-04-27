@@ -35,15 +35,15 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from ..models.pressure import eos_pressure
+from ..models.pressure import eos_pressure, eos_rho
 
 
 # Grid type for each variable / residual name
-_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'E': 'p'}
+_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'p': 'p', 'E': 'p'}
 _RES_GRID = {'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p'}
 
 # Display labels
-_VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'E': 'dq E'}
+_VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'p': 'dq p', 'E': 'dq E'}
 _RES_LABEL = {'momentum_x': 'R mom_x', 'momentum_y': 'R mom_y',
               'mass': 'R mass', 'energy': 'R energy'}
 
@@ -272,10 +272,15 @@ class NewtonDebugger:
         plt.close(fig)
 
     def _save_solution_plots(self, timestep, it, q):
-        rho_2d = self._to_2d(q, 'rho', is_residual=False)
         jx_2d = self._to_2d(q, 'jx', is_residual=False)
         jy_2d = self._to_2d(q, 'jy', is_residual=False)
-        p_2d = eos_pressure(rho_2d, self.problem.prop)
+        prop = self.problem.prop
+        if 'p' in self.variables:
+            p_2d = self._to_2d(q, 'p', is_residual=False)
+            rho_2d = np.array(eos_rho(p_2d, prop))
+        else:
+            rho_2d = self._to_2d(q, 'rho', is_residual=False)
+            p_2d = np.array(eos_pressure(rho_2d, prop))
 
         fields = [
             (rho_2d, r'$\rho$ [kg/m³]', 'viridis'),
