@@ -1,0 +1,67 @@
+# Parabolic slider bearing — large domain memory check
+#
+# 2D parabolic slider with non-periodic BCs.
+# Geometry: parabolic height profile, hmax at inlet/outlet edges, hmin at centre.
+#
+# Domain: Lx = 0.1 m, Ly = 0.1 m — 500×500 grid (memory check for large domains)
+#
+# Fluid: air-like (PL EOS)
+#   rho0  = 1.1853 kg/m³
+#   P0    = 101325 Pa
+#   shear = 1.846e-5 Pa·s
+#
+# Wall velocity: U = 50 m/s
+
+options:
+    output: data/parabolic_slider_large
+    write_freq: 1
+    save_output: True
+    output_plots: True
+
+grid:
+    Lx: 0.1
+    Ly: 0.1
+    Nx: 300
+    Ny: 300
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xW_D: 1.1853
+    xE_D: 1.1853
+    yS_D: 1.1853
+    yN_D: 1.1853
+
+geometry:
+    type: parabolic_2d
+    hmax: 6.6e-5
+    hmin: 1.0e-5
+    U: 50.
+    V: 0.
+
+numerics:
+    solver: fem
+    dt: 10.
+    tol: 0.
+    max_it: 5
+
+properties:
+    EOS: PL
+    shear: 1.846e-5
+    bulk: 0.
+    P0: 101325
+    rho0: 1.1853
+    alpha: 0.
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    dynamic: True
+    R_norm_tol: 1e-11
+    physics:
+        gap_shear: true
+        plane_shear: false
+        inertia: false
+    max_iter: 1
+    newton_debug: False
+    scaling: True

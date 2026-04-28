@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 # ── Domain / grid parameters (must match the YAML config) ──────────────────
 Lx = 0.1524     # [m]  bearing length
 Ly = 0.004      # [m]  periodic width
-Nx = 1500
+Nx = 400
 Ny = 2
 
 dx = Lx / Nx

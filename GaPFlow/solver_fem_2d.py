@@ -841,7 +841,7 @@ class FEMSolver2d:
             else:
                 fired = False
 
-            if fem_solver.get('line_search', True):
+            if fem_solver.get('line_search', False):
                 dq_guarded = q - q_before
                 R_new = self.get_R(q)
                 R_new_norm = self.get_R_norm_global(R_new)

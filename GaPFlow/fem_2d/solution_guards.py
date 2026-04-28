@@ -42,7 +42,7 @@ RHO_MIN = 1e-10
 ABS_FLOOR = 1e-10
 
 # Linearization guard: max allowed relative change in dp/drho
-DPDRHO_MAX_REL_CHANGE = 0.9
+DPDRHO_MAX_REL_CHANGE = 0.5
 # Maximum bisection iterations
 DPDRHO_BISECT_MAX_ITER = 25
 
