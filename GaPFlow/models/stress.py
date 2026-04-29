@@ -306,7 +306,8 @@ class WallStress(GaussianProcessSurrogate):
 
     def update(self,
                predictor: bool = False,
-               compute_var: bool = False) -> None:
+               compute_var: bool = False,
+               cooldown: bool = False) -> None:
         """
         Update wall stress: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -319,6 +320,8 @@ class WallStress(GaussianProcessSurrogate):
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
+        cooldown : bool, optional
+            If true, active learning is blocked to let the system cool down (default is False).
         """
 
         # piezoviscosity
@@ -369,7 +372,8 @@ class WallStress(GaussianProcessSurrogate):
 
         if self.is_gp_model:
             mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var)
+                                     compute_var=self.use_active_learning or compute_var,
+                                     cooldown=cooldown)
 
             self.__field.p[self._out_index] = mean[0, :, :]
             self.__field.p[self._out_index + 6] = mean[1, :, :]
@@ -625,7 +629,8 @@ class Pressure(GaussianProcessSurrogate):
 
     def update(self,
                predictor: bool = False,
-               compute_var: bool = False) -> None:
+               compute_var: bool = False,
+               cooldown: bool = False) -> None:
         """
         Update pressure: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -638,10 +643,13 @@ class Pressure(GaussianProcessSurrogate):
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
+        cooldown : bool, optional
+            If true, active learning is blocked to let the system cool down (default is False).
         """
         if self.is_gp_model:
             mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var)
+                                     compute_var=self.use_active_learning or compute_var,
+                                     cooldown=cooldown)
             self.__field.p[...] = mean
             self.__field_variance.p[...] = var
         else:

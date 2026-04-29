@@ -97,7 +97,7 @@ class GaussianProcessSurrogate:
             self._cache = None
             self._database = database
             self._last_fit_train_size = 0
-            self._pause = self.pause_steps
+            self._pause = 0
             self._tol_ratio = 0.
             self._objective = jnp.inf
 
@@ -622,18 +622,20 @@ class GaussianProcessSurrogate:
 
     def predict(self,
                 predictor: bool = True,
-                compute_var: bool = True) -> Tuple[JAXArray, JAXArray]:
+                compute_var: bool = True,
+                cooldown: bool = False) -> Tuple[JAXArray, JAXArray]:
         """
         Perform GP prediction, optionally updating the model via active learning
         (only in predictor step of the predictor-corrector time integration scheme)
 
         Parameters
         ----------
-        predictor : bool
+        predictor : bool, optional
             Whether to perform active learning updates (only in predictor step, default is True).
-        compute_var : bool
+        compute_var : bool, optional
             If true (default), preditive variance is re-computed.
-
+        cooldown : bool, optional
+            If true, active learning is blocked to let the system cool down (default is False).
         Returns
         -------
         m : jax.Array
@@ -659,7 +661,8 @@ class GaussianProcessSurrogate:
 
         if self.use_active_learning \
                 and predictor \
-                and self._pause < 0:
+                and self._pause < 0 \
+                and not cooldown:
 
             counter = 0
             before = deepcopy(self.maximum_variance / self.variance_tol)

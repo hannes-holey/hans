@@ -532,11 +532,14 @@ class Problem:
         for i, d in enumerate(directions):
             # update surrogates / constitutive models (predictor on first pass)
             self.pressure.update(predictor=i == 0,
-                                 compute_var=one_step_before_output)
+                                 compute_var=one_step_before_output,
+                                 cooldown=self.residual > 1e-3)
             self.wall_stress_xz.update(predictor=i == 0,
-                                       compute_var=one_step_before_output)
+                                       compute_var=one_step_before_output,
+                                       cooldown=self.residual > 1e-3)
             self.wall_stress_yz.update(predictor=i == 0,
-                                       compute_var=one_step_before_output)
+                                       compute_var=one_step_before_output,
+                                       cooldown=self.residual > 1e-3)
             self.bulk_stress.update()
 
             # fluxes and source terms
