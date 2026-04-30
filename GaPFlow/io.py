@@ -418,6 +418,7 @@ def sanitize_gp(d):
             out[sk]['similarity_check'] = bool(ds.get('similarity_check', True))
             out[sk]['allowed_skips'] = int(ds.get('allowed_skips', 0))
             out[sk]['perturb_target'] = bool(ds.get('perturb_target', False))
+            out[sk]['pause_on_high_residual'] = bool(ds.get('pause_on_high_residual', False))
 
             assert out[sk]['tol'] in ['absmax', 'delta', 'snr']
 

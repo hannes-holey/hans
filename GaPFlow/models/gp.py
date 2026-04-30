@@ -72,6 +72,7 @@ class GaussianProcessSurrogate:
     similarity_check: bool
     allowed_skips: int
     perturb_target: bool
+    pause_on_high_residual: bool
     params_init: dict
     noise: Tuple[float, float]
     prop: dict
@@ -292,7 +293,7 @@ class GaussianProcessSurrogate:
 
         msg = f"# Objective    : {self.objective:.5g}\n"
 
-        msg += f"# Hyperparam   : \n"
+        msg += "# Hyperparam   : \n"
         scale = [f'{s:.5f}' for s in params['log_scale']]
         msg += f"# - Log scale  : {' '.join(scale)}\n"
         msg += f"# - Log amp    : {params['log_amp']:.5f}\n"
@@ -659,10 +660,13 @@ class GaussianProcessSurrogate:
         toc = datetime.now()
         self._cumtime_infer += toc - tic
 
+        after_failed_attempt = self._pause >= 0
+        in_cooldown = cooldown and self.pause_on_high_residual
+        pause_acquisition = after_failed_attempt or in_cooldown
+
         if self.use_active_learning \
                 and predictor \
-                and self._pause < 0 \
-                and not cooldown:
+                and not pause_acquisition:
 
             counter = 0
             before = deepcopy(self.maximum_variance / self.variance_tol)

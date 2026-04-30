@@ -108,7 +108,7 @@ class WallStress(GaussianProcessSurrogate):
             self.allowed_skips = gp['allowed_skips']
             self.perturb_target = gp['perturb_target']
             self.fix_noise = gp['fix_noise']
-
+            self.pause_on_high_residual = gp['pause_on_high_residual']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
@@ -532,6 +532,7 @@ class Pressure(GaussianProcessSurrogate):
             self.allowed_skips = gp['allowed_skips']
             self.perturb_target = gp['perturb_target']
             self.fix_noise = gp['fix_noise']
+            self.pause_on_high_residual = gp['pause_on_high_residual']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
