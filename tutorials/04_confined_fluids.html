@@ -16,31 +16,34 @@
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
     document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
   </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-<link href="../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-
-  
-  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=eba8b062" />
-    <link rel="stylesheet" type="text/css" href="../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
   
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
-  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
     <script src="../_static/documentation_options.js?v=9eb32ce0"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
-    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/04_confined_fluids';</script>
@@ -50,6 +53,7 @@
     <link rel="prev" title="3. Constitutive laws" href="03_constitutive_laws.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.0.3.dev40" />
   </head>
   
   
@@ -65,19 +69,8 @@
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
 
   
-  <input type="checkbox"
-          class="sidebar-toggle"
-          id="pst-primary-sidebar-checkbox"/>
-  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
-  
-  <input type="checkbox"
-          class="sidebar-toggle"
-          id="pst-secondary-sidebar-checkbox"/>
-  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
-  
-  <div class="search-button__wrapper">
-    <div class="search-button__overlay"></div>
-    <div class="search-button__search-container">
+  <dialog id="pst-search-dialog">
+    
 <form class="bd-search d-flex align-items-center"
       action="../search.html"
       method="get">
@@ -85,7 +78,6 @@
   <input type="search"
          class="form-control"
          name="q"
-         id="search-input"
          placeholder="Search..."
          aria-label="Search..."
          autocomplete="off"
@@ -93,8 +85,8 @@
          autocapitalize="off"
          spellcheck="false"/>
   <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
-</form></div>
-  </div>
+</form>
+  </dialog>
 
   <div class="pst-async-banner-revealer d-none">
   <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
@@ -110,7 +102,8 @@
       
       
       
-      <div class="bd-sidebar-primary bd-sidebar">
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
         
 
   
@@ -140,15 +133,11 @@
 </a></div>
         <div class="sidebar-primary-item">
 
- <script>
- document.write(`
-   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <i class="fa-solid fa-magnifying-glass"></i>
-    <span class="search-button__default-text">Search</span>
-    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
-   </button>
- `);
- </script></div>
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
         <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
@@ -200,9 +189,14 @@
   
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
   </div>
-  
-  <div id="rtd-footer-container"></div>
 
 
       </div>
@@ -285,7 +279,7 @@
 
 
 <button onclick="toggleFullScreen()"
-  class="btn btn-sm btn-fullscreen-button"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
   title="Fullscreen mode"
   data-bs-placement="bottom" data-bs-toggle="tooltip"
 >
@@ -299,24 +293,16 @@
 
 
 
-<script>
-document.write(`
-  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
-    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
-    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
-  </button>
-`);
-</script>
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
 
 
-<script>
-document.write(`
-  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
-  </button>
-`);
-</script>
+</button>
 
 </div></div>
       
@@ -478,7 +464,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/ee3908100ebdcf45f042c01cc208b46923e46ff9fb98cf3801ad3eeebd9d63f9.png" src="../_images/ee3908100ebdcf45f042c01cc208b46923e46ff9fb98cf3801ad3eeebd9d63f9.png" />
+<img alt="../_images/aa6959ff2e3b0dc5e7a63c54e56f50fe88fe941d5d8b8450d53cd87181f3efcc.png" src="../_images/aa6959ff2e3b0dc5e7a63c54e56f50fe88fe941d5d8b8450d53cd87181f3efcc.png" />
 </div>
 </div>
 <p>Here, the line color illustrates the distance from the critical wave number, going from overdamped (in blue) to underdamped (in red) behavior. The shear relaxation is independent of the wave number under these conditions. Note that density and longitudinal momentum behave similar in the underdamped case (with slightly different damping), their behavior diverges at the transition to overdamped dynamics.</p>
@@ -538,10 +524,10 @@ One can derive an analytic solution for the linearized equations, that describe 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/e8f01f57f8a11eb209cd7cd68f4412d7a53c03a7ce5bc2ce3f29508f989e15e7.png" src="../_images/e8f01f57f8a11eb209cd7cd68f4412d7a53c03a7ce5bc2ce3f29508f989e15e7.png" />
-<img alt="../_images/46c32d340612acef21e0c6b9562111fcb3f28b65fd69e65f163cfcd5bf06dd56.png" src="../_images/46c32d340612acef21e0c6b9562111fcb3f28b65fd69e65f163cfcd5bf06dd56.png" />
-<img alt="../_images/30fe66ad13cd26e887c4f94430bc5decb41a9b204fb07fccfa725c56f9b22f5a.png" src="../_images/30fe66ad13cd26e887c4f94430bc5decb41a9b204fb07fccfa725c56f9b22f5a.png" />
-<img alt="../_images/09893d4d398686ee6216cf9900315aaed9f1ca46185496b46f8aef34190d76ce.png" src="../_images/09893d4d398686ee6216cf9900315aaed9f1ca46185496b46f8aef34190d76ce.png" />
+<img alt="../_images/33cdf2d11b40b2f751ca67b13fa73550549922dbad5c145da0db416370b8bb4f.png" src="../_images/33cdf2d11b40b2f751ca67b13fa73550549922dbad5c145da0db416370b8bb4f.png" />
+<img alt="../_images/cfcabc895e931c917fb191205b66ad4db9bbf8eb8a983f587fe06ae73d568d01.png" src="../_images/cfcabc895e931c917fb191205b66ad4db9bbf8eb8a983f587fe06ae73d568d01.png" />
+<img alt="../_images/688bcbdde2961d9f7eb7bcc4c15056368fee6c23e89858883220212703dc7593.png" src="../_images/688bcbdde2961d9f7eb7bcc4c15056368fee6c23e89858883220212703dc7593.png" />
+<img alt="../_images/f6cde04a763e0899c262f7c633f9581f3d6256c469d804ad3020f0036eb04e20.png" src="../_images/f6cde04a763e0899c262f7c633f9581f3d6256c469d804ad3020f0036eb04e20.png" />
 </div>
 </div>
 <p>For the smallest gap (<span class="math notranslate nohighlight">\(h=3\,\mathrm{nm}\)</span>) the modes with the ten largest wavelengths are all overdamped, while only two modes remain overdamped when doubling the gap height. The plot below shows the overdamped region can be reached in high aspect ratio channels, with critical gap heights reaching up to 200 nm for <span class="math notranslate nohighlight">\(L/h=1000\)</span>.</p>
@@ -577,7 +563,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/14b8630d4fde0fd2bc1e92f923590f69f378dcd2a09d343ca221c5037736fbd9.png" src="../_images/14b8630d4fde0fd2bc1e92f923590f69f378dcd2a09d343ca221c5037736fbd9.png" />
+<img alt="../_images/ede7dc6365bb4d7472f3a9c0697559485f16320bbd7dfb037696d7f4fb18894f.png" src="../_images/ede7dc6365bb4d7472f3a9c0697559485f16320bbd7dfb037696d7f4fb18894f.png" />
 </div>
 </div>
 <p>We can use the analytical solution to validate our simulations. Thus let’s create a <code class="docutils literal notranslate"><span class="pre">GaPFlow.problem</span></code> instance with the following properties:</p>
@@ -732,7 +718,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 *************************************************************
 </pre></div>
 </div>
-<img alt="../_images/037fe63c87dbe72cf1b977eb76528479597caa3cfe5a925d8c4942b16e92b220.png" src="../_images/037fe63c87dbe72cf1b977eb76528479597caa3cfe5a925d8c4942b16e92b220.png" />
+<img alt="../_images/fb961ffc04414d9ea4036b55645ee00b7bdc2dadfffffb4e8018859a7e0a0190.png" src="../_images/fb961ffc04414d9ea4036b55645ee00b7bdc2dadfffffb4e8018859a7e0a0190.png" />
 </div>
 </div>
 <p>This looks good. Let’s also check for longitudinal momentum:</p>
@@ -840,7 +826,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 *************************************************************
 </pre></div>
 </div>
-<img alt="../_images/602e3899362820cc23630c881c21985ed7badaa8a2282e320435841f65ec1c76.png" src="../_images/602e3899362820cc23630c881c21985ed7badaa8a2282e320435841f65ec1c76.png" />
+<img alt="../_images/8b25d985b31fb68c9ae78d49b56de687d764bfc1d9d38a94db22ced1b86bd261.png" src="../_images/8b25d985b31fb68c9ae78d49b56de687d764bfc1d9d38a94db22ced1b86bd261.png" />
 </div>
 </div>
 </section>
@@ -924,8 +910,8 @@ By Hannes Holey
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
-<script src="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
 
   <footer class="bd-footer">
   </footer>
