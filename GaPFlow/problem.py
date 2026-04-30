@@ -29,6 +29,7 @@ import numpy as np
 from copy import deepcopy
 from datetime import datetime
 from collections import deque
+from itertools import islice
 from muGrid import GlobalFieldCollection, FileIONetCDF
 
 from typing import Type
@@ -369,10 +370,14 @@ class Problem:
     @property
     def converged(self) -> bool:
         """Return True if residuals in the buffer are below tolerance."""
-        return self._check_residual(self.tol)
+        return not self._residuals_above_tolerance(self.tol, num=5)
 
-    def _check_residual(self, tol: float) -> bool:
-        return np.all(np.array(self.residual_buffer) < tol)
+    def _residuals_above_tolerance(self, tol: float, num: int | None = None) -> bool:
+        """Return True if any of the last `num` residuals are above `tol` (all if `num` is None)."""
+        buf = self.residual_buffer
+        if num is None:
+            return any(v > tol for v in buf)
+        return any(v > tol for v in islice(reversed(buf), num))
 
     # ---------------------------
     # Simulation run utilities
@@ -445,7 +450,7 @@ class Problem:
         self.step = 0
         self.simtime = 0.
         self.residual = 1.
-        self.residual_buffer = deque([self.residual, ], 5)
+        self.residual_buffer = deque([self.residual, ], maxlen=100)
 
         if self.numerics["adaptive"]:
             self.dt = self.numerics["CFL"] * self.dt_crit
@@ -533,7 +538,7 @@ class Problem:
         # Without active learning, compute variance only before writing
         one_step_before_output = (self.step + 1) % self.options['write_freq'] == 0
         # Suppress active learning for rapidly changing fields
-        cooldown = ~self._check_residual(1e-3)
+        cooldown = self._residuals_above_tolerance(1e-3)
 
         for i, d in enumerate(directions):
 
@@ -586,7 +591,7 @@ class Problem:
         self._communicate_ghost_buffers()
 
         self.residual = abs(self.kinetic_energy - self.kinetic_energy_old) / self.kinetic_energy_old / self.cfl
-        self.residual_buffer.append(self.residual)
+        self.residual_buffer.append(float(self.residual))
         self.kinetic_energy_old = deepcopy(self.kinetic_energy)
 
         self.step += 1
