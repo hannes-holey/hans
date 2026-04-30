@@ -30,15 +30,14 @@ from .grid_index import GridIndexManager
 def field_to_global(field_idx,
                     res_type: int,
                     grid_index: GridIndexManager,
-                    bEnergy: bool = False,
+                    p_factor: int = 1,
                     ):
 
     decomp = grid_index._decomp  # DomainDecomposition object
     Nx_global_p = decomp.nb_domain_grid_pts[0]
     Nx_global_v = decomp.nb_domain_grid_pts_v[0]
-    p_factor = 2 if bEnergy else 1
 
-    if res_type == 2 or res_type == 3:  # density node
+    if res_type >= 2:  # density node
         y_p, x_p = np.divmod(field_idx, Nx_global_p)
         y_v, x_v = 2*y_p, 2*x_p
     else:

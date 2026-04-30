@@ -70,6 +70,8 @@ ENERGY_FIELDS = {
     'E_prev',
 }
 
+CAVITATION_FIELDS = {'theta'}
+
 # Fields whose nodal values live on the fine (mass-flux) grid
 _FINE_GRID_FIELDS = {'jx', 'jy'}
 
@@ -93,11 +95,13 @@ class QuadFieldManager:
 
     def __init__(self, problem: "Problem",
                  energy: bool,
+                 cavitation: bool,
                  variables: List[str],
                  elements: TaylorHoodP2P1,
                  decomp: "DomainDecomposition") -> None:
         self.problem = problem
         self.energy = energy
+        self.cavitation = cavitation
         self.variables = variables
         self.elements = elements
         self.decomp = decomp
@@ -141,7 +145,10 @@ class QuadFieldManager:
         # different `.pg` shape (2D, no component axis); a fresh field keeps
         # all nodal_fields uniform as (1, Nx_pad, Ny_pad). The 'pressure'
         # field is kept in sync via `_push_p_to_pressure` on each update.
-        for name in ['rho', 'p', 'h', 'dh_dx', 'dh_dy']:
+        p1_nodal = ['rho', 'p', 'h', 'dh_dx', 'dh_dy']
+        if self.cavitation:
+            p1_nodal.append('theta')
+        for name in p1_nodal:
             self.nodal_fields[name] = fc.real_field(f'{name}_nodal', 1, 'pixel')
 
         # Reference existing fields from fc
@@ -167,6 +174,8 @@ class QuadFieldManager:
         needed = BASE_FIELDS | STRESS_XZ_FIELDS | STRESS_YZ_FIELDS
         if self.energy:
             needed |= ENERGY_FIELDS
+        if self.cavitation:
+            needed |= CAVITATION_FIELDS
         return needed
 
     # =========================================================================
@@ -234,6 +243,8 @@ class QuadFieldManager:
         p.q[0] = self.nodal_fields['rho'].pg[0]
         p.q[1] = self.nodal_fields['jx'].pg[0, ::2, ::2]
         p.q[2] = self.nodal_fields['jy'].pg[0, ::2, ::2]
+        if self.cavitation:
+            p.q[3] = self.nodal_fields['theta'].pg[0]
 
     def sync_from_problem_q(self) -> None:
         """Copy problem.q initial state to Newton-owned nodal fields.
@@ -251,6 +262,8 @@ class QuadFieldManager:
         self.nodal_fields['jx'].pg[0] = zoom(p.q[1], zoom_factors, order=1)
         self.nodal_fields['jy'].pg[0] = zoom(p.q[2], zoom_factors, order=1)
         # E is a direct reference to p.energy's field — no copy needed
+        if self.cavitation:
+            self.nodal_fields['theta'].pg[0] = p.q[3]
 
     def _push_p_to_pressure_field(self) -> None:
         """Copy current nodal p into problem.pressure's underlying field so
@@ -313,6 +326,8 @@ class QuadFieldManager:
         coarse_interp = ['p', 'h', 'dh_dx', 'dh_dy', 'eta']
         if self.energy:
             coarse_interp.extend(['E', 'Tb_top', 'Tb_bot'])
+        if self.cavitation:
+            coarse_interp.append('theta')
         for name in coarse_interp:
             self.interpolate_nodal_to_quad(name)
         for name in ('jx', 'jy'):

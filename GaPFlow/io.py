@@ -550,15 +550,22 @@ def sanitize_fem_solver(d):
         'wall_shear_work': bool(physics.get('wall_shear_work', True)),
         # Numerical
         'stabilization': bool(physics.get('stabilization', True)),
+        'lap_pressure': bool(physics.get('lap_pressure', False)),
+        'lap_theta': bool(physics.get('lap_theta', False)),
         'mass_diffusion': bool(physics.get('mass_diffusion', False)),
         'pspg': bool(physics.get('pspg', False)),
         'gls': bool(physics.get('gls', False)),
     }
 
+    out['lap_pressure_alpha'] = float(d.get('lap_pressure_alpha', 0.0))
+    out['lap_theta_alpha'] = float(d.get('lap_theta_alpha', 0.0))
     out['mass_diffusion_alpha'] = float(d.get('mass_diffusion_alpha', 1e-3))
     out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
     out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))
     out['pen_eps'] = float(d.get('pen_eps', 0.0))
+
+    if 'p_init' in d:
+        out['p_init'] = float(d['p_init'])
 
     equations_energy = d.get('equations', {}).get('energy', None)
     if equations_energy is not None and 'energy' not in physics:
@@ -567,6 +574,15 @@ def sanitize_fem_solver(d):
     out['equations'] = {}
     out['equations']['energy'] = out['physics']['energy']
     out['equations']['term_list'] = d.get('equations', {}).get('term_list', None)
+    out['equations']['cavitation'] = bool(d.get('equations', {}).get('cavitation', False))
+
+    out['log_jacobian_block_norms'] = bool(d.get('log_jacobian_block_norms', False))
+    out['scaling_update_interval'] = int(d.get('scaling_update_interval', 100))
+    out['scaling_ruiz_iter'] = int(d.get('scaling_ruiz_iter', 10))
+    out['nodal_diagnostics'] = bool(d.get('nodal_diagnostics', False))
+    out['line_search'] = bool(d.get('line_search', False))
+    out['line_search_alpha_min'] = float(d.get('line_search_alpha_min', 1e-12))
+    out['theta_min'] = float(d.get('theta_min', 2.220446049250313e-16))
 
     print_dict(out)
 

@@ -155,7 +155,11 @@ class Problem:
 
         # Solution field
         self.step = None
-        self.__field = self.fc.real_field('solution', (3,))
+        nb_sol = 3
+        if self.numerics['solver'] == 'fem':
+            nb_sol += int(self.fem_solver['equations'].get('energy', False))
+            nb_sol += int(self.fem_solver['equations'].get('cavitation', False))
+        self.__field = self.fc.real_field('solution', (nb_sol,))
         self._initialize(rho0=prop['rho0'],
                          U_bot=geo['U_bot'], V_bot=geo['V_bot'],
                          U_top=geo['U_top'], V_top=geo['V_top'])

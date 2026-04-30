@@ -69,7 +69,7 @@ class AssemblyTemplate:
 # Residual, Variable
 BLOCK = (('p', 'p'), ('p', 'v'), ('v', 'p'), ('v', 'v'))
 DOF_GRID = {
-    'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p',
+    'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p', 'fb': 'p',
     'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p',
 }
 DOF_IDX = {
@@ -85,11 +85,9 @@ class Assembly:
     ----------
     grid_idx : GridIndexManager
     variables : list of str
-        All variable names in block order, e.g. ['jx', 'jy', 'rho'].
+        All variable names in block order, e.g. ['jx', 'jy', 'p'].
     residuals : list of str
-        All residual names in block order, e.g. ['Rjx', 'Rjy', 'Rrho'].
-    energy : bool
-        Whether energy is active.
+        All residual names in block order, e.g. ['momentum_x', 'momentum_y', 'mass'].
     """
 
     def __init__(self,
@@ -97,14 +95,26 @@ class Assembly:
                  element: TaylorHoodP2P1,
                  variables: List[str],
                  residuals: List[str],
-                 energy: bool = False,
                  ) -> None:
 
         self.grid_idx = grid_idx
         self.variables = variables
         self.residuals = residuals
-        self.energy = energy
         self.element = element
+        self.p_factor = sum(1 for v in variables if DOF_GRID.get(v) == 'p')
+
+        # Build index lookup that extends DOF_IDX with dynamic P1 slots.
+        # Static entries (jx=0, jy=1, p=2, E=3) are correct for their fixed
+        # positions. theta and fb take the next available P1 slots after E.
+        p1_vars = [v for v in variables if DOF_GRID.get(v) == 'p']
+        self._dof_idx = dict(DOF_IDX)
+        for i, v in enumerate(p1_vars):
+            if v not in self._dof_idx:
+                self._dof_idx[v] = 2 + i  # p=2 is slot 0, E=3 slot 1, etc.
+        p1_res = [r for r in residuals if DOF_GRID.get(r) == 'p']
+        for i, r in enumerate(p1_res):
+            if r not in self._dof_idx:
+                self._dof_idx[r] = 2 + i
 
         self.res_to_grid = {r: DOF_GRID[r] for r in residuals}
         self.var_to_grid = {v: DOF_GRID[v] for v in variables}
@@ -260,9 +270,9 @@ class Assembly:
             inner_pts_global_idx = self.apply_l2g(rg, inner_pts)
             contrib_pts_global_idx = self.apply_l2g(vg, contrib_pts)
 
-            res_idx , var_idx = DOF_IDX[res], DOF_IDX[var]
-            global_rows = field_to_global(inner_pts_global_idx, res_idx, self.grid_idx, self.energy)
-            global_cols = field_to_global(contrib_pts_global_idx, var_idx, self.grid_idx, self.energy)
+            res_idx, var_idx = self._dof_idx[res], self._dof_idx[var]
+            global_rows = field_to_global(inner_pts_global_idx, res_idx, self.grid_idx, self.p_factor)
+            global_cols = field_to_global(contrib_pts_global_idx, var_idx, self.grid_idx, self.p_factor)
             self.nnz_global_rows = np.concatenate([self.nnz_global_rows, global_rows])
             self.nnz_global_cols = np.concatenate([self.nnz_global_cols, global_cols])
 
@@ -273,8 +283,7 @@ class Assembly:
         decomp = self.grid_idx._decomp
         Nx_v, Ny_v = decomp.nb_domain_grid_pts_v
         Nx_p, Ny_p = decomp.nb_domain_grid_pts
-        p_factor = 2 if self.energy else 1
-        expected_global_size = 2 * Nx_v * Ny_v + p_factor * Nx_p * Ny_p
+        expected_global_size = 2 * Nx_v * Ny_v + self.p_factor * Nx_p * Ny_p
         local_max = int(self.nnz_global_rows.max()) if len(self.nnz_global_rows) else -1
         global_max = decomp._mpi_comm.allreduce(local_max, op=MPI.MAX)
         assert global_max + 1 == expected_global_size, (
@@ -338,7 +347,7 @@ class Assembly:
         rows = []
         for res in self.residuals:
 
-            res_type = DOF_IDX[res]
+            res_type = self._dof_idx[res]
 
             if DOF_GRID[res] == 'v':
                 nb_inner = self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
@@ -349,7 +358,7 @@ class Assembly:
             global_field_indices = self.apply_l2g(DOF_GRID[res], np.arange(nb_inner, dtype=np.int32))
 
             rows.append(field_to_global(global_field_indices, res_type,
-                                        self.grid_idx, self.energy))
+                                        self.grid_idx, self.p_factor))
 
         self.rhs_global_rows: IntArray = np.concatenate(rows)
 
@@ -802,13 +811,14 @@ class Assembly:
                     for v in term.dep_vars
                 )
 
-            self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
+            # self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
             sw_vec = np.tile(sw, nb_sq)
             ele_vec = (quad_val_vec * sw_vec).reshape(
                 -1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
 
-            np.add.at(self._rhs_buf, nnz, ele_vec)
-            result[term.name] = self._rhs_buf[:-1].copy()
+            term_buf = np.zeros_like(self._rhs_buf)
+            np.add.at(term_buf, nnz, ele_vec)
+            result[term.name] = term_buf[:-1].copy()
 
         return result

@@ -40,7 +40,7 @@ from .fem_2d.grid_index import GridIndexManager
 from .fem_2d.quad_fields import QuadFieldManager
 from .fem_2d.assembly import Assembly
 from .fem_2d.terms import NonLinearTerm, get_active_terms
-from .fem_2d.scaling import build_scaling
+from .fem_2d.scaling import build_scaling, build_scaling_from_blocks
 from .fem_2d.scipy_system import ScipySystem
 from .fem_2d.solution_guards import (linearization_guard, linearization_guard_p,  # noqa: F401
                                       report_jacobian_block_changes)
@@ -53,13 +53,14 @@ if TYPE_CHECKING:
 NDArray = npt.NDArray[np.floating]
 
 # Variable-to-grid mapping: which grid each variable lives on
-_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p'}
+_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p'}
 # Residual-to-grid mapping: which grid each residual equation lives on
 _RES_TO_GRID = {
     'momentum_x': 'v',
     'momentum_y': 'v',
     'mass':       'p',
     'energy':     'p',
+    'fb':         'p',
 }
 
 
@@ -86,6 +87,7 @@ class FEMSolver2d:
     def _init_accessors(self) -> None:
         p = self.problem
         self.energy = p.fem_solver['equations'].get('energy', False)
+        self.cavitation = p.fem_solver['equations'].get('cavitation', False)
 
         self.dx = p.grid['dx']
         self.dy = p.grid['dy']
@@ -95,6 +97,9 @@ class FEMSolver2d:
         if self.energy:
             self.variables.append('E')
             self.residuals.append('energy')
+        if self.cavitation:
+            self.variables.append('theta')
+            self.residuals.append('fb')
 
         self._sync_rho = p.fem_solver.get('sync_rho_before_exchange', True)
 
@@ -143,6 +148,7 @@ class FEMSolver2d:
         self.quad_mgr = QuadFieldManager(
             problem=self.problem,
             energy=self.energy,
+            cavitation=self.cavitation,
             variables=self.variables,
             elements=self.elements,
             decomp=self.problem.decomp,
@@ -154,7 +160,6 @@ class FEMSolver2d:
             element=self.elements,
             variables=self.variables,
             residuals=self.residuals,
-            energy=self.energy,
         )
 
     def _build_jit_functions(self) -> None:
@@ -177,6 +182,10 @@ class FEMSolver2d:
             ctx['dt'] = lambda: p.numerics['dt']
             ctx['mass_diff_alpha'] = lambda: p.fem_solver.get(
                 'mass_diffusion_alpha', 1e-3)
+            ctx['lap_p_alpha'] = lambda: p.fem_solver.get(
+                'lap_pressure_alpha', 0.0)
+            ctx['lap_theta_alpha'] = lambda: p.fem_solver.get(
+                'lap_theta_alpha', 0.0)
             ctx['p_cav'] = lambda: p.prop['p_cav']
             ctx['pen_eps'] = lambda: p.fem_solver.get('pen_eps', 0.0)
             if self.energy:
@@ -204,7 +213,8 @@ class FEMSolver2d:
                                              solver_type=solver_type)
 
         self.scaling = build_scaling(
-            self.problem, self.energy, self.variables, self.assembly)
+            self.problem, self.energy, self.variables, self.assembly,
+            cavitation=self.cavitation)
 
         if self.problem.decomp.rank == 0:
             p_ref = self.scaling.char_scales['p']
@@ -291,9 +301,13 @@ class FEMSolver2d:
         p_field = self.quad_mgr.nodal_fields['p']
         jx  = self.quad_mgr.nodal_fields['jx']
         jy  = self.quad_mgr.nodal_fields['jy']
+
+        exchange_specs = [(rho, 'P1'), (p_field, 'P1'), (jx, 'P2'), (jy, 'P2')]
+        if self.cavitation:
+            exchange_specs.append((self.quad_mgr.nodal_fields['theta'], 'P1'))
+
         p.decomp.update_ghosts(
-            exchange_specs=[(rho, 'P1'), (p_field, 'P1'),
-                            (jx, 'P2'), (jy, 'P2')],
+            exchange_specs=exchange_specs,
             bc_specs=[
                 (rho.pg[0], 'rho', 'P1_nodal'),
                 (jx.pg[0],  'jx',  'P2_nodal'),
@@ -302,6 +316,8 @@ class FEMSolver2d:
             problem=p,
         )
         self._fill_p_at_physical_boundaries()
+        if self.cavitation:
+            self._fill_theta_at_physical_boundaries()
 
     def _fill_p_at_physical_boundaries(self) -> None:
         """Fill p at physical-boundary ghost strips from the BC-applied rho.
@@ -323,6 +339,19 @@ class FEMSolver2d:
         if decomp.bc_at_N:
             p_ng[:, -1] = eos_pressure(rho[:, -1], p.prop)
         self.quad_mgr._push_p_to_pressure_field()
+
+    def _fill_theta_at_physical_boundaries(self) -> None:
+        """Set theta=0 at physical-boundary ghost strips (Dirichlet, no user callback)."""
+        decomp = self.problem.decomp
+        theta = self.quad_mgr.nodal_fields['theta'].pg[0]
+        if decomp.bc_at_W:
+            theta[0, :] = 0.0
+        if decomp.bc_at_E:
+            theta[-1, :] = 0.0
+        if decomp.bc_at_S:
+            theta[:, 0] = 0.0
+        if decomp.bc_at_N:
+            theta[:, -1] = 0.0
 
     def _log_bc_pressures(self) -> None:
         """Print pressure at each active Dirichlet boundary ghost strip.
@@ -456,13 +485,6 @@ class FEMSolver2d:
             self._sync_rho_before_exchange()
         self._exchange_ghosts()
         self.update_quad()
-        if getattr(self, '_diag_d_dx_jx_done', False) is False:
-            self._diag_d_dx_jx_done = True
-            d_stored = self.quad_mgr.get_quad('d_dx_jx')
-            d_fresh = self.quad_mgr.get_deriv_dx('jx')
-            print(f"[DIAG d_dx_jx] stored: min={d_stored.min():.4e}  max={d_stored.max():.4e}  mean={d_stored.mean():.4e}")
-            print(f"[DIAG d_dx_jx]  fresh: min={d_fresh.min():.4e}  max={d_fresh.max():.4e}  mean={d_fresh.mean():.4e}")
-            print(f"[DIAG jx nodal] min={self.quad_mgr.nodal_fields['jx'].pg.min():.4e}  max={self.quad_mgr.nodal_fields['jx'].pg.max():.4e}")
         qf = self._build_all_quad_fields()
         M = self.get_M(qf)
         R = self.get_R_(qf).copy()
@@ -487,6 +509,124 @@ class FEMSolver2d:
         R_norm_global_sq = comm.allreduce(R_norm_local_sq, op=MPI.SUM)
         R_norm_global = float(np.sqrt(R_norm_global_sq))
         return R_norm_global
+
+    def log_jacobian_block_norms(self, M_coo: NDArray = None,
+                                  scaled: bool = True) -> None:
+        """Print Frobenius norm of each (residual, variable) block of the Jacobian.
+
+        Assembles the Jacobian at the current state if M_coo is not supplied.
+        Prints two tables: raw COO norms, then scaled norms (if scaling exists).
+        Useful for diagnosing whether characteristic scales in scaling.py are
+        appropriate for the current physical regime.
+
+        Parameters
+        ----------
+        M_coo : array, optional
+            COO Jacobian values from get_M(). Assembled fresh if None.
+        scaled : bool
+            If True and self.scaling exists, also print the scaled table.
+        """
+        if M_coo is None:
+            qf = self._build_all_quad_fields()
+            M_coo = self.get_M(qf)
+
+        asm = self.assembly
+        res_names = list(asm._res_slices.keys())
+        var_names = list(asm._sol_slices.keys())
+        res_idx = {r: i for i, r in enumerate(res_names)}
+        var_idx = {v: i for i, v in enumerate(var_names)}
+
+        # Map each COO entry to its (res_block, var_block) indices
+        r_blk = np.empty(len(M_coo), dtype=np.int32)
+        v_blk = np.empty(len(M_coo), dtype=np.int32)
+        for (res, var), block in asm.block_order.items():
+            s = block['nnz_idx_start']
+            n = block['nb_nnz']
+            r_blk[s:s + n] = res_idx[res]
+            v_blk[s:s + n] = var_idx[var]
+
+        def _print_table(vals, title):
+            col_w = 11
+            hdr = f"  {'res \\ var':<14s}" + ''.join(f"{v:>{col_w}s}" for v in var_names)
+            print(f"\n{title}")
+            print(hdr)
+            print('  ' + '-' * (len(hdr) - 2))
+            for ri, res in enumerate(res_names):
+                row = f"  {res:<14s}"
+                for vi, var in enumerate(var_names):
+                    mask = (r_blk == ri) & (v_blk == vi)
+                    norm = np.linalg.norm(vals[mask]) if mask.any() else 0.0
+                    row += f"{norm:>{col_w}.2e}"
+                print(row)
+
+        _print_table(M_coo, 'Jacobian block norms (unscaled)')
+
+        if scaled and hasattr(self, 'scaling') and self.scaling is not None:
+            _print_table(M_coo * self.scaling.display_scale, 'Jacobian block norms (scaled)')
+            cs = self.scaling.char_scales
+            print(f"\n  Characteristic scales: "
+                  + '  '.join(f"{k}={v:.2e}" for k, v in cs.items()))
+
+    def _limit_cavitation_step(self, q: NDArray, dq: NDArray) -> NDArray:
+        """Limit the Newton step so no p-DOF changes by more than a relative fraction.
+
+        Computes a single global scalar factor
+            f = min(1, min_i( max_rel_dp * max(|p_i|, p_floor) / |dq_p_i| ))
+        and returns f * dq.  The floor prevents division-by-zero when p_cav = 0.
+
+        Activated by fem_solver.transition_damping: true.
+        Fraction: fem_solver.transition_damping_max_rel_dp  (default 0.05)
+        Floor:    fem_solver.transition_damping_p_floor     (default 1e3 Pa)
+        """
+        p_sl = self._sol_slice('p')
+        max_rel_dp = float(self.problem.fem_solver.get('transition_damping_max_rel_dp', 0.2))
+        p_floor = float(self.problem.fem_solver.get('transition_damping_p_floor', 1e4))
+
+        p_cur = q[p_sl]
+        dp = dq[p_sl]
+
+        allowed = max_rel_dp * np.maximum(np.abs(p_cur), p_floor)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            factors = np.where(np.abs(dp) > 0.0, allowed / np.abs(dp), 1.0)
+        f = float(np.min(factors))
+        if f < 1.0:
+            if self.problem.decomp.rank == 0:
+                worst = int(np.argmin(factors))
+                print(f"  [transition_damping] f={f:.4e}  "
+                      f"worst node={worst}  |dp|={abs(dp[worst]):.3e}  "
+                      f"allowed={allowed[worst]:.3e}")
+            dq = dq * f
+        return dq
+
+    def _clamp_cavitation(self, q: NDArray) -> NDArray:
+        """Clamp p >= p_cav and theta >= 0, with singularity guard at (a,theta)=(0,0)."""
+        p_sl = self._sol_slice('p')
+        theta_sl = self._sol_slice('theta')
+        p_cav = float(self.problem.prop.get('p_cav', 0.0))
+        theta_min = self.problem.fem_solver.get('theta_min', np.finfo(float).eps)
+        q[p_sl] = np.maximum(q[p_sl], p_cav)
+        th = np.maximum(q[theta_sl], 0.0)
+        a = q[p_sl] - p_cav
+        q[theta_sl] = np.where(
+            (np.abs(a) < theta_min) & (th < theta_min),
+            theta_min, th)
+        return q
+
+    def _print_nodal_diagnostics(self, label: str = '') -> None:
+        """Print min/max of inner nodal fields and quad arrays for diagnostics."""
+        qm = self.quad_mgr
+        prefix = f'  [nodal {label}]' if label else '  [nodal]'
+        nodal_names = ['p', 'rho'] + (['theta'] if self.cavitation else [])
+        for name in nodal_names:
+            inner = qm.nodal_fields[name].p[0]
+            print(f'{prefix}  {name}: [{inner.min():.4e}, {inner.max():.4e}]')
+        prefix_q = f'  [quad  {label}]' if label else '  [quad]'
+        quad_names = ['p', 'rho'] + (['theta'] if self.cavitation else [])
+        for name in quad_names:
+            if name in qm.quad_fields:
+                qm.interpolate_nodal_to_quad(name)
+                q_arr = qm.get_quad(name)
+                print(f'{prefix_q}  {name}: [{q_arr.min():.4e}, {q_arr.max():.4e}]')
 
     # =========================================================================
     # Output helpers
@@ -800,14 +940,13 @@ class FEMSolver2d:
 
             if rank == 0:
                 self.R_norm_history[-1].append(R_norm)
-                p_bc_e = ''
-                if p.decomp.bc_at_E:
-                    p_ng = self.quad_mgr.nodal_fields['p'].pg[0]
-                    p_bc_e = f'  p_E(interior)={float(p_ng[-2, 0]):.4g} Pa  p_E(ghost)={float(p_ng[-1, 0]):.4g} Pa'
-                print(f'{R_norm}{p_bc_e}')
+                print(f'{R_norm}')
 
             if R_norm < tol and it > 0:
                 break
+
+            if fem_solver.get('log_jacobian_block_norms', False) and it == 0 and p.step == 0 and rank == 0:
+                self.log_jacobian_block_norms(M_coo=M, scaled=fem_solver.get('scaling', False))
 
             if fem_solver.get('linearization_guard', False):
                 if _M_prev is not None:
@@ -817,7 +956,17 @@ class FEMSolver2d:
                 _M_prev = M.copy()
 
             if fem_solver.get('scaling', False):
+                scale_interval = fem_solver.get('scaling_update_interval', 100)
+                if it == 0 and (p.step == 0 or p.step % scale_interval == 0):
+                    self.scaling = build_scaling_from_blocks(
+                        M, self.variables, self.residuals, self.assembly,
+                        n_iter=fem_solver.get('scaling_ruiz_iter', 10))
+                    if rank == 0:
+                        self.log_jacobian_block_norms(M_coo=M, scaled=True)
                 M_scaled, R_scaled = self.scaling.scale_system(M, R)
+                R_scaled_norm = self.get_R_norm_global(R_scaled)
+                if rank == 0:
+                    print(f'  R_scaled={R_scaled_norm:.6e}')
                 self.linear_solver.assemble(M_scaled, R_scaled)
                 dq_scaled = self.linear_solver.solve()
                 dq = self.scaling.unscale_solution(dq_scaled)
@@ -832,37 +981,53 @@ class FEMSolver2d:
                     R_per_term=self._last_R_per_term, M_scaled=M_scaled)
                 self._debug_steps_done += 1
 
+            if self.cavitation and fem_solver.get('transition_damping', True):
+                dq = self._limit_cavitation_step(q, dq)
+
             q_before = q.copy()
             q = q + alpha * dq
 
-            if fem_solver.get('linearization_guard', True):
+            if fem_solver.get('linearization_guard', False):
                 q, fired = linearization_guard_p(q_before, q - q_before, self)
                 any_guard_fired |= fired
             else:
                 fired = False
 
             if fem_solver.get('line_search', False):
+                if self.cavitation:
+                    q = self._clamp_cavitation(q)
                 dq_guarded = q - q_before
+                # Use scaled norm when available, unscaled otherwise
+                use_scaled = fem_solver.get('scaling', False)
+                R_ref = R_scaled_norm if use_scaled else R_norm
+
+                def _ls_norm(R_raw):
+                    if use_scaled:
+                        return self.get_R_norm_global(R_raw / self.scaling.rhs_scale)
+                    return self.get_R_norm_global(R_raw)
+
                 R_new = self.get_R(q)
-                R_new_norm = self.get_R_norm_global(R_new)
-                print("R_new_norm:", R_new_norm)
+                R_new_norm = _ls_norm(R_new)
                 if rank == 0:
-                    print(f"  [LineSearch] R: {R_norm:.6e} -> {R_new_norm:.6e}"
-                          f" ({'OK' if R_new_norm < R_norm else 'INCREASED'})")
-                if R_new_norm >= R_norm:
+                    label = 'R_scaled' if use_scaled else 'R'
+                    print(f"  [LineSearch] {label}: {R_ref:.6e} -> {R_new_norm:.6e}"
+                          f" ({'OK' if R_new_norm < R_ref else 'INCREASED'})")
+                if R_new_norm >= R_ref:
                     ls_alpha = 0.5
                     ls_min = fem_solver.get('line_search_alpha_min', 1e-12)
                     accepted = False
                     while ls_alpha >= ls_min:
                         q_trial = q_before + ls_alpha * dq_guarded
+                        if self.cavitation:
+                            q_trial = self._clamp_cavitation(q_trial)
                         R_trial = self.get_R(q_trial)
-                        R_trial_norm = self.get_R_norm_global(R_trial)
-                        if R_trial_norm < R_norm:
+                        R_trial_norm = _ls_norm(R_trial)
+                        if R_trial_norm < R_ref:
                             q = q_trial
                             accepted = True
                             if rank == 0:
                                 print(f"  [LineSearch] accepted ls_alpha={ls_alpha:.2e},"
-                                      f" R {R_norm:.4e} -> {R_trial_norm:.4e}")
+                                      f" {label} {R_ref:.4e} -> {R_trial_norm:.4e}")
                             break
                         ls_alpha *= 0.5
                     if not accepted:
@@ -876,7 +1041,6 @@ class FEMSolver2d:
             if fem_solver.get('mass_diffusion_adaptive', False):
                 R_new = self.get_R(q)
                 R_new_norm = self.get_R_norm_global(R_new)
-                print(f"new R norm: {R_new_norm:.4e}, old R norm: {R_norm:.4e}")
                 md_alpha = fem_solver['mass_diffusion_alpha']
                 if R_new_norm > R_norm:
                     q = q - alpha * dq
@@ -894,7 +1058,6 @@ class FEMSolver2d:
                             print(f"Mass diffusion: R decreased, "
                                   f"alpha {md_alpha:.2e} -> {md_alpha_new:.2e}")
                         md_alpha = md_alpha_new
-
 
             if fem_solver.get('rho_smoothing', False):
                 R_new = self.get_R(q)
@@ -944,6 +1107,20 @@ class FEMSolver2d:
             # q, fired = apply_guards(q_before, q - q_before, self)
             # any_guard_fired |= fired
 
+            if self.cavitation:
+                q = self._clamp_cavitation(q)
+
+            self.set_q_nodal(q)
+            self._exchange_ghosts()
+
+            if fem_solver.get('nodal_diagnostics', False) and rank == 0:
+                self._print_nodal_diagnostics(f'it={it}')
+
+        # Final clamp + push: ensures the nodal state is physically valid even
+        # when the loop exited early via the convergence break (which fires after
+        # solver_step_fun has already pushed an unclamped q into the nodal fields).
+        if self.cavitation:
+            q = self._clamp_cavitation(q)
             self.set_q_nodal(q)
             self._exchange_ghosts()
 
@@ -984,6 +1161,19 @@ class FEMSolver2d:
 
         # Populate fine-grid corners from problem.q initial state
         self.quad_mgr.sync_from_problem_q()
+
+        # Optionally shift initial pressure uniformly (useful when p_init > p_cav
+        # is needed to start in a stable full-film regime before Newton iterates).
+        p_init = self.fem_spec.get('p_init', None)
+        if p_init is not None:
+            p0 = float(p_init)
+            rho_init = eos_rho(np.full_like(
+                self.quad_mgr.nodal_fields['p'].pg[0], p0), self.problem.prop)
+            self.quad_mgr.nodal_fields['p'].pg[0] = p0
+            self.quad_mgr.nodal_fields['rho'].pg[0] = rho_init
+            self.problem.q[0] = rho_init
+            self.quad_mgr.sync_to_problem_q()
+
         self._exchange_ghosts()
         self._log_bc_pressures()
 

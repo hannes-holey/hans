@@ -351,6 +351,13 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
     else:
         E = None
 
+    # Cavitation fill fraction theta (if cavitation is active)
+    has_cavitation = bool(problem.fem_solver.get('equations', {}).get('cavitation', False))
+    if has_cavitation and len(problem.q) > 3:
+        theta = g(problem.q[3])
+    else:
+        theta = None
+
     # Only rank 0 creates the plot
     if rank != 0:
         return
@@ -400,14 +407,16 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
     # Plot mass flux y
     plot_field(axes[0, 2], jy, r'Mass flux $j_y$ [kg/(m²·s)]', 'RdBu_r')
 
-    # Plot energy or placeholder
-    if E is not None:
+    # Plot theta (cavitation), energy, or placeholder — in that priority order
+    if theta is not None:
+        plot_field(axes[1, 0], theta, r'Fill fraction $\theta$ [-]', 'YlOrRd')
+    elif E is not None:
         plot_field(axes[1, 0], E, r'Energy $E$ [J/m³]', 'inferno')
     else:
-        axes[1, 0].text(0.5, 0.5, 'Energy equation\nnot enabled',
+        axes[1, 0].text(0.5, 0.5, 'Energy / cavitation\nnot enabled',
                         ha='center', va='center', transform=axes[1, 0].transAxes,
                         fontsize=12, color='gray')
-        axes[1, 0].set_title('Energy')
+        axes[1, 0].set_title('Energy / Cavitation')
         axes[1, 0].axis('off')
 
     # Plot deformed height
@@ -425,6 +434,8 @@ def create_overview_plot(problem: "Problem", output_path: str) -> None:
         f"ρ: [{np.min(rho):.4f}, {np.max(rho):.4f}] kg/m³\n"
         f"h: [{np.min(h) * 1e6:.2f}, {np.max(h) * 1e6:.2f}] µm\n"
     )
+    if theta is not None:
+        info_text += f"θ: [{np.min(theta):.3f}, {np.max(theta):.3f}] -\n"
     if E is not None:
         info_text += f"E: [{np.min(E):.2e}, {np.max(E):.2e}] J/m³\n"
 

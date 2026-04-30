@@ -39,13 +39,13 @@ from ..models.pressure import eos_pressure, eos_rho
 
 
 # Grid type for each variable / residual name
-_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'p': 'p', 'E': 'p'}
-_RES_GRID = {'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p'}
+_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'p': 'p', 'E': 'p', 'theta': 'p'}
+_RES_GRID = {'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p', 'fb': 'p'}
 
 # Display labels
-_VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'p': 'dq p', 'E': 'dq E'}
+_VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'p': 'dq p', 'E': 'dq E', 'theta': 'dq theta'}
 _RES_LABEL = {'momentum_x': 'R mom_x', 'momentum_y': 'R mom_y',
-              'mass': 'R mass', 'energy': 'R energy'}
+              'mass': 'R mass', 'energy': 'R energy', 'fb': 'R FB'}
 
 
 def _minmax_title(label, field):

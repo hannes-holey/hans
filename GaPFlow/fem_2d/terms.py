@@ -246,19 +246,54 @@ R_cav_pen = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
-# R1T: Time derivative (pressure form: -(p - p_prev)/dt).
-# No chain rule — p is the DOF. Jacobian slot is the trivial -1/dt.
+# R1T: Time derivative (pressure form: -(drho/dp) * (p - p_prev)/dt).
+# Chain rule: ∂ρ/∂t = (dρ/dp) · ∂p/∂t. drho_dp is evaluated at current p
+# (quadrature field), so the Jacobian is simply -drho_dp/dt.
+# The second-order correction -d²ρ/dp²·(p-p_prev)/dt is negligible for small
+# dt and smooth EOS (DH), so it is omitted.
 R1T = NonLinearTerm(
     name='R1T',
     description='time derivative',
     res='mass',
     dep_vars=['p'],
-    dep_vals=[],
-    fun=lambda ctx: lambda p: - (p - ctx['p_prev']()) / ctx['dt'](),
-    der_funs=[lambda ctx: lambda p: - np.full_like(p, 1.0) / ctx['dt']()],
+    dep_vals=['drho_dp'],
+    fun=lambda ctx: lambda p: - ctx['drho_dp']() * (p - ctx['p_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda p: - ctx['drho_dp']() / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
+
+# R_Lpx / R_Lpy: theta-weighted pressure Laplacian stabilization for mass equation.
+# Weak form: +alpha * theta * ∫ (∂Nᵢ/∂x)(∂p/∂x) dΩ  (and y-direction).
+# Assembly applies -1/dx² for (d_dx_resfun=True, der_testfun='x'), so fun carries
+# a minus sign: fun = -alpha*theta*p → net +alpha*theta*∫ ∂Nᵢ/∂x · ∂p/∂x dΩ.
+# theta is a dep_val: Jacobian is approximate (d/dtheta omitted) which is
+# acceptable for a stabilization term.
+# Activated by physics flag lap_pressure: true.
+# Coefficient set via fem_solver.lap_pressure_alpha (default 0.0, dimensionless).
+R_Lpx = NonLinearTerm(
+    name='R_Lpx',
+    description='theta-weighted pressure Laplacian stabilization x',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['theta'],
+    fun=lambda ctx: lambda p: -ctx['lap_p_alpha']() * ctx['theta']() * p,
+    der_funs=[lambda ctx: lambda p: -ctx['lap_p_alpha']() * ctx['theta']()],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R_Lpy = NonLinearTerm(
+    name='R_Lpy',
+    description='theta-weighted pressure Laplacian stabilization y',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['theta'],
+    fun=lambda ctx: lambda p: -ctx['lap_p_alpha']() * ctx['theta']() * p,
+    der_funs=[lambda ctx: lambda p: -ctx['lap_p_alpha']() * ctx['theta']()],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
 
 # R1Lx / R1Ly: Simple Laplacian density diffusion for mass equation.
 # Adds α_stab * ∫ (∂Nᵢ/∂x_k)(∂ρ/∂x_k) dΩ with a fixed, tunable coefficient.
@@ -897,6 +932,168 @@ R3T = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
+# -----------------------------------------------------------------------------
+# Elrod-Adams / Fischer-Burmeister cavitation terms (R11*_fb, R_FB)
+# Activated when physics flag cavitation: true.
+# Replace R11x, R11y, R11Sx, R11Sy (and their _corr variants) entirely.
+# -----------------------------------------------------------------------------
+
+def _fb_denom(a, b):
+    """sqrt(a²+b²), bumped to machine epsilon at (0,0) to avoid singularity."""
+    d = np.sqrt(a**2 + b**2)
+    return np.where(d == 0.0, np.finfo(float).eps, d)
+
+
+# IBP form: ∫ φ·∂(-c·jx)/∂x dΩ → +∫ ∂φ/∂x·c·jx dΩ by IBP.
+# Assembly applies factor -1/d for der_testfun='x', so fun must carry a minus
+# sign to cancel it: fun = -c·jx → assembled as +∫ ∂φ/∂x·c·jx dΩ.
+# Jacobian blocks produced:
+#   (mass, jx,    'none', 'x'): +∫ ∂Ni/∂x · dp_drho·(1−θ) · Nj^P2 dΩ
+#   (mass, theta, 'none', 'x'): +∫ ∂Ni/∂x · dp_drho·jx · Nj^P1 dΩ
+R11x_fb = NonLinearTerm(
+    name='R11x_fb',
+    description='flux divergence x Elrod-Adams (IBP)',
+    res='mass',
+    dep_vars=['jx', 'theta'],
+    dep_vals=['dp_drho'],
+    fun=lambda ctx: lambda jx, theta: -ctx['dp_drho']() * (1 - theta) * jx,
+    der_funs=[
+        lambda ctx: lambda jx, theta: -ctx['dp_drho']() * (1 - theta),
+        lambda ctx: lambda jx, theta:  ctx['dp_drho']() * jx,
+    ],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun='x')
+
+R11y_fb = NonLinearTerm(
+    name='R11y_fb',
+    description='flux divergence y Elrod-Adams (IBP)',
+    res='mass',
+    dep_vars=['jy', 'theta'],
+    dep_vals=['dp_drho'],
+    fun=lambda ctx: lambda jy, theta: -ctx['dp_drho']() * (1 - theta) * jy,
+    der_funs=[
+        lambda ctx: lambda jy, theta: -ctx['dp_drho']() * (1 - theta),
+        lambda ctx: lambda jy, theta:  ctx['dp_drho']() * jy,
+    ],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun='y')
+
+R11Sx_fb = NonLinearTerm(
+    name='R11Sx_fb',
+    description='flux divergence height source x Elrod-Adams',
+    res='mass',
+    dep_vars=['jx', 'theta'],
+    dep_vals=['h', 'dh_dx', 'dp_drho'],
+    fun=lambda ctx: lambda jx, theta: -ctx['dp_drho']() / ctx['h']() * ctx['dh_dx']() * (1 - theta) * jx,
+    der_funs=[
+        lambda ctx: lambda jx, theta: -ctx['dp_drho']() / ctx['h']() * ctx['dh_dx']() * (1 - theta),
+        lambda ctx: lambda jx, theta:  ctx['dp_drho']() / ctx['h']() * ctx['dh_dx']() * jx,
+    ],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
+
+R11Sy_fb = NonLinearTerm(
+    name='R11Sy_fb',
+    description='flux divergence height source y Elrod-Adams',
+    res='mass',
+    dep_vars=['jy', 'theta'],
+    dep_vals=['h', 'dh_dy', 'dp_drho'],
+    fun=lambda ctx: lambda jy, theta: -ctx['dp_drho']() / ctx['h']() * ctx['dh_dy']() * (1 - theta) * jy,
+    der_funs=[
+        lambda ctx: lambda jy, theta: -ctx['dp_drho']() / ctx['h']() * ctx['dh_dy']() * (1 - theta),
+        lambda ctx: lambda jy, theta:  ctx['dp_drho']() / ctx['h']() * ctx['dh_dy']() * jy,
+    ],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
+
+# Jacobian correction for the implicit p-dependence of dp_drho in R11*_fb.
+# R11x_fb uses IBP (der_testfun='x'): Rᵢ = ∫ ∂Nᵢ/∂x · (-dp_drho·(1-θ)·jx) dΩ
+# so dRᵢ/dpⱼ = ∫ ∂Nᵢ/∂x · (-d²p/drho²·drho/dp·(1-θ)·jx·Nⱼ) dΩ
+# → same der_testfun='x', dep_vals uses jx (not d_dx_jx).
+# Zero residual contribution — Jacobian-only.
+R11x_fb_corr = NonLinearTerm(
+    name='R11x_fb_corr',
+    description='flux divergence x FB Jacobian correction (d(dp_drho)/dp, theta-weighted)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'jx', 'theta'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) * ctx['jx']()],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun='x')
+
+R11y_fb_corr = NonLinearTerm(
+    name='R11y_fb_corr',
+    description='flux divergence y FB Jacobian correction (d(dp_drho)/dp, theta-weighted)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'jy', 'theta'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) * ctx['jy']()],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun='y')
+
+R11Sx_fb_corr = NonLinearTerm(
+    name='R11Sx_fb_corr',
+    description='flux divergence height source x FB Jacobian correction',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'jx', 'h', 'dh_dx', 'theta'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) / ctx['h']() * ctx['dh_dx']() * ctx['jx']()],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
+
+R11Sy_fb_corr = NonLinearTerm(
+    name='R11Sy_fb_corr',
+    description='flux divergence height source y FB Jacobian correction',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['d2p_drho2', 'drho_dp', 'jy', 'h', 'dh_dy', 'theta'],
+    fun=lambda ctx: lambda p: 0.0 * p,
+    der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) / ctx['h']() * ctx['dh_dy']() * ctx['jy']()],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
+
+
+# R_LTx / R_LTy: Laplacian theta stabilization for fb equation.
+# Weak form: +alpha * ∫ (∂Nᵢ/∂x)(∂theta/∂x) dΩ  (and y-direction).
+# Assembly applies -1/dx² for (d_dx_resfun=True, der_testfun='x'), so fun
+# carries a minus sign: fun = -alpha*theta → net +alpha*∫ ∂Nᵢ/∂x·∂theta/∂x dΩ.
+# Coefficient lap_theta_alpha has units consistent with R_FB (Pa) — tune directly.
+# Activated by physics flag lap_theta: true.
+R_LTx = NonLinearTerm(
+    name='R_LTx',
+    description='Laplacian theta stabilization x',
+    res='fb',
+    dep_vars=['theta'],
+    dep_vals=[],
+    fun=lambda ctx: lambda theta: -ctx['lap_theta_alpha']() * theta,
+    der_funs=[lambda ctx: lambda theta: -ctx['lap_theta_alpha']() * np.ones_like(theta)],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R_LTy = NonLinearTerm(
+    name='R_LTy',
+    description='Laplacian theta stabilization y',
+    res='fb',
+    dep_vars=['theta'],
+    dep_vals=[],
+    fun=lambda ctx: lambda theta: -ctx['lap_theta_alpha']() * theta,
+    der_funs=[lambda ctx: lambda theta: -ctx['lap_theta_alpha']() * np.ones_like(theta)],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
+
+R_FB = NonLinearTerm(
+    name='R_FB',
+    description='Fischer-Burmeister complementarity condition',
+    res='fb',
+    dep_vars=['p', 'theta'],
+    dep_vals=['p_cav'],
+    fun=lambda ctx: lambda p, theta: (
+        lambda a: np.sqrt(a**2 + theta**2) - a - theta
+    )(p - ctx['p_cav']()),
+    der_funs=[
+        lambda ctx: lambda p, theta: (lambda a: a     / _fb_denom(a, theta) - 1.0)(p - ctx['p_cav']()),
+        lambda ctx: lambda p, theta: (lambda a: theta / _fb_denom(a, theta) - 1.0)(p - ctx['p_cav']()),
+    ],
+    d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
+
+
 # Master list of all physical terms.
 term_list = [
     # Mass equation
@@ -904,6 +1101,14 @@ term_list = [
     R11x_corr, R11y_corr, #R11Sx_corr, R11Sy_corr,
     R_cav_pen,
     R1T,
+    # Elrod-Adams / FB cavitation (replaces R11* when cavitation: true)
+    R11x_fb, R11y_fb, R11Sx_fb, R11Sy_fb,
+    R11x_fb_corr, R11y_fb_corr, R11Sx_fb_corr, R11Sy_fb_corr,
+    R_FB,
+    # theta-weighted pressure Laplacian stabilization (dormant; physics.lap_pressure default False)
+    R_Lpx, R_Lpy,
+    # Laplacian theta stabilization (dormant; physics.lap_theta default False)
+    R_LTx, R_LTy,
     # Laplacian density diffusion (dormant; physics.mass_diffusion default False)
     R1Lx, R1Ly,
     # PSPG mass stabilization (dormant; physics.pspg default False)
@@ -943,14 +1148,32 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     """
 
     physics = fem_solver.get('physics', {})
+    equations = fem_solver.get('equations', {})
+    cavitation = equations.get('cavitation', False)
 
     # Mass conservation and pressure gradient always included.
-    terms = [
-        'R11x', 'R11y', 'R11Sx', 'R11Sy',
-        'R11x_corr', 'R11y_corr', 'R11Sx_corr', 'R11Sy_corr',
-        'R1T',
-        'R21x', 'R21y', 'R2Tx', 'R2Ty',
-    ]
+    # Cavitation: swap standard R11* (+ corr) for Elrod-Adams _fb variants.
+    if cavitation:
+        terms = [
+            'R11x_fb', 'R11y_fb', 'R11Sx_fb', 'R11Sy_fb',
+            'R11x_fb_corr', 'R11y_fb_corr', 'R11Sx_fb_corr', 'R11Sy_fb_corr',
+            'R_FB',
+            'R1T',
+            'R21x', 'R21y', 'R2Tx', 'R2Ty',
+        ]
+    else:
+        terms = [
+            'R11x', 'R11y', 'R11Sx', 'R11Sy',
+            'R11x_corr', 'R11y_corr', 'R11Sx_corr', 'R11Sy_corr',
+            'R1T',
+            'R21x', 'R21y', 'R2Tx', 'R2Ty',
+        ]
+
+    if physics.get('lap_pressure', False):
+        terms.extend(['R_Lpx', 'R_Lpy'])
+
+    if physics.get('lap_theta', False):
+        terms.extend(['R_LTx', 'R_LTy'])
 
     if physics.get('mass_diffusion', False):
         terms.extend(['R1Lx', 'R1Ly'])

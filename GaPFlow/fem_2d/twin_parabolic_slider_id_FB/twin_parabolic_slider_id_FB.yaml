@@ -1,0 +1,84 @@
+# Twin identical parabolic slider — Fischer-Burmeister cavitation
+#
+# Reference geometry: Giacopini et al. (2010), J. Tribology 132(4), 041702.
+# Same geometry as twin_parabolic_slider_id but using DH EOS with FB
+# complementarity constraint instead of the Bayada-Chupin EOS.
+#
+# Geometry: two identical symmetric parabolic sliders (hmax at edges,
+#   hmin at centre), each occupying half the domain.
+#   hmax = 50.2 µm, hmin = 25.4 µm
+#
+# Domain: Lx = 0.1524 m, Ly = 0.004 m
+#
+# Fluid: Dowson-Higginson EOS
+#   rho0 = 877.7007 kg/m³  at  P0 = 101325 Pa
+#   p_cav = 0 Pa  (vacuum cavitation, matching Giacopini)
+#   shear = 0.039 Pa·s
+#
+# BCs: p_in = 3.36414e5 Pa -> rho = 877.7055 kg/m³
+#      p_out = 0 Pa         -> rho = 877.6986 kg/m³  (= p_cav)
+
+options:
+    output: data/twin_parabolic_slider_id_FB
+    write_freq: 10
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.1524
+    Ly: 0.004
+    Nx: 400
+    Ny: 2
+    xW: ['D', 'N', 'N']
+    xE: ['N', 'N', 'N']
+    yS: ['N', 'N', 'D']
+    yN: ['N', 'N', 'D']
+    xW_D: 877.7055
+    #xE_D: 877.6986
+    yS_D: [0, 0, 0]
+    yN_D: [0, 0, 0]
+
+geometry:
+    type: from_file
+    filepath: topography/twin_parabolic_slider_id_FB.npy
+    U: 4.57
+    V: 0.0
+    flip: false
+
+numerics:
+    solver: fem
+    dt: 0.1
+    tol: 0.0
+    max_it: 1000
+
+properties:
+    EOS: DH
+    rho0: 877.7007
+    P0: 101325
+    C1: 3.5e10
+    C2: 1.23
+    p_cav: 0.0
+    shear: 0.039
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 1.
+    equations:
+        energy: False
+        cavitation: True
+    physics:
+        gap_shear: true
+        plane_shear: false
+        inertia: false
+        lap_pressure: false
+        lap_theta: false
+    lap_pressure_alpha: 1000.
+    lap_theta_alpha: 1e-08
+    max_iter: 1
+    R_norm_tol: 1e-9
+    newton_debug: 990
+    scaling: True
+    line_search: False
