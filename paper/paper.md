@@ -72,7 +72,7 @@ To account for cavitation, `GaPFlow` implements a homogenized gas–fluid mixtur
 
 `GaPFlow` employs the [tinygp](https://tinygp.readthedocs.io/en/stable/index.html) [@tinygp_0_3_1] library for constructing and training GP models, taking advantage of its flexibility.
 For example, it allows the implementation of custom kernels for the joint prediction of wall shear stresses at the top and bottom walls using a multi-output GP that shares a common noise process.
-Since [tinygp](https://tinygp.readthedocs.io/en/stable/index.html) is built on [JAX](https://github.com/jax-ml/jax) [@jax_0_10_0], `GaPFlow` also benefits from automatic differentiation of the GP models, e.g. to compute the speed of sound from the pressure model.
+Since [tinygp](https://tinygp.readthedocs.io/en/stable/index.html) is built on [JAX](https://github.com/jax-ml/jax) [@jax2018github], `GaPFlow` also benefits from automatic differentiation of the GP models, e.g. to compute the speed of sound from the pressure model.
 
 ## Automatic setup of MD runs
 
