@@ -51,7 +51,7 @@ from .integrate import predictor_corrector, source
 from .md import Mock, LennardJones, GoldAlkane
 from .viz.plotting import _plot_height_1d_from_field, _plot_height_2d_from_field
 from .viz.plotting import _plot_sol_from_field_1d, _plot_sol_from_field_2d
-from .viz.animations import animate_1d, animate_2d
+from .viz.animations import animate_1d, animate_1d_gp, animate_2d
 from .logging import get_logger
 
 # Configure module logger writing to gapflow_problem.log via centralized helper
@@ -146,6 +146,7 @@ class Problem:
         self._fc.register_real_field('topography', (4,))
 
         # Initialize stress and topography models
+        self.has_gp_model = gp is not None
         gpx, gpy, gpz = self._select_gp_config(gp)
         self.pressure = Pressure(self._fc, prop, geo, data=database, gp=gpz)
         self.bulk_stress = BulkStress(self._fc, prop, geo, data=None, gp=None)
