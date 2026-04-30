@@ -369,7 +369,10 @@ class Problem:
     @property
     def converged(self) -> bool:
         """Return True if residuals in the buffer are below tolerance."""
-        return np.all(np.array(self.residual_buffer) < self.tol)
+        return self._check_residual(self.tol)
+
+    def _check_residual(self, tol: float) -> bool:
+        return np.all(np.array(self.residual_buffer) < tol)
 
     # ---------------------------
     # Simulation run utilities
@@ -527,19 +530,23 @@ class Problem:
 
         q0 = self.__field.p.copy()
 
+        # Without active learning, compute variance only before writing
         one_step_before_output = (self.step + 1) % self.options['write_freq'] == 0
+        # Suppress active learning for rapidly changing fields
+        cooldown = self._check_residual(1e-3)
 
         for i, d in enumerate(directions):
+
             # update surrogates / constitutive models (predictor on first pass)
             self.pressure.update(predictor=i == 0,
                                  compute_var=one_step_before_output,
-                                 cooldown=self.residual > 1e-3)
+                                 cooldown=cooldown)
             self.wall_stress_xz.update(predictor=i == 0,
                                        compute_var=one_step_before_output,
-                                       cooldown=self.residual > 1e-3)
+                                       cooldown=cooldown)
             self.wall_stress_yz.update(predictor=i == 0,
                                        compute_var=one_step_before_output,
-                                       cooldown=self.residual > 1e-3)
+                                       cooldown=cooldown)
             self.bulk_stress.update()
 
             # fluxes and source terms
