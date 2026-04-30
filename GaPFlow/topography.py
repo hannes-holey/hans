@@ -252,7 +252,7 @@ class Topography:
         self.__field.p[0] = h
         self.__field.p[ix] = dh_dx
         self.__field.p[iy] = dh_dy
-        self.__field.p[3] = np.zeros_like(h)  # inital deformation set to zero
+        self.__field.p[3] = np.zeros_like(h)  # initial deformation set to zero
 
     def update(self) -> None:
         """Updates the topography field in case of enabled elastic deformation.

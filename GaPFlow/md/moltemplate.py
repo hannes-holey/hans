@@ -178,7 +178,7 @@ def _create_fcc_wall_ase(symbol='Au',
     az : list, optional
         Lattice vector pointing in z direction (the default is [1, -1, 1])
     rotation : float, optional
-        Rotation angle around the y axis in degreees (the default is 0.)
+        Rotation angle around the y axis in degrees (the default is 0.)
     nx : int, optional
         Number of repetitions in x direction (the default is 30)
     ny : int or None, optional

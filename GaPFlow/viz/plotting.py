@@ -218,7 +218,7 @@ def _plot_height_1d_from_field(topo,
     topo : np.ndarray
         Topography array
     pressure : np.ndarray
-        Presure array
+        Pressure array
     show_defo: bool
         Show the displacement in a separate subfigure and the initial
         gap height for reference

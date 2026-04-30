@@ -88,7 +88,7 @@ Both MD setups use the Gaussian dynamics algorithm by @strong2017_dynamics to co
 ## Data management
 
 Running MD simulations is the computationally most expensive component of the multiscale framework.
-Although the active learning scheme ensures that the database grows only as needed, it is desirable to re-use this database across future simulations.
+Although the active learning scheme ensures that the database grows only as needed, it is desirable to reuse this database across future simulations.
 Achieving this requires a dedicated data management strategy, ideally following the FAIR principles [@wilkinson2016_fair].
 `GaPFlow` uses [`dtool`](https://www.dtool.dev/) [@olsson2019_lightweight] to package the inputs and outputs of individual MD runs into immutable datasets with unique persistent identifiers, together with automatically generated metadata.
 Users can operate on these datasets locally, but `GaPFlow` can also be readily integrated with a [`dserver`](https://www.dtool.dev/) instance [@hormann2024_dtool], which indexes the metadata stored on a remote device.
