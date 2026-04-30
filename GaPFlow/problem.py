@@ -533,7 +533,7 @@ class Problem:
         # Without active learning, compute variance only before writing
         one_step_before_output = (self.step + 1) % self.options['write_freq'] == 0
         # Suppress active learning for rapidly changing fields
-        cooldown = self._check_residual(1e-3)
+        cooldown = ~self._check_residual(1e-3)
 
         for i, d in enumerate(directions):
 
