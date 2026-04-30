@@ -53,7 +53,7 @@
     <link rel="prev" title="7. Gaussian process regression and active learning" href="07_gp_mock.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev40" />
+  <meta name="docsearch:version" content="1.0.3.dev42" />
   </head>
   
   
@@ -421,10 +421,10 @@ We now want to use this dataset in a subsequent simulation with active learning 
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-04-30 19:49:17--  https://zenodo.org/records/18761223/files/gapflow_training_lj.tar.gz
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-04-30 21:12:18--  https://zenodo.org/records/18761223/files/gapflow_training_lj.tar.gz
 Resolving zenodo.org (zenodo.org)...
-188.185.43.153, 188.184.103.118, 137.138.153.219, ...
-Connecting to zenodo.org (zenodo.org)|188.185.43.153|:443...
+137.138.153.219, 188.185.43.153, 188.185.48.75, ...
+Connecting to zenodo.org (zenodo.org)|137.138.153.219|:443...
 connected.
 HTTP request sent, awaiting response...
 200 OK
@@ -432,27 +432,27 @@ Length: 70537865 (67M) [application/octet-stream]
 Saving to: ‘STDOUT’
 
 -                     0%[                    ]       0  --.-KB/s
--                     0%[                    ]  43.49K   197KB/s
--                     0%[                    ] 180.90K   385KB/s
--                     0%[                    ] 403.71K   585KB/s
--                     1%[                    ] 755.03K   829KB/s
--                     1%[                    ]   1.25M  1.11MB/s
--                     3%[                    ]   2.34M  1.73MB/s
--                     5%[&gt;                   ]   3.90M  2.51MB/s
--                     9%[&gt;                   ]   6.09M  3.45MB/s
--                    16%[==&gt;                 ]  10.97M  5.53MB/s
--                    26%[====&gt;               ]  17.53M  7.92MB/s
--                    34%[=====&gt;              ]  23.15M  9.58MB/s
--                    44%[=======&gt;            ]  29.65M  11.3MB/s
--                    51%[=========&gt;          ]  34.39M  12.2MB/s
--                    61%[===========&gt;        ]  41.38M  13.6MB/s    eta 2s
--                    71%[=============&gt;      ]  48.27M  14.8MB/s    eta 2s
--                    77%[==============&gt;     ]  52.14M  14.9MB/s    eta 2s
--                    85%[================&gt;   ]  57.45M  15.4MB/s    eta 2s
--                    96%[==================&gt; ]  65.19M  17.4MB/s    eta 2s
--                   100%[===================&gt;]  67.27M  17.8MB/s    in 4.0s    
+-                     0%[                    ]  55.49K   185KB/s
+-                     0%[                    ] 156.86K   283KB/s
+-                     0%[                    ] 359.99K   434KB/s
+-                     1%[                    ] 742.85K   671KB/s
+-                     2%[                    ]   1.43M  1.03MB/s
+-                     3%[                    ]   2.63M  1.58MB/s
+-                     7%[&gt;                   ]   4.79M  2.48MB/s
+-                    12%[=&gt;                  ]   8.32M  3.76MB/s
+-                    20%[===&gt;                ]  13.93M  5.59MB/s
+-                    29%[====&gt;               ]  20.14M  7.47MB/s
+-                    36%[======&gt;             ]  24.32M  8.32MB/s
+-                    45%[========&gt;           ]  30.40M  9.74MB/s    eta 4s
+-                    53%[=========&gt;          ]  35.91M  10.7MB/s    eta 4s
+-                    62%[===========&gt;        ]  41.91M  11.8MB/s    eta 4s
+-                    69%[============&gt;       ]  46.60M  12.3MB/s    eta 4s
+-                    79%[==============&gt;     ]  53.15M  14.8MB/s    eta 4s
+-                    86%[================&gt;   ]  58.19M  15.9MB/s    eta 1s
+-                    96%[==================&gt; ]  64.65M  18.6MB/s    eta 1s
+-                   100%[===================&gt;]  67.27M  18.7MB/s    in 4.5s    
 
-2026-04-30 19:49:22 (16.8 MB/s) - written to stdout [70537865/70537865]
+2026-04-30 21:12:23 (14.8 MB/s) - written to stdout [70537865/70537865]
 </pre></div>
 </div>
 </div>
@@ -657,7 +657,7 @@ Loading 24 local datasets in &#39;data/gapflow_training_lj&#39;.
 - 3cb97a66-ff04-4c0a-87c2-c957aeba9bf8 (20260224_162410_lj-004)
 - 78fbb59f-b0ba-4f7c-b81e-52576dacd430 (20260224_171301_lj-010)
                                                              
- Writing output into: data/2026-04-30_194927_parabolic_lj_md
+ Writing output into: data/2026-04-30_211228_parabolic_lj_md
 </pre></div>
 </div>
 </div>
@@ -761,12 +761,12 @@ Step   Timestep   Time       CFL        Residual
 7100   1.1071e-01 7.8661e+02 5.0000e-01 2.3575e-08
 7115   1.1071e-01 7.8827e+02 5.0000e-01 4.4473e-09
 =================================
-Total walltime   :  0:04:06
-(28.86 steps/s)
+Total walltime   :  0:03:58
+(29.86 steps/s)
  - GP train (zz) :  0:00:00
- - GP infer (zz) :  0:00:25
+ - GP infer (zz) :  0:00:24
  - GP train (xz) :  0:00:00
- - GP infer (xz) :  0:00:33
+ - GP infer (xz) :  0:00:30
 =================================
 </pre></div>
 </div>
@@ -964,42 +964,42 @@ input[type=range].anim-slider {
 </style>
 
 <div class="animation">
-  <img id="_anim_img39d09d921401486e84d3277b4e397166">
+  <img id="_anim_imgca89802471be451a94b72085cdbe4351">
   <div class="anim-controls">
-    <input id="_anim_slider39d09d921401486e84d3277b4e397166" type="range" class="anim-slider"
+    <input id="_anim_sliderca89802471be451a94b72085cdbe4351" type="range" class="anim-slider"
            name="points" min="0" max="1" step="1" value="0"
-           oninput="anim39d09d921401486e84d3277b4e397166.set_frame(parseInt(this.value));">
+           oninput="animca89802471be451a94b72085cdbe4351.set_frame(parseInt(this.value));">
     <div class="anim-buttons">
-      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim39d09d921401486e84d3277b4e397166.slower()">
+      <button title="Decrease speed" aria-label="Decrease speed" onclick="animca89802471be451a94b72085cdbe4351.slower()">
           <i class="fa fa-minus"></i></button>
-      <button title="First frame" aria-label="First frame" onclick="anim39d09d921401486e84d3277b4e397166.first_frame()">
+      <button title="First frame" aria-label="First frame" onclick="animca89802471be451a94b72085cdbe4351.first_frame()">
         <i class="fa fa-fast-backward"></i></button>
-      <button title="Previous frame" aria-label="Previous frame" onclick="anim39d09d921401486e84d3277b4e397166.previous_frame()">
+      <button title="Previous frame" aria-label="Previous frame" onclick="animca89802471be451a94b72085cdbe4351.previous_frame()">
           <i class="fa fa-step-backward"></i></button>
-      <button title="Play backwards" aria-label="Play backwards" onclick="anim39d09d921401486e84d3277b4e397166.reverse_animation()">
+      <button title="Play backwards" aria-label="Play backwards" onclick="animca89802471be451a94b72085cdbe4351.reverse_animation()">
           <i class="fa fa-play fa-flip-horizontal"></i></button>
-      <button title="Pause" aria-label="Pause" onclick="anim39d09d921401486e84d3277b4e397166.pause_animation()">
+      <button title="Pause" aria-label="Pause" onclick="animca89802471be451a94b72085cdbe4351.pause_animation()">
           <i class="fa fa-pause"></i></button>
-      <button title="Play" aria-label="Play" onclick="anim39d09d921401486e84d3277b4e397166.play_animation()">
+      <button title="Play" aria-label="Play" onclick="animca89802471be451a94b72085cdbe4351.play_animation()">
           <i class="fa fa-play"></i></button>
-      <button title="Next frame" aria-label="Next frame" onclick="anim39d09d921401486e84d3277b4e397166.next_frame()">
+      <button title="Next frame" aria-label="Next frame" onclick="animca89802471be451a94b72085cdbe4351.next_frame()">
           <i class="fa fa-step-forward"></i></button>
-      <button title="Last frame" aria-label="Last frame" onclick="anim39d09d921401486e84d3277b4e397166.last_frame()">
+      <button title="Last frame" aria-label="Last frame" onclick="animca89802471be451a94b72085cdbe4351.last_frame()">
           <i class="fa fa-fast-forward"></i></button>
-      <button title="Increase speed" aria-label="Increase speed" onclick="anim39d09d921401486e84d3277b4e397166.faster()">
+      <button title="Increase speed" aria-label="Increase speed" onclick="animca89802471be451a94b72085cdbe4351.faster()">
           <i class="fa fa-plus"></i></button>
     </div>
-    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select39d09d921401486e84d3277b4e397166"
+    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_selectca89802471be451a94b72085cdbe4351"
           class="anim-state">
-      <input type="radio" name="state" value="once" id="_anim_radio1_39d09d921401486e84d3277b4e397166"
+      <input type="radio" name="state" value="once" id="_anim_radio1_ca89802471be451a94b72085cdbe4351"
              >
-      <label for="_anim_radio1_39d09d921401486e84d3277b4e397166">Once</label>
-      <input type="radio" name="state" value="loop" id="_anim_radio2_39d09d921401486e84d3277b4e397166"
+      <label for="_anim_radio1_ca89802471be451a94b72085cdbe4351">Once</label>
+      <input type="radio" name="state" value="loop" id="_anim_radio2_ca89802471be451a94b72085cdbe4351"
              checked>
-      <label for="_anim_radio2_39d09d921401486e84d3277b4e397166">Loop</label>
-      <input type="radio" name="state" value="reflect" id="_anim_radio3_39d09d921401486e84d3277b4e397166"
+      <label for="_anim_radio2_ca89802471be451a94b72085cdbe4351">Loop</label>
+      <input type="radio" name="state" value="reflect" id="_anim_radio3_ca89802471be451a94b72085cdbe4351"
              >
-      <label for="_anim_radio3_39d09d921401486e84d3277b4e397166">Reflect</label>
+      <label for="_anim_radio3_ca89802471be451a94b72085cdbe4351">Reflect</label>
     </form>
   </div>
 </div>
@@ -1009,9 +1009,9 @@ input[type=range].anim-slider {
   /* Instantiate the Animation class. */
   /* The IDs given should match those used in the template above. */
   (function() {
-    var img_id = "_anim_img39d09d921401486e84d3277b4e397166";
-    var slider_id = "_anim_slider39d09d921401486e84d3277b4e397166";
-    var loop_select_id = "_anim_loop_select39d09d921401486e84d3277b4e397166";
+    var img_id = "_anim_imgca89802471be451a94b72085cdbe4351";
+    var slider_id = "_anim_sliderca89802471be451a94b72085cdbe4351";
+    var loop_select_id = "_anim_loop_selectca89802471be451a94b72085cdbe4351";
     var frames = new Array(73);
     
   frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABaAAAALQCAYAAABmJdeHAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -163586,7 +163586,7 @@ HvmUwR4bDQAAAABJRU5ErkJggg==\
     /* set a timeout to make sure all the above elements are created before
        the object is initialized. */
     setTimeout(function() {
-        anim39d09d921401486e84d3277b4e397166 = new Animation(frames, img_id, slider_id, 100.0,
+        animca89802471be451a94b72085cdbe4351 = new Animation(frames, img_id, slider_id, 100.0,
                                  loop_select_id);
     }, 0);
   })()
@@ -163681,10 +163681,10 @@ If we decrease the minimum gap height of parbolic gap profile, more anomalies ap
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-04-30 19:54:24--  https://zenodo.org/records/18761223/files/gapflow_training_mol.tar.gz
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-04-30 21:17:10--  https://zenodo.org/records/18761223/files/gapflow_training_mol.tar.gz
 Resolving zenodo.org (zenodo.org)...
-137.138.52.235, 188.184.103.118, 137.138.153.219, ...
-Connecting to zenodo.org (zenodo.org)|137.138.52.235|:443...
+137.138.153.219, 188.185.48.75, 137.138.52.235, ...
+Connecting to zenodo.org (zenodo.org)|137.138.153.219|:443...
 connected.
 HTTP request sent, awaiting response...
 200 OK
@@ -163692,119 +163692,145 @@ Length: 729782870 (696M) [application/octet-stream]
 Saving to: ‘STDOUT’
 
 -                     0%[                    ]       0  --.-KB/s
--                     0%[                    ]  46.07K   187KB/s
--                     0%[                    ] 184.40K   390KB/s
--                     0%[                    ] 422.54K   604KB/s
--                     0%[                    ] 853.68K   921KB/s
--                     0%[                    ]   1.66M  1.44MB/s
--                     0%[                    ]   3.23M  2.35MB/s
--                     0%[                    ]   5.92M  3.69MB/s
--                     1%[                    ]  10.39M  5.68MB/s
--                     2%[                    ]  16.38M  7.95MB/s
--                     3%[                    ]  23.21M  10.1MB/s
--                     4%[                    ]  30.15M  11.9MB/s
--                     5%[&gt;                   ]  37.89M  13.7MB/s
--                     6%[&gt;                   ]  45.40M  15.3MB/s
--                     7%[&gt;                   ]  51.64M  16.3MB/s    eta 40s
--                     8%[&gt;                   ]  57.64M  17.1MB/s    eta 40s
--                     9%[&gt;                   ]  64.41M  18.7MB/s    eta 40s
--                    10%[=&gt;                  ]  72.15M  21.8MB/s    eta 40s
--                    11%[=&gt;                  ]  77.65M  23.3MB/s    eta 40s
--                    12%[=&gt;                  ]  83.91M  24.7MB/s    eta 31s
--                    13%[=&gt;                  ]  91.25M  27.5MB/s    eta 31s
--                    14%[=&gt;                  ]  98.85M  29.0MB/s    eta 31s
--                    15%[==&gt;                 ] 106.66M  30.2MB/s    eta 31s
--                    16%[==&gt;                 ] 112.65M  31.2MB/s    eta 31s
--                    16%[==&gt;                 ] 117.90M  31.4MB/s    eta 26s
--                    18%[==&gt;                 ] 125.45M  31.5MB/s    eta 26s
--                    19%[==&gt;                 ] 133.19M  31.9MB/s    eta 26s
--                    20%[===&gt;                ] 140.66M  32.1MB/s    eta 26s
--                    21%[===&gt;                ] 146.89M  31.9MB/s    eta 26s
--                    21%[===&gt;                ] 151.90M  31.7MB/s    eta 23s
--                    22%[===&gt;                ] 158.11M  31.1MB/s    eta 23s
--                    23%[===&gt;                ] 165.94M  31.4MB/s    eta 23s
--                    24%[===&gt;                ] 173.65M  31.6MB/s    eta 23s
--                    25%[====&gt;               ] 179.13M  31.7MB/s    eta 23s
--                    26%[====&gt;               ] 185.05M  31.2MB/s    eta 21s
--                    27%[====&gt;               ] 191.65M  31.2MB/s    eta 21s
--                    28%[====&gt;               ] 197.16M  31.1MB/s    eta 21s
--                    29%[====&gt;               ] 203.16M  30.7MB/s    eta 21s
--                    30%[=====&gt;              ] 209.76M  30.9MB/s    eta 21s
--                    31%[=====&gt;              ] 217.02M  30.9MB/s    eta 19s
--                    32%[=====&gt;              ] 224.76M  30.7MB/s    eta 19s
--                    33%[=====&gt;              ] 232.40M  30.8MB/s    eta 19s
--                    34%[=====&gt;              ] 239.90M  31.0MB/s    eta 19s
--                    35%[======&gt;             ] 245.16M  30.5MB/s    eta 19s
--                    36%[======&gt;             ] 251.65M  31.1MB/s    eta 17s
--                    37%[======&gt;             ] 258.85M  30.8MB/s    eta 17s
--                    38%[======&gt;             ] 266.17M  31.1MB/s    eta 17s
--                    39%[======&gt;             ] 273.88M  30.8MB/s    eta 17s
--                    40%[=======&gt;            ] 281.63M  31.1MB/s    eta 17s
--                    41%[=======&gt;            ] 289.37M  31.5MB/s    eta 15s
--                    42%[=======&gt;            ] 297.11M  31.4MB/s    eta 15s
--                    43%[=======&gt;            ] 304.66M  32.1MB/s    eta 15s
--                    44%[=======&gt;            ] 310.15M  31.6MB/s    eta 15s
--                    45%[========&gt;           ] 316.61M  31.5MB/s    eta 15s
--                    46%[========&gt;           ] 322.80M  31.3MB/s    eta 14s
--                    47%[========&gt;           ] 330.62M  31.4MB/s    eta 14s
--                    48%[========&gt;           ] 338.16M  32.0MB/s    eta 14s
--                    49%[========&gt;           ] 343.83M  31.5MB/s    eta 14s
--                    50%[=========&gt;          ] 349.90M  31.8MB/s    eta 14s
--                    51%[=========&gt;          ] 356.96M  31.5MB/s    eta 12s
--                    52%[=========&gt;          ] 364.25M  31.5MB/s    eta 12s
--                    53%[=========&gt;          ] 371.41M  31.8MB/s    eta 12s
--                    54%[=========&gt;          ] 377.55M  31.4MB/s    eta 12s
--                    55%[==========&gt;         ] 383.16M  31.2MB/s    eta 12s
--                    56%[==========&gt;         ] 390.41M  31.3MB/s    eta 11s
--                    56%[==========&gt;         ] 396.15M  31.4MB/s    eta 11s
--                    57%[==========&gt;         ] 401.66M  30.8MB/s    eta 11s
--                    58%[==========&gt;         ] 407.24M  30.7MB/s    eta 11s
--                    59%[==========&gt;         ] 414.88M  30.2MB/s    eta 11s
--                    60%[===========&gt;        ] 422.40M  31.1MB/s    eta 10s
--                    61%[===========&gt;        ] 428.40M  30.8MB/s    eta 10s
--                    62%[===========&gt;        ] 434.40M  30.5MB/s    eta 10s
--                    63%[===========&gt;        ] 440.86M  30.5MB/s    eta 10s
--                    64%[===========&gt;        ] 447.52M  30.2MB/s    eta 10s
--                    65%[============&gt;       ] 454.64M  30.4MB/s    eta 9s
--                    66%[============&gt;       ] 460.15M  30.1MB/s    eta 9s
--                    67%[============&gt;       ] 466.65M  30.4MB/s    eta 9s
--                    68%[============&gt;       ] 473.40M  30.3MB/s    eta 9s
--                    68%[============&gt;       ] 479.40M  30.5MB/s    eta 9s
--                    69%[============&gt;       ] 485.90M  30.5MB/s    eta 7s
--                    70%[=============&gt;      ] 492.26M  30.3MB/s    eta 7s
--                    71%[=============&gt;      ] 498.88M  30.8MB/s    eta 7s
--                    72%[=============&gt;      ] 505.15M  30.9MB/s    eta 7s
--                    73%[=============&gt;      ] 512.15M  31.0MB/s    eta 7s
--                    74%[=============&gt;      ] 518.47M  31.1MB/s    eta 6s
--                    75%[==============&gt;     ] 525.40M  31.0MB/s    eta 6s
--                    76%[==============&gt;     ] 531.86M  31.1MB/s    eta 6s
--                    77%[==============&gt;     ] 538.15M  31.0MB/s    eta 6s
--                    78%[==============&gt;     ] 544.92M  31.4MB/s    eta 6s
--                    79%[==============&gt;     ] 551.90M  31.6MB/s    eta 5s
--                    80%[===============&gt;    ] 557.79M  31.2MB/s    eta 5s
--                    81%[===============&gt;    ] 564.91M  31.7MB/s    eta 5s
--                    81%[===============&gt;    ] 570.65M  31.3MB/s    eta 5s
--                    82%[===============&gt;    ] 576.94M  31.3MB/s    eta 5s
--                    83%[===============&gt;    ] 584.39M  31.7MB/s    eta 4s
--                    84%[===============&gt;    ] 589.96M  31.5MB/s    eta 4s
--                    85%[================&gt;   ] 596.15M  30.9MB/s    eta 4s
--                    86%[================&gt;   ] 602.64M  31.1MB/s    eta 4s
--                    87%[================&gt;   ] 608.65M  31.0MB/s    eta 4s
--                    88%[================&gt;   ] 614.40M  30.9MB/s    eta 3s
--                    89%[================&gt;   ] 621.65M  30.9MB/s    eta 3s
--                    90%[=================&gt;  ] 628.41M  31.1MB/s    eta 3s
--                    91%[=================&gt;  ] 633.64M  30.9MB/s    eta 3s
--                    92%[=================&gt;  ] 640.48M  30.8MB/s    eta 3s
--                    93%[=================&gt;  ] 648.15M  31.1MB/s    eta 2s
--                    94%[=================&gt;  ] 654.64M  30.9MB/s    eta 2s
--                    94%[=================&gt;  ] 660.16M  30.9MB/s    eta 2s
--                    95%[==================&gt; ] 667.30M  30.8MB/s    eta 2s
--                    96%[==================&gt; ] 673.99M  30.6MB/s    eta 2s
--                    97%[==================&gt; ] 681.82M  30.8MB/s    eta 0s
--                    99%[==================&gt; ] 689.40M  31.3MB/s    eta 0s
--                   100%[===================&gt;] 695.97M  31.1MB/s    in 24s     
+-                     0%[                    ]  47.64K   156KB/s
+-                     0%[                    ] 169.80K   285KB/s
+-                     0%[                    ] 337.34K   381KB/s
+-                     0%[                    ] 624.79K   531KB/s
+-                     0%[                    ]   1.00M   698KB/s
+-                     0%[                    ]   1.64M   956KB/s
+-                     0%[                    ]   2.90M  1.42MB/s
+-                     0%[                    ]   5.02M  2.15MB/s
+-                     1%[                    ]   8.66M  3.41MB/s
+-                     1%[                    ]  11.35M  4.09MB/s
+-                     2%[                    ]  17.14M  5.75MB/s
+-                     3%[                    ]  22.77M  7.04MB/s    eta 96s
+-                     4%[                    ]  28.90M  8.41MB/s    eta 96s
+-                     4%[                    ]  34.48M  9.35MB/s    eta 96s
+-                     5%[&gt;                   ]  40.16M  10.3MB/s    eta 96s
+-                     6%[&gt;                   ]  45.65M  11.6MB/s    eta 96s
+-                     7%[&gt;                   ]  50.09M  13.0MB/s    eta 55s
+-                     7%[&gt;                   ]  55.16M  15.8MB/s    eta 55s
+-                     8%[&gt;                   ]  61.15M  17.9MB/s    eta 55s
+-                     9%[&gt;                   ]  65.12M  18.6MB/s    eta 55s
+-                    10%[=&gt;                  ]  70.90M  21.4MB/s    eta 55s
+-                    10%[=&gt;                  ]  76.54M  22.2MB/s    eta 43s
+-                    11%[=&gt;                  ]  81.84M  24.6MB/s    eta 43s
+-                    12%[=&gt;                  ]  87.24M  24.8MB/s    eta 43s
+-                    13%[=&gt;                  ]  93.01M  25.1MB/s    eta 43s
+-                    14%[=&gt;                  ]  98.90M  25.3MB/s    eta 43s
+-                    14%[=&gt;                  ] 102.80M  25.0MB/s    eta 37s
+-                    15%[==&gt;                 ] 108.15M  25.0MB/s    eta 37s
+-                    16%[==&gt;                 ] 113.73M  24.7MB/s    eta 37s
+-                    17%[==&gt;                 ] 119.64M  25.0MB/s    eta 37s
+-                    18%[==&gt;                 ] 125.35M  24.7MB/s    eta 37s
+-                    18%[==&gt;                 ] 131.15M  25.1MB/s    eta 32s
+-                    19%[==&gt;                 ] 136.74M  24.8MB/s    eta 32s
+-                    20%[===&gt;                ] 142.90M  25.0MB/s    eta 32s
+-                    21%[===&gt;                ] 147.40M  24.6MB/s    eta 32s
+-                    21%[===&gt;                ] 152.89M  24.6MB/s    eta 32s
+-                    22%[===&gt;                ] 159.07M  24.6MB/s    eta 29s
+-                    23%[===&gt;                ] 164.26M  25.0MB/s    eta 29s
+-                    24%[===&gt;                ] 169.84M  24.7MB/s    eta 29s
+-                    25%[====&gt;               ] 175.29M  24.8MB/s    eta 29s
+-                    26%[====&gt;               ] 181.40M  25.1MB/s    eta 29s
+-                    26%[====&gt;               ] 185.36M  24.7MB/s    eta 27s
+-                    27%[====&gt;               ] 190.82M  25.0MB/s    eta 27s
+-                    28%[====&gt;               ] 196.39M  25.1MB/s    eta 27s
+-                    28%[====&gt;               ] 200.92M  24.8MB/s    eta 27s
+-                    29%[====&gt;               ] 206.38M  25.0MB/s    eta 27s
+-                    30%[=====&gt;              ] 211.90M  25.1MB/s    eta 25s
+-                    30%[=====&gt;              ] 215.46M  24.6MB/s    eta 25s
+-                    31%[=====&gt;              ] 221.15M  24.8MB/s    eta 25s
+-                    32%[=====&gt;              ] 226.75M  24.7MB/s    eta 25s
+-                    33%[=====&gt;              ] 233.16M  25.1MB/s    eta 25s
+-                    34%[=====&gt;              ] 238.40M  24.9MB/s    eta 23s
+-                    35%[======&gt;             ] 243.90M  25.1MB/s    eta 23s
+-                    35%[======&gt;             ] 249.63M  24.8MB/s    eta 23s
+-                    36%[======&gt;             ] 255.65M  25.1MB/s    eta 23s
+-                    37%[======&gt;             ] 261.34M  24.9MB/s    eta 23s
+-                    38%[======&gt;             ] 266.77M  25.0MB/s    eta 21s
+-                    39%[======&gt;             ] 272.89M  25.3MB/s    eta 21s
+-                    39%[======&gt;             ] 276.81M  24.8MB/s    eta 21s
+-                    40%[=======&gt;            ] 282.41M  25.1MB/s    eta 21s
+-                    41%[=======&gt;            ] 288.41M  24.9MB/s    eta 21s
+-                    42%[=======&gt;            ] 293.15M  25.0MB/s    eta 19s
+-                    42%[=======&gt;            ] 298.02M  24.6MB/s    eta 19s
+-                    43%[=======&gt;            ] 303.40M  24.8MB/s    eta 19s
+-                    44%[=======&gt;            ] 309.40M  25.1MB/s    eta 19s
+-                    45%[========&gt;           ] 313.52M  24.6MB/s    eta 19s
+-                    45%[========&gt;           ] 318.88M  24.9MB/s    eta 18s
+-                    46%[========&gt;           ] 324.90M  25.2MB/s    eta 18s
+-                    47%[========&gt;           ] 329.04M  24.8MB/s    eta 18s
+-                    48%[========&gt;           ] 334.65M  24.8MB/s    eta 18s
+-                    48%[========&gt;           ] 340.20M  24.4MB/s    eta 18s
+-                    49%[========&gt;           ] 345.89M  24.6MB/s    eta 16s
+-                    50%[=========&gt;          ] 350.90M  24.7MB/s    eta 16s
+-                    50%[=========&gt;          ] 354.83M  24.3MB/s    eta 16s
+-                    51%[=========&gt;          ] 360.65M  24.5MB/s    eta 16s
+-                    52%[=========&gt;          ] 366.34M  24.4MB/s    eta 16s
+-                    53%[=========&gt;          ] 372.16M  25.0MB/s    eta 15s
+-                    54%[=========&gt;          ] 377.96M  24.6MB/s    eta 15s
+-                    55%[==========&gt;         ] 384.15M  25.0MB/s    eta 15s
+-                    55%[==========&gt;         ] 389.64M  25.1MB/s    eta 15s
+-                    56%[==========&gt;         ] 392.65M  24.4MB/s    eta 15s
+-                    57%[==========&gt;         ] 398.40M  24.7MB/s    eta 14s
+-                    58%[==========&gt;         ] 403.94M  24.3MB/s    eta 14s
+-                    58%[==========&gt;         ] 409.65M  24.5MB/s    eta 14s
+-                    59%[==========&gt;         ] 415.59M  24.6MB/s    eta 14s
+-                    60%[===========&gt;        ] 421.40M  24.8MB/s    eta 14s
+-                    61%[===========&gt;        ] 427.24M  24.8MB/s    eta 12s
+-                    62%[===========&gt;        ] 433.15M  25.1MB/s    eta 12s
+-                    63%[===========&gt;        ] 438.59M  24.7MB/s    eta 12s
+-                    63%[===========&gt;        ] 444.41M  25.0MB/s    eta 12s
+-                    64%[===========&gt;        ] 449.90M  25.1MB/s    eta 12s
+-                    65%[============&gt;       ] 454.12M  24.7MB/s    eta 11s
+-                    66%[============&gt;       ] 459.64M  24.8MB/s    eta 11s
+-                    66%[============&gt;       ] 464.60M  24.3MB/s    eta 11s
+-                    67%[============&gt;       ] 470.40M  24.8MB/s    eta 11s
+-                    68%[============&gt;       ] 475.94M  24.6MB/s    eta 11s
+-                    69%[============&gt;       ] 482.16M  25.0MB/s    eta 10s
+-                    70%[=============&gt;      ] 487.53M  24.6MB/s    eta 10s
+-                    70%[=============&gt;      ] 492.91M  24.6MB/s    eta 10s
+-                    71%[=============&gt;      ] 498.15M  24.7MB/s    eta 10s
+-                    72%[=============&gt;      ] 502.43M  24.3MB/s    eta 10s
+-                    73%[=============&gt;      ] 508.41M  24.6MB/s    eta 8s
+-                    73%[=============&gt;      ] 513.19M  24.2MB/s    eta 8s
+-                    74%[=============&gt;      ] 518.15M  24.1MB/s    eta 8s
+-                    75%[==============&gt;     ] 524.20M  24.0MB/s    eta 8s
+-                    76%[==============&gt;     ] 530.15M  24.2MB/s    eta 8s
+-                    76%[==============&gt;     ] 535.64M  24.5MB/s    eta 7s
+-                    77%[==============&gt;     ] 539.71M  24.2MB/s    eta 7s
+-                    78%[==============&gt;     ] 545.90M  24.6MB/s    eta 7s
+-                    79%[==============&gt;     ] 551.40M  24.3MB/s    eta 7s
+-                    79%[==============&gt;     ] 556.64M  24.4MB/s    eta 7s
+-                    80%[===============&gt;    ] 562.15M  24.6MB/s    eta 6s
+-                    81%[===============&gt;    ] 566.23M  24.4MB/s    eta 6s
+-                    82%[===============&gt;    ] 572.16M  24.7MB/s    eta 6s
+-                    83%[===============&gt;    ] 577.85M  24.4MB/s    eta 6s
+-                    83%[===============&gt;    ] 583.15M  24.4MB/s    eta 6s
+-                    84%[===============&gt;    ] 588.91M  24.3MB/s    eta 5s
+-                    85%[================&gt;   ] 594.90M  24.8MB/s    eta 5s
+-                    86%[================&gt;   ] 600.34M  24.5MB/s    eta 5s
+-                    87%[================&gt;   ] 606.39M  24.8MB/s    eta 5s
+-                    87%[================&gt;   ] 610.74M  24.2MB/s    eta 5s
+-                    88%[================&gt;   ] 616.65M  24.6MB/s    eta 4s
+-                    89%[================&gt;   ] 622.33M  24.3MB/s    eta 4s
+-                    90%[=================&gt;  ] 628.14M  24.5MB/s    eta 4s
+-                    90%[=================&gt;  ] 632.84M  24.2MB/s    eta 4s
+-                    91%[=================&gt;  ] 638.90M  24.4MB/s    eta 4s
+-                    92%[=================&gt;  ] 644.30M  24.1MB/s    eta 2s
+-                    93%[=================&gt;  ] 650.15M  24.3MB/s    eta 2s
+-                    94%[=================&gt;  ] 655.92M  24.2MB/s    eta 2s
+-                    95%[==================&gt; ] 661.30M  24.5MB/s    eta 2s
+-                    95%[==================&gt; ] 666.58M  24.2MB/s    eta 2s
+-                    96%[==================&gt; ] 671.68M  24.1MB/s    eta 1s
+-                    97%[==================&gt; ] 677.66M  24.5MB/s    eta 1s
+-                    97%[==================&gt; ] 681.57M  24.1MB/s    eta 1s
+-                    98%[==================&gt; ] 687.19M  24.3MB/s    eta 1s
+-                    99%[==================&gt; ] 692.89M  24.5MB/s    eta 1s
+-                   100%[===================&gt;] 695.97M  24.5MB/s    in 31s     
 
-2026-04-30 19:54:48 (29.2 MB/s) - written to stdout [729782870/729782870]
+2026-04-30 21:17:42 (22.7 MB/s) - written to stdout [729782870/729782870]
 </pre></div>
 </div>
 <div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/lib/python3.12/pty.py:95: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
@@ -164034,7 +164060,7 @@ Loading 33 local datasets in &#39;data/gapflow_training_mol&#39;.
 - 3adb390c-3fb1-4aaf-82f6-060c583c9ec4 (20260225_134301_mol-032)
 - 4bc51e82-b605-4780-88d3-3a018eb61e6d (20260225_130434_mol-029)
                                                             
-   Writing output into: data/2026-04-30_195451_cosine_mol
+   Writing output into: data/2026-04-30_211744_cosine_mol
 </pre></div>
 </div>
 </div>
@@ -164105,12 +164131,12 @@ Step   Timestep   Time       CFL        Residual
 19500  2.8929e+01 5.6410e+05 5.0000e-01 1.2817e-06
 20000  2.8932e+01 5.7857e+05 5.0000e-01 1.3303e-06
 =================================
-Total walltime   :  0:11:15
-(29.60 steps/s)
+Total walltime   :  0:09:34
+(34.79 steps/s)
  - GP train (zz) :  0:00:00
- - GP infer (zz) :  0:01:07
+ - GP infer (zz) :  0:00:57
  - GP train (xz) :  0:00:00
- - GP infer (xz) :  0:01:27
+ - GP infer (xz) :  0:01:13
 =================================
 </pre></div>
 </div>
@@ -164309,42 +164335,42 @@ input[type=range].anim-slider {
 </style>
 
 <div class="animation">
-  <img id="_anim_img6dd8c63f984f496ba57f88a927699c90">
+  <img id="_anim_img6fadd9ba91f8486b9c0895b9d455c0c8">
   <div class="anim-controls">
-    <input id="_anim_slider6dd8c63f984f496ba57f88a927699c90" type="range" class="anim-slider"
+    <input id="_anim_slider6fadd9ba91f8486b9c0895b9d455c0c8" type="range" class="anim-slider"
            name="points" min="0" max="1" step="1" value="0"
-           oninput="anim6dd8c63f984f496ba57f88a927699c90.set_frame(parseInt(this.value));">
+           oninput="anim6fadd9ba91f8486b9c0895b9d455c0c8.set_frame(parseInt(this.value));">
     <div class="anim-buttons">
-      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim6dd8c63f984f496ba57f88a927699c90.slower()">
+      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.slower()">
           <i class="fa fa-minus"></i></button>
-      <button title="First frame" aria-label="First frame" onclick="anim6dd8c63f984f496ba57f88a927699c90.first_frame()">
+      <button title="First frame" aria-label="First frame" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.first_frame()">
         <i class="fa fa-fast-backward"></i></button>
-      <button title="Previous frame" aria-label="Previous frame" onclick="anim6dd8c63f984f496ba57f88a927699c90.previous_frame()">
+      <button title="Previous frame" aria-label="Previous frame" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.previous_frame()">
           <i class="fa fa-step-backward"></i></button>
-      <button title="Play backwards" aria-label="Play backwards" onclick="anim6dd8c63f984f496ba57f88a927699c90.reverse_animation()">
+      <button title="Play backwards" aria-label="Play backwards" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.reverse_animation()">
           <i class="fa fa-play fa-flip-horizontal"></i></button>
-      <button title="Pause" aria-label="Pause" onclick="anim6dd8c63f984f496ba57f88a927699c90.pause_animation()">
+      <button title="Pause" aria-label="Pause" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.pause_animation()">
           <i class="fa fa-pause"></i></button>
-      <button title="Play" aria-label="Play" onclick="anim6dd8c63f984f496ba57f88a927699c90.play_animation()">
+      <button title="Play" aria-label="Play" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.play_animation()">
           <i class="fa fa-play"></i></button>
-      <button title="Next frame" aria-label="Next frame" onclick="anim6dd8c63f984f496ba57f88a927699c90.next_frame()">
+      <button title="Next frame" aria-label="Next frame" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.next_frame()">
           <i class="fa fa-step-forward"></i></button>
-      <button title="Last frame" aria-label="Last frame" onclick="anim6dd8c63f984f496ba57f88a927699c90.last_frame()">
+      <button title="Last frame" aria-label="Last frame" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.last_frame()">
           <i class="fa fa-fast-forward"></i></button>
-      <button title="Increase speed" aria-label="Increase speed" onclick="anim6dd8c63f984f496ba57f88a927699c90.faster()">
+      <button title="Increase speed" aria-label="Increase speed" onclick="anim6fadd9ba91f8486b9c0895b9d455c0c8.faster()">
           <i class="fa fa-plus"></i></button>
     </div>
-    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select6dd8c63f984f496ba57f88a927699c90"
+    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select6fadd9ba91f8486b9c0895b9d455c0c8"
           class="anim-state">
-      <input type="radio" name="state" value="once" id="_anim_radio1_6dd8c63f984f496ba57f88a927699c90"
+      <input type="radio" name="state" value="once" id="_anim_radio1_6fadd9ba91f8486b9c0895b9d455c0c8"
              >
-      <label for="_anim_radio1_6dd8c63f984f496ba57f88a927699c90">Once</label>
-      <input type="radio" name="state" value="loop" id="_anim_radio2_6dd8c63f984f496ba57f88a927699c90"
+      <label for="_anim_radio1_6fadd9ba91f8486b9c0895b9d455c0c8">Once</label>
+      <input type="radio" name="state" value="loop" id="_anim_radio2_6fadd9ba91f8486b9c0895b9d455c0c8"
              checked>
-      <label for="_anim_radio2_6dd8c63f984f496ba57f88a927699c90">Loop</label>
-      <input type="radio" name="state" value="reflect" id="_anim_radio3_6dd8c63f984f496ba57f88a927699c90"
+      <label for="_anim_radio2_6fadd9ba91f8486b9c0895b9d455c0c8">Loop</label>
+      <input type="radio" name="state" value="reflect" id="_anim_radio3_6fadd9ba91f8486b9c0895b9d455c0c8"
              >
-      <label for="_anim_radio3_6dd8c63f984f496ba57f88a927699c90">Reflect</label>
+      <label for="_anim_radio3_6fadd9ba91f8486b9c0895b9d455c0c8">Reflect</label>
     </form>
   </div>
 </div>
@@ -164354,9 +164380,9 @@ input[type=range].anim-slider {
   /* Instantiate the Animation class. */
   /* The IDs given should match those used in the template above. */
   (function() {
-    var img_id = "_anim_img6dd8c63f984f496ba57f88a927699c90";
-    var slider_id = "_anim_slider6dd8c63f984f496ba57f88a927699c90";
-    var loop_select_id = "_anim_loop_select6dd8c63f984f496ba57f88a927699c90";
+    var img_id = "_anim_img6fadd9ba91f8486b9c0895b9d455c0c8";
+    var slider_id = "_anim_slider6fadd9ba91f8486b9c0895b9d455c0c8";
+    var loop_select_id = "_anim_loop_select6fadd9ba91f8486b9c0895b9d455c0c8";
     var frames = new Array(41);
     
   frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABaAAAALQCAYAAABmJdeHAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -244055,7 +244081,7 @@ AAAAAElFTkSuQmCC\
     /* set a timeout to make sure all the above elements are created before
        the object is initialized. */
     setTimeout(function() {
-        anim6dd8c63f984f496ba57f88a927699c90 = new Animation(frames, img_id, slider_id, 100.0,
+        anim6fadd9ba91f8486b9c0895b9d455c0c8 = new Animation(frames, img_id, slider_id, 100.0,
                                  loop_select_id);
     }, 0);
   })()
