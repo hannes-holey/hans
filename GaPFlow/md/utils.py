@@ -293,7 +293,7 @@ def statistical_inefficiency(timeseries, mintime):
     Returns
     -------
     float
-        Statisitical inefficiency parameter
+        Statistical inefficiency parameter
     """
     N = len(timeseries)
     C_t = autocorr_func_1d(timeseries)

@@ -259,7 +259,7 @@ class MolecularDynamics:
         Array
             Training observations
         Array
-            Standard error of traiing observations
+            Standard error of training observations
         """
 
         # Setup MD simulation

@@ -240,7 +240,7 @@ class Problem:
         md = input_dict.get('md', None)
         db = input_dict.get('db', None)
 
-        # Intialize database
+        # Initialize database
         if db is not None:
             if md is None:
                 prop = input_dict['properties']

@@ -33,7 +33,7 @@ import jax.random as jr
 class Mock(MolecularDynamics):
     """Mock implementation of an MD runner.
 
-    Instances of this class mimick the behavior of an MD simulations.
+    Instances of this class mimic the behavior of an MD simulations.
     Instead of running an MD simulations, data is generated from implemented
     constitutive laws with added Gaussian noise. During an active learning simulation
     noisy look-up tables are generated, which are used to train a surrogate model.
