@@ -18,8 +18,8 @@
       ~WallStress.init
       ~WallStress.init_database
       ~WallStress.predict
+      ~WallStress.save_state
       ~WallStress.update
-      ~WallStress.write
    
    
 
@@ -31,8 +31,10 @@
    
       ~WallStress.Xtest
       ~WallStress.Xtrain
+      ~WallStress.Xtrain_target
       ~WallStress.Yerr
       ~WallStress.Yscale
+      ~WallStress.Yshift
       ~WallStress.Ytrain
       ~WallStress.cumtime_infer
       ~WallStress.cumtime_train
@@ -48,6 +50,7 @@
       ~WallStress.kernel_variance
       ~WallStress.last_fit_train_size
       ~WallStress.lower
+      ~WallStress.objective
       ~WallStress.obs_stddev
       ~WallStress.pressure
       ~WallStress.solution
@@ -58,10 +61,16 @@
       ~WallStress.is_gp_model
       ~WallStress.active_dims
       ~WallStress.use_active_learning
+      ~WallStress.fix_noise
       ~WallStress.rtol
       ~WallStress.atol
+      ~WallStress.tol
       ~WallStress.max_steps
       ~WallStress.pause_steps
+      ~WallStress.similarity_check
+      ~WallStress.allowed_skips
+      ~WallStress.perturb_target
+      ~WallStress.pause_on_high_residual
       ~WallStress.params_init
       ~WallStress.noise
       ~WallStress.prop

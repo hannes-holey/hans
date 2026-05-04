@@ -18,8 +18,8 @@
       ~Pressure.init
       ~Pressure.init_database
       ~Pressure.predict
+      ~Pressure.save_state
       ~Pressure.update
-      ~Pressure.write
    
    
 
@@ -31,8 +31,10 @@
    
       ~Pressure.Xtest
       ~Pressure.Xtrain
+      ~Pressure.Xtrain_target
       ~Pressure.Yerr
       ~Pressure.Yscale
+      ~Pressure.Yshift
       ~Pressure.Ytrain
       ~Pressure.cumtime_infer
       ~Pressure.cumtime_train
@@ -45,6 +47,7 @@
       ~Pressure.kernel_variance
       ~Pressure.last_fit_train_size
       ~Pressure.name
+      ~Pressure.objective
       ~Pressure.obs_stddev
       ~Pressure.pressure
       ~Pressure.solution
@@ -54,10 +57,16 @@
       ~Pressure.is_gp_model
       ~Pressure.active_dims
       ~Pressure.use_active_learning
+      ~Pressure.fix_noise
       ~Pressure.rtol
       ~Pressure.atol
+      ~Pressure.tol
       ~Pressure.max_steps
       ~Pressure.pause_steps
+      ~Pressure.similarity_check
+      ~Pressure.allowed_skips
+      ~Pressure.perturb_target
+      ~Pressure.pause_on_high_residual
       ~Pressure.params_init
       ~Pressure.noise
       ~Pressure.prop

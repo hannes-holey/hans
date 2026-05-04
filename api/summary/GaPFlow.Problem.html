@@ -51,7 +51,7 @@
     <link rel="prev" title="API Reference" href="../index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -424,7 +424,7 @@ sanitize the simulation input.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Problem.update" title="GaPFlow.Problem.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>()</p></td>
 <td><p>Performs a single time step using the MacCormack <a class="footnote-reference brackets" href="#id3" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> predictor corrector scheme.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Problem.write" title="GaPFlow.Problem.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>([scalars, fields, params])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Problem.write" title="GaPFlow.Problem.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>([scalars, fields])</p></td>
 <td><p>Write scalars, fields and hyperparameters to disk as configured.</p></td>
 </tr>
 </tbody>
@@ -633,7 +633,7 @@ Journal of Spacecraft and Rockets (reprint)
 
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.Problem.write">
-<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scalars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.Problem.write" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scalars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.Problem.write" title="Link to this definition">#</a></dt>
 <dd><p>Write scalars, fields and hyperparameters to disk as configured.</p>
 </dd></dl>
 

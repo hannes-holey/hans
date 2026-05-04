@@ -51,7 +51,7 @@
     <link rel="prev" title="GaPFlow.integrate" href="GaPFlow.integrate.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -328,16 +328,20 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.__init__"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtest"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Xtest</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yerr"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Yerr</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yscale"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Yscale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yshift"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Yshift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Ytrain"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.active_dims"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.active_dims</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.allowed_skips"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.allowed_skips</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.atol"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.atol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.build_gp"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.build_gp()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.cumtime_infer"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.cumtime_infer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.cumtime_train"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.cumtime_train</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.database"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.database</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.extra"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.extra</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.fix_noise"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.fix_noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.geo"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.geo</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.has_multi_output"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.has_multi_output</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.height"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.height</span></code></a></li>
@@ -350,16 +354,21 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.max_steps"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.max_steps</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.name"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.noise"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.noise</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.objective"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.objective</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.obs_stddev</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.params_init"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.params_init</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_on_high_residual"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.pause_on_high_residual</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.pause_steps</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.perturb_target"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.perturb_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.predict"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.prop"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.prop</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.rtol"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.rtol</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.save_state"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.save_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.similarity_check"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.similarity_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.solution"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.solution</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.tol"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.trusted"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.trusted</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.use_active_learning</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.write"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.write()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -409,10 +418,10 @@ hyperparameters, data arrays, and noise models.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.init_database" title="GaPFlow.models.gp.GaussianProcessSurrogate.init_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_database</span></code></a>(dim)</p></td>
 <td><p>Triggers the first database initialization.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.predict" title="GaPFlow.models.gp.GaussianProcessSurrogate.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>([predictor, compute_var])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.predict" title="GaPFlow.models.gp.GaussianProcessSurrogate.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>([predictor, compute_var, cooldown])</p></td>
 <td><p>Perform GP prediction, optionally updating the model via active learning (only in predictor step of the predictor-corrector time integration scheme)</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.write" title="GaPFlow.models.gp.GaussianProcessSurrogate.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.save_state" title="GaPFlow.models.gp.GaussianProcessSurrogate.save_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_state</span></code></a>()</p></td>
 <td><p>Log current GP hyperparameters and diagnostics.</p></td>
 </tr>
 </tbody>
@@ -425,13 +434,19 @@ hyperparameters, data arrays, and noise models.</p>
 <td><p>Test inputs.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain" title="GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain</span></code></a></p></td>
-<td><p>Training inputs (only active dimensions.</p></td>
+<td><p>Training inputs (normalized).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yerr" title="GaPFlow.models.gp.GaussianProcessSurrogate.Yerr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yerr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain_target" title="GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain_target</span></code></a></p></td>
+<td><p>Training inputs (normalized).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yerr" title="GaPFlow.models.gp.GaussianProcessSurrogate.Yerr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yerr</span></code></a></p></td>
 <td><p>Observations standard error.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yscale" title="GaPFlow.models.gp.GaussianProcessSurrogate.Yscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yscale</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yscale" title="GaPFlow.models.gp.GaussianProcessSurrogate.Yscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yscale</span></code></a></p></td>
 <td><p>Observations scaling factor.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yshift" title="GaPFlow.models.gp.GaussianProcessSurrogate.Yshift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yshift</span></code></a></p></td>
+<td><p>Observations shift.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Ytrain" title="GaPFlow.models.gp.GaussianProcessSurrogate.Ytrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain</span></code></a></p></td>
 <td><p>Training observations (only active dimensions, scaled).</p></td>
@@ -466,25 +481,31 @@ hyperparameters, data arrays, and noise models.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.last_fit_train_size" title="GaPFlow.models.gp.GaussianProcessSurrogate.last_fit_train_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">last_fit_train_size</span></code></a></p></td>
 <td><p>Size of the training database at the last fit.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev" title="GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_stddev</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.objective" title="GaPFlow.models.gp.GaussianProcessSurrogate.objective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code></a></p></td>
+<td><p>Optimization objective (negative marginal log likelihood)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev" title="GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_stddev</span></code></a></p></td>
 <td><p>Observation noise standard deviation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.solution" title="GaPFlow.models.gp.GaussianProcessSurrogate.solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solution</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.solution" title="GaPFlow.models.gp.GaussianProcessSurrogate.solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solution</span></code></a></p></td>
 <td><p>Return full solution field.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.trusted" title="GaPFlow.models.gp.GaussianProcessSurrogate.trusted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trusted</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.trusted" title="GaPFlow.models.gp.GaussianProcessSurrogate.trusted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trusted</span></code></a></p></td>
 <td><p>Return True if model predictive variance is below tolerance.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.name" title="GaPFlow.models.gp.GaussianProcessSurrogate.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.name" title="GaPFlow.models.gp.GaussianProcessSurrogate.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.is_gp_model" title="GaPFlow.models.gp.GaussianProcessSurrogate.is_gp_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_gp_model</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.is_gp_model" title="GaPFlow.models.gp.GaussianProcessSurrogate.is_gp_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_gp_model</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.active_dims" title="GaPFlow.models.gp.GaussianProcessSurrogate.active_dims"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_dims</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.active_dims" title="GaPFlow.models.gp.GaussianProcessSurrogate.active_dims"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_dims</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning" title="GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_active_learning</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning" title="GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_active_learning</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.fix_noise" title="GaPFlow.models.gp.GaussianProcessSurrogate.fix_noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_noise</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.rtol" title="GaPFlow.models.gp.GaussianProcessSurrogate.rtol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rtol</span></code></a></p></td>
@@ -493,22 +514,37 @@ hyperparameters, data arrays, and noise models.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.atol" title="GaPFlow.models.gp.GaussianProcessSurrogate.atol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atol</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.max_steps" title="GaPFlow.models.gp.GaussianProcessSurrogate.max_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_steps</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.tol" title="GaPFlow.models.gp.GaussianProcessSurrogate.tol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tol</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps" title="GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_steps</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.max_steps" title="GaPFlow.models.gp.GaussianProcessSurrogate.max_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_steps</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.params_init" title="GaPFlow.models.gp.GaussianProcessSurrogate.params_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">params_init</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps" title="GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_steps</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.noise" title="GaPFlow.models.gp.GaussianProcessSurrogate.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.similarity_check" title="GaPFlow.models.gp.GaussianProcessSurrogate.similarity_check"><code class="xref py py-obj docutils literal notranslate"><span class="pre">similarity_check</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.prop" title="GaPFlow.models.gp.GaussianProcessSurrogate.prop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prop</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.allowed_skips" title="GaPFlow.models.gp.GaussianProcessSurrogate.allowed_skips"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allowed_skips</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.geo" title="GaPFlow.models.gp.GaussianProcessSurrogate.geo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geo</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.perturb_target" title="GaPFlow.models.gp.GaussianProcessSurrogate.perturb_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">perturb_target</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_on_high_residual" title="GaPFlow.models.gp.GaussianProcessSurrogate.pause_on_high_residual"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_on_high_residual</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.params_init" title="GaPFlow.models.gp.GaussianProcessSurrogate.params_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">params_init</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.noise" title="GaPFlow.models.gp.GaussianProcessSurrogate.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.prop" title="GaPFlow.models.gp.GaussianProcessSurrogate.prop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prop</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.gp.GaussianProcessSurrogate.geo" title="GaPFlow.models.gp.GaussianProcessSurrogate.geo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geo</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -522,8 +558,14 @@ hyperparameters, data arrays, and noise models.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain">
-<span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain" title="Link to this definition">#</a></dt>
-<dd><p>Training inputs (only active dimensions.</p>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain" title="Link to this definition">#</a></dt>
+<dd><p>Training inputs (normalized).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain_target">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain_target" title="Link to this definition">#</a></dt>
+<dd><p>Training inputs (normalized).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -539,6 +581,12 @@ hyperparameters, data arrays, and noise models.</p>
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.Yshift">
+<span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Yshift</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yshift" title="Link to this definition">#</a></dt>
+<dd><p>Observations shift.</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.Ytrain">
 <span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Ytrain</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Ytrain" title="Link to this definition">#</a></dt>
 <dd><p>Training observations (only active dimensions, scaled).</p>
@@ -547,6 +595,11 @@ hyperparameters, data arrays, and noise models.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.active_dims">
 <span class="sig-name descname"><span class="pre">active_dims</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.active_dims" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.allowed_skips">
+<span class="sig-name descname"><span class="pre">allowed_skips</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.allowed_skips" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -598,6 +651,11 @@ hyperparameters, data arrays, and noise models.</p>
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">extra</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.extra" title="Link to this definition">#</a></dt>
 <dd><p>Return constant extra field, which can be used as additional input.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.fix_noise">
+<span class="sig-name descname"><span class="pre">fix_noise</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.fix_noise" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.geo">
@@ -671,6 +729,12 @@ hyperparameters, data arrays, and noise models.</p>
 <dd></dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.objective">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">objective</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.objective" title="Link to this definition">#</a></dt>
+<dd><p>Optimization objective (negative marginal log likelihood)</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev">
 <span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">obs_stddev</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev" title="Link to this definition">#</a></dt>
 <dd><p>Observation noise standard deviation.</p>
@@ -682,20 +746,31 @@ hyperparameters, data arrays, and noise models.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.pause_on_high_residual">
+<span class="sig-name descname"><span class="pre">pause_on_high_residual</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_on_high_residual" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps">
 <span class="sig-name descname"><span class="pre">pause_steps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.perturb_target">
+<span class="sig-name descname"><span class="pre">perturb_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.perturb_target" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.predict" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cooldown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.predict" title="Link to this definition">#</a></dt>
 <dd><p>Perform GP prediction, optionally updating the model via active learning
 (only in predictor step of the predictor-corrector time integration scheme)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>predictor</strong> (<em>bool</em>) – Whether to perform active learning updates (only in predictor step, default is True).</p></li>
-<li><p><strong>compute_var</strong> (<em>bool</em>) – If true (default), preditive variance is re-computed.</p></li>
+<li><p><strong>predictor</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to perform active learning updates (only in predictor step, default is True).</p></li>
+<li><p><strong>compute_var</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true (default), preditive variance is re-computed.</p></li>
+<li><p><strong>cooldown</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, active learning is blocked to let the system cool down (default is False).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -718,11 +793,27 @@ hyperparameters, data arrays, and noise models.</p>
 <span class="sig-name descname"><span class="pre">rtol</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.rtol" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.save_state">
+<span class="sig-name descname"><span class="pre">save_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.save_state" title="Link to this definition">#</a></dt>
+<dd><p>Log current GP hyperparameters and diagnostics.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.similarity_check">
+<span class="sig-name descname"><span class="pre">similarity_check</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.similarity_check" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.solution">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">solution</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.solution" title="Link to this definition">#</a></dt>
 <dd><p>Return full solution field.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.tol">
+<span class="sig-name descname"><span class="pre">tol</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.tol" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.trusted">
@@ -734,12 +825,6 @@ hyperparameters, data arrays, and noise models.</p>
 <dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning">
 <span class="sig-name descname"><span class="pre">use_active_learning</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="GaPFlow.models.gp.GaussianProcessSurrogate.write">
-<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.gp.GaussianProcessSurrogate.write" title="Link to this definition">#</a></dt>
-<dd><p>Log current GP hyperparameters and diagnostics.</p>
-</dd></dl>
 
 </dd></dl>
 
@@ -796,16 +881,20 @@ hyperparameters, data arrays, and noise models.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.__init__"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtest"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Xtest</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yerr"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Yerr</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yscale"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Yscale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Yshift"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Yshift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.Ytrain"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.active_dims"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.active_dims</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.allowed_skips"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.allowed_skips</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.atol"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.atol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.build_gp"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.build_gp()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.cumtime_infer"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.cumtime_infer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.cumtime_train"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.cumtime_train</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.database"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.database</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.extra"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.extra</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.fix_noise"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.fix_noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.geo"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.geo</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.has_multi_output"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.has_multi_output</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.height"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.height</span></code></a></li>
@@ -818,16 +907,21 @@ hyperparameters, data arrays, and noise models.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.max_steps"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.max_steps</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.name"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.noise"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.noise</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.objective"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.objective</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.obs_stddev"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.obs_stddev</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.params_init"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.params_init</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_on_high_residual"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.pause_on_high_residual</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.pause_steps"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.pause_steps</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.perturb_target"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.perturb_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.predict"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.prop"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.prop</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.rtol"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.rtol</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.save_state"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.save_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.similarity_check"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.similarity_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.solution"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.solution</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.tol"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.trusted"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.trusted</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.use_active_learning"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.use_active_learning</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.gp.GaussianProcessSurrogate.write"><code class="docutils literal notranslate"><span class="pre">GaussianProcessSurrogate.write()</span></code></a></li>
 </ul>
 </li>
 </ul>

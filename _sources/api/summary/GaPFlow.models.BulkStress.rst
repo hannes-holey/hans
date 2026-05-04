@@ -17,8 +17,8 @@
       ~BulkStress.build_gp
       ~BulkStress.init_database
       ~BulkStress.predict
+      ~BulkStress.save_state
       ~BulkStress.update
-      ~BulkStress.write
    
    
 
@@ -30,8 +30,10 @@
    
       ~BulkStress.Xtest
       ~BulkStress.Xtrain
+      ~BulkStress.Xtrain_target
       ~BulkStress.Yerr
       ~BulkStress.Yscale
+      ~BulkStress.Yshift
       ~BulkStress.Ytrain
       ~BulkStress.cumtime_infer
       ~BulkStress.cumtime_train
@@ -46,6 +48,7 @@
       ~BulkStress.kernel_variance
       ~BulkStress.last_fit_train_size
       ~BulkStress.name
+      ~BulkStress.objective
       ~BulkStress.obs_stddev
       ~BulkStress.pressure
       ~BulkStress.solution
@@ -54,10 +57,16 @@
       ~BulkStress.is_gp_model
       ~BulkStress.active_dims
       ~BulkStress.use_active_learning
+      ~BulkStress.fix_noise
       ~BulkStress.rtol
       ~BulkStress.atol
+      ~BulkStress.tol
       ~BulkStress.max_steps
       ~BulkStress.pause_steps
+      ~BulkStress.similarity_check
+      ~BulkStress.allowed_skips
+      ~BulkStress.perturb_target
+      ~BulkStress.pause_on_high_residual
       ~BulkStress.params_init
       ~BulkStress.noise
       ~BulkStress.prop

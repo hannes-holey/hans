@@ -50,7 +50,7 @@
     <link rel="prev" title="GaPFlow.viz.animations" href="GaPFlow.viz.animations.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -356,7 +356,7 @@ from stored NetCDF files.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.viz.plotting.plot_height" title="GaPFlow.viz.plotting.plot_height"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_height</span></code></a>(file_list[, dim, show_defo, ...])</p></td>
 <td><p>Plot the height profile</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.viz.plotting.plot_history" title="GaPFlow.viz.plotting.plot_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_history</span></code></a>(file_list[, gp_files_0, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.viz.plotting.plot_history" title="GaPFlow.viz.plotting.plot_history"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_history</span></code></a>(file_list, gp_files[, show])</p></td>
 <td><p>Plot the time evolution of scalar quantities, e.g. kinetic energy, mass, GP variance etc.</p></td>
 </tr>
 </tbody>
@@ -413,17 +413,14 @@ gap height for reference</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="GaPFlow.viz.plotting.plot_history">
-<span class="sig-prename descclassname"><span class="pre">GaPFlow.viz.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp_files_0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp_files_1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.viz.plotting.plot_history" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">GaPFlow.viz.plotting.</span></span><span class="sig-name descname"><span class="pre">plot_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gp_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.viz.plotting.plot_history" title="Link to this definition">#</a></dt>
 <dd><p>Plot the time evolution of scalar quantities,
 e.g. kinetic energy, mass, GP variance etc.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>file_list</strong> (<em>list</em>) – List of CSV files</p></li>
-<li><p><strong>gp_files_0</strong> (<em>list</em><em>, </em><em>optional</em>) – List of gp history files plotted in a separate column of the figure
-(the default is [], which means not a GP simulation)</p></li>
-<li><p><strong>gp_files_1</strong> (<em>list</em><em>, </em><em>optional</em>) – List of gp history files plotted in a separate column of the figure
-(the default is [], which means not a GP simulation)</p></li>
+<li><p><strong>gp_files</strong> (<em>dict</em>) – Dicitonary with list of CSV files for each GP model (zz, xz, yz)</p></li>
 <li><p><strong>show</strong> (<em>bool</em><em>, </em><em>optional</em>) – Flag for plt.show() (the default is True)</p></li>
 </ul>
 </dd>

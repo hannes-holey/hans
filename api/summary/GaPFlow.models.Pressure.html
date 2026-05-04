@@ -51,7 +51,7 @@
     <link rel="prev" title="GaPFlow.models.gp.GaussianProcessSurrogate" href="GaPFlow.models.gp.GaussianProcessSurrogate.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -328,16 +328,20 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.__init__"><code class="docutils literal notranslate"><span class="pre">Pressure.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Xtest"><code class="docutils literal notranslate"><span class="pre">Pressure.Xtest</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Xtrain"><code class="docutils literal notranslate"><span class="pre">Pressure.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">Pressure.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Yerr"><code class="docutils literal notranslate"><span class="pre">Pressure.Yerr</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Yscale"><code class="docutils literal notranslate"><span class="pre">Pressure.Yscale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Yshift"><code class="docutils literal notranslate"><span class="pre">Pressure.Yshift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Ytrain"><code class="docutils literal notranslate"><span class="pre">Pressure.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.active_dims"><code class="docutils literal notranslate"><span class="pre">Pressure.active_dims</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.allowed_skips"><code class="docutils literal notranslate"><span class="pre">Pressure.allowed_skips</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.atol"><code class="docutils literal notranslate"><span class="pre">Pressure.atol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.build_gp"><code class="docutils literal notranslate"><span class="pre">Pressure.build_gp()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.cumtime_infer"><code class="docutils literal notranslate"><span class="pre">Pressure.cumtime_infer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.cumtime_train"><code class="docutils literal notranslate"><span class="pre">Pressure.cumtime_train</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.database"><code class="docutils literal notranslate"><span class="pre">Pressure.database</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.extra"><code class="docutils literal notranslate"><span class="pre">Pressure.extra</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.fix_noise"><code class="docutils literal notranslate"><span class="pre">Pressure.fix_noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.geo"><code class="docutils literal notranslate"><span class="pre">Pressure.geo</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.has_multi_output"><code class="docutils literal notranslate"><span class="pre">Pressure.has_multi_output</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.height"><code class="docutils literal notranslate"><span class="pre">Pressure.height</span></code></a></li>
@@ -351,20 +355,25 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.max_steps"><code class="docutils literal notranslate"><span class="pre">Pressure.max_steps</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.name"><code class="docutils literal notranslate"><span class="pre">Pressure.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.noise"><code class="docutils literal notranslate"><span class="pre">Pressure.noise</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.objective"><code class="docutils literal notranslate"><span class="pre">Pressure.objective</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.obs_stddev"><code class="docutils literal notranslate"><span class="pre">Pressure.obs_stddev</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.params_init"><code class="docutils literal notranslate"><span class="pre">Pressure.params_init</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.pause_on_high_residual"><code class="docutils literal notranslate"><span class="pre">Pressure.pause_on_high_residual</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.pause_steps"><code class="docutils literal notranslate"><span class="pre">Pressure.pause_steps</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.perturb_target"><code class="docutils literal notranslate"><span class="pre">Pressure.perturb_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.predict"><code class="docutils literal notranslate"><span class="pre">Pressure.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.pressure"><code class="docutils literal notranslate"><span class="pre">Pressure.pressure</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.prop"><code class="docutils literal notranslate"><span class="pre">Pressure.prop</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.rtol"><code class="docutils literal notranslate"><span class="pre">Pressure.rtol</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.save_state"><code class="docutils literal notranslate"><span class="pre">Pressure.save_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.similarity_check"><code class="docutils literal notranslate"><span class="pre">Pressure.similarity_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.solution"><code class="docutils literal notranslate"><span class="pre">Pressure.solution</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.tol"><code class="docutils literal notranslate"><span class="pre">Pressure.tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.trusted"><code class="docutils literal notranslate"><span class="pre">Pressure.trusted</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.update"><code class="docutils literal notranslate"><span class="pre">Pressure.update()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.use_active_learning"><code class="docutils literal notranslate"><span class="pre">Pressure.use_active_learning</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.v_sound"><code class="docutils literal notranslate"><span class="pre">Pressure.v_sound</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.variance"><code class="docutils literal notranslate"><span class="pre">Pressure.variance</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.write"><code class="docutils literal notranslate"><span class="pre">Pressure.write()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -418,14 +427,14 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.init_database" title="GaPFlow.models.Pressure.init_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_database</span></code></a>(dim)</p></td>
 <td><p>Triggers the first database initialization.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.predict" title="GaPFlow.models.Pressure.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>([predictor, compute_var])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.predict" title="GaPFlow.models.Pressure.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>([predictor, compute_var, cooldown])</p></td>
 <td><p>Perform GP prediction, optionally updating the model via active learning (only in predictor step of the predictor-corrector time integration scheme)</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.update" title="GaPFlow.models.Pressure.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>([predictor, compute_var])</p></td>
-<td><p>Update pressure: compute deterministic stresses and, if enabled, perform GP prediction and place predicted mean and variance into the appropriate field entries.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.write" title="GaPFlow.models.Pressure.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.save_state" title="GaPFlow.models.Pressure.save_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_state</span></code></a>()</p></td>
 <td><p>Log current GP hyperparameters and diagnostics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.update" title="GaPFlow.models.Pressure.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>([predictor, compute_var, cooldown])</p></td>
+<td><p>Update pressure: compute deterministic stresses and, if enabled, perform GP prediction and place predicted mean and variance into the appropriate field entries.</p></td>
 </tr>
 </tbody>
 </table>
@@ -437,13 +446,19 @@
 <td><p>Test inputs for pressure GP (normalized).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Xtrain" title="GaPFlow.models.Pressure.Xtrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain</span></code></a></p></td>
-<td><p>Training inputs for pressure GP (normalized).</p></td>
+<td><p>Training inputs (normalized).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Yerr" title="GaPFlow.models.Pressure.Yerr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yerr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Xtrain_target" title="GaPFlow.models.Pressure.Xtrain_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain_target</span></code></a></p></td>
+<td><p>Training inputs (normalized).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Yerr" title="GaPFlow.models.Pressure.Yerr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yerr</span></code></a></p></td>
 <td><p>Observation noise (normalized) for pressure.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Yscale" title="GaPFlow.models.Pressure.Yscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yscale</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Yscale" title="GaPFlow.models.Pressure.Yscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yscale</span></code></a></p></td>
 <td><p>Output scale for pressure (scalar-like jax.Array).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Yshift" title="GaPFlow.models.Pressure.Yshift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yshift</span></code></a></p></td>
+<td><p>Training outputs for pressure GP (not normalized).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.Ytrain" title="GaPFlow.models.Pressure.Ytrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain</span></code></a></p></td>
 <td><p>Training outputs for pressure GP (normalized).</p></td>
@@ -481,31 +496,37 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.name" title="GaPFlow.models.Pressure.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.obs_stddev" title="GaPFlow.models.Pressure.obs_stddev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_stddev</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.objective" title="GaPFlow.models.Pressure.objective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code></a></p></td>
+<td><p>Optimization objective (negative marginal log likelihood)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.obs_stddev" title="GaPFlow.models.Pressure.obs_stddev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_stddev</span></code></a></p></td>
 <td><p>Observation standard deviation for pressure GP.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.pressure" title="GaPFlow.models.Pressure.pressure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pressure</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.pressure" title="GaPFlow.models.Pressure.pressure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pressure</span></code></a></p></td>
 <td><p>Pressure field.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.solution" title="GaPFlow.models.Pressure.solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solution</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.solution" title="GaPFlow.models.Pressure.solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solution</span></code></a></p></td>
 <td><p>Return full solution field.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.trusted" title="GaPFlow.models.Pressure.trusted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trusted</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.trusted" title="GaPFlow.models.Pressure.trusted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trusted</span></code></a></p></td>
 <td><p>Return True if model predictive variance is below tolerance.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.v_sound" title="GaPFlow.models.Pressure.v_sound"><code class="xref py py-obj docutils literal notranslate"><span class="pre">v_sound</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.v_sound" title="GaPFlow.models.Pressure.v_sound"><code class="xref py py-obj docutils literal notranslate"><span class="pre">v_sound</span></code></a></p></td>
 <td><p>Effective sound speed computed from the GP-based eos (if available) or from the analytic eos_sound_velocity.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.variance" title="GaPFlow.models.Pressure.variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">variance</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.variance" title="GaPFlow.models.Pressure.variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">variance</span></code></a></p></td>
 <td><p>Variance of the pressure field.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.is_gp_model" title="GaPFlow.models.Pressure.is_gp_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_gp_model</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.is_gp_model" title="GaPFlow.models.Pressure.is_gp_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_gp_model</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.active_dims" title="GaPFlow.models.Pressure.active_dims"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_dims</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.active_dims" title="GaPFlow.models.Pressure.active_dims"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_dims</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.use_active_learning" title="GaPFlow.models.Pressure.use_active_learning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_active_learning</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.use_active_learning" title="GaPFlow.models.Pressure.use_active_learning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_active_learning</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.fix_noise" title="GaPFlow.models.Pressure.fix_noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_noise</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.rtol" title="GaPFlow.models.Pressure.rtol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rtol</span></code></a></p></td>
@@ -514,22 +535,37 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.atol" title="GaPFlow.models.Pressure.atol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atol</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.max_steps" title="GaPFlow.models.Pressure.max_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_steps</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.tol" title="GaPFlow.models.Pressure.tol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tol</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.pause_steps" title="GaPFlow.models.Pressure.pause_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_steps</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.max_steps" title="GaPFlow.models.Pressure.max_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_steps</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.params_init" title="GaPFlow.models.Pressure.params_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">params_init</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.pause_steps" title="GaPFlow.models.Pressure.pause_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_steps</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.noise" title="GaPFlow.models.Pressure.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.similarity_check" title="GaPFlow.models.Pressure.similarity_check"><code class="xref py py-obj docutils literal notranslate"><span class="pre">similarity_check</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.prop" title="GaPFlow.models.Pressure.prop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prop</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.allowed_skips" title="GaPFlow.models.Pressure.allowed_skips"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allowed_skips</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.geo" title="GaPFlow.models.Pressure.geo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geo</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.perturb_target" title="GaPFlow.models.Pressure.perturb_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">perturb_target</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.pause_on_high_residual" title="GaPFlow.models.Pressure.pause_on_high_residual"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_on_high_residual</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.params_init" title="GaPFlow.models.Pressure.params_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">params_init</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.noise" title="GaPFlow.models.Pressure.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.prop" title="GaPFlow.models.Pressure.prop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prop</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.Pressure.geo" title="GaPFlow.models.Pressure.geo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geo</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -544,7 +580,13 @@
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.Xtrain">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.Xtrain" title="Link to this definition">#</a></dt>
-<dd><p>Training inputs for pressure GP (normalized).</p>
+<dd><p>Training inputs (normalized).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.Xtrain_target">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.Xtrain_target" title="Link to this definition">#</a></dt>
+<dd><p>Training inputs (normalized).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -560,6 +602,12 @@
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.Yshift">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Yshift</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.Yshift" title="Link to this definition">#</a></dt>
+<dd><p>Training outputs for pressure GP (not normalized).</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.Ytrain">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Ytrain</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.Ytrain" title="Link to this definition">#</a></dt>
 <dd><p>Training outputs for pressure GP (normalized).</p>
@@ -568,6 +616,11 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.active_dims">
 <span class="sig-name descname"><span class="pre">active_dims</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.active_dims" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.allowed_skips">
+<span class="sig-name descname"><span class="pre">allowed_skips</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.allowed_skips" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -619,6 +672,11 @@
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">extra</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.extra" title="Link to this definition">#</a></dt>
 <dd><p>Return constant extra field, which can be used as additional input.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.fix_noise">
+<span class="sig-name descname"><span class="pre">fix_noise</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.fix_noise" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.geo">
@@ -698,6 +756,12 @@
 <dd></dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.objective">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">objective</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.objective" title="Link to this definition">#</a></dt>
+<dd><p>Optimization objective (negative marginal log likelihood)</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.obs_stddev">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">obs_stddev</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.obs_stddev" title="Link to this definition">#</a></dt>
 <dd><p>Observation standard deviation for pressure GP.</p>
@@ -709,20 +773,31 @@
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.pause_on_high_residual">
+<span class="sig-name descname"><span class="pre">pause_on_high_residual</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.pause_on_high_residual" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.pause_steps">
 <span class="sig-name descname"><span class="pre">pause_steps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.pause_steps" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.perturb_target">
+<span class="sig-name descname"><span class="pre">perturb_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.perturb_target" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.predict" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cooldown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.predict" title="Link to this definition">#</a></dt>
 <dd><p>Perform GP prediction, optionally updating the model via active learning
 (only in predictor step of the predictor-corrector time integration scheme)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>predictor</strong> (<em>bool</em>) – Whether to perform active learning updates (only in predictor step, default is True).</p></li>
-<li><p><strong>compute_var</strong> (<em>bool</em>) – If true (default), preditive variance is re-computed.</p></li>
+<li><p><strong>predictor</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to perform active learning updates (only in predictor step, default is True).</p></li>
+<li><p><strong>compute_var</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true (default), preditive variance is re-computed.</p></li>
+<li><p><strong>cooldown</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, active learning is blocked to let the system cool down (default is False).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -751,11 +826,27 @@
 <span class="sig-name descname"><span class="pre">rtol</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.rtol" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.save_state">
+<span class="sig-name descname"><span class="pre">save_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.save_state" title="Link to this definition">#</a></dt>
+<dd><p>Log current GP hyperparameters and diagnostics.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.similarity_check">
+<span class="sig-name descname"><span class="pre">similarity_check</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.similarity_check" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.solution">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">solution</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.solution" title="Link to this definition">#</a></dt>
 <dd><p>Return full solution field.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.Pressure.tol">
+<span class="sig-name descname"><span class="pre">tol</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#GaPFlow.models.Pressure.tol" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.trusted">
@@ -765,7 +856,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.update" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cooldown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.update" title="Link to this definition">#</a></dt>
 <dd><p>Update pressure: compute deterministic stresses and, if enabled,
 perform GP prediction and place predicted mean and variance into the
 appropriate field entries.</p>
@@ -775,6 +866,7 @@ appropriate field entries.</p>
 <li><p><strong>predictor</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether this update is part of the predictor stage.</p></li>
 <li><p><strong>compute_var</strong> (<em>bool</em><em>, </em><em>optional</em>) – Flag for re-computing the variance (the default is False which uses
 the stored variance from previous steps).</p></li>
+<li><p><strong>cooldown</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, active learning is blocked to let the system cool down (default is False).</p></li>
 </ul>
 </dd>
 </dl>
@@ -804,12 +896,6 @@ or from the analytic eos_sound_velocity.</p>
 <dt class="sig sig-object py" id="GaPFlow.models.Pressure.variance">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">variance</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">floating</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.variance" title="Link to this definition">#</a></dt>
 <dd><p>Variance of the pressure field.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="GaPFlow.models.Pressure.write">
-<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.Pressure.write" title="Link to this definition">#</a></dt>
-<dd><p>Log current GP hyperparameters and diagnostics.</p>
 </dd></dl>
 
 </dd></dl>
@@ -867,16 +953,20 @@ or from the analytic eos_sound_velocity.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.__init__"><code class="docutils literal notranslate"><span class="pre">Pressure.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Xtest"><code class="docutils literal notranslate"><span class="pre">Pressure.Xtest</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Xtrain"><code class="docutils literal notranslate"><span class="pre">Pressure.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">Pressure.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Yerr"><code class="docutils literal notranslate"><span class="pre">Pressure.Yerr</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Yscale"><code class="docutils literal notranslate"><span class="pre">Pressure.Yscale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Yshift"><code class="docutils literal notranslate"><span class="pre">Pressure.Yshift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.Ytrain"><code class="docutils literal notranslate"><span class="pre">Pressure.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.active_dims"><code class="docutils literal notranslate"><span class="pre">Pressure.active_dims</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.allowed_skips"><code class="docutils literal notranslate"><span class="pre">Pressure.allowed_skips</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.atol"><code class="docutils literal notranslate"><span class="pre">Pressure.atol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.build_gp"><code class="docutils literal notranslate"><span class="pre">Pressure.build_gp()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.cumtime_infer"><code class="docutils literal notranslate"><span class="pre">Pressure.cumtime_infer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.cumtime_train"><code class="docutils literal notranslate"><span class="pre">Pressure.cumtime_train</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.database"><code class="docutils literal notranslate"><span class="pre">Pressure.database</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.extra"><code class="docutils literal notranslate"><span class="pre">Pressure.extra</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.fix_noise"><code class="docutils literal notranslate"><span class="pre">Pressure.fix_noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.geo"><code class="docutils literal notranslate"><span class="pre">Pressure.geo</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.has_multi_output"><code class="docutils literal notranslate"><span class="pre">Pressure.has_multi_output</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.height"><code class="docutils literal notranslate"><span class="pre">Pressure.height</span></code></a></li>
@@ -890,20 +980,25 @@ or from the analytic eos_sound_velocity.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.max_steps"><code class="docutils literal notranslate"><span class="pre">Pressure.max_steps</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.name"><code class="docutils literal notranslate"><span class="pre">Pressure.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.noise"><code class="docutils literal notranslate"><span class="pre">Pressure.noise</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.objective"><code class="docutils literal notranslate"><span class="pre">Pressure.objective</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.obs_stddev"><code class="docutils literal notranslate"><span class="pre">Pressure.obs_stddev</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.params_init"><code class="docutils literal notranslate"><span class="pre">Pressure.params_init</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.pause_on_high_residual"><code class="docutils literal notranslate"><span class="pre">Pressure.pause_on_high_residual</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.pause_steps"><code class="docutils literal notranslate"><span class="pre">Pressure.pause_steps</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.perturb_target"><code class="docutils literal notranslate"><span class="pre">Pressure.perturb_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.predict"><code class="docutils literal notranslate"><span class="pre">Pressure.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.pressure"><code class="docutils literal notranslate"><span class="pre">Pressure.pressure</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.prop"><code class="docutils literal notranslate"><span class="pre">Pressure.prop</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.rtol"><code class="docutils literal notranslate"><span class="pre">Pressure.rtol</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.save_state"><code class="docutils literal notranslate"><span class="pre">Pressure.save_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.similarity_check"><code class="docutils literal notranslate"><span class="pre">Pressure.similarity_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.solution"><code class="docutils literal notranslate"><span class="pre">Pressure.solution</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.tol"><code class="docutils literal notranslate"><span class="pre">Pressure.tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.trusted"><code class="docutils literal notranslate"><span class="pre">Pressure.trusted</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.update"><code class="docutils literal notranslate"><span class="pre">Pressure.update()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.use_active_learning"><code class="docutils literal notranslate"><span class="pre">Pressure.use_active_learning</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.v_sound"><code class="docutils literal notranslate"><span class="pre">Pressure.v_sound</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.variance"><code class="docutils literal notranslate"><span class="pre">Pressure.variance</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.Pressure.write"><code class="docutils literal notranslate"><span class="pre">Pressure.write()</span></code></a></li>
 </ul>
 </li>
 </ul>

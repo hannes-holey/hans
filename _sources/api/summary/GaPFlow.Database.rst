@@ -30,8 +30,11 @@
    .. autosummary::
    
       ~Database.X_scale
+      ~Database.X_shift
       ~Database.Xtrain
+      ~Database.Xtrain_target
       ~Database.Y_scale
+      ~Database.Y_shift
       ~Database.Ytrain
       ~Database.Ytrain_err
       ~Database.config

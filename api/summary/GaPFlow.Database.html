@@ -51,7 +51,7 @@
     <link rel="prev" title="GaPFlow.Problem" href="GaPFlow.Problem.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -327,8 +327,11 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.__init__"><code class="docutils literal notranslate"><span class="pre">Database.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.X_scale"><code class="docutils literal notranslate"><span class="pre">Database.X_scale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.X_shift"><code class="docutils literal notranslate"><span class="pre">Database.X_shift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Xtrain"><code class="docutils literal notranslate"><span class="pre">Database.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">Database.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Y_scale"><code class="docutils literal notranslate"><span class="pre">Database.Y_scale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Y_shift"><code class="docutils literal notranslate"><span class="pre">Database.Y_shift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Ytrain"><code class="docutils literal notranslate"><span class="pre">Database.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Ytrain_err"><code class="docutils literal notranslate"><span class="pre">Database.Ytrain_err</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.add_data"><code class="docutils literal notranslate"><span class="pre">Database.add_data()</span></code></a></li>
@@ -421,37 +424,46 @@ and optional dtool integration for persistent dataset storage.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.X_scale" title="GaPFlow.Database.X_scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">X_scale</span></code></a></p></td>
 <td><p>Normalization constants for input features.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.Xtrain" title="GaPFlow.Database.Xtrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.X_shift" title="GaPFlow.Database.X_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">X_shift</span></code></a></p></td>
+<td><p>Normalization constants for input features.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.Xtrain" title="GaPFlow.Database.Xtrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain</span></code></a></p></td>
+<td><p>Normalized input features of shape (Ntrain, Nfeat).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.Xtrain_target" title="GaPFlow.Database.Xtrain_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain_target</span></code></a></p></td>
 <td><p>Normalized input features of shape (Ntrain, Nfeat).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.Y_scale" title="GaPFlow.Database.Y_scale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Y_scale</span></code></a></p></td>
 <td><p>Normalization constants for observations</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.Ytrain" title="GaPFlow.Database.Ytrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.Y_shift" title="GaPFlow.Database.Y_shift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Y_shift</span></code></a></p></td>
+<td><p>Normalization constants for observations</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.Ytrain" title="GaPFlow.Database.Ytrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain</span></code></a></p></td>
 <td><p>Normalized observations of shape (Ntrain, 13).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.Ytrain_err" title="GaPFlow.Database.Ytrain_err"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain_err</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.Ytrain_err" title="GaPFlow.Database.Ytrain_err"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain_err</span></code></a></p></td>
 <td><p>Normalized observation error of shape (Ntrain, 13).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.config" title="GaPFlow.Database.config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.config" title="GaPFlow.Database.config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></a></p></td>
 <td><p>Configuration parameters of the database object.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.has_mock_md" title="GaPFlow.Database.has_mock_md"><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_mock_md</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.has_mock_md" title="GaPFlow.Database.has_mock_md"><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_mock_md</span></code></a></p></td>
 <td><p>Flag that indicates whether the attached MD runner is a 'mock' object.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.md_config" title="GaPFlow.Database.md_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">md_config</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.md_config" title="GaPFlow.Database.md_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">md_config</span></code></a></p></td>
 <td><p>Configuration parameters of the attached MD runner object.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.num_features" title="GaPFlow.Database.num_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_features</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.num_features" title="GaPFlow.Database.num_features"><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_features</span></code></a></p></td>
 <td><p>Number of possible features, actual ones are selected from GP's active_dims.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.output_path" title="GaPFlow.Database.output_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.output_path" title="GaPFlow.Database.output_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_path</span></code></a></p></td>
 <td><p>Simulation output path</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.size" title="GaPFlow.Database.size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">size</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.size" title="GaPFlow.Database.size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">size</span></code></a></p></td>
 <td><p>Number of training samples currently stored.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.Database.training_path" title="GaPFlow.Database.training_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">training_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.Database.training_path" title="GaPFlow.Database.training_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">training_path</span></code></a></p></td>
 <td><p>Local storage location of dtool datasets.</p></td>
 </tr>
 </tbody>
@@ -464,14 +476,32 @@ and optional dtool integration for persistent dataset storage.</p>
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.Database.X_shift">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">X_shift</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Float</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Ntrain</span> <span class="pre">Nfeat'</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.Database.X_shift" title="Link to this definition">#</a></dt>
+<dd><p>Normalization constants for input features.</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.Database.Xtrain">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Float</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Ntrain</span> <span class="pre">Nfeat'</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.Database.Xtrain" title="Link to this definition">#</a></dt>
 <dd><p>Normalized input features of shape (Ntrain, Nfeat).</p>
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.Database.Xtrain_target">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Float</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Ntrain</span> <span class="pre">Nfeat'</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.Database.Xtrain_target" title="Link to this definition">#</a></dt>
+<dd><p>Normalized input features of shape (Ntrain, Nfeat).</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.Database.Y_scale">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Y_scale</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Float</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Ntrain</span> <span class="pre">13'</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.Database.Y_scale" title="Link to this definition">#</a></dt>
+<dd><p>Normalization constants for observations</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.Database.Y_shift">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Y_shift</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Float</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Ntrain</span> <span class="pre">13'</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.Database.Y_shift" title="Link to this definition">#</a></dt>
 <dd><p>Normalization constants for observations</p>
 </dd></dl>
 
@@ -659,8 +689,11 @@ also for the attached MD runner object.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database"><code class="docutils literal notranslate"><span class="pre">Database</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.__init__"><code class="docutils literal notranslate"><span class="pre">Database.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.X_scale"><code class="docutils literal notranslate"><span class="pre">Database.X_scale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.X_shift"><code class="docutils literal notranslate"><span class="pre">Database.X_shift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Xtrain"><code class="docutils literal notranslate"><span class="pre">Database.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">Database.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Y_scale"><code class="docutils literal notranslate"><span class="pre">Database.Y_scale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Y_shift"><code class="docutils literal notranslate"><span class="pre">Database.Y_shift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Ytrain"><code class="docutils literal notranslate"><span class="pre">Database.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.Ytrain_err"><code class="docutils literal notranslate"><span class="pre">Database.Ytrain_err</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.Database.add_data"><code class="docutils literal notranslate"><span class="pre">Database.add_data()</span></code></a></li>

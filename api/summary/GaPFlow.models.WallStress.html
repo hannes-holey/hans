@@ -51,7 +51,7 @@
     <link rel="prev" title="GaPFlow.models.BulkStress" href="GaPFlow.models.BulkStress.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -328,10 +328,13 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.__init__"><code class="docutils literal notranslate"><span class="pre">WallStress.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Xtest"><code class="docutils literal notranslate"><span class="pre">WallStress.Xtest</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Xtrain"><code class="docutils literal notranslate"><span class="pre">WallStress.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">WallStress.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Yerr"><code class="docutils literal notranslate"><span class="pre">WallStress.Yerr</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Yscale"><code class="docutils literal notranslate"><span class="pre">WallStress.Yscale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Yshift"><code class="docutils literal notranslate"><span class="pre">WallStress.Yshift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Ytrain"><code class="docutils literal notranslate"><span class="pre">WallStress.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.active_dims"><code class="docutils literal notranslate"><span class="pre">WallStress.active_dims</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.allowed_skips"><code class="docutils literal notranslate"><span class="pre">WallStress.allowed_skips</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.atol"><code class="docutils literal notranslate"><span class="pre">WallStress.atol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.build_gp"><code class="docutils literal notranslate"><span class="pre">WallStress.build_gp()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.cumtime_infer"><code class="docutils literal notranslate"><span class="pre">WallStress.cumtime_infer</span></code></a></li>
@@ -340,6 +343,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.dp_dx"><code class="docutils literal notranslate"><span class="pre">WallStress.dp_dx</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.dp_dy"><code class="docutils literal notranslate"><span class="pre">WallStress.dp_dy</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.extra"><code class="docutils literal notranslate"><span class="pre">WallStress.extra</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.fix_noise"><code class="docutils literal notranslate"><span class="pre">WallStress.fix_noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.full"><code class="docutils literal notranslate"><span class="pre">WallStress.full</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.geo"><code class="docutils literal notranslate"><span class="pre">WallStress.geo</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.has_multi_output"><code class="docutils literal notranslate"><span class="pre">WallStress.has_multi_output</span></code></a></li>
@@ -355,20 +359,25 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.max_steps"><code class="docutils literal notranslate"><span class="pre">WallStress.max_steps</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.name"><code class="docutils literal notranslate"><span class="pre">WallStress.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.noise"><code class="docutils literal notranslate"><span class="pre">WallStress.noise</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.objective"><code class="docutils literal notranslate"><span class="pre">WallStress.objective</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.obs_stddev"><code class="docutils literal notranslate"><span class="pre">WallStress.obs_stddev</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.params_init"><code class="docutils literal notranslate"><span class="pre">WallStress.params_init</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.pause_on_high_residual"><code class="docutils literal notranslate"><span class="pre">WallStress.pause_on_high_residual</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.pause_steps"><code class="docutils literal notranslate"><span class="pre">WallStress.pause_steps</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.perturb_target"><code class="docutils literal notranslate"><span class="pre">WallStress.perturb_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.predict"><code class="docutils literal notranslate"><span class="pre">WallStress.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.pressure"><code class="docutils literal notranslate"><span class="pre">WallStress.pressure</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.prop"><code class="docutils literal notranslate"><span class="pre">WallStress.prop</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.rtol"><code class="docutils literal notranslate"><span class="pre">WallStress.rtol</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.save_state"><code class="docutils literal notranslate"><span class="pre">WallStress.save_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.similarity_check"><code class="docutils literal notranslate"><span class="pre">WallStress.similarity_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.solution"><code class="docutils literal notranslate"><span class="pre">WallStress.solution</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.tol"><code class="docutils literal notranslate"><span class="pre">WallStress.tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.trusted"><code class="docutils literal notranslate"><span class="pre">WallStress.trusted</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.update"><code class="docutils literal notranslate"><span class="pre">WallStress.update()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.upper"><code class="docutils literal notranslate"><span class="pre">WallStress.upper</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.use_active_learning"><code class="docutils literal notranslate"><span class="pre">WallStress.use_active_learning</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.variance"><code class="docutils literal notranslate"><span class="pre">WallStress.variance</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.write"><code class="docutils literal notranslate"><span class="pre">WallStress.write()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -427,14 +436,14 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.init_database" title="GaPFlow.models.WallStress.init_database"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_database</span></code></a>(dim)</p></td>
 <td><p>Triggers the first database initialization.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.predict" title="GaPFlow.models.WallStress.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>([predictor, compute_var])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.predict" title="GaPFlow.models.WallStress.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>([predictor, compute_var, cooldown])</p></td>
 <td><p>Perform GP prediction, optionally updating the model via active learning (only in predictor step of the predictor-corrector time integration scheme)</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.update" title="GaPFlow.models.WallStress.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>([predictor, compute_var])</p></td>
-<td><p>Update wall stress: compute deterministic stresses and, if enabled, perform GP prediction and place predicted mean and variance into the appropriate field entries.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.write" title="GaPFlow.models.WallStress.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.save_state" title="GaPFlow.models.WallStress.save_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_state</span></code></a>()</p></td>
 <td><p>Log current GP hyperparameters and diagnostics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.update" title="GaPFlow.models.WallStress.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>([predictor, compute_var, cooldown])</p></td>
+<td><p>Update wall stress: compute deterministic stresses and, if enabled, perform GP prediction and place predicted mean and variance into the appropriate field entries.</p></td>
 </tr>
 </tbody>
 </table>
@@ -446,12 +455,18 @@
 <td><p>Test inputs for shear stress GP (normalized).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Xtrain" title="GaPFlow.models.WallStress.Xtrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain</span></code></a></p></td>
-<td><p>Training inputs for shear stress GP (normalized).</p></td>
+<td><p>Training inputs (normalized).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Yerr" title="GaPFlow.models.WallStress.Yerr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yerr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Xtrain_target" title="GaPFlow.models.WallStress.Xtrain_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Xtrain_target</span></code></a></p></td>
+<td><p>Training inputs (normalized).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Yerr" title="GaPFlow.models.WallStress.Yerr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yerr</span></code></a></p></td>
 <td><p>Observational error (normalized by Yscale).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Yscale" title="GaPFlow.models.WallStress.Yscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yscale</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Yscale" title="GaPFlow.models.WallStress.Yscale"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yscale</span></code></a></p></td>
+<td><p>Output scaling factor used for normalization.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Yshift" title="GaPFlow.models.WallStress.Yshift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Yshift</span></code></a></p></td>
 <td><p>Output scaling factor used for normalization.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.Ytrain" title="GaPFlow.models.WallStress.Ytrain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ytrain</span></code></a></p></td>
@@ -499,34 +514,40 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.lower" title="GaPFlow.models.WallStress.lower"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lower</span></code></a></p></td>
 <td><p>Lower-wall stress slice.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.obs_stddev" title="GaPFlow.models.WallStress.obs_stddev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_stddev</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.objective" title="GaPFlow.models.WallStress.objective"><code class="xref py py-obj docutils literal notranslate"><span class="pre">objective</span></code></a></p></td>
+<td><p>Optimization objective (negative marginal log likelihood)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.obs_stddev" title="GaPFlow.models.WallStress.obs_stddev"><code class="xref py py-obj docutils literal notranslate"><span class="pre">obs_stddev</span></code></a></p></td>
 <td><p>Observation standard deviation (normalized).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.pressure" title="GaPFlow.models.WallStress.pressure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pressure</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.pressure" title="GaPFlow.models.WallStress.pressure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pressure</span></code></a></p></td>
 <td><p>Local pressure field.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.solution" title="GaPFlow.models.WallStress.solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solution</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.solution" title="GaPFlow.models.WallStress.solution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solution</span></code></a></p></td>
 <td><p>Return full solution field.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.trusted" title="GaPFlow.models.WallStress.trusted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trusted</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.trusted" title="GaPFlow.models.WallStress.trusted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trusted</span></code></a></p></td>
 <td><p>Return True if model predictive variance is below tolerance.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.upper" title="GaPFlow.models.WallStress.upper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">upper</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.upper" title="GaPFlow.models.WallStress.upper"><code class="xref py py-obj docutils literal notranslate"><span class="pre">upper</span></code></a></p></td>
 <td><p>Upper-wall stress slice.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.variance" title="GaPFlow.models.WallStress.variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">variance</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.variance" title="GaPFlow.models.WallStress.variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">variance</span></code></a></p></td>
 <td><p>Variance of the shear stress field</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.name" title="GaPFlow.models.WallStress.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.name" title="GaPFlow.models.WallStress.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.is_gp_model" title="GaPFlow.models.WallStress.is_gp_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_gp_model</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.is_gp_model" title="GaPFlow.models.WallStress.is_gp_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_gp_model</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.active_dims" title="GaPFlow.models.WallStress.active_dims"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_dims</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.active_dims" title="GaPFlow.models.WallStress.active_dims"><code class="xref py py-obj docutils literal notranslate"><span class="pre">active_dims</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.use_active_learning" title="GaPFlow.models.WallStress.use_active_learning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_active_learning</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.use_active_learning" title="GaPFlow.models.WallStress.use_active_learning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_active_learning</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.fix_noise" title="GaPFlow.models.WallStress.fix_noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fix_noise</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.rtol" title="GaPFlow.models.WallStress.rtol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rtol</span></code></a></p></td>
@@ -535,22 +556,37 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.atol" title="GaPFlow.models.WallStress.atol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atol</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.max_steps" title="GaPFlow.models.WallStress.max_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_steps</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.tol" title="GaPFlow.models.WallStress.tol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tol</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.pause_steps" title="GaPFlow.models.WallStress.pause_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_steps</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.max_steps" title="GaPFlow.models.WallStress.max_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_steps</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.params_init" title="GaPFlow.models.WallStress.params_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">params_init</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.pause_steps" title="GaPFlow.models.WallStress.pause_steps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_steps</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.noise" title="GaPFlow.models.WallStress.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.similarity_check" title="GaPFlow.models.WallStress.similarity_check"><code class="xref py py-obj docutils literal notranslate"><span class="pre">similarity_check</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.prop" title="GaPFlow.models.WallStress.prop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prop</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.allowed_skips" title="GaPFlow.models.WallStress.allowed_skips"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allowed_skips</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.geo" title="GaPFlow.models.WallStress.geo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geo</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.perturb_target" title="GaPFlow.models.WallStress.perturb_target"><code class="xref py py-obj docutils literal notranslate"><span class="pre">perturb_target</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.pause_on_high_residual" title="GaPFlow.models.WallStress.pause_on_high_residual"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pause_on_high_residual</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.params_init" title="GaPFlow.models.WallStress.params_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">params_init</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.noise" title="GaPFlow.models.WallStress.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.prop" title="GaPFlow.models.WallStress.prop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prop</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.models.WallStress.geo" title="GaPFlow.models.WallStress.geo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">geo</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -565,7 +601,13 @@
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.Xtrain">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.Xtrain" title="Link to this definition">#</a></dt>
-<dd><p>Training inputs for shear stress GP (normalized).</p>
+<dd><p>Training inputs (normalized).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.Xtrain_target">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Xtrain_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.Xtrain_target" title="Link to this definition">#</a></dt>
+<dd><p>Training inputs (normalized).</p>
 </dd></dl>
 
 <dl class="py property">
@@ -597,6 +639,20 @@
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.Yshift">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Yshift</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.Yshift" title="Link to this definition">#</a></dt>
+<dd><p>Output scaling factor used for normalization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scalar-like array representing the maximum of selected Y scales.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>jax.Array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.Ytrain">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Ytrain</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.Ytrain" title="Link to this definition">#</a></dt>
 <dd><p>Normalized training outputs for GP corresponding to the lower and upper wall stress.</p>
@@ -613,6 +669,11 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.active_dims">
 <span class="sig-name descname"><span class="pre">active_dims</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.active_dims" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.allowed_skips">
+<span class="sig-name descname"><span class="pre">allowed_skips</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.allowed_skips" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -692,6 +753,11 @@
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">extra</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.extra" title="Link to this definition">#</a></dt>
 <dd><p>Return constant extra field, which can be used as additional input.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.fix_noise">
+<span class="sig-name descname"><span class="pre">fix_noise</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.fix_noise" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.full">
@@ -799,6 +865,12 @@
 <dd></dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.objective">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">objective</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.objective" title="Link to this definition">#</a></dt>
+<dd><p>Optimization objective (negative marginal log likelihood)</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.obs_stddev">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">obs_stddev</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Array</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.obs_stddev" title="Link to this definition">#</a></dt>
 <dd><p>Observation standard deviation (normalized).</p>
@@ -810,20 +882,31 @@
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.pause_on_high_residual">
+<span class="sig-name descname"><span class="pre">pause_on_high_residual</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.pause_on_high_residual" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.pause_steps">
 <span class="sig-name descname"><span class="pre">pause_steps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.pause_steps" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.perturb_target">
+<span class="sig-name descname"><span class="pre">perturb_target</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.perturb_target" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.predict">
-<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.predict" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cooldown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Array</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Array</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.predict" title="Link to this definition">#</a></dt>
 <dd><p>Perform GP prediction, optionally updating the model via active learning
 (only in predictor step of the predictor-corrector time integration scheme)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>predictor</strong> (<em>bool</em>) – Whether to perform active learning updates (only in predictor step, default is True).</p></li>
-<li><p><strong>compute_var</strong> (<em>bool</em>) – If true (default), preditive variance is re-computed.</p></li>
+<li><p><strong>predictor</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to perform active learning updates (only in predictor step, default is True).</p></li>
+<li><p><strong>compute_var</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true (default), preditive variance is re-computed.</p></li>
+<li><p><strong>cooldown</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, active learning is blocked to let the system cool down (default is False).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -860,11 +943,27 @@
 <span class="sig-name descname"><span class="pre">rtol</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.rtol" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.save_state">
+<span class="sig-name descname"><span class="pre">save_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.save_state" title="Link to this definition">#</a></dt>
+<dd><p>Log current GP hyperparameters and diagnostics.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.similarity_check">
+<span class="sig-name descname"><span class="pre">similarity_check</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.similarity_check" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.solution">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">solution</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.solution" title="Link to this definition">#</a></dt>
 <dd><p>Return full solution field.</p>
 </dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="GaPFlow.models.WallStress.tol">
+<span class="sig-name descname"><span class="pre">tol</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#GaPFlow.models.WallStress.tol" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.trusted">
@@ -874,7 +973,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.update" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">predictor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cooldown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.update" title="Link to this definition">#</a></dt>
 <dd><p>Update wall stress: compute deterministic stresses and, if enabled,
 perform GP prediction and place predicted mean and variance into the
 appropriate field entries.</p>
@@ -884,6 +983,7 @@ appropriate field entries.</p>
 <li><p><strong>predictor</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether this update is part of the predictor stage.</p></li>
 <li><p><strong>compute_var</strong> (<em>bool</em><em>, </em><em>optional</em>) – Flag for re-computing the variance (the default is False which uses
 the stored variance from previous steps).</p></li>
+<li><p><strong>cooldown</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, active learning is blocked to let the system cool down (default is False).</p></li>
 </ul>
 </dd>
 </dl>
@@ -912,12 +1012,6 @@ the stored variance from previous steps).</p></li>
 <dt class="sig sig-object py" id="GaPFlow.models.WallStress.variance">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">variance</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">floating</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.variance" title="Link to this definition">#</a></dt>
 <dd><p>Variance of the shear stress field</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="GaPFlow.models.WallStress.write">
-<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.models.WallStress.write" title="Link to this definition">#</a></dt>
-<dd><p>Log current GP hyperparameters and diagnostics.</p>
 </dd></dl>
 
 </dd></dl>
@@ -975,10 +1069,13 @@ the stored variance from previous steps).</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.__init__"><code class="docutils literal notranslate"><span class="pre">WallStress.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Xtest"><code class="docutils literal notranslate"><span class="pre">WallStress.Xtest</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Xtrain"><code class="docutils literal notranslate"><span class="pre">WallStress.Xtrain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Xtrain_target"><code class="docutils literal notranslate"><span class="pre">WallStress.Xtrain_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Yerr"><code class="docutils literal notranslate"><span class="pre">WallStress.Yerr</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Yscale"><code class="docutils literal notranslate"><span class="pre">WallStress.Yscale</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Yshift"><code class="docutils literal notranslate"><span class="pre">WallStress.Yshift</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.Ytrain"><code class="docutils literal notranslate"><span class="pre">WallStress.Ytrain</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.active_dims"><code class="docutils literal notranslate"><span class="pre">WallStress.active_dims</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.allowed_skips"><code class="docutils literal notranslate"><span class="pre">WallStress.allowed_skips</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.atol"><code class="docutils literal notranslate"><span class="pre">WallStress.atol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.build_gp"><code class="docutils literal notranslate"><span class="pre">WallStress.build_gp()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.cumtime_infer"><code class="docutils literal notranslate"><span class="pre">WallStress.cumtime_infer</span></code></a></li>
@@ -987,6 +1084,7 @@ the stored variance from previous steps).</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.dp_dx"><code class="docutils literal notranslate"><span class="pre">WallStress.dp_dx</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.dp_dy"><code class="docutils literal notranslate"><span class="pre">WallStress.dp_dy</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.extra"><code class="docutils literal notranslate"><span class="pre">WallStress.extra</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.fix_noise"><code class="docutils literal notranslate"><span class="pre">WallStress.fix_noise</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.full"><code class="docutils literal notranslate"><span class="pre">WallStress.full</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.geo"><code class="docutils literal notranslate"><span class="pre">WallStress.geo</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.has_multi_output"><code class="docutils literal notranslate"><span class="pre">WallStress.has_multi_output</span></code></a></li>
@@ -1002,20 +1100,25 @@ the stored variance from previous steps).</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.max_steps"><code class="docutils literal notranslate"><span class="pre">WallStress.max_steps</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.name"><code class="docutils literal notranslate"><span class="pre">WallStress.name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.noise"><code class="docutils literal notranslate"><span class="pre">WallStress.noise</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.objective"><code class="docutils literal notranslate"><span class="pre">WallStress.objective</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.obs_stddev"><code class="docutils literal notranslate"><span class="pre">WallStress.obs_stddev</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.params_init"><code class="docutils literal notranslate"><span class="pre">WallStress.params_init</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.pause_on_high_residual"><code class="docutils literal notranslate"><span class="pre">WallStress.pause_on_high_residual</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.pause_steps"><code class="docutils literal notranslate"><span class="pre">WallStress.pause_steps</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.perturb_target"><code class="docutils literal notranslate"><span class="pre">WallStress.perturb_target</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.predict"><code class="docutils literal notranslate"><span class="pre">WallStress.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.pressure"><code class="docutils literal notranslate"><span class="pre">WallStress.pressure</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.prop"><code class="docutils literal notranslate"><span class="pre">WallStress.prop</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.rtol"><code class="docutils literal notranslate"><span class="pre">WallStress.rtol</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.save_state"><code class="docutils literal notranslate"><span class="pre">WallStress.save_state()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.similarity_check"><code class="docutils literal notranslate"><span class="pre">WallStress.similarity_check</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.solution"><code class="docutils literal notranslate"><span class="pre">WallStress.solution</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.tol"><code class="docutils literal notranslate"><span class="pre">WallStress.tol</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.trusted"><code class="docutils literal notranslate"><span class="pre">WallStress.trusted</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.update"><code class="docutils literal notranslate"><span class="pre">WallStress.update()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.upper"><code class="docutils literal notranslate"><span class="pre">WallStress.upper</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.use_active_learning"><code class="docutils literal notranslate"><span class="pre">WallStress.use_active_learning</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.variance"><code class="docutils literal notranslate"><span class="pre">WallStress.variance</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#GaPFlow.models.WallStress.write"><code class="docutils literal notranslate"><span class="pre">WallStress.write()</span></code></a></li>
 </ul>
 </li>
 </ul>

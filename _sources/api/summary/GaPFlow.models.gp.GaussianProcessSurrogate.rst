@@ -17,7 +17,7 @@
       ~GaussianProcessSurrogate.build_gp
       ~GaussianProcessSurrogate.init_database
       ~GaussianProcessSurrogate.predict
-      ~GaussianProcessSurrogate.write
+      ~GaussianProcessSurrogate.save_state
    
    
 
@@ -29,8 +29,10 @@
    
       ~GaussianProcessSurrogate.Xtest
       ~GaussianProcessSurrogate.Xtrain
+      ~GaussianProcessSurrogate.Xtrain_target
       ~GaussianProcessSurrogate.Yerr
       ~GaussianProcessSurrogate.Yscale
+      ~GaussianProcessSurrogate.Yshift
       ~GaussianProcessSurrogate.Ytrain
       ~GaussianProcessSurrogate.cumtime_infer
       ~GaussianProcessSurrogate.cumtime_train
@@ -42,6 +44,7 @@
       ~GaussianProcessSurrogate.kernel_lengthscale
       ~GaussianProcessSurrogate.kernel_variance
       ~GaussianProcessSurrogate.last_fit_train_size
+      ~GaussianProcessSurrogate.objective
       ~GaussianProcessSurrogate.obs_stddev
       ~GaussianProcessSurrogate.solution
       ~GaussianProcessSurrogate.trusted
@@ -49,10 +52,16 @@
       ~GaussianProcessSurrogate.is_gp_model
       ~GaussianProcessSurrogate.active_dims
       ~GaussianProcessSurrogate.use_active_learning
+      ~GaussianProcessSurrogate.fix_noise
       ~GaussianProcessSurrogate.rtol
       ~GaussianProcessSurrogate.atol
+      ~GaussianProcessSurrogate.tol
       ~GaussianProcessSurrogate.max_steps
       ~GaussianProcessSurrogate.pause_steps
+      ~GaussianProcessSurrogate.similarity_check
+      ~GaussianProcessSurrogate.allowed_skips
+      ~GaussianProcessSurrogate.perturb_target
+      ~GaussianProcessSurrogate.pause_on_high_residual
       ~GaussianProcessSurrogate.params_init
       ~GaussianProcessSurrogate.noise
       ~GaussianProcessSurrogate.prop

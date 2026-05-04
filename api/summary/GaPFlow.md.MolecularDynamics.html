@@ -51,7 +51,7 @@
     <link rel="prev" title="GaPFlow.models.viscous" href="GaPFlow.models.viscous.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -430,12 +430,12 @@ into a dtool dataset, and to read the output of this simulation.</p>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.md.MolecularDynamics.build_input_files" title="GaPFlow.md.MolecularDynamics.build_input_files"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_input_files</span></code></a>(dataset, location, X)</p></td>
-<td><p>Builds LAMMPS input files based on GP inputs and writes them to a dtool dataset.</p></td>
+<td><p>Builds LAMMPS input files based on GP inputs</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.md.MolecularDynamics.read_output" title="GaPFlow.md.MolecularDynamics.read_output"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_output</span></code></a>()</p></td>
-<td><p>Read simulation output and return observations and their standard error.</p></td>
+<td><p>Read simulation output and returns observations and their standard error.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.md.MolecularDynamics.run" title="GaPFlow.md.MolecularDynamics.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a>(X, tag)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.md.MolecularDynamics.run" title="GaPFlow.md.MolecularDynamics.run"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run</span></code></a>(X_target, tag)</p></td>
 <td><p>Run an MD simulation and store its input, metadata, and output into a dtool dataset.</p></td>
 </tr>
 </tbody>
@@ -465,7 +465,10 @@ into a dtool dataset, and to read the output of this simulation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.md.MolecularDynamics.build_input_files">
 <span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">build_input_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#GaPFlow.md.MolecularDynamics.build_input_files" title="Link to this definition">#</a></dt>
-<dd><p>Builds LAMMPS input files based on GP inputs and writes them to a dtool dataset.</p>
+<dd><dl class="simple">
+<dt>Builds LAMMPS input files based on GP inputs</dt><dd><p>and writes them to a dtool dataset.</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -512,19 +515,19 @@ into a dtool dataset, and to read the output of this simulation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.md.MolecularDynamics.read_output">
 <span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">read_output</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.md.MolecularDynamics.read_output" title="Link to this definition">#</a></dt>
-<dd><p>Read simulation output and return observations and their standard error.</p>
+<dd><p>Read simulation output and returns observations and their standard error.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="GaPFlow.md.MolecularDynamics.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tag</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.md.MolecularDynamics.run" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tag</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.md.MolecularDynamics.run" title="Link to this definition">#</a></dt>
 <dd><p>Run an MD simulation and store its input, metadata, and output into a dtool dataset.</p>
 <p>This method is called from a Database instance when new training data is added e.g. during
 initialization or in an active learning simulation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>X</strong> (<em>Array</em>) – The training input.</p></li>
+<li><p><strong>X_target</strong> (<em>Array</em>) – The training input.</p></li>
 <li><p><strong>tag</strong> (<em>str</em>) – A tag to attach to the dataset name.</p></li>
 </ul>
 </dd>

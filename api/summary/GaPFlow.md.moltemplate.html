@@ -51,7 +51,7 @@
     <link rel="prev" title="GaPFlow.md.GoldAlkane" href="GaPFlow.md.GoldAlkane.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev44" />
+  <meta name="docsearch:version" content="1.0.3.dev106" />
   </head>
   
   
@@ -356,7 +356,7 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.md.moltemplate.build_template" title="GaPFlow.md.moltemplate.build_template"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_template</span></code></a>(args)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.md.moltemplate.config_fluid" title="GaPFlow.md.moltemplate.config_fluid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config_fluid</span></code></a>(file, Lx, Ly, H, density[, buffer])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#GaPFlow.md.moltemplate.config_fluid" title="GaPFlow.md.moltemplate.config_fluid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config_fluid</span></code></a>(file, Lx, Ly, H, density[, ...])</p></td>
 <td><p>Calculate an initial molecule grid given the box dimensions and adjust the gap height for the initial setup to fit all molecules without overlap.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#GaPFlow.md.moltemplate.write_fluid" title="GaPFlow.md.moltemplate.write_fluid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_fluid</span></code></a>(name, Nf, mol_grid, slab_size, gap)</p></td>
@@ -396,7 +396,7 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="GaPFlow.md.moltemplate.config_fluid">
-<span class="sig-prename descclassname"><span class="pre">GaPFlow.md.moltemplate.</span></span><span class="sig-name descname"><span class="pre">config_fluid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Lx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ly</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.md.moltemplate.config_fluid" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">GaPFlow.md.moltemplate.</span></span><span class="sig-name descname"><span class="pre">config_fluid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Lx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ly</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#GaPFlow.md.moltemplate.config_fluid" title="Link to this definition">#</a></dt>
 <dd><p>Calculate an initial molecule grid given the box dimensions and
 adjust the gap height for the initial setup to fit all molecules
 without overlap.</p>
@@ -409,6 +409,7 @@ without overlap.</p>
 <li><p><strong>H</strong> (<em>float</em>) – Target gap height</p></li>
 <li><p><strong>density</strong> (<em>float</em>) – Target fluid density</p></li>
 <li><p><strong>buffer</strong> (<em>float</em>) – “Safety distance” between the outermost fluid layer and the wall</p></li>
+<li><p><strong>flat</strong> (<em>bool</em>) – Flags flat systems in which a slight density correction is applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
