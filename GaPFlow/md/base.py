@@ -23,7 +23,8 @@
 # SOFTWARE.
 #
 from .runner import run_parallel, run_serial
-from ..utils import bordered_text, make_dumpable
+from ..utils import make_dumpable
+from ..logging import get_logger
 
 import os
 import abc
@@ -38,6 +39,8 @@ from urllib.parse import urlparse
 yaml = YAML()
 yaml.explicit_start = True
 yaml.indent(mapping=4, sequence=4, offset=2)
+
+logger = get_logger("gapflow.md")
 
 
 class MolecularDynamics:
@@ -70,6 +73,9 @@ class MolecularDynamics:
     _dtool_basepath: str = '/tmp/'
     _readme_template: str = ""
     _input_names: list[str] = ['ρ', 'jx', 'jy', 'h', '∂h/∂x', '∂h/∂y'] + [f'extra_{i}' for i in range(10)]
+    _output_names: list[str] = ['p',
+                                'τ(xx|bot)', 'τ(yy|bot)', 'τ(zz|bot)', 'τ(yz|bot)', 'τ(xz|bot)', 'τ(xy|bot)',
+                                'τ(xx|top)', 'τ(yy|top)', 'τ(zz|top)', 'τ(yz|top)', 'τ(xz|top)', 'τ(xy|top)']
     _ascii_art: str = r"""
   _        _    __  __ __  __ ____  ____
  | |      / \  |  \/  |  \/  |  _ \/ ___|
@@ -90,7 +96,8 @@ class MolecularDynamics:
 
     @abc.abstractmethod
     def build_input_files(self, dataset, location, X) -> None:
-        """Builds LAMMPS input files based on GP inputs and writes them to a dtool dataset.
+        """Builds LAMMPS input files based on GP inputs
+         and writes them to a dtool dataset.
 
         Parameters
         ----------
@@ -105,25 +112,71 @@ class MolecularDynamics:
 
     @abc.abstractmethod
     def read_output(self):
-        """Read simulation output and return observations and their standard error."""
+        """Read simulation output and returns observations and their standard error."""
         raise NotImplementedError
 
-    def _pretty_print(self, proto_datapath, X) -> None:
-        """Print header before the start of a LAMMPS simulation.
+    def _write_log_input(self, proto_datapath, X) -> None:
+        """Write logging info before an MD run.
 
         Parameters
         ----------
         proto_datapath : str
             The data path inside the dtool proto dataset
         X : Array
-            The input array
+            The target input array
         """
-        text = ['Run next MD simulation in:', f'{proto_datapath}']
-        text.append(self._ascii_art)
-        text.append('---')
+
+        logger.info(120 * '=')
+        logger.info('Running MD simulation')
+        logger.info('---')
+        logger.info(self._ascii_art)
+        logger.info('---')
+
         for i, (Xi, name) in enumerate(zip(X, self._input_names)):
-            text.append(f'Input {i + 1}: {Xi:+.3e}    ({name})')
-        print(bordered_text('\n'.join(text)))
+            logger.info(f'Target input {i + 1}: {Xi:+.3e}    ({name})')
+
+        logger.info('---')
+        logger.info('View log:')
+        logger.info(f'{proto_datapath}/data/log.lammps')
+        logger.info('---')
+
+    def _write_log_output(self, X, X_target, Y, Ye, walltime) -> None:
+        """Write logging info after an MD run.
+
+        Parameters
+        ----------
+        X : Array
+            The realized input
+        X_target : Array
+            The target input
+        Y : Array
+            Measured output
+        Ye : Array
+            Measured output error
+        walltime: datetime.timedelta
+            Wall time of an MD run
+        """
+
+        logger.info('---')
+        logger.info(f'MD run completed (walltime: {str(walltime).split(".")[0]})')
+        logger.info('---')
+
+        for i, (Xi, Xi_t, name) in enumerate(zip(X, X_target, self._input_names)):
+
+            if abs(Xi_t) < 1e-9:
+                logger.info(f'Measured input {i + 1}: {Xi:+.3e} (----%)   ({name})')
+            else:
+                deviation = (Xi - Xi_t) / abs(Xi_t) * 100
+                logger.info(f'Measured input {i + 1}: {Xi:+.3e} ({deviation:+.1f}%)   ({name})')
+
+        logger.info('---')
+
+        for i, (Yi, Yie, name) in enumerate(zip(Y, Ye, self._output_names)):
+            logger.info(f'Measured output {i + 1:2d}: {Yi:+.3e} ±{Yie:.3e}  ({name})')
+            if i in [0, 6]:
+                logger.info('')
+
+        logger.info(120 * '=')
 
     def _write_dtool_readme(self, dataset_path, Xnew, Ynew, Yerrnew):
         """Write the simulation metadata into the dtool README.
@@ -180,6 +233,7 @@ class MolecularDynamics:
 
         proto_ds = dtoolcore.create_proto_dataset(name=ds_name,
                                                   base_uri=self.dtool_basepath)
+
         proto_ds_path = urlparse(proto_ds.uri).path
 
         if os.name == 'nt':
@@ -187,7 +241,7 @@ class MolecularDynamics:
 
         return proto_ds, proto_ds_path
 
-    def run(self, X, tag):
+    def run(self, X_target, tag):
         """Run an MD simulation and store its input, metadata, and output into a dtool dataset.
 
         This method is called from a Database instance when new training data is added e.g. during
@@ -195,7 +249,7 @@ class MolecularDynamics:
 
         Parameters
         ----------
-        X : Array
+        X_target : Array
             The training input.
         tag : str
             A tag to attach to the dataset name.
@@ -210,13 +264,15 @@ class MolecularDynamics:
 
         # Setup MD simulation
         dataset, location = self._create_dtool_dataset(tag)
-        self.build_input_files(dataset, location, X)
+        self.build_input_files(dataset, location, X_target)
 
-        self._pretty_print(location, X)
+        self._write_log_input(location, X_target)
 
         # Move to dtool datapath...
         basedir = os.getcwd()
         os.chdir(os.path.join(location, 'data'))
+
+        tic = datetime.now()
 
         # ...Run MD...
         if self.num_worker > 1:
@@ -226,14 +282,18 @@ class MolecularDynamics:
         else:
             pass
 
+        toc = datetime.now()
+
         # ...Read output / post-process MD result...
-        Y, Ye = self.read_output()
+        X, Y, Ye = self.read_output()
 
         # ...and return to cwd
         os.chdir(basedir)
 
         # Finalize dataset
+        walltime = toc - tic
+        self._write_log_output(X, X_target, Y, Ye, walltime)
         self._write_dtool_readme(location, X, Y, Ye)
         dataset.freeze()
 
-        return Y, Ye
+        return X, Y, Ye

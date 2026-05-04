@@ -29,7 +29,8 @@ import numpy as np
 from copy import deepcopy
 from datetime import datetime
 from collections import deque
-from muGrid import GlobalFieldCollection, FileIONetCDF, OpenMode
+from itertools import islice
+from muGrid import GlobalFieldCollection, FileIONetCDF
 
 from typing import Type
 import numpy.typing as npt
@@ -51,6 +52,10 @@ from .md import Mock, LennardJones, GoldAlkane
 from .viz.plotting import _plot_height_1d_from_field, _plot_height_2d_from_field
 from .viz.plotting import _plot_sol_from_field_1d, _plot_sol_from_field_2d
 from .viz.animations import animate_1d, animate_1d_gp, animate_2d
+from .logging import get_logger
+
+# Configure module logger writing to gapflow_problem.log via centralized helper
+logger = get_logger("gapflow.problem")
 
 
 class Problem:
@@ -121,39 +126,45 @@ class Problem:
         # Initialize field collection
         nb_grid_pts = (self.grid['Nx'] + 2,
                        self.grid['Ny'] + 2)
-        fc = GlobalFieldCollection(nb_grid_pts)
+        self._fc = GlobalFieldCollection(nb_grid_pts)
 
         # Solution field
         self.step = None
-        self.__field = fc.real_field('solution', (3,))
+        self.__field = self._fc.real_field('solution', (3,))
         self._initialize(rho0=prop['rho0'], U=geo['U'], V=geo['V'])
 
         # Initialize extra field
         num_extra_features = 1 if database is None else database.num_features - 6
-        extra = fc.real_field('extra', (num_extra_features,))
+        extra = self._fc.real_field('extra', (num_extra_features,))
         if extra_field is not None:
             extra.p[...] = extra_field
 
         # Forward declaration of cross-dependent fields
-        fc.register_real_field('x')
-        fc.register_real_field('y')
-        fc.register_real_field('pressure')
-        fc.register_real_field('topography', (4,))
+        self._fc.register_real_field('x')
+        self._fc.register_real_field('y')
+        self._fc.register_real_field('pressure')
+        self._fc.register_real_field('topography', (4,))
 
         # Initialize stress and topography models
-        gpx, gpy, gpz = self._select_gp_config(gp)
         self.has_gp_model = gp is not None
-        self.pressure = Pressure(fc, prop, geo, data=database, gp=gpz)
-        self.bulk_stress = BulkStress(fc, prop, geo, data=None, gp=None)
-        self.wall_stress_xz = WallStress(fc, prop, geo, direction='x', data=database, gp=gpx)
-        self.wall_stress_yz = WallStress(fc, prop, geo, direction='y', data=database, gp=gpy)
+        gpx, gpy, gpz = self._select_gp_config(gp)
+        self.pressure = Pressure(self._fc, prop, geo, data=database, gp=gpz)
+        self.bulk_stress = BulkStress(self._fc, prop, geo, data=None, gp=None)
+        self.wall_stress_xz = WallStress(self._fc, prop, geo, direction='x', data=database, gp=gpx)
+        self.wall_stress_yz = WallStress(self._fc, prop, geo, direction='y', data=database, gp=gpy)
 
-        self.topo = Topography(fc, self.grid, geo, prop)
+        self.topo = Topography(self._fc, self.grid, geo, prop)
 
         # I/O
         if not self.options['silent']:
 
             self.outdir = create_output_directory(options['output'], options['use_tstamp'])
+            self.filename = os.path.join(self.outdir, 'sol.nc')
+            self.topofilename = os.path.join(self.outdir, 'topo.nc')
+
+            # Reconfigure module loggers to write into the simulation output directory
+            # so all components write into the same outdir logfile(s).
+            get_logger("gapflow.problem", outdir=self.outdir, force=True)
 
             if database is not None:
                 # Set training path inside output path
@@ -163,6 +174,9 @@ class Problem:
 
                 database.output_path = self.outdir
                 options['output'] = self.outdir
+
+                get_logger("gapflow.gp", outdir=self.outdir, force=True)
+                get_logger("gapflow.md", outdir=self.outdir, force=True)
 
             # Reconstruct dict
             full_dict = {}
@@ -180,29 +194,27 @@ class Problem:
             write_yaml(full_dict, os.path.join(self.outdir, 'config.yml'))
 
             # Write gap height and gradients
-            # No elastic deformation - write once and close
-            # Elastic deformation - write initial topo and keep open
-            self.topofile = FileIONetCDF(os.path.join(self.outdir, 'topo.nc'), OpenMode.Overwrite)
-            self.topofile.register_field_collection(fc, field_names=['topography'])
+            self.topofile = FileIONetCDF(self.topofilename, open_mode='overwrite')
+            self.topofile.register_field_collection(self._fc, field_names=['topography'])
             self.topofile.append_frame().write()
-            if not self.prop['elastic']['enabled']:
-                self.topofile.close()
 
             # Solution fields
-            self.file = FileIONetCDF(os.path.join(self.outdir, 'sol.nc'), OpenMode.Overwrite)
-
-            field_names = ['solution', 'pressure', 'wall_stress_xz', 'wall_stress_yz']
+            self.file = FileIONetCDF(self.filename, open_mode='overwrite')
+            self.field_names = ['solution', 'pressure', 'wall_stress_xz', 'wall_stress_yz']
 
             if gpx is not None:
-                field_names.append('wall_stress_xz_var')
-
+                self.field_names.append('wall_stress_xz_var')
             if gpy is not None:
-                field_names.append('wall_stress_yz_var')
-
+                self.field_names.append('wall_stress_yz_var')
             if gpz:
-                field_names.append('pressure_var')
+                self.field_names.append('pressure_var')
 
-            self.file.register_field_collection(fc, field_names=field_names)
+            self.file.register_field_collection(self._fc, field_names=self.field_names)
+
+            # We open the solution file and close it immediately
+            # The write method will re-open the file in 'append' mode
+            self.file.close()
+            self.topofile.close()
 
     # ---------------------------
     # Constructors
@@ -263,7 +275,7 @@ class Problem:
         Problem
             Instantiated `Problem` object.
         """
-        print(f"Reading input file: {fname}")
+        logger.info(f"Reading input file: {fname}")
         with open(fname, "r") as ymlfile:
             input_dict = read_yaml_input(ymlfile)
 
@@ -359,7 +371,14 @@ class Problem:
     @property
     def converged(self) -> bool:
         """Return True if residuals in the buffer are below tolerance."""
-        return np.all(np.array(self.residual_buffer) < self.tol)
+        return not self._residuals_above_tolerance(self.tol, num=5)
+
+    def _residuals_above_tolerance(self, tol: float, num: int | None = None) -> bool:
+        """Return True if any of the last `num` residuals are above `tol` (all if `num` is None)."""
+        buf = self.residual_buffer
+        if num is None:
+            return any(v > tol for v in buf)
+        return any(v > tol for v in islice(reversed(buf), num))
 
     # ---------------------------
     # Simulation run utilities
@@ -391,10 +410,10 @@ class Problem:
         }
 
         if not self.options['silent']:
-            print(61 * '-')
-            print(f"{'Step':6s} {'Timestep':10s} {'Time':10s} {'CFL':10s} {'Residual':10s}")
-            print(61 * '-')
-            self.write(params=False)
+            logger.info(61 * '-')
+            logger.info(f"{'Step':6s} {'Timestep':10s} {'Time':10s} {'CFL':10s} {'Residual':10s}")
+            logger.info(61 * '-')
+            self.write()
 
         # Run
         self._tic = datetime.now()
@@ -424,15 +443,15 @@ class Problem:
         self.wall_stress_yz.init()
 
         if not self.options['silent']:
-            self.pressure.write()
-            self.wall_stress_xz.write()
-            self.wall_stress_yz.write()
+            self.pressure.save_state()
+            self.wall_stress_xz.save_state()
+            self.wall_stress_yz.save_state()
 
         # Numerics
         self.step = 0
         self.simtime = 0.
         self.residual = 1.
-        self.residual_buffer = deque([self.residual, ], 5)
+        self.residual_buffer = deque([self.residual, ], maxlen=100)
 
         if self.numerics["adaptive"]:
             self.dt = self.numerics["CFL"] * self.dt_crit
@@ -460,45 +479,35 @@ class Problem:
         if self.step % self.options['write_freq'] != 0 and not self.options['silent']:
             self.write()
 
-        if not self.options['silent']:
-            self.file.close()  # need to be closed to be readable when animating from problem
-            if self.prop['elastic']['enabled']:
-                self.topofile.close()
-
         speed = self.step / walltime.total_seconds()
 
         # Print runtime
-        print(33 * '=')
-        print("Total walltime   : ", str(walltime).split('.')[0])
-        print(f"({speed:.2f} steps/s)")
+        logger.info(33 * '=')
+        logger.info("Total walltime   : %s", str(walltime).split('.')[0])
+        logger.info("(%0.2f steps/s)", speed)
 
         if self.pressure.is_gp_model:
-            print(" - GP train (zz) : ", str(self.pressure.cumtime_train).split('.')[0])
-            print(" - GP infer (zz) : ", str(self.pressure.cumtime_infer).split('.')[0])
+            logger.info(" - GP train (zz) : %s", str(self.pressure.cumtime_train).split('.')[0])
+            logger.info(" - GP infer (zz) : %s", str(self.pressure.cumtime_infer).split('.')[0])
         if self.wall_stress_xz.is_gp_model:
-            print(" - GP train (xz) : ", str(self.wall_stress_xz.cumtime_train).split('.')[0])
-            print(" - GP infer (xz) : ", str(self.wall_stress_xz.cumtime_infer).split('.')[0])
+            logger.info(" - GP train (xz) : %s", str(self.wall_stress_xz.cumtime_train).split('.')[0])
+            logger.info(" - GP infer (xz) : %s", str(self.wall_stress_xz.cumtime_infer).split('.')[0])
         if self.wall_stress_yz.is_gp_model:
-            print(" - GP train (yz) : ", str(self.wall_stress_yz.cumtime_train).split('.')[0])
-            print(" - GP infer (yz) : ", str(self.wall_stress_yz.cumtime_infer).split('.')[0])
+            logger.info(" - GP train (yz) : %s", str(self.wall_stress_yz.cumtime_train).split('.')[0])
+            logger.info(" - GP infer (yz) : %s", str(self.wall_stress_yz.cumtime_infer).split('.')[0])
 
-        print(33 * '=')
+        logger.info(33 * '=')
 
         if not self.options['silent']:
-            history_to_csv(os.path.join(self.outdir, 'history.csv'), self.history)
-
             if self.pressure.is_gp_model:
-                history_to_csv(os.path.join(self.outdir, 'gp_zz.csv'), self.pressure.history)
                 with open(os.path.join(self.outdir, 'gp_zz.txt'), 'w') as f:
                     print(self.pressure.gp, file=f)
 
             if self.wall_stress_xz.is_gp_model:
-                history_to_csv(os.path.join(self.outdir, 'gp_xz.csv'), self.wall_stress_xz.history)
                 with open(os.path.join(self.outdir, 'gp_xz.txt'), 'w') as f:
                     print(self.wall_stress_xz.gp, file=f)
 
             if self.wall_stress_yz.is_gp_model:
-                history_to_csv(os.path.join(self.outdir, 'gp_yz.csv'), self.wall_stress_yz.history)
                 with open(os.path.join(self.outdir, 'gp_yz.txt'), 'w') as f:
                     print(self.wall_stress_yz.gp, file=f)
 
@@ -527,16 +536,23 @@ class Problem:
 
         q0 = self.__field.p.copy()
 
+        # Without active learning, compute variance only before writing
         one_step_before_output = (self.step + 1) % self.options['write_freq'] == 0
+        # Suppress active learning for rapidly changing fields
+        cooldown = self._residuals_above_tolerance(1e-3)
 
         for i, d in enumerate(directions):
+
             # update surrogates / constitutive models (predictor on first pass)
             self.pressure.update(predictor=i == 0,
-                                 compute_var=one_step_before_output)
+                                 compute_var=one_step_before_output,
+                                 cooldown=cooldown)
             self.wall_stress_xz.update(predictor=i == 0,
-                                       compute_var=one_step_before_output)
+                                       compute_var=one_step_before_output,
+                                       cooldown=cooldown)
             self.wall_stress_yz.update(predictor=i == 0,
-                                       compute_var=one_step_before_output)
+                                       compute_var=one_step_before_output,
+                                       cooldown=cooldown)
             self.bulk_stress.update()
 
             # fluxes and source terms
@@ -576,7 +592,7 @@ class Problem:
         self._communicate_ghost_buffers()
 
         self.residual = abs(self.kinetic_energy - self.kinetic_energy_old) / self.kinetic_energy_old / self.cfl
-        self.residual_buffer.append(self.residual)
+        self.residual_buffer.append(float(self.residual))
         self.kinetic_energy_old = deepcopy(self.kinetic_energy)
 
         self.step += 1
@@ -596,9 +612,9 @@ class Problem:
             Solution field
         """
         if self.q_has_nan:
-            print('NaN detected.', end=' ')
+            logger.warning('NaN detected.')
         elif self.q_has_negative_density:
-            print('Negative density detected.', end=' ')
+            logger.warning('Negative density detected.')
 
         self.__field.p[...] = q0
         self.pressure.update(predictor=False, compute_var=True)
@@ -606,35 +622,52 @@ class Problem:
         self.wall_stress_yz.update(predictor=False, compute_var=True)
         self.bulk_stress.update()
 
-        print('Writing previous step and aborting simulation.')
+        logger.info('Writing previous step and aborting simulation.')
         self._stop = True
 
     # ---------------------------
     # I/O and state writing
     # ---------------------------
 
-    def write(self, scalars: bool = True, fields: bool = True, params: bool = True) -> None:
+    def _save_scalars(self):
+        self.history["step"].append(self.step)
+        self.history["time"].append(self.simtime)
+        self.history["ekin"].append(self.kinetic_energy)
+        self.history["residual"].append(self.residual)
+        self.history["vsound"].append(self.pressure.v_sound)
+
+    def write(self, scalars: bool = True, fields: bool = True) -> None:
         """
         Write scalars, fields and hyperparameters to disk as configured.
         """
         if scalars:
-            print(f"{self.step:<6d} {self.dt:.4e} {self.simtime:.4e} {self.cfl:.4e} {self.residual:.4e}")
-            self.history["step"].append(self.step)
-            self.history["time"].append(self.simtime)
-            self.history["ekin"].append(self.kinetic_energy)
-            self.history["residual"].append(self.residual)
-            self.history["vsound"].append(self.pressure.v_sound)
+            logger.info(f"{self.step:<6d} {self.dt:.4e} {self.simtime:.4e} {self.cfl:.4e} {self.residual:.4e}")
+            self._save_scalars()
+            history_to_csv(os.path.join(self.outdir, 'history.csv'), self.history)
+
+            if self.pressure.is_gp_model:
+                self.pressure.save_state()
+                history_to_csv(os.path.join(self.outdir, 'gp_zz.csv'), self.pressure.history)
+
+            if self.wall_stress_xz.is_gp_model:
+                self.wall_stress_xz.save_state()
+                history_to_csv(os.path.join(self.outdir, 'gp_xz.csv'), self.wall_stress_xz.history)
+
+            if self.wall_stress_yz.is_gp_model:
+                self.wall_stress_yz.save_state()
+                history_to_csv(os.path.join(self.outdir, 'gp_yz.csv'), self.wall_stress_yz.history)
 
         if fields:
+            self.file = FileIONetCDF(self.filename, open_mode='append')
+            self.file.register_field_collection(self._fc, field_names=self.field_names)
             self.file.append_frame().write()
-
-        if params:
-            self.pressure.write()
-            self.wall_stress_xz.write()
-            self.wall_stress_yz.write()
+            self.file.close()
 
         if self.prop['elastic']['enabled']:
+            self.topofile = FileIONetCDF(self.topofilename, open_mode='append')
+            self.topofile.register_field_collection(self._fc, field_names=['topography'])
             self.topofile.append_frame().write()
+            self.topofile.close()
 
     # ---------------------------
     # Initialization and update helpers

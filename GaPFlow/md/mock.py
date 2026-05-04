@@ -76,7 +76,7 @@ class Mock(MolecularDynamics):
         self.params.update(prop)
 
     def build_input_files(self, dataset, location, X):
-        self.X = X
+        self._X = X
 
     def read_output(self):
         key = jr.key(123)
@@ -90,7 +90,7 @@ class Mock(MolecularDynamics):
         U, V = self.geo["U"], self.geo["V"]
         eta, zeta = self.prop["shear"], self.prop["bulk"]
 
-        X = self.X
+        X = self._X
         tau_bot = stress_bottom(X[:3], X[3:6], U, V, eta, zeta, X[6]) + noise_s0
         tau_top = stress_top(X[:3], X[3:6], U, V, eta, zeta, X[6]) + noise_s1
         press = eos_pressure(X[0:1], self.prop) + noise_p
@@ -104,4 +104,4 @@ class Mock(MolecularDynamics):
             self.noise[1], self.noise[1], 0.  # yz, xz, xy
         ])
 
-        return Y, Ye
+        return X, Y, Ye

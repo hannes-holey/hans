@@ -23,7 +23,7 @@
 #
 
 from .base import MolecularDynamics
-from .utils import read_output_files
+from .utils import read_output_files, read_output_files_X
 from .moltemplate import write_template, build_template
 
 import numpy as np
@@ -97,6 +97,12 @@ class GoldAlkane(MolecularDynamics):
         shutil.rmtree('output_ttree')
         os.chdir(cwd)
 
+        self._X = X
+
     def read_output(self):
         sf = sci.calorie * 1e-4  # from kcal/mol/A^3 to g/mol/A/fs^2
-        return read_output_files(sf=sf)
+
+        X = read_output_files_X(self._X)
+        Y, Ye = read_output_files(sf=sf)
+
+        return X, Y, Ye

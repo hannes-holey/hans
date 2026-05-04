@@ -25,6 +25,7 @@ from .base import MolecularDynamics
 from .utils import read_output_files
 
 import os
+from random import randint
 
 
 class LennardJones(MolecularDynamics):
@@ -61,6 +62,7 @@ variable\tinput_fluxY equal {X[2]}
                 variables_str += f'variable\t{k} equal {v}\n'
 
         variables_str += 'variable\tslabfile index in.wall\n'
+        variables_str += f'variable\trandom_seed equal {randint(0, 1_000_000)}\n'
 
         with open(os.path.join(location, 'data', 'in.param'), 'w') as f:
             f.writelines(variables_str)
@@ -69,5 +71,9 @@ variable\tinput_fluxY equal {X[2]}
         dataset.put_item(self.params['wallfile'], 'in.wall')
         dataset.put_item(self.params['infile'], 'in.run')
 
+        self._X = X
+
     def read_output(self):
-        return read_output_files()
+        X = self._X
+        Y, Ye = read_output_files()
+        return X, Y, Ye

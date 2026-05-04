@@ -49,13 +49,15 @@ def get_pipeline(path='.', silent=False, mode='select', name='sol.nc'):
             print(f"{i:3d}: {folder:<50} {date}")
 
     if mode == "select":
-        inp = input("Enter keys (space separated or range [start]-[end] or combination of both): ")
+        user_input = input("Enter keys (space separated or range [start]-[end] or combination of both): ")
 
-        if inp.split('-') == 2:
-            s, e = inp.split('-')
-            mask = np.arange(int(s), int(e) + 1).tolist()
-        else:
-            mask = [int(i) for i in inp.split()]
+        mask = []
+        for inp in user_input.split():
+            if len(inp.split('-')) == 2:
+                s, e = inp.split('-')
+                mask.extend(np.arange(int(s), int(e) + 1).tolist())
+            else:
+                mask.append(int(inp))
 
         files = [os.path.join(folders[i], name) for i in mask]
 
