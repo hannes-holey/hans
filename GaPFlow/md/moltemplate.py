@@ -211,7 +211,7 @@ def _create_fcc_wall_ase(symbol='Au',
     lz0 = np.sqrt(3) * a
 
     if rotation is not None:
-        nx = abs(int(np.floor(lz0 / lx0 / np.tan(rotation / 180. * np.pi))))
+        nx = int(np.floor(lz0 / lx0 / np.tan(abs(rotation) / 180. * np.pi)))
 
     if ny is None:
         ny = int((lx0 * nx) / ly0)
