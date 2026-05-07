@@ -488,11 +488,26 @@ class Problem:
         if not keep_open:
             self._post_run()
 
+    def _resolve_pressure_bcs(self) -> None:
+        """Convert any pressure Dirichlet BCs (bc_*_P_val) to density (bc_*_D_val).
+
+        Called from _pre_run() so that resolution always happens after the EoS
+        is fully initialised but before the first ghost exchange.
+        """
+        from .models.pressure import eos_rho
+        for side in ('xW', 'xE', 'yS', 'yN'):
+            key_p = f'bc_{side}_P_val'
+            key_d = f'bc_{side}_D_val'
+            p_val = self.grid.get(key_p)
+            if p_val is not None:
+                self.grid[key_d] = float(eos_rho(float(p_val), self.prop))
+
     def _pre_run(self, **kwargs) -> None:
         """Initialize time-stepping and GP models.
 
         Has to be called before the first call to :meth:`update`.
         """
+        self._resolve_pressure_bcs()
         self.pressure.init_database(self.grid['dim'])
         self.wall_stress_xz.init_database(self.grid['dim'])
         self.wall_stress_yz.init_database(self.grid['dim'])

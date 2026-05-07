@@ -79,6 +79,7 @@ class FEMSolver2d:
         self.fem_spec = fem_spec
         self.problem  = problem
         self.R_norm_history: List[List[float]] = []
+        self.R_scaled_norm_history: List[List[float]] = []
 
     # =========================================================================
     # Initialisation
@@ -186,6 +187,8 @@ class FEMSolver2d:
                 'lap_pressure_alpha', 0.0)
             ctx['lap_theta_alpha'] = lambda: p.fem_solver.get(
                 'lap_theta_alpha', 0.0)
+            ctx['theta_stab_alpha'] = lambda: p.fem_solver.get(
+                'theta_stab_alpha', 0.0)
             ctx['p_cav'] = lambda: p.prop['p_cav']
             ctx['pen_eps'] = lambda: p.fem_solver.get('pen_eps', 0.0)
             if self.energy:
@@ -579,7 +582,7 @@ class FEMSolver2d:
         Floor:    fem_solver.transition_damping_p_floor     (default 1e3 Pa)
         """
         p_sl = self._sol_slice('p')
-        max_rel_dp = float(self.problem.fem_solver.get('transition_damping_max_rel_dp', 0.2))
+        max_rel_dp = float(self.problem.fem_solver.get('transition_damping_max_rel_dp', 0.5))
         p_floor = float(self.problem.fem_solver.get('transition_damping_p_floor', 1e4))
 
         p_cur = q[p_sl]
@@ -931,6 +934,7 @@ class FEMSolver2d:
 
         if rank == 0:
             self.R_norm_history.append([])
+            self.R_scaled_norm_history.append([])
 
         any_guard_fired = False
         _M_prev = None
@@ -967,6 +971,7 @@ class FEMSolver2d:
                 R_scaled_norm = self.get_R_norm_global(R_scaled)
                 if rank == 0:
                     print(f'  R_scaled={R_scaled_norm:.6e}')
+                    self.R_scaled_norm_history[-1].append(R_scaled_norm)
                 self.linear_solver.assemble(M_scaled, R_scaled)
                 dq_scaled = self.linear_solver.solve()
                 dq = self.scaling.unscale_solution(dq_scaled)
@@ -981,7 +986,7 @@ class FEMSolver2d:
                     R_per_term=self._last_R_per_term, M_scaled=M_scaled)
                 self._debug_steps_done += 1
 
-            if self.cavitation and fem_solver.get('transition_damping', True):
+            if self.cavitation and fem_solver.get('transition_damping', False):
                 dq = self._limit_cavitation_step(q, dq)
 
             q_before = q.copy()
@@ -1175,9 +1180,8 @@ class FEMSolver2d:
             self.quad_mgr.sync_to_problem_q()
 
         self._exchange_ghosts()
-        self._log_bc_pressures()
-
         self.update_quad()
+        self._log_bc_pressures()
         self.update_prev_quad()
         self.update_output_fields()
 

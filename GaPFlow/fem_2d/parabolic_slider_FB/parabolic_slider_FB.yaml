@@ -44,7 +44,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 1000
+    max_it: 120
 
 properties:
     EOS: DH
@@ -68,6 +68,8 @@ fem_solver:
         gap_shear: true
         plane_shear: false
         inertia: false
+        theta_stab: true
+    theta_stab_alpha: 0.0001
     max_iter: 1
     R_norm_tol: 1e-9
     newton_debug: False

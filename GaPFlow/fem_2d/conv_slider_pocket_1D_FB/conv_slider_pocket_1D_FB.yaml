@@ -1,0 +1,84 @@
+# 1D Convergent slider with pocket — Fischer-Burmeister cavitation
+#
+# Reference geometry from:
+#   Bertocchi, L. et al. "Fluid film lubrication in the presence of cavitation:
+#   a mass-conserving two-dimensional formulation for compressible, piezoviscous
+#   and non-Newtonian fluids." Tribology International 67 (2013), 61–71.
+#
+# Same geometry as conv_slider_pocket_1D but using DH EOS with FB
+# complementarity constraint instead of the Bayada-Chupin EOS.
+#
+# Domain: Lx = 20 mm, periodic in y (effectively 1D).
+# Gap: linear convergent wedge (hmax=1.1 µm at inlet, hmin=1.0 µm at outlet)
+#      plus a rectangular pocket (depth=0.4 µm, x=[4 mm, 10 mm]).
+#
+# Fluid: Dowson-Higginson EOS
+#   p_cav = 0 Pa  (vacuum cavitation)
+#   shear = 0.01 Pa·s  (Bertocchi mu0, constant)
+#
+# Wall velocity: U = 1.0 m/s (upper wall), lower wall stationary
+# BCs: p_in = p_out = 1e5 Pa
+
+options:
+    output: data/conv_slider_pocket_1D_FB
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.020
+    Ly: 0.004
+    Nx: 256
+    Ny: 4
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['P', 'P', 'P']
+    yN: ['P', 'P', 'P']
+    xW_P: 1e5
+    xE_P: 1e5
+
+geometry:
+    type: from_file
+    filepath: topography/conv_slider_pocket_1D_FB.npy
+    U: 1.0
+    V: 0.0
+    flip: false
+
+numerics:
+    solver: fem
+    dt: 0.1
+    tol: 0.0
+    max_it: 50
+
+properties:
+    EOS: DH
+    rho0: 850.
+    P0: 1e5
+    C1: 2.22e9
+    C2: 1.66
+    p_cav: 0.0
+    shear: 0.01
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 0.1
+    equations:
+        energy: False
+        cavitation: True
+    physics:
+        gap_shear: true
+        plane_shear: false
+        inertia: true
+        lap_pressure: false
+        lap_theta: false
+        theta_stab: true
+    lap_theta_alpha: 1e-8
+    theta_stab_alpha: 0.0001
+    max_iter: 5
+    R_norm_tol: 1e-9
+    newton_debug: False
+    scaling: True
+    line_search: False

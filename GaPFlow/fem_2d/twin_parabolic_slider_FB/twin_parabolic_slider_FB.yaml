@@ -48,7 +48,7 @@ numerics:
     solver: fem
     dt: 0.08
     tol: 0.0
-    max_it: 500
+    max_it: 700
 
 properties:
     EOS: DH
@@ -63,7 +63,7 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 1.
+    newton_relax: 0.1
     equations:
         energy: False
         cavitation: True
@@ -73,8 +73,10 @@ fem_solver:
         inertia: false
         lap_pressure: false
         lap_theta: false
+        theta_stab: true
     lap_pressure_alpha: 0.0
     lap_theta_alpha: 0.0
+    theta_stab_alpha: 0.001
     max_iter: 1
     R_norm_tol: 1e-9
     newton_debug: False

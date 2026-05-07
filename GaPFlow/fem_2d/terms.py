@@ -473,10 +473,14 @@ R21y = NonLinearTerm(
 # R21x_corr / R21y_corr deleted in the pressure formulation: they existed to
 # add the d²p/dρ² chain-rule contribution that is absent once p is the DOF.
 
-# R22: Convective momentum flux
+# R22: Convective momentum flux (IBP form)
+# Full height-averaged term: (1/h)·∂(h·jx²/ρ)/∂x = ∂(jx²/ρ)/∂x + (dh_dx/h)·(jx²/ρ)
+# R22xx handles ∂(jx²/ρ)/∂x via IBP: ∫ Nᵢ·∂(−jx²/ρ)/∂x dΩ → −∫ ∂Nᵢ/∂x·(−jx²/ρ) dΩ
+# Assembly with der_testfun='x' computes −∫ ∂Nᵢ/∂x · fun dΩ, so fun = −jx²/ρ.
+# R22xxS handles the remaining height-source (dh_dx/h)·(jx²/ρ) separately.
 R22xx = NonLinearTerm(
     name='R22xx',
-    description='convective momentum flux jx*jx in x',
+    description='convective momentum flux jx*jx in x (IBP)',
     res='momentum_x',
     dep_vars=['p', 'jx'],
     dep_vals=['rho', 'drho_dp'],
@@ -485,9 +489,9 @@ R22xx = NonLinearTerm(
         lambda ctx: lambda p, jx: (jx * jx) / ctx['rho']() ** 2 * ctx['drho_dp'](),
         lambda ctx: lambda p, jx: -2 * jx / ctx['rho']()
     ],
-    d_dx_resfun=True,
+    d_dx_resfun=False,
     d_dy_resfun=False,
-    der_testfun=False)
+    der_testfun='x')
 
 R22xxS = NonLinearTerm(
     name='R22xxS',
@@ -506,7 +510,7 @@ R22xxS = NonLinearTerm(
 
 R22yx = NonLinearTerm(
     name='R22yx',
-    description='convective momentum flux jx*jy in y (for momentum_x)',
+    description='convective momentum flux jx*jy in y (for momentum_x, IBP)',
     res='momentum_x',
     dep_vars=['p', 'jx', 'jy'],
     dep_vals=['rho', 'drho_dp'],
@@ -517,8 +521,8 @@ R22yx = NonLinearTerm(
         lambda ctx: lambda p, jx, jy: -jx / ctx['rho']()
     ],
     d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=False)
+    d_dy_resfun=False,
+    der_testfun='y')
 
 R22yxS = NonLinearTerm(
     name='R22yxS',
@@ -538,7 +542,7 @@ R22yxS = NonLinearTerm(
 
 R22xy = NonLinearTerm(
     name='R22xy',
-    description='convective momentum flux jx*jy in x (for momentum_y)',
+    description='convective momentum flux jx*jy in x (for momentum_y, IBP)',
     res='momentum_y',
     dep_vars=['p', 'jx', 'jy'],
     dep_vals=['rho', 'drho_dp'],
@@ -548,9 +552,9 @@ R22xy = NonLinearTerm(
         lambda ctx: lambda p, jx, jy: -jy / ctx['rho'](),
         lambda ctx: lambda p, jx, jy: -jx / ctx['rho']()
     ],
-    d_dx_resfun=True,
+    d_dx_resfun=False,
     d_dy_resfun=False,
-    der_testfun=False)
+    der_testfun='x')
 
 R22xyS = NonLinearTerm(
     name='R22xyS',
@@ -570,7 +574,7 @@ R22xyS = NonLinearTerm(
 
 R22yy = NonLinearTerm(
     name='R22yy',
-    description='convective momentum flux jy*jy in y',
+    description='convective momentum flux jy*jy in y (IBP)',
     res='momentum_y',
     dep_vars=['p', 'jy'],
     dep_vals=['rho', 'drho_dp'],
@@ -580,8 +584,8 @@ R22yy = NonLinearTerm(
         lambda ctx: lambda p, jy: -2 * jy / ctx['rho']()
     ],
     d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=False)
+    d_dy_resfun=False,
+    der_testfun='y')
 
 R22yyS = NonLinearTerm(
     name='R22yyS',
@@ -1048,6 +1052,44 @@ R11Sy_fb_corr = NonLinearTerm(
     d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
 
 
+# R1STx / R1STy: theta diffusion stabilization in the mass equation.
+# Weak form: +tau_st * ∫ (∂Nᵢ/∂x)(∂theta/∂x) dΩ  (and y-direction),
+# where tau_st = theta_stab_alpha * dp_drho * |j|.
+# This adds cross-node coupling in theta via the mass equation, damping
+# oscillations near the cavitation front. The coefficient dp_drho * |j|
+# gives units consistent with the mass equation (Pa/m after IBP), and
+# |j| = sqrt(jx²+jy²) makes the stabilization flow-aware.
+# Jacobian is approximate: d/dtheta only, d/d|j| and d/dp dropped (frozen coefficients).
+# Activated by physics flag theta_stab: true.
+# Coefficient set via fem_solver.theta_stab_alpha (dimensionless, default 0.0).
+R1STx = NonLinearTerm(
+    name='R1STx',
+    description='theta diffusion stabilization in mass equation x',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['dp_drho', 'jx', 'jy', 'theta_stab_alpha'],
+    fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+                                    * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * theta),
+    der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+                                          * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30))],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1STy = NonLinearTerm(
+    name='R1STy',
+    description='theta diffusion stabilization in mass equation y',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['dp_drho', 'jx', 'jy', 'theta_stab_alpha'],
+    fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+                                    * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * theta),
+    der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+                                          * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30))],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
+
 # R_LTx / R_LTy: Laplacian theta stabilization for fb equation.
 # Weak form: +alpha * ∫ (∂Nᵢ/∂x)(∂theta/∂x) dΩ  (and y-direction).
 # Assembly applies -1/dx² for (d_dx_resfun=True, der_testfun='x'), so fun
@@ -1107,6 +1149,8 @@ term_list = [
     R_FB,
     # theta-weighted pressure Laplacian stabilization (dormant; physics.lap_pressure default False)
     R_Lpx, R_Lpy,
+    # Theta diffusion stabilization in mass equation (dormant; physics.theta_stab default False)
+    R1STx, R1STy,
     # Laplacian theta stabilization (dormant; physics.lap_theta default False)
     R_LTx, R_LTy,
     # Laplacian density diffusion (dormant; physics.mass_diffusion default False)
@@ -1172,6 +1216,9 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     if physics.get('lap_pressure', False):
         terms.extend(['R_Lpx', 'R_Lpy'])
 
+    if physics.get('theta_stab', False):
+        terms.extend(['R1STx', 'R1STy'])
+
     if physics.get('lap_theta', False):
         terms.extend(['R_LTx', 'R_LTy'])
 
@@ -1194,8 +1241,7 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
         terms.extend(['R23xy', 'R23yx', 'R23xx', 'R23yy'])
 
     if physics.get('inertia', False):
-        terms.extend(['R22xx', 'R22yy', 'R22xy', 'R22yx',
-                      'R22xxS', 'R22yyS', 'R22xyS', 'R22yxS'])
+        terms.extend(['R22xx', 'R22xxS', 'R22yx', 'R22yxS', 'R22xy', 'R22xyS', 'R22yy', 'R22yyS'])
 
     if physics.get('body_force', False):
         terms.extend(['R25x', 'R25y'])

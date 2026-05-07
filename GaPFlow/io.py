@@ -209,15 +209,32 @@ def sanitize_grid(d):
     # Dirichlet BC values: float | list[float]
     # - scalar: applies uniformly to all variables
     # - list: sets value per variable [rho, rho*u, rho*v]
+    # Pressure BCs (xW_P etc.) are an alternative to density BCs (xW_D etc.).
+    # They are stored as-is here and converted to density in Problem._resolve_pressure_bcs()
+    # once the EoS is known. Specifying both _D and _P for the same boundary is an error.
     if any(b == 'D' for b in out['bc_xW']):
-        out['bc_xW_D_val']: float | list[float] = d.get('xW_D', 1.)
-        if out['bc_xW_D_val'] is None:
-            raise IOError("Need to specify Dirichlet BC value for xW")
+        has_D = 'xW_D' in d
+        has_P = 'xW_P' in d
+        if has_D and has_P:
+            raise IOError("Cannot specify both xW_D and xW_P for the same boundary.")
+        if not has_D and not has_P:
+            raise IOError("Need to specify Dirichlet BC value for xW (xW_D or xW_P).")
+        if has_D:
+            out['bc_xW_D_val']: float | list[float] = d['xW_D']
+        else:
+            out['bc_xW_P_val']: float = float(d['xW_P'])
 
     if any(b == 'D' for b in out['bc_xE']):
-        out['bc_xE_D_val']: float | list[float] = d.get('xE_D', 1.)
-        if out['bc_xE_D_val'] is None:
-            raise IOError("Need to specify Dirichlet BC value for xE")
+        has_D = 'xE_D' in d
+        has_P = 'xE_P' in d
+        if has_D and has_P:
+            raise IOError("Cannot specify both xE_D and xE_P for the same boundary.")
+        if not has_D and not has_P:
+            raise IOError("Need to specify Dirichlet BC value for xE (xE_D or xE_P).")
+        if has_D:
+            out['bc_xE_D_val']: float | list[float] = d['xE_D']
+        else:
+            out['bc_xE_P_val']: float = float(d['xE_P'])
 
     # Periodic BC must be consistent on opposite boundaries
     assert all((w == 'P') == (e == 'P') for w, e in zip(out['bc_xW'], out['bc_xE']))
@@ -231,14 +248,28 @@ def sanitize_grid(d):
 
     # Dirichlet BC values: float | list[float] (see comment above)
     if any(b == 'D' for b in out['bc_yS']):
-        out['bc_yS_D_val']: float | list[float] = d.get('yS_D', None)
-        if out['bc_yS_D_val'] is None:
-            raise IOError("Need to specify Dirichlet BC value for yS")
+        has_D = 'yS_D' in d
+        has_P = 'yS_P' in d
+        if has_D and has_P:
+            raise IOError("Cannot specify both yS_D and yS_P for the same boundary.")
+        if not has_D and not has_P:
+            raise IOError("Need to specify Dirichlet BC value for yS (yS_D or yS_P).")
+        if has_D:
+            out['bc_yS_D_val']: float | list[float] = d['yS_D']
+        else:
+            out['bc_yS_P_val']: float = float(d['yS_P'])
 
     if any(b == 'D' for b in out['bc_yN']):
-        out['bc_yN_D_val']: float | list[float] = d.get('yN_D', None)
-        if out['bc_yN_D_val'] is None:
-            raise IOError("Need to specify Dirichlet BC value for yN")
+        has_D = 'yN_D' in d
+        has_P = 'yN_P' in d
+        if has_D and has_P:
+            raise IOError("Cannot specify both yN_D and yN_P for the same boundary.")
+        if not has_D and not has_P:
+            raise IOError("Need to specify Dirichlet BC value for yN (yN_D or yN_P).")
+        if has_D:
+            out['bc_yN_D_val']: float | list[float] = d['yN_D']
+        else:
+            out['bc_yN_P_val']: float = float(d['yN_P'])
 
     # Periodic BC must be consistent on opposite boundaries
     assert all((s == 'P') == (n == 'P') for s, n in zip(out['bc_yS'], out['bc_yN']))
@@ -552,6 +583,7 @@ def sanitize_fem_solver(d):
         'stabilization': bool(physics.get('stabilization', True)),
         'lap_pressure': bool(physics.get('lap_pressure', False)),
         'lap_theta': bool(physics.get('lap_theta', False)),
+        'theta_stab': bool(physics.get('theta_stab', False)),
         'mass_diffusion': bool(physics.get('mass_diffusion', False)),
         'pspg': bool(physics.get('pspg', False)),
         'gls': bool(physics.get('gls', False)),
@@ -559,6 +591,7 @@ def sanitize_fem_solver(d):
 
     out['lap_pressure_alpha'] = float(d.get('lap_pressure_alpha', 0.0))
     out['lap_theta_alpha'] = float(d.get('lap_theta_alpha', 0.0))
+    out['theta_stab_alpha'] = float(d.get('theta_stab_alpha', 0.0))
     out['mass_diffusion_alpha'] = float(d.get('mass_diffusion_alpha', 1e-3))
     out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
     out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))

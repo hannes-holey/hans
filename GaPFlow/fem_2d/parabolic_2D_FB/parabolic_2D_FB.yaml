@@ -1,0 +1,81 @@
+# 2D Parabolic slider bearing — Fischer-Burmeister cavitation
+#
+# Same geometry as parabolic_slider_FB but on a square 2D domain with
+# Dirichlet pressure BCs on all four boundaries.
+#
+# Geometry: parabolic gap (hmin=2.54e-5 m, hmax=5.08e-5 m)
+# Domain: Lx = 0.0762 m, Ly = 0.0762 m
+#
+# Fluid: Dowson-Higginson EOS
+#   rho0  = 877.7007 kg/m³  at  P0 = 101325 Pa
+#   p_cav = 101325 Pa  (cavitation at ambient pressure)
+#   shear = 0.039 Pa·s
+#
+# Wall velocity: U = 4.57 m/s (upper wall), lower wall stationary
+# BCs: p = 101325 Pa at inlet/outlet/yS/yN
+
+options:
+    output: data/parabolic_2D_FB
+    write_freq: 1
+    save_output: True
+    output_plots: True
+    residual_analysis: True
+
+grid:
+    Lx: 0.0762
+    Ly: 0.0762
+    Nx: 50
+    Ny: 50
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['D', 'N', 'N']
+    yN: ['D', 'N', 'N']
+    xW_P: 101325
+    xE_P: 101325
+    yS_P: 101325
+    yN_P: 101325
+
+geometry:
+    type: parabolic_2d
+    hmin: 2.54e-5
+    hmax: 5.08e-5
+    U: 0.7
+    V: 0.0
+
+numerics:
+    solver: fem
+    dt: 0.1
+    tol: 1e-13
+    max_it: 100
+
+properties:
+    EOS: DH
+    rho0: 877.7007
+    P0: 101325
+    C1: 3.5e10
+    C2: 1.23
+    p_cav: 0
+    shear: 0.039
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 0.4
+    equations:
+        energy: False
+        cavitation: True
+    physics:
+        gap_shear: true
+        plane_shear: false
+        inertia: true
+        lap_pressure: false
+        lap_theta: false
+        theta_stab: true
+    lap_theta_alpha: 1e-8
+    theta_stab_alpha: 0.001
+    max_iter: 1
+    R_norm_tol: 1e-9
+    newton_debug: False
+    scaling: True
+    line_search: False
