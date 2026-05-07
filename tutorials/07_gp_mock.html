@@ -53,7 +53,7 @@
     <link rel="prev" title="6. Lubrication (2D)" href="06_lubrication_2d.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.0.3.dev106" />
+  <meta name="docsearch:version" content="1.1.1.dev2" />
   </head>
   
   
@@ -505,7 +505,7 @@ As in the previous example, we start with the <em>YAML</em> input file:</p>
 *                  PROBLEM SETUP COMPLETED                  *
 *************************************************************
                                                             
-   Writing output into: data/2026-05-04_092037_journal_gp
+   Writing output into: data/2026-05-07_154425_journal_gp
 </pre></div>
 </div>
 </div>
@@ -594,12 +594,12 @@ The gap-averaged viscous stress components (<code class="docutils literal notran
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&lt;GaPFlow.db.Database object at 0x7f03571237d0&gt;
-&lt;GaPFlow.db.Database object at 0x7f03571237d0&gt;
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&lt;GaPFlow.db.Database object at 0x7f930060acf0&gt;
+&lt;GaPFlow.db.Database object at 0x7f930060acf0&gt;
 0
 []
 []
-data/2026-05-04_092037_journal_gp/train
+data/2026-05-07_154425_journal_gp/train
 </pre></div>
 </div>
 </div>
@@ -617,7 +617,7 @@ Usually, this is done automatically when we call <code class="docutils literal n
 </div>
 <div class="cell_output docutils container">
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Database contains less than 5 MD runs.
-Generate new training data in data/2026-05-04_092037_journal_gp/train
+Generate new training data in data/2026-05-07_154425_journal_gp/train
 ========================================================================================================================
 Running MD simulation
 ---
@@ -629,7 +629,7 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +2.513e+01    (jx)
+Target input 2: +3.751e+01    (jx)
 Target input 3: +0.000e+00    (jy)
 Target input 4: +5.433e-07    (h)
 Target input 5: -2.371e-03    (∂h/∂x)
@@ -637,31 +637,31 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092039_mock-001/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154426_mock-001/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +2.513e+01 (+0.0%)   (jx)
+Measured input 2: +3.751e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
 Measured input 4: +5.433e-07 (+0.0%)   (h)
 Measured input 5: -2.371e-03 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: +1.870e+05 ±1.000e+02  (p)
+Measured output  1: +8.456e+04 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -3.335e+04 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -2.099e+04 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: +1.119e+01 ±0.000e+00  (τ(xx|top))
-Measured output  9: -8.354e+00 ±0.000e+00  (τ(yy|top))
-Measured output 10: -8.354e+00 ±0.000e+00  (τ(zz|top))
+Measured output  8: -2.790e+01 ±0.000e+00  (τ(xx|top))
+Measured output  9: +1.119e+01 ±0.000e+00  (τ(yy|top))
+Measured output 10: +1.119e+01 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: +4.120e+03 ±1.000e+00  (τ(xz|top))
+Measured output 12: -8.244e+03 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 ========================================================================================================================
@@ -675,7 +675,7 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +4.530e+01    (jx)
+Target input 2: +5.206e+01    (jx)
 Target input 3: +0.000e+00    (jy)
 Target input 4: +1.281e-06    (h)
 Target input 5: +6.722e-03    (∂h/∂x)
@@ -683,31 +683,31 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092040_mock-002/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154427_mock-002/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +4.530e+01 (+0.0%)   (jx)
+Measured input 2: +5.206e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
 Measured input 4: +1.281e-06 (+0.0%)   (h)
 Measured input 5: +6.722e-03 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: -5.725e+03 ±1.000e+02  (p)
+Measured output  1: -6.120e+03 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -5.601e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -2.735e+03 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: +5.910e+01 ±0.000e+00  (τ(xx|top))
-Measured output  9: -3.231e+01 ±0.000e+00  (τ(yy|top))
-Measured output 10: -3.231e+01 ±0.000e+00  (τ(zz|top))
+Measured output  8: +8.478e+01 ±0.000e+00  (τ(xx|top))
+Measured output  9: -4.515e+01 ±0.000e+00  (τ(yy|top))
+Measured output 10: -4.515e+01 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -6.800e+03 ±1.000e+00  (τ(xz|top))
+Measured output 12: -9.667e+03 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 ========================================================================================================================
@@ -721,7 +721,7 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +3.317e+01    (jx)
+Target input 2: +4.069e+01    (jx)
 Target input 3: +0.000e+00    (jy)
 Target input 4: +2.679e-06    (h)
 Target input 5: -1.527e-03    (∂h/∂x)
@@ -729,31 +729,31 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092040_mock-003/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154427_mock-003/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +3.317e+01 (+0.0%)   (jx)
+Measured input 2: +4.069e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
 Measured input 4: +2.679e-06 (+0.0%)   (h)
 Measured input 5: -1.527e-03 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: +3.778e+04 ±1.000e+02  (p)
+Measured output  1: +4.564e+04 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -5.137e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -3.613e+03 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: -3.451e+00 ±0.000e+00  (τ(xx|top))
-Measured output  9: -1.032e+00 ±0.000e+00  (τ(yy|top))
-Measured output 10: -1.032e+00 ±0.000e+00  (τ(zz|top))
+Measured output  8: -6.554e+00 ±0.000e+00  (τ(xx|top))
+Measured output  9: +5.191e-01 ±0.000e+00  (τ(yy|top))
+Measured output 10: +5.191e-01 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -7.938e+02 ±1.000e+00  (τ(xz|top))
+Measured output 12: -2.318e+03 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 ========================================================================================================================
@@ -767,7 +767,7 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +6.425e+01    (jx)
+Target input 2: +2.752e+01    (jx)
 Target input 3: +0.000e+00    (jy)
 Target input 4: +7.559e-07    (h)
 Target input 5: +4.629e-03    (∂h/∂x)
@@ -775,31 +775,31 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092040_mock-004/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154427_mock-004/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +6.425e+01 (+0.0%)   (jx)
+Measured input 2: +2.752e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
 Measured input 4: +7.559e-07 (+0.0%)   (h)
 Measured input 5: +4.629e-03 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: +1.201e+05 ±1.000e+02  (p)
+Measured output  1: +1.936e+05 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: +4.117e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -2.225e+04 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: +1.532e+02 ±0.000e+00  (τ(xx|top))
-Measured output  9: -7.938e+01 ±0.000e+00  (τ(yy|top))
-Measured output 10: -7.938e+01 ±0.000e+00  (τ(zz|top))
+Measured output  8: -9.523e+00 ±0.000e+00  (τ(xx|top))
+Measured output  9: +2.003e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: +2.003e+00 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -2.513e+04 ±1.000e+00  (τ(xz|top))
+Measured output 12: +1.243e+03 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 ========================================================================================================================
@@ -813,7 +813,7 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +5.565e+01    (jx)
+Target input 2: +5.884e+01    (jx)
 Target input 3: +0.000e+00    (jy)
 Target input 4: +1.349e-06    (h)
 Target input 5: -6.831e-03    (∂h/∂x)
@@ -821,52 +821,52 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092040_mock-005/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154428_mock-005/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +5.565e+01 (+0.0%)   (jx)
+Measured input 2: +5.884e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
 Measured input 4: +1.349e-06 (+0.0%)   (h)
 Measured input 5: -6.831e-03 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: +2.373e+05 ±1.000e+02  (p)
+Measured output  1: +1.600e+05 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -1.152e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: +1.314e+02 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: -9.862e+01 ±0.000e+00  (τ(xx|top))
-Measured output  9: +4.655e+01 ±0.000e+00  (τ(yy|top))
-Measured output 10: +4.655e+01 ±0.000e+00  (τ(zz|top))
+Measured output  8: -1.103e+02 ±0.000e+00  (τ(xx|top))
+Measured output  9: +5.239e+01 ±0.000e+00  (τ(yy|top))
+Measured output 10: +5.239e+01 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -1.063e+04 ±1.000e+00  (τ(xz|top))
+Measured output 12: -1.191e+04 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 #-----------------GP TRAINING (ZZ)-----------------
 # Timestep     : 0
 # Reason       : DB
 # Database size: 5
-# Objective    : -1.7909
+# Objective    : -1.5622
 # Hyperparam   : 
-# - Log scale  : 9.16473 34.96790
-# - Log amp    : 17.82733
-# - Log noise  : -13.60979
+# - Log scale  : 8.61473 25.87430
+# - Log amp    : 16.72674
+# - Log noise  : -13.18842
 #--------------------------------------------------
 #-----------------GP TRAINING (XZ)-----------------
 # Timestep     : 0
 # Reason       : DB
 # Database size: 5
-# Objective    : 12.095
+# Objective    : 9.2625
 # Hyperparam   : 
-# - Log scale  : 9.87039 -0.56860 -0.31690
-# - Log amp    : 0.07689
-# - Log noise  : -18.95133
+# - Log scale  : 20.84415 8.03966 -1.83393
+# - Log amp    : -0.34935
+# - Log noise  : -18.35248
 #--------------------------------------------------
 </pre></div>
 </div>
@@ -934,11 +934,11 @@ The individual training data of a single “MD” run is also stored in a local 
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260504_092039_mock-001
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260504_092040_mock-002
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260504_092040_mock-003
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260504_092040_mock-004
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260504_092040_mock-005
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260507_154426_mock-001
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260507_154427_mock-002
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260507_154427_mock-003
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260507_154427_mock-004
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/20260507_154428_mock-005
 </pre></div>
 </div>
 </div>
@@ -952,15 +952,15 @@ The individual training data of a single “MD” run is also stored in a local 
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Loading 5 local datasets in &#39;data/2026-05-04_092037_journal_gp/train&#39;.
-- aef69127-ac6b-4c67-9fb0-2b3e7d302286 (20260504_092040_mock-004)
-- 9edcac5d-67dd-492e-b50f-b7072d2658f5 (20260504_092040_mock-005)
-- 44c570d9-82d7-4f0b-887d-d7eecd3a48c6 (20260504_092040_mock-003)
-- cc1019c3-0c93-493a-ab51-ca3c4e576410 (20260504_092040_mock-002)
-- 83261575-400d-4d47-9d08-a0db98b3aeb4 (20260504_092039_mock-001)
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Loading 5 local datasets in &#39;data/2026-05-07_154425_journal_gp/train&#39;.
+- 360c5d00-9842-43ce-84a5-3177eb2cefd7 (20260507_154427_mock-004)
+- fb6840e7-8359-4b78-8f78-e344b21c4e4d (20260507_154427_mock-003)
+- 2a69240c-6c18-485b-a1d7-55c782a75e14 (20260507_154428_mock-005)
+- 99efafc7-7c93-40b0-9dac-b69241b84601 (20260507_154426_mock-001)
+- 059619c7-53a0-403f-8627-aeb152bf5174 (20260507_154427_mock-002)
 </pre></div>
 </div>
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[120088.87251552356, -0.619900249931894, -0.619900249931894, -0.619900249931894, -0.619900249931894, 4116.650826262694, -0.619900249931894, 153.24749336872753, -79.38182527426761, -79.38182527426761, -1.8387190599359027, -25128.22881481135, -1.8387190599359027]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[193556.65114299516, -0.619900249931894, -0.619900249931894, -0.619900249931894, -0.619900249931894, -22254.708311339204, -0.619900249931894, -9.522971853741797, 2.0034073369670446, 2.0034073369670438, -1.8387190599359027, 1243.1303227905473, -1.8387190599359027]
 </pre></div>
 </div>
 </div>
@@ -999,7 +999,7 @@ The models are now ready to make a first prediction:</p>
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/6dd7181abfc944036cf5d90c1b626f5a64abe3dc0f78dd9b35d0863267630fc7.png" src="../_images/6dd7181abfc944036cf5d90c1b626f5a64abe3dc0f78dd9b35d0863267630fc7.png" />
+<img alt="../_images/c7e35d4d43d014191e735939c520441f536c202632ab0fd1d2a55932094dc38f.png" src="../_images/c7e35d4d43d014191e735939c520441f536c202632ab0fd1d2a55932094dc38f.png" />
 </div>
 </div>
 <p>The uncertainty tolerance is controlled via the <code class="docutils literal notranslate"><span class="pre">atol</span></code> and <code class="docutils literal notranslate"><span class="pre">rtol</span></code> parameters.
@@ -1034,7 +1034,7 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092050_mock-006/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154437_mock-006/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
@@ -1065,82 +1065,24 @@ Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 # Timestep     : 1
 # Reason       : AL
 # Database size: 6
-# Objective    : -6.8123
+# Objective    : -6.3435
 # Hyperparam   : 
-# - Log scale  : 9.41726 34.63051
-# - Log amp    : 18.49126
-# - Log noise  : -13.43149
-# AL  1/ 5     : 1.001 --&gt; 0.487 | A (0.000)
+# - Log scale  : 8.99980 26.03370
+# - Log amp    : 17.70705
+# - Log noise  : -13.00712
+# AL  1/ 5     : 1.114 --&gt; 0.501 | A (0.000)
 #--------------------------------------------------
 #-----------------GP TRAINING (XZ)-----------------
 # Timestep     : 1
 # Reason       : DB
 # Database size: 6
-# Objective    : 13.475
+# Objective    : 7.6392
 # Hyperparam   : 
-# - Log scale  : 1.78114 -0.00982 0.40441
-# - Log amp    : 0.66505
-# - Log noise  : -18.79606
+# - Log scale  : 14.03943 8.42426 -1.73532
+# - Log amp    : -0.24928
+# - Log noise  : -18.25296
 #--------------------------------------------------
-New input selected (skipped 0): 9.239e-01, 6.364e-01 (max, min)
-========================================================================================================================
-Running MD simulation
----
-
-  __  __  ___   ____ _  __
- |  \/  |/ _ \ / ___| |/ /
- | |\/| | | | | |   | &#39; /
- | |  | | |_| | |___| . \
- |_|  |_|\___/ \____|_|\_\
----
-Target input 1: +8.777e+02    (ρ)
-Target input 2: +4.389e+01    (jx)
-Target input 3: +0.000e+00    (jy)
-Target input 4: +4.780e-07    (h)
-Target input 5: +2.199e-04    (∂h/∂x)
-Target input 6: +0.000e+00    (∂h/∂y)
-Target input 7: +0.000e+00    (extra_0)
----
-View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092054_mock-007/data/log.lammps
----
----
-MD run completed (walltime: 0:00:00)
----
-Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +4.389e+01 (+0.0%)   (jx)
-Measured input 3: +0.000e+00 (----%)   (jy)
-Measured input 4: +4.780e-07 (+0.0%)   (h)
-Measured input 5: +2.199e-04 (+0.0%)   (∂h/∂x)
-Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
-Measured input 7: +0.000e+00 (----%)   (extra_0)
----
-Measured output  1: +1.013e+05 ±1.000e+02  (p)
-Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
-Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
-Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
-Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -1.661e+04 ±1.000e+00  (τ(xz|bot))
-Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: +3.031e+00 ±0.000e+00  (τ(xx|top))
-Measured output  9: -4.274e+00 ±0.000e+00  (τ(yy|top))
-Measured output 10: -4.274e+00 ±0.000e+00  (τ(zz|top))
-Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -1.661e+04 ±1.000e+00  (τ(xz|top))
-Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
-========================================================================================================================
-#-----------------GP TRAINING (XZ)-----------------
-# Timestep     : 1
-# Reason       : AL
-# Database size: 7
-# Objective    : 15.169
-# Hyperparam   : 
-# - Log scale  : 9.22474 0.16938 -0.08270
-# - Log amp    : 0.74164
-# - Log noise  : -18.72284
-# AL  1/ 5     : 25.041 --&gt; 7.951 | R (1490.412)
-#--------------------------------------------------
-New input selected (skipped 0): 8.889e-01, 5.777e-01 (max, min)
+New input selected (skipped 0): 2.099e-01, 8.895e-03 (max, min)
 ========================================================================================================================
 Running MD simulation
 ---
@@ -1160,7 +1102,7 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092057_mock-008/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154442_mock-007/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
@@ -1190,15 +1132,15 @@ Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 #-----------------GP TRAINING (XZ)-----------------
 # Timestep     : 1
 # Reason       : AL
-# Database size: 8
-# Objective    : 15.624
+# Database size: 7
+# Objective    : 8.7008
 # Hyperparam   : 
-# - Log scale  : 2.70349 0.37806 0.38813
-# - Log amp    : 1.24618
-# - Log noise  : -18.61006
-# AL  2/ 5     : 25.041 --&gt; 1.149 | R (1367.638)
+# - Log scale  : 10.11404 0.23736 0.32643
+# - Log amp    : 0.50664
+# - Log noise  : -18.13743
+# AL  1/ 5     : 9.687 --&gt; 1.595 | R (1355.780)
 #--------------------------------------------------
-New input selected (skipped 0): 9.813e-01, 7.397e-01 (max, min)
+New input selected (skipped 0): 9.672e-01, 6.313e-01 (max, min)
 ========================================================================================================================
 Running MD simulation
 ---
@@ -1212,13 +1154,13 @@ Running MD simulation
 Target input 1: +8.777e+02    (ρ)
 Target input 2: +4.389e+01    (jx)
 Target input 3: +0.000e+00    (jy)
-Target input 4: +9.087e-07    (h)
-Target input 5: +5.531e-03    (∂h/∂x)
+Target input 4: +4.780e-07    (h)
+Target input 5: +2.199e-04    (∂h/∂x)
 Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092100_mock-009/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154445_mock-008/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
@@ -1226,8 +1168,8 @@ MD run completed (walltime: 0:00:00)
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
 Measured input 2: +4.389e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
-Measured input 4: +9.087e-07 (+0.0%)   (h)
-Measured input 5: +5.531e-03 (+0.0%)   (∂h/∂x)
+Measured input 4: +4.780e-07 (+0.0%)   (h)
+Measured input 5: +2.199e-04 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
@@ -1236,35 +1178,93 @@ Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -8.738e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -1.661e+04 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: +6.260e+01 ±0.000e+00  (τ(xx|top))
-Measured output  9: -3.406e+01 ±0.000e+00  (τ(yy|top))
-Measured output 10: -3.406e+01 ±0.000e+00  (τ(zz|top))
+Measured output  8: +3.031e+00 ±0.000e+00  (τ(xx|top))
+Measured output  9: -4.274e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: -4.274e+00 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -8.739e+03 ±1.000e+00  (τ(xz|top))
+Measured output 12: -1.661e+04 ±1.000e+00  (τ(xz|top))
+Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
+========================================================================================================================
+#-----------------GP TRAINING (XZ)-----------------
+# Timestep     : 1
+# Reason       : AL
+# Database size: 8
+# Objective    : 10.88
+# Hyperparam   : 
+# - Log scale  : 8.89609 0.09420 -0.03245
+# - Log amp    : 0.45761
+# - Log noise  : -18.11886
+# AL  2/ 5     : 9.687 --&gt; 2.105 | R (1367.638)
+#--------------------------------------------------
+New input selected (skipped 0): 9.344e-01, 6.634e-01 (max, min)
+========================================================================================================================
+Running MD simulation
+---
+
+  __  __  ___   ____ _  __
+ |  \/  |/ _ \ / ___| |/ /
+ | |\/| | | | | |   | &#39; /
+ | |  | | |_| | |___| . \
+ |_|  |_|\___/ \____|_|\_\
+---
+Target input 1: +8.777e+02    (ρ)
+Target input 2: +4.389e+01    (jx)
+Target input 3: +0.000e+00    (jy)
+Target input 4: +1.214e-06    (h)
+Target input 5: +6.586e-03    (∂h/∂x)
+Target input 6: +0.000e+00    (∂h/∂y)
+Target input 7: +0.000e+00    (extra_0)
+---
+View log:
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154448_mock-009/data/log.lammps
+---
+---
+MD run completed (walltime: 0:00:00)
+---
+Measured input 1: +8.777e+02 (+0.0%)   (ρ)
+Measured input 2: +4.389e+01 (+0.0%)   (jx)
+Measured input 3: +0.000e+00 (----%)   (jy)
+Measured input 4: +1.214e-06 (+0.0%)   (h)
+Measured input 5: +6.586e-03 (+0.0%)   (∂h/∂x)
+Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
+Measured input 7: +0.000e+00 (----%)   (extra_0)
+---
+Measured output  1: +1.013e+05 ±1.000e+02  (p)
+Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
+Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
+Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
+Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
+Measured output  6: -6.540e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
+Measured output  8: +5.559e+01 ±0.000e+00  (τ(xx|top))
+Measured output  9: -3.055e+01 ±0.000e+00  (τ(yy|top))
+Measured output 10: -3.055e+01 ±0.000e+00  (τ(zz|top))
+Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
+Measured output 12: -6.541e+03 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 #-----------------GP TRAINING (XZ)-----------------
 # Timestep     : 1
 # Reason       : AL
 # Database size: 9
-# Objective    : 16.428
+# Objective    : 11.566
 # Hyperparam   : 
-# - Log scale  : 12.00488 0.42790 0.25236
-# - Log amp    : 1.42061
-# - Log noise  : -18.49268
-# AL  3/ 5     : 25.041 --&gt; 0.907 | R (1367.638)
+# - Log scale  : 10.77643 0.38258 -0.01525
+# - Log amp    : 0.87437
+# - Log noise  : -18.01098
+# AL  3/ 5     : 9.687 --&gt; 0.919 | R (1367.638)
 #--------------------------------------------------
 #-----------------GP TRAINING (ZZ)-----------------
 # Timestep     : 2
 # Reason       : DB
 # Database size: 9
-# Objective    : -21.999
+# Objective    : -20.823
 # Hyperparam   : 
-# - Log scale  : 9.46901 25.74301
-# - Log amp    : 18.99153
-# - Log noise  : -13.03269
+# - Log scale  : 9.19966 24.68358
+# - Log amp    : 18.51663
+# - Log noise  : -12.60336
 #--------------------------------------------------
 </pre></div>
 </div>
@@ -1293,7 +1293,7 @@ Database size:  9
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/46ed7afb04c56dd285d1df7c83a3f759c3e0abcb98af8ec4081d5240359987d9.png" src="../_images/46ed7afb04c56dd285d1df7c83a3f759c3e0abcb98af8ec4081d5240359987d9.png" />
+<img alt="../_images/5f169a777586e7b5d69a77e099daeb0534c38b23bbb3413b3baa3d83c6d69c79.png" src="../_images/5f169a777586e7b5d69a77e099daeb0534c38b23bbb3413b3baa3d83c6d69c79.png" />
 </div>
 </div>
 <p>Looks good. We now run the simulation again up to 2500 steps as specified in the input.</p>
@@ -1307,8 +1307,9 @@ Database size:  9
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>-------------------------------------------------------------
 Step   Timestep   Time       CFL        Residual
 -------------------------------------------------------------
-50     1.8984e-10 9.4921e-09 2.5000e-01 8.8612e-03
-New input selected (skipped 0): 9.788e-01, 7.790e-01 (max, min)
+50     1.8984e-10 9.4921e-09 2.5000e-01 8.5145e-03
+100    1.8984e-10 1.8984e-08 2.5000e-01 8.0248e-03
+New input selected (skipped 0): 9.601e-01, 5.913e-01 (max, min)
 ========================================================================================================================
 Running MD simulation
 ---
@@ -1320,64 +1321,63 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +4.088e+01    (jx)
+Target input 2: +3.653e+01    (jx)
 Target input 3: +0.000e+00    (jy)
-Target input 4: +1.696e-06    (h)
-Target input 5: -6.969e-03    (∂h/∂x)
+Target input 4: +2.218e-06    (h)
+Target input 5: -5.790e-03    (∂h/∂x)
 Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092110_mock-010/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154459_mock-010/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +4.088e+01 (+0.0%)   (jx)
+Measured input 2: +3.653e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
-Measured input 4: +1.696e-06 (+0.0%)   (h)
-Measured input 5: -6.969e-03 (+0.0%)   (∂h/∂x)
+Measured input 4: +2.218e-06 (+0.0%)   (h)
+Measured input 5: -5.790e-03 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: +4.733e+05 ±1.000e+02  (p)
+Measured output  1: +4.196e+05 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -5.643e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -5.382e+03 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: -3.639e+01 ±0.000e+00  (τ(xx|top))
-Measured output  9: +1.544e+01 ±0.000e+00  (τ(yy|top))
-Measured output 10: +1.544e+01 ±0.000e+00  (τ(zz|top))
+Measured output  8: -1.557e+01 ±0.000e+00  (τ(xx|top))
+Measured output  9: +5.027e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: +5.027e+00 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -3.720e+03 ±1.000e+00  (τ(xz|top))
+Measured output 12: -1.781e+03 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 #-----------------GP TRAINING (XZ)-----------------
-# Timestep     : 70
+# Timestep     : 101
 # Reason       : AL
 # Database size: 10
-# Objective    : 15.6
+# Objective    : 11.228
 # Hyperparam   : 
-# - Log scale  : 13.14619 0.67137 0.48196
-# - Log amp    : 1.90274
-# - Log noise  : -18.39313
-# AL  1/ 5     : 1.003 --&gt; 0.699 | R (1671.343)
+# - Log scale  : 13.43508 0.58130 0.17973
+# - Log amp    : 1.24564
+# - Log noise  : -17.92334
+# AL  1/ 5     : 1.008 --&gt; 0.597 | R (1862.796)
 #--------------------------------------------------
 #-----------------GP TRAINING (ZZ)-----------------
-# Timestep     : 71
+# Timestep     : 102
 # Reason       : DB
 # Database size: 10
-# Objective    : -31.872
+# Objective    : -30.496
 # Hyperparam   : 
-# - Log scale  : 10.29487 32.63176
-# - Log amp    : 20.74652
-# - Log noise  : -14.28905
+# - Log scale  : 9.74256 29.61524
+# - Log amp    : 19.61556
+# - Log noise  : -13.99656
 #--------------------------------------------------
-100    1.8984e-10 1.9061e-08 2.5000e-01 7.8455e-03
-New input selected (skipped 0): 9.784e-01, 7.524e-01 (max, min)
+New input selected (skipped 0): 9.723e-01, 5.612e-01 (max, min)
 ========================================================================================================================
 Running MD simulation
 ---
@@ -1389,76 +1389,7 @@ Running MD simulation
  |_|  |_|\___/ \____|_|\_\
 ---
 Target input 1: +8.777e+02    (ρ)
-Target input 2: +3.434e+01    (jx)
-Target input 3: +0.000e+00    (jy)
-Target input 4: +2.159e-06    (h)
-Target input 5: -6.025e-03    (∂h/∂x)
-Target input 6: +0.000e+00    (∂h/∂y)
-Target input 7: +0.000e+00    (extra_0)
----
-View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092118_mock-011/data/log.lammps
----
----
-MD run completed (walltime: 0:00:00)
----
-Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +3.434e+01 (+0.0%)   (jx)
-Measured input 3: +0.000e+00 (----%)   (jy)
-Measured input 4: +2.159e-06 (+0.0%)   (h)
-Measured input 5: -6.025e-03 (+0.0%)   (∂h/∂x)
-Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
-Measured input 7: +0.000e+00 (----%)   (extra_0)
----
-Measured output  1: +5.073e+05 ±1.000e+02  (p)
-Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
-Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
-Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
-Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -6.078e+03 ±1.000e+00  (τ(xz|bot))
-Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: -1.212e+01 ±0.000e+00  (τ(xx|top))
-Measured output  9: +3.300e+00 ±0.000e+00  (τ(yy|top))
-Measured output 10: +3.300e+00 ±0.000e+00  (τ(zz|top))
-Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: -1.281e+03 ±1.000e+00  (τ(xz|top))
-Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
-========================================================================================================================
-#-----------------GP TRAINING (XZ)-----------------
-# Timestep     : 131
-# Reason       : AL
-# Database size: 11
-# Objective    : 15.166
-# Hyperparam   : 
-# - Log scale  : 13.24457 0.87950 0.65542
-# - Log amp    : 2.31180
-# - Log noise  : -18.30090
-# AL  1/ 5     : 1.002 --&gt; 0.270 | R (1966.486)
-#--------------------------------------------------
-#-----------------GP TRAINING (ZZ)-----------------
-# Timestep     : 132
-# Reason       : DB
-# Database size: 11
-# Objective    : -38.581
-# Hyperparam   : 
-# - Log scale  : 8.88602 22.58315
-# - Log amp    : 16.91924
-# - Log noise  : -14.74842
-#--------------------------------------------------
-200    1.8984e-10 3.8051e-08 2.5000e-01 3.7076e-03
-New input selected (skipped 0): 9.903e-01, 7.121e-01 (max, min)
-========================================================================================================================
-Running MD simulation
----
-
-  __  __  ___   ____ _  __
- |  \/  |/ _ \ / ___| |/ /
- | |\/| | | | | |   | &#39; /
- | |  | | |_| | |___| . \
- |_|  |_|\___/ \____|_|\_\
----
-Target input 1: +8.777e+02    (ρ)
-Target input 2: +2.525e+01    (jx)
+Target input 2: +3.242e+01    (jx)
 Target input 3: +0.000e+00    (jy)
 Target input 4: +2.705e-06    (h)
 Target input 5: -2.199e-04    (∂h/∂x)
@@ -1466,77 +1397,282 @@ Target input 6: +0.000e+00    (∂h/∂y)
 Target input 7: +0.000e+00    (extra_0)
 ---
 View log:
-/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-04_092037_journal_gp/train/20260504_092129_mock-012/data/log.lammps
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154506_mock-011/data/log.lammps
 ---
 ---
 MD run completed (walltime: 0:00:00)
 ---
 Measured input 1: +8.777e+02 (+0.0%)   (ρ)
-Measured input 2: +2.525e+01 (+0.0%)   (jx)
+Measured input 2: +3.242e+01 (+0.0%)   (jx)
 Measured input 3: +0.000e+00 (----%)   (jy)
 Measured input 4: +2.705e-06 (+0.0%)   (h)
 Measured input 5: -2.199e-04 (+0.0%)   (∂h/∂x)
 Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
 Measured input 7: +0.000e+00 (----%)   (extra_0)
 ---
-Measured output  1: +1.182e+05 ±1.000e+02  (p)
+Measured output  1: +1.121e+05 ±1.000e+02  (p)
 Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
 Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
 Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
 Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
-Measured output  6: -6.675e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  6: -5.236e+03 ±1.000e+00  (τ(xz|bot))
 Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
-Measured output  8: -1.603e+00 ±0.000e+00  (τ(xx|top))
-Measured output  9: -1.957e+00 ±0.000e+00  (τ(yy|top))
-Measured output 10: -1.957e+00 ±0.000e+00  (τ(zz|top))
+Measured output  8: -2.025e+00 ±0.000e+00  (τ(xx|top))
+Measured output  9: -1.746e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: -1.746e+00 ±0.000e+00  (τ(zz|top))
 Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
-Measured output 12: +8.026e+02 ±1.000e+00  (τ(xz|top))
+Measured output 12: -6.367e+02 ±1.000e+00  (τ(xz|top))
 Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 ========================================================================================================================
 #-----------------GP TRAINING (XZ)-----------------
-# Timestep     : 263
+# Timestep     : 119
 # Reason       : AL
-# Database size: 12
-# Objective    : 15.17
+# Database size: 11
+# Objective    : 11.091
 # Hyperparam   : 
-# - Log scale  : 12.11681 1.17109 0.74186
-# - Log amp    : 2.70873
-# - Log noise  : -18.21494
-# AL  1/ 5     : 1.001 --&gt; 0.388 | R (2393.013)
+# - Log scale  : 13.38921 0.75139 0.27810
+# - Log amp    : 1.52697
+# - Log noise  : -17.84367
+# AL  1/ 5     : 1.008 --&gt; 0.535 | R (1970.889)
 #--------------------------------------------------
 #-----------------GP TRAINING (ZZ)-----------------
-# Timestep     : 264
+# Timestep     : 120
+# Reason       : DB
+# Database size: 11
+# Objective    : -36.118
+# Hyperparam   : 
+# - Log scale  : 9.80852 19.18052
+# - Log amp    : 19.90254
+# - Log noise  : -13.90374
+#--------------------------------------------------
+200    1.8984e-10 3.8055e-08 2.5000e-01 4.7598e-03
+New input selected (skipped 0): 9.707e-01, 5.824e-01 (max, min)
+========================================================================================================================
+Running MD simulation
+---
+
+  __  __  ___   ____ _  __
+ |  \/  |/ _ \ / ___| |/ /
+ | |\/| | | | | |   | &#39; /
+ | |  | | |_| | |___| . \
+ |_|  |_|\___/ \____|_|\_\
+---
+Target input 1: +8.777e+02    (ρ)
+Target input 2: +2.229e+01    (jx)
+Target input 3: +0.000e+00    (jy)
+Target input 4: +2.705e-06    (h)
+Target input 5: -2.199e-04    (∂h/∂x)
+Target input 6: +0.000e+00    (∂h/∂y)
+Target input 7: +0.000e+00    (extra_0)
+---
+View log:
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154518_mock-012/data/log.lammps
+---
+---
+MD run completed (walltime: 0:00:00)
+---
+Measured input 1: +8.777e+02 (+0.0%)   (ρ)
+Measured input 2: +2.229e+01 (+0.0%)   (jx)
+Measured input 3: +0.000e+00 (----%)   (jy)
+Measured input 4: +2.705e-06 (+0.0%)   (h)
+Measured input 5: -2.199e-04 (+0.0%)   (∂h/∂x)
+Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
+Measured input 7: +0.000e+00 (----%)   (extra_0)
+---
+Measured output  1: +1.178e+05 ±1.000e+02  (p)
+Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
+Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
+Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
+Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
+Measured output  6: -7.269e+03 ±1.000e+00  (τ(xz|bot))
+Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
+Measured output  8: -1.429e+00 ±0.000e+00  (τ(xx|top))
+Measured output  9: -2.044e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: -2.044e+00 ±0.000e+00  (τ(zz|top))
+Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
+Measured output 12: +1.396e+03 ±1.000e+00  (τ(xz|top))
+Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
+========================================================================================================================
+#-----------------GP TRAINING (XZ)-----------------
+# Timestep     : 284
+# Reason       : AL
+# Database size: 12
+# Objective    : 11.665
+# Hyperparam   : 
+# - Log scale  : 12.52457 0.77807 0.34459
+# - Log amp    : 1.82781
+# - Log noise  : -17.75791
+# AL  1/ 5     : 1.000 --&gt; 0.664 | R (2574.737)
+#--------------------------------------------------
+#-----------------GP TRAINING (ZZ)-----------------
+# Timestep     : 285
 # Reason       : DB
 # Database size: 12
-# Objective    : -41.86
+# Objective    : -41.175
 # Hyperparam   : 
-# - Log scale  : 6.84077 21.88876
-# - Log amp    : 12.47274
-# - Log noise  : -14.67322
+# - Log scale  : 9.84109 23.00971
+# - Log amp    : 19.74930
+# - Log noise  : -13.81763
 #--------------------------------------------------
-300    1.8984e-10 5.7035e-08 2.5000e-01 3.5137e-03
-400    1.8983e-10 7.6018e-08 2.5000e-01 1.5121e-03
-500    1.8983e-10 9.5002e-08 2.5000e-01 1.0540e-03
-600    1.8983e-10 1.1399e-07 2.5000e-01 7.3371e-04
-700    1.8983e-10 1.3297e-07 2.5000e-01 5.1251e-04
-800    1.8983e-10 1.5195e-07 2.5000e-01 3.6083e-04
-900    1.8983e-10 1.7093e-07 2.5000e-01 2.5637e-04
-1000   1.8983e-10 1.8992e-07 2.5000e-01 1.8399e-04
-1100   1.8983e-10 2.0890e-07 2.5000e-01 1.3344e-04
-1200   1.8983e-10 2.2788e-07 2.5000e-01 9.7819e-05
-1300   1.8983e-10 2.4687e-07 2.5000e-01 7.2466e-05
-1400   1.8983e-10 2.6585e-07 2.5000e-01 5.4220e-05
-1500   1.8983e-10 2.8483e-07 2.5000e-01 4.0942e-05
-1600   1.8983e-10 3.0382e-07 2.5000e-01 3.1171e-05
-1700   1.8983e-10 3.2280e-07 2.5000e-01 2.3904e-05
-1800   1.8983e-10 3.4178e-07 2.5000e-01 1.8445e-05
-1900   1.8983e-10 3.6076e-07 2.5000e-01 1.4309e-05
-2000   1.8983e-10 3.7975e-07 2.5000e-01 1.1149e-05
-2100   1.8983e-10 3.9873e-07 2.5000e-01 8.7194e-06
-2200   1.8983e-10 4.1771e-07 2.5000e-01 6.8398e-06
-2300   1.8983e-10 4.3670e-07 2.5000e-01 5.3787e-06
-2400   1.8983e-10 4.5568e-07 2.5000e-01 4.2382e-06
-2500   1.8983e-10 4.7466e-07 2.5000e-01 3.3450e-06
+300    1.8984e-10 5.7039e-08 2.5000e-01 2.7992e-03
+400    1.8983e-10 7.6022e-08 2.5000e-01 1.6518e-03
+New input selected (skipped 0): 9.548e-01, 5.686e-01 (max, min)
+========================================================================================================================
+Running MD simulation
+---
+
+  __  __  ___   ____ _  __
+ |  \/  |/ _ \ / ___| |/ /
+ | |\/| | | | | |   | &#39; /
+ | |  | | |_| | |___| . \
+ |_|  |_|\___/ \____|_|\_\
+---
+Target input 1: +8.777e+02    (ρ)
+Target input 2: +5.931e+01    (jx)
+Target input 3: +0.000e+00    (jy)
+Target input 4: +4.780e-07    (h)
+Target input 5: -2.199e-04    (∂h/∂x)
+Target input 6: +0.000e+00    (∂h/∂y)
+Target input 7: +0.000e+00    (extra_0)
+---
+View log:
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154531_mock-013/data/log.lammps
+---
+---
+MD run completed (walltime: 0:00:00)
+---
+Measured input 1: +8.777e+02 (+0.0%)   (ρ)
+Measured input 2: +5.931e+01 (+0.0%)   (jx)
+Measured input 3: +0.000e+00 (----%)   (jy)
+Measured input 4: +4.780e-07 (+0.0%)   (h)
+Measured input 5: -2.199e-04 (+0.0%)   (∂h/∂x)
+Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
+Measured input 7: +0.000e+00 (----%)   (extra_0)
+---
+Measured output  1: +3.107e+05 ±1.000e+02  (p)
+Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
+Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
+Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
+Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
+Measured output  6: +8.996e+02 ±1.000e+00  (τ(xz|bot))
+Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
+Measured output  8: -1.184e+01 ±0.000e+00  (τ(xx|top))
+Measured output  9: +3.163e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: +3.163e+00 ±0.000e+00  (τ(zz|top))
+Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
+Measured output 12: -3.412e+04 ±1.000e+00  (τ(xz|top))
+Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
+========================================================================================================================
+#-----------------GP TRAINING (XZ)-----------------
+# Timestep     : 457
+# Reason       : AL
+# Database size: 13
+# Objective    : 10.395
+# Hyperparam   : 
+# - Log scale  : 14.60498 1.19183 0.52602
+# - Log amp    : 2.42380
+# - Log noise  : -18.26560
+# AL  1/ 5     : 1.001 --&gt; 0.734 | R (3675.698)
+#--------------------------------------------------
+#-----------------GP TRAINING (ZZ)-----------------
+# Timestep     : 458
+# Reason       : DB
+# Database size: 13
+# Objective    : -47.406
+# Hyperparam   : 
+# - Log scale  : 9.95771 23.14364
+# - Log amp    : 19.54033
+# - Log noise  : -13.96637
+#--------------------------------------------------
+New input selected (skipped 0): 9.682e-01, 8.165e-01 (max, min)
+========================================================================================================================
+Running MD simulation
+---
+
+  __  __  ___   ____ _  __
+ |  \/  |/ _ \ / ___| |/ /
+ | |\/| | | | | |   | &#39; /
+ | |  | | |_| | |___| . \
+ |_|  |_|\___/ \____|_|\_\
+---
+Target input 1: +8.777e+02    (ρ)
+Target input 2: +2.372e+01    (jx)
+Target input 3: +0.000e+00    (jy)
+Target input 4: +1.766e-06    (h)
+Target input 5: -6.914e-03    (∂h/∂x)
+Target input 6: +0.000e+00    (∂h/∂y)
+Target input 7: +0.000e+00    (extra_0)
+---
+View log:
+/home/runner/work/GaPFlow/GaPFlow/doc/tutorials/data/2026-05-07_154425_journal_gp/train/20260507_154537_mock-014/data/log.lammps
+---
+---
+MD run completed (walltime: 0:00:00)
+---
+Measured input 1: +8.777e+02 (+0.0%)   (ρ)
+Measured input 2: +2.372e+01 (+0.0%)   (jx)
+Measured input 3: +0.000e+00 (----%)   (jy)
+Measured input 4: +1.766e-06 (+0.0%)   (h)
+Measured input 5: -6.914e-03 (+0.0%)   (∂h/∂x)
+Measured input 6: +0.000e+00 (----%)   (∂h/∂y)
+Measured input 7: +0.000e+00 (----%)   (extra_0)
+---
+Measured output  1: +1.254e+06 ±1.000e+02  (p)
+Measured output  2: -6.199e-01 ±0.000e+00  (τ(xx|bot))
+Measured output  3: -6.199e-01 ±0.000e+00  (τ(yy|bot))
+Measured output  4: -6.199e-01 ±0.000e+00  (τ(zz|bot))
+Measured output  5: -6.199e-01 ±1.000e+00  (τ(yz|bot))
+Measured output  6: -1.070e+04 ±1.000e+00  (τ(xz|bot))
+Measured output  7: -6.199e-01 ±0.000e+00  (τ(xy|bot))
+Measured output  8: +1.385e+01 ±0.000e+00  (τ(xx|top))
+Measured output  9: -9.682e+00 ±0.000e+00  (τ(yy|top))
+Measured output 10: -9.682e+00 ±0.000e+00  (τ(zz|top))
+Measured output 11: -1.839e+00 ±1.000e+00  (τ(yz|top))
+Measured output 12: +1.700e+03 ±1.000e+00  (τ(xz|top))
+Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
+========================================================================================================================
+#-----------------GP TRAINING (XZ)-----------------
+# Timestep     : 460
+# Reason       : AL
+# Database size: 14
+# Objective    : 10.183
+# Hyperparam   : 
+# - Log scale  : 12.34574 1.27020 0.64834
+# - Log amp    : 2.58759
+# - Log noise  : -18.25810
+# AL  1/ 5     : 1.074 --&gt; 0.311 | R (3036.136)
+#--------------------------------------------------
+#-----------------GP TRAINING (ZZ)-----------------
+# Timestep     : 461
+# Reason       : DB
+# Database size: 14
+# Objective    : -63.997
+# Hyperparam   : 
+# - Log scale  : 9.12564 20.69102
+# - Log amp    : 17.87436
+# - Log noise  : -16.04467
+#--------------------------------------------------
+500    1.8983e-10 9.5143e-08 2.5000e-01 2.1874e-03
+600    1.8983e-10 1.1413e-07 2.5000e-01 1.2864e-03
+700    1.8983e-10 1.3311e-07 2.5000e-01 8.8622e-04
+800    1.8983e-10 1.5209e-07 2.5000e-01 6.6304e-04
+900    1.8983e-10 1.7108e-07 2.5000e-01 4.9149e-04
+1000   1.8983e-10 1.9006e-07 2.5000e-01 3.6130e-04
+1100   1.8983e-10 2.0904e-07 2.5000e-01 2.6452e-04
+1200   1.8983e-10 2.2802e-07 2.5000e-01 1.9330e-04
+1300   1.8983e-10 2.4701e-07 2.5000e-01 1.4114e-04
+1400   1.8983e-10 2.6599e-07 2.5000e-01 1.0302e-04
+1500   1.8983e-10 2.8497e-07 2.5000e-01 7.5206e-05
+1600   1.8983e-10 3.0396e-07 2.5000e-01 5.4907e-05
+1700   1.8983e-10 3.2294e-07 2.5000e-01 4.0090e-05
+1800   1.8983e-10 3.4192e-07 2.5000e-01 2.9276e-05
+1900   1.8983e-10 3.6090e-07 2.5000e-01 2.1384e-05
+2000   1.8983e-10 3.7989e-07 2.5000e-01 1.5622e-05
+2100   1.8983e-10 3.9887e-07 2.5000e-01 1.1411e-05
+2200   1.8983e-10 4.1785e-07 2.5000e-01 8.3367e-06
+2300   1.8983e-10 4.3684e-07 2.5000e-01 6.0892e-06
+2400   1.8983e-10 4.5582e-07 2.5000e-01 4.4523e-06
+2500   1.8983e-10 4.7480e-07 2.5000e-01 3.2511e-06
 </pre></div>
 </div>
 </div>
@@ -1553,7 +1689,7 @@ Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/038724a958a8406e9359888d85db0035affdeb3f5e22787f9dffbaa99de62fae.png" src="../_images/038724a958a8406e9359888d85db0035affdeb3f5e22787f9dffbaa99de62fae.png" />
+<img alt="../_images/ad76a3846a51d8edb925b61deb5b74de039ddb453818f370bb2f0c6fdd4e2fcc.png" src="../_images/ad76a3846a51d8edb925b61deb5b74de039ddb453818f370bb2f0c6fdd4e2fcc.png" />
 </div>
 </div>
 <div class="cell docutils container">
@@ -1564,7 +1700,7 @@ Measured output 13: -1.839e+00 ±0.000e+00  (τ(xy|top))
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/08e1bc70caa332ba68b126a4d1a55ad95831a17f672dd7ae79428094e9cf233d.png" src="../_images/08e1bc70caa332ba68b126a4d1a55ad95831a17f672dd7ae79428094e9cf233d.png" />
+<img alt="../_images/617afcb5c72d791780c05780c2b94cfc12c7d25882dcd41eb2fb861312b03051.png" src="../_images/617afcb5c72d791780c05780c2b94cfc12c7d25882dcd41eb2fb861312b03051.png" />
 </div>
 </div>
 <p>After 2500 steps, the simulation results looks close to what we expect for the journal bearing case, but has not yet converged. Feel free to run it for longer (by modifying the <code class="docutils literal notranslate"><span class="pre">max_it</span></code> parameter).</p>
