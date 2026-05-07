@@ -484,7 +484,7 @@ class GaussianProcessSurrogate:
 
         elif self.tolerance_protocol == 'atol_sigmoid':
             def tolerance(r, rmid=1e-6, t0=10., t1=5., alpha=2.):
-                return -(t1 - t0) / (1. + np.exp(-alpha * (np.log(r) - np.log(rmid)))) + t1
+                return -(t1 - t0) / (1. + jnp.exp(-alpha * jnp.log(r / rmid))) + t1
 
             atol_init = atol
             atol_final = 0.5 * atol
