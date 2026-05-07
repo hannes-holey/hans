@@ -26,7 +26,7 @@ import abc
 import warnings
 from copy import deepcopy
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Deque
 
 import jax
 import jax.numpy as jnp
@@ -40,6 +40,7 @@ with warnings.catch_warnings():
 from tinygp import GaussianProcess, kernels, transforms
 
 from ..logging import get_logger
+from ..utils import above_tolerance
 
 logger = get_logger("gapflow.gp")
 
@@ -64,9 +65,9 @@ class GaussianProcessSurrogate:
     active_dims: list[int]
     use_active_learning: bool
     fix_noise: bool
+    tolerance_protocol: str
     rtol: float
     atol: float
-    tol: str
     max_steps: int
     pause_steps: int
     similarity_check: bool
@@ -282,8 +283,8 @@ class GaussianProcessSurrogate:
             self.history['variance'].append(self.kernel_variance)
             self.history['obs_stddev'].append(self.obs_stddev)
             self.history['maximum_variance'].append(self.maximum_variance)
-            self.history['variance_tol'].append(self.variance_tol)
             self.history['objective'].append(self.objective)
+            self.history['variance_tol'].append(self.variance_tol)
 
             for i, l in enumerate(self.active_dims):
                 self.history[f'lengthscale_{l}'].append(self.kernel_lengthscale[i])
@@ -448,7 +449,9 @@ class GaussianProcessSurrogate:
         if compute_var:
             predictive_mean, self._predictive_var = self._infer_mean_var()
             self.maximum_variance = jnp.max(self._predictive_var)
-            self.variance_tol = self._get_tolerance(predictive_mean)
+
+            # Dummy value overwritten by active learning
+            self.variance_tol = self.maximum_variance
         else:
             predictive_mean = self._infer_mean()
 
@@ -457,12 +460,12 @@ class GaussianProcessSurrogate:
     # ------------------------------------------------------------------
     # Active Learning
     # ------------------------------------------------------------------
-    def _get_tolerance(self, Y):
+    def _get_tolerance(self, m, residual):
         """Compute the variance tolerance based on the current prediction.
 
         Parameters
         ----------
-        Y : jax.Array
+        m : jax.Array
             Predictive mean
 
         Returns
@@ -472,21 +475,23 @@ class GaussianProcessSurrogate:
         """
 
         noise = self.Yerr * self.Yscale
+        atol = self.atol * noise  # "lower bound", multiple of observation noise
 
-        if self.tol == 'delta':
-            Ys = jnp.max(Y) - jnp.min(Y)
-        elif self.tol == 'absmax':
-            Ys = jnp.max(jnp.abs(Y))
-        elif self.tol == 'snr':
-            Ys = jnp.mean(Y) / noise
+        if self.tolerance_protocol == 'atol_rtol_delta':
+            delta = jnp.max(m) - jnp.min(m)
+            rtol = self.rtol * delta
+            std_tol = jnp.maximum(atol, rtol)
+
+        elif self.tolerance_protocol == 'atol_sigmoid':
+            def tolerance(r, rmid=1e-6, t0=10., t1=5., alpha=2.):
+                return -(t1 - t0) / (1. + np.exp(-alpha * (np.log(r) - np.log(rmid)))) + t1
+
+            atol_init = atol
+            atol_final = 0.5 * atol
+            std_tol = tolerance(residual, t0=atol_init, t1=atol_final)
+
         else:
             raise RuntimeError('No tolerance calculation configured.')
-
-        atol = self.atol * noise  # "lower bound", multiple of observation noise
-        rtol = self.rtol * Ys  # grows with Ys,
-        self._tol_ratio = rtol / atol
-
-        std_tol = jnp.maximum(atol, rtol)
 
         variance_tol = std_tol**2
 
@@ -622,21 +627,21 @@ class GaussianProcessSurrogate:
     # ------------------------------------------------------------------
 
     def predict(self,
+                residuals: Deque,
                 predictor: bool = True,
-                compute_var: bool = True,
-                cooldown: bool = False) -> Tuple[JAXArray, JAXArray]:
+                compute_var: bool = True) -> Tuple[JAXArray, JAXArray]:
         """
         Perform GP prediction, optionally updating the model via active learning
         (only in predictor step of the predictor-corrector time integration scheme)
 
         Parameters
         ----------
+        residuals : Deque
+            Residual buffer of the main simulation loop.
         predictor : bool, optional
             Whether to perform active learning updates (only in predictor step, default is True).
         compute_var : bool, optional
             If true (default), preditive variance is re-computed.
-        cooldown : bool, optional
-            If true, active learning is blocked to let the system cool down (default is False).
         Returns
         -------
         m : jax.Array
@@ -658,20 +663,24 @@ class GaussianProcessSurrogate:
         tic = datetime.now()
         m, v = self._infer(compute_var=compute_var and predictor)
         toc = datetime.now()
+
         self._cumtime_infer += toc - tic
 
         after_failed_attempt = self._pause >= 0
-        in_cooldown = cooldown and self.pause_on_high_residual
-        pause_acquisition = after_failed_attempt or in_cooldown
+        cooldown = above_tolerance(residuals, tol=1e-3) and self.pause_on_high_residual
+        pause_acquisition = after_failed_attempt or cooldown
 
         if self.use_active_learning \
                 and predictor \
                 and not pause_acquisition:
 
-            counter = 0
+            # Compute variance tolerance
+            residual_mean = jnp.mean(jnp.array(residuals))
+            self.variance_tol = self._get_tolerance(m, residual_mean)
             before = deepcopy(self.maximum_variance / self.variance_tol)
 
             # Active learning loop
+            counter = 0
             while not self.trusted and counter < self.max_steps:
                 counter += 1
                 self._active_learning(v)
@@ -688,11 +697,12 @@ class GaussianProcessSurrogate:
                 toc = datetime.now()
                 self._cumtime_infer += tic - toc
 
+                # Re-compute variance tolerance
+                self.variance_tol = self._get_tolerance(m, residual_mean)
+
                 # AL step output summary
                 after = self.maximum_variance / self.variance_tol
-                key = 'R' if self._tol_ratio > 1. else 'A'
                 msg = f"# AL {counter:2d}/{self.max_steps:2d}     : {before:.3f} --> {after:.3f}"
-                msg += f" | {key} ({self._tol_ratio:.3f})"
                 logger.info(msg)
                 logger.info('#' + 50 * '-')
 

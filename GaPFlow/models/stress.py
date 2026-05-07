@@ -28,7 +28,7 @@ import numpy.typing as npt
 import jax.numpy as jnp
 from jax import vmap, grad
 from jax import Array
-from typing import Optional, Any
+from typing import Optional, Any, Deque
 from muGrid.Field import wrap_field
 
 from .gp import GaussianProcessSurrogate
@@ -98,7 +98,7 @@ class WallStress(GaussianProcessSurrogate):
             self.__field_variance = fc.real_field(f'wall_stress_{direction}z_var')
 
             # Active learning parameters
-            self.tol = gp['tol']
+            self.tolerance_protocol = gp['tolerance_protocol']
             self.atol = gp['atol']
             self.rtol = gp['rtol']
             self.max_steps = gp['max_steps']
@@ -305,9 +305,10 @@ class WallStress(GaussianProcessSurrogate):
             self._infer()
 
     def update(self,
+               residuals: Deque,
                predictor: bool = False,
                compute_var: bool = False,
-               cooldown: bool = False) -> None:
+               ) -> None:
         """
         Update wall stress: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -315,13 +316,13 @@ class WallStress(GaussianProcessSurrogate):
 
         Parameters
         ----------
+        residuals : Deque
+            Residual buffer of the main simulation loop
         predictor : bool, optional
             Whether this update is part of the predictor stage.
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
-        cooldown : bool, optional
-            If true, active learning is blocked to let the system cool down (default is False).
         """
 
         # piezoviscosity
@@ -371,9 +372,11 @@ class WallStress(GaussianProcessSurrogate):
         self.__field.p[11] = s_top[-1] / 2.
 
         if self.is_gp_model:
-            mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var,
-                                     cooldown=cooldown)
+            mean, var = self.predict(
+                residuals=residuals,
+                predictor=predictor,
+                compute_var=self.use_active_learning or compute_var,
+            )
 
             self.__field.p[self._out_index] = mean[0, :, :]
             self.__field.p[self._out_index + 6] = mean[1, :, :]
@@ -522,7 +525,7 @@ class Pressure(GaussianProcessSurrogate):
             self.__field_variance = fc.real_field('pressure_var')
 
             # Active learning parameters
-            self.tol = gp['tol']
+            self.tolerance_protocol = gp['tolerance_protocol']
             self.atol = gp['atol']
             self.rtol = gp['rtol']
             self.max_steps = gp['max_steps']
@@ -629,9 +632,9 @@ class Pressure(GaussianProcessSurrogate):
             self._infer()
 
     def update(self,
+               residuals: Deque,
                predictor: bool = False,
-               compute_var: bool = False,
-               cooldown: bool = False) -> None:
+               compute_var: bool = False) -> None:
         """
         Update pressure: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -639,18 +642,20 @@ class Pressure(GaussianProcessSurrogate):
 
         Parameters
         ----------
+        residuals : Deque
+            Residual buffer of the main simulation loop
         predictor : bool, optional
             Whether this update is part of the predictor stage.
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
-        cooldown : bool, optional
-            If true, active learning is blocked to let the system cool down (default is False).
         """
         if self.is_gp_model:
-            mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var,
-                                     cooldown=cooldown)
+            mean, var = self.predict(
+                residuals=residuals,
+                predictor=predictor,
+                compute_var=self.use_active_learning or compute_var,
+            )
             self.__field.p[...] = mean
             self.__field_variance.p[...] = var
         else:

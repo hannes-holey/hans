@@ -29,7 +29,6 @@ import numpy as np
 from copy import deepcopy
 from datetime import datetime
 from collections import deque
-from itertools import islice
 from muGrid import GlobalFieldCollection, FileIONetCDF
 
 from typing import Type
@@ -45,7 +44,7 @@ from . import __version__
 from .db import Database
 from .topography import Topography
 from .io import read_yaml_input, write_yaml, create_output_directory, history_to_csv
-from .utils import handle_signals, get_termination_signals
+from .utils import handle_signals, get_termination_signals, above_tolerance
 from .models import WallStress, BulkStress, Pressure
 from .integrate import predictor_corrector, source
 from .md import Mock, LennardJones, GoldAlkane
@@ -371,14 +370,7 @@ class Problem:
     @property
     def converged(self) -> bool:
         """Return True if residuals in the buffer are below tolerance."""
-        return not self._residuals_above_tolerance(self.tol, num=5)
-
-    def _residuals_above_tolerance(self, tol: float, num: int | None = None) -> bool:
-        """Return True if any of the last `num` residuals are above `tol` (all if `num` is None)."""
-        buf = self.residual_buffer
-        if num is None:
-            return any(v > tol for v in buf)
-        return any(v > tol for v in islice(reversed(buf), num))
+        return not above_tolerance(self.residual_buffer, self.tol, num=5)
 
     # ---------------------------
     # Simulation run utilities
@@ -538,21 +530,21 @@ class Problem:
 
         # Without active learning, compute variance only before writing
         one_step_before_output = (self.step + 1) % self.options['write_freq'] == 0
-        # Suppress active learning for rapidly changing fields
-        cooldown = self._residuals_above_tolerance(1e-3)
 
         for i, d in enumerate(directions):
 
             # update surrogates / constitutive models (predictor on first pass)
-            self.pressure.update(predictor=i == 0,
-                                 compute_var=one_step_before_output,
-                                 cooldown=cooldown)
-            self.wall_stress_xz.update(predictor=i == 0,
-                                       compute_var=one_step_before_output,
-                                       cooldown=cooldown)
-            self.wall_stress_yz.update(predictor=i == 0,
-                                       compute_var=one_step_before_output,
-                                       cooldown=cooldown)
+            self.pressure.update(residuals=self.residual_buffer,
+                                 predictor=i == 0,
+                                 compute_var=one_step_before_output)
+
+            self.wall_stress_xz.update(residuals=self.residual_buffer,
+                                       predictor=i == 0,
+                                       compute_var=one_step_before_output)
+
+            self.wall_stress_yz.update(residuals=self.residual_buffer,
+                                       predictor=i == 0,
+                                       compute_var=one_step_before_output)
             self.bulk_stress.update()
 
             # fluxes and source terms
@@ -617,9 +609,9 @@ class Problem:
             logger.warning('Negative density detected.')
 
         self.__field.p[...] = q0
-        self.pressure.update(predictor=False, compute_var=True)
-        self.wall_stress_xz.update(predictor=False, compute_var=True)
-        self.wall_stress_yz.update(predictor=False, compute_var=True)
+        self.pressure.update(self.residual_buffer, predictor=False, compute_var=True)
+        self.wall_stress_xz.update(self.residual_buffer, predictor=False, compute_var=True)
+        self.wall_stress_yz.update(self.residual_buffer, predictor=False, compute_var=True)
         self.bulk_stress.update()
 
         logger.info('Writing previous step and aborting simulation.')

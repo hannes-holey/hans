@@ -407,7 +407,6 @@ def sanitize_gp(d):
         if active:
             out[sk] = {}
             ds = d[sk]
-            out[sk]['tol'] = ds.get('tol', 'delta')
             out[sk]['atol'] = float(ds.get('atol', 1.))
             out[sk]['rtol'] = float(ds.get('rtol', 0.))
             out[sk]['obs_stddev'] = float(ds.get('obs_stddev', 0.))
@@ -420,7 +419,8 @@ def sanitize_gp(d):
             out[sk]['perturb_target'] = bool(ds.get('perturb_target', False))
             out[sk]['pause_on_high_residual'] = bool(ds.get('pause_on_high_residual', False))
 
-            assert out[sk]['tol'] in ['absmax', 'delta', 'snr']
+            out[sk]['tolerance_protocol'] = ds.get('tolerance_protocol', 'atol_rtol_delta')
+            assert out[sk]['tolerance_protocol'] in ['atol_rtol_delta', 'atol_sigmoid']
 
             # For shear/2D: need to distinguish (x and y)
             if sk == 'press':
