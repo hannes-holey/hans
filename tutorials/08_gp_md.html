@@ -53,7 +53,7 @@
     <link rel="prev" title="7. Gaussian process regression and active learning" href="07_gp_mock.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.1.1.dev2" />
+  <meta name="docsearch:version" content="1.1.1.dev4" />
   </head>
   
   
@@ -421,9 +421,10 @@ We now want to use this dataset in a subsequent simulation with active learning 
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-05-07 15:49:24--  https://zenodo.org/records/18761223/files/gapflow_training_lj.tar.gz
-Resolving zenodo.org (zenodo.org)... 188.185.48.75, 137.138.153.219, 188.185.43.153, ...
-Connecting to zenodo.org (zenodo.org)|188.185.48.75|:443...
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-05-14 14:20:36--  https://zenodo.org/records/18761223/files/gapflow_training_lj.tar.gz
+Resolving zenodo.org (zenodo.org)...
+137.138.52.235, 188.185.48.75, 188.185.43.153, ...
+Connecting to zenodo.org (zenodo.org)|137.138.52.235|:443...
 connected.
 HTTP request sent, awaiting response...
 200 OK
@@ -431,60 +432,162 @@ Length: 70537865 (67M) [application/octet-stream]
 Saving to: ‘STDOUT’
 
 -                     0%[                    ]       0  --.-KB/s
--                     0%[                    ]  41.16K   200KB/s
--                     0%[                    ] 186.98K   379KB/s
--                     0%[                    ] 382.16K   490KB/s
--                     0%[                    ] 675.70K   632KB/s
--                     1%[                    ] 915.20K   675KB/s
--                     1%[                    ]   1.17M   731KB/s
--                     2%[                    ]   1.49M   786KB/s
--                     2%[                    ]   1.91M   877KB/s
--                     3%[                    ]   2.25M   916KB/s
--                     3%[                    ]   2.56M   936KB/s
--                     4%[                    ]   2.86M   947KB/s    eta 70s
--                     4%[                    ]   3.19M   966KB/s    eta 70s
--                     5%[&gt;                   ]   3.51M   982KB/s    eta 70s
--                     5%[&gt;                   ]   3.89M  1007KB/s    eta 70s
--                     6%[&gt;                   ]   4.43M  1.12MB/s    eta 60s
--                     8%[&gt;                   ]   5.65M  1.41MB/s    eta 60s
--                     9%[&gt;                   ]   6.49M  1.30MB/s    eta 51s
--                    11%[=&gt;                  ]   7.63M  1.50MB/s    eta 51s
--                    15%[==&gt;                 ]  10.39M  2.05MB/s    eta 51s
--                    21%[===&gt;                ]  14.17M  2.81MB/s    eta 51s
--                    27%[====&gt;               ]  18.39M  3.66MB/s    eta 51s
--                    31%[=====&gt;              ]  20.90M  4.13MB/s    eta 14s
--                    33%[=====&gt;              ]  22.39M  4.33MB/s    eta 14s
--                    36%[======&gt;             ]  24.25M  4.68MB/s    eta 14s
--                    37%[======&gt;             ]  25.44M  4.87MB/s    eta 14s
--                    39%[======&gt;             ]  26.64M  5.00MB/s    eta 12s
--                    40%[=======&gt;            ]  27.47M  5.05MB/s    eta 12s
--                    42%[=======&gt;            ]  28.34M  5.16MB/s    eta 12s
--                    43%[=======&gt;            ]  29.47M  5.50MB/s    eta 12s
--                    45%[========&gt;           ]  30.65M  5.69MB/s    eta 12s
--                    46%[========&gt;           ]  31.24M  5.72MB/s    eta 10s
--                    49%[========&gt;           ]  33.12M  6.03MB/s    eta 10s
--                    51%[=========&gt;          ]  34.78M  6.10MB/s    eta 10s
--                    54%[=========&gt;          ]  36.65M  7.53MB/s    eta 10s
--                    56%[==========&gt;         ]  38.19M  7.70MB/s    eta 10s
--                    59%[==========&gt;         ]  39.94M  6.94MB/s    eta 7s
--                    61%[===========&gt;        ]  41.64M  6.30MB/s    eta 7s
--                    64%[===========&gt;        ]  43.32M  5.83MB/s    eta 7s
--                    67%[============&gt;       ]  45.16M  5.89MB/s    eta 7s
--                    69%[============&gt;       ]  46.66M  5.90MB/s    eta 7s
--                    72%[=============&gt;      ]  48.55M  6.00MB/s    eta 4s
--                    74%[=============&gt;      ]  50.40M  6.27MB/s    eta 4s
--                    77%[==============&gt;     ]  52.15M  6.59MB/s    eta 4s
--                    80%[===============&gt;    ]  53.83M  6.58MB/s    eta 4s
--                    83%[===============&gt;    ]  55.89M  6.86MB/s    eta 4s
--                    85%[================&gt;   ]  57.36M  6.96MB/s    eta 2s
--                    88%[================&gt;   ]  59.38M  7.05MB/s    eta 2s
--                    90%[=================&gt;  ]  61.15M  7.49MB/s    eta 2s
--                    93%[=================&gt;  ]  62.81M  7.41MB/s    eta 2s
--                    95%[==================&gt; ]  64.41M  7.43MB/s    eta 2s
--                    98%[==================&gt; ]  66.15M  7.49MB/s    eta 0s
--                   100%[===================&gt;]  67.27M  7.39MB/s    in 14s     
+-                     0%[                    ]  56.66K   244KB/s
+-                     0%[                    ] 213.31K   411KB/s
+-                     0%[                    ] 431.20K   534KB/s
+-                     0%[                    ] 654.77K   598KB/s
+-                     1%[                    ] 958.20K   693KB/s
+-                     1%[                    ]   1.33M   812KB/s
+-                     2%[                    ]   1.70M   889KB/s
+-                     3%[                    ]   2.06M   938KB/s
+-                     3%[                    ]   2.42M   977KB/s
+-                     4%[                    ]   2.70M   979KB/s
+-                     4%[                    ]   2.98M   981KB/s    eta 67s
+-                     4%[                    ]   3.24M   978KB/s    eta 67s
+-                     5%[&gt;                   ]   3.71M  1.01MB/s    eta 67s
+-                     5%[&gt;                   ]   4.02M  1.01MB/s    eta 67s
+-                     6%[&gt;                   ]   4.38M  1.10MB/s    eta 61s
+-                     7%[&gt;                   ]   4.71M  1.13MB/s    eta 61s
+-                     7%[&gt;                   ]   5.05M  1.17MB/s    eta 61s
+-                     8%[&gt;                   ]   5.58M  1.23MB/s    eta 61s
+-                     9%[&gt;                   ]   6.07M  1.27MB/s    eta 55s
+-                     9%[&gt;                   ]   6.35M  1.24MB/s    eta 55s
+-                    10%[=&gt;                  ]   6.88M  1.29MB/s    eta 55s
+-                    10%[=&gt;                  ]   7.28M  1.30MB/s    eta 55s
+-                    11%[=&gt;                  ]   7.73M  1.34MB/s    eta 51s
+-                    12%[=&gt;                  ]   8.23M  1.38MB/s    eta 51s
+-                    12%[=&gt;                  ]   8.67M  1.44MB/s    eta 51s
+-                    13%[=&gt;                  ]   9.08M  1.44MB/s    eta 51s
+-                    14%[=&gt;                  ]   9.43M  1.43MB/s    eta 47s
+-                    14%[=&gt;                  ]   9.68M  1.40MB/s    eta 47s
+-                    14%[=&gt;                  ]  10.09M  1.43MB/s    eta 47s
+-                    15%[==&gt;                 ]  10.37M  1.41MB/s    eta 47s
+-                    16%[==&gt;                 ]  10.88M  1.45MB/s    eta 46s
+-                    16%[==&gt;                 ]  11.34M  1.42MB/s    eta 46s
+-                    17%[==&gt;                 ]  11.68M  1.41MB/s    eta 46s
+-                    17%[==&gt;                 ]  12.01M  1.38MB/s    eta 46s
+-                    18%[==&gt;                 ]  12.62M  1.41MB/s    eta 43s
+-                    19%[==&gt;                 ]  13.07M  1.44MB/s    eta 43s
+-                    20%[===&gt;                ]  13.57M  1.43MB/s    eta 43s
+-                    20%[===&gt;                ]  13.93M  1.39MB/s    eta 43s
+-                    21%[===&gt;                ]  14.46M  1.43MB/s    eta 41s
+-                    21%[===&gt;                ]  14.78M  1.42MB/s    eta 41s
+-                    22%[===&gt;                ]  15.11M  1.44MB/s    eta 41s
+-                    22%[===&gt;                ]  15.44M  1.43MB/s    eta 41s
+-                    23%[===&gt;                ]  15.91M  1.46MB/s    eta 40s
+-                    24%[===&gt;                ]  16.48M  1.53MB/s    eta 40s
+-                    24%[===&gt;                ]  16.73M  1.46MB/s    eta 40s
+-                    25%[====&gt;               ]  17.06M  1.42MB/s    eta 40s
+-                    25%[====&gt;               ]  17.40M  1.43MB/s    eta 39s
+-                    26%[====&gt;               ]  17.84M  1.46MB/s    eta 39s
+-                    27%[====&gt;               ]  18.35M  1.40MB/s    eta 39s
+-                    27%[====&gt;               ]  18.73M  1.40MB/s    eta 39s
+-                    28%[====&gt;               ]  19.06M  1.37MB/s    eta 37s
+-                    29%[====&gt;               ]  19.51M  1.35MB/s    eta 37s
+-                    29%[====&gt;               ]  19.90M  1.36MB/s    eta 37s
+-                    30%[=====&gt;              ]  20.33M  1.39MB/s    eta 37s
+-                    30%[=====&gt;              ]  20.66M  1.39MB/s    eta 36s
+-                    31%[=====&gt;              ]  20.99M  1.38MB/s    eta 36s
+-                    31%[=====&gt;              ]  21.32M  1.31MB/s    eta 36s
+-                    32%[=====&gt;              ]  21.68M  1.30MB/s    eta 36s
+-                    32%[=====&gt;              ]  22.08M  1.34MB/s    eta 35s
+-                    33%[=====&gt;              ]  22.58M  1.36MB/s    eta 35s
+-                    34%[=====&gt;              ]  22.92M  1.38MB/s    eta 35s
+-                    34%[=====&gt;              ]  23.31M  1.36MB/s    eta 35s
+-                    35%[======&gt;             ]  23.70M  1.32MB/s    eta 33s
+-                    35%[======&gt;             ]  24.17M  1.35MB/s    eta 33s
+-                    36%[======&gt;             ]  24.78M  1.44MB/s    eta 33s
+-                    37%[======&gt;             ]  25.36M  1.45MB/s    eta 33s
+-                    38%[======&gt;             ]  25.73M  1.45MB/s    eta 31s
+-                    38%[======&gt;             ]  26.20M  1.45MB/s    eta 31s
+-                    39%[======&gt;             ]  26.82M  1.56MB/s    eta 31s
+-                    40%[=======&gt;            ]  27.31M  1.58MB/s    eta 31s
+-                    41%[=======&gt;            ]  27.74M  1.62MB/s    eta 29s
+-                    41%[=======&gt;            ]  28.10M  1.61MB/s    eta 29s
+-                    42%[=======&gt;            ]  28.55M  1.62MB/s    eta 29s
+-                    43%[=======&gt;            ]  29.02M  1.60MB/s    eta 29s
+-                    43%[=======&gt;            ]  29.47M  1.64MB/s    eta 28s
+-                    44%[=======&gt;            ]  30.07M  1.69MB/s    eta 28s
+-                    45%[========&gt;           ]  30.52M  1.67MB/s    eta 28s
+-                    46%[========&gt;           ]  31.05M  1.71MB/s    eta 28s
+-                    46%[========&gt;           ]  31.39M  1.60MB/s    eta 26s
+-                    47%[========&gt;           ]  31.84M  1.62MB/s    eta 26s
+-                    47%[========&gt;           ]  32.27M  1.61MB/s    eta 26s
+-                    48%[========&gt;           ]  32.80M  1.60MB/s    eta 26s
+-                    49%[========&gt;           ]  33.29M  1.62MB/s    eta 24s
+-                    50%[=========&gt;          ]  33.73M  1.58MB/s    eta 24s
+-                    50%[=========&gt;          ]  34.06M  1.58MB/s    eta 24s
+-                    51%[=========&gt;          ]  34.56M  1.58MB/s    eta 24s
+-                    51%[=========&gt;          ]  34.85M  1.58MB/s    eta 23s
+-                    52%[=========&gt;          ]  35.24M  1.54MB/s    eta 23s
+-                    52%[=========&gt;          ]  35.63M  1.48MB/s    eta 23s
+-                    53%[=========&gt;          ]  36.20M  1.53MB/s    eta 23s
+-                    54%[=========&gt;          ]  36.62M  1.49MB/s    eta 22s
+-                    54%[=========&gt;          ]  36.97M  1.48MB/s    eta 22s
+-                    55%[==========&gt;         ]  37.54M  1.54MB/s    eta 22s
+-                    56%[==========&gt;         ]  37.91M  1.51MB/s    eta 22s
+-                    57%[==========&gt;         ]  38.58M  1.53MB/s    eta 20s
+-                    57%[==========&gt;         ]  38.94M  1.52MB/s    eta 20s
+-                    58%[==========&gt;         ]  39.25M  1.49MB/s    eta 20s
+-                    59%[==========&gt;         ]  39.80M  1.50MB/s    eta 20s
+-                    60%[===========&gt;        ]  40.45M  1.59MB/s    eta 19s
+-                    60%[===========&gt;        ]  40.97M  1.60MB/s    eta 19s
+-                    61%[===========&gt;        ]  41.39M  1.64MB/s    eta 19s
+-                    62%[===========&gt;        ]  42.03M  1.68MB/s    eta 19s
+-                    63%[===========&gt;        ]  42.46M  1.69MB/s    eta 17s
+-                    63%[===========&gt;        ]  42.85M  1.63MB/s    eta 17s
+-                    64%[===========&gt;        ]  43.35M  1.69MB/s    eta 17s
+-                    65%[============&gt;       ]  43.77M  1.67MB/s    eta 17s
+-                    66%[============&gt;       ]  44.44M  1.71MB/s    eta 16s
+-                    66%[============&gt;       ]  45.02M  1.74MB/s    eta 16s
+-                    67%[============&gt;       ]  45.49M  1.74MB/s    eta 16s
+-                    68%[============&gt;       ]  45.79M  1.71MB/s    eta 16s
+-                    69%[============&gt;       ]  46.53M  1.83MB/s    eta 14s
+-                    69%[============&gt;       ]  46.97M  1.77MB/s    eta 14s
+-                    70%[=============&gt;      ]  47.38M  1.73MB/s    eta 14s
+-                    70%[=============&gt;      ]  47.72M  1.66MB/s    eta 14s
+-                    71%[=============&gt;      ]  48.19M  1.65MB/s    eta 13s
+-                    72%[=============&gt;      ]  48.75M  1.68MB/s    eta 13s
+-                    73%[=============&gt;      ]  49.64M  1.79MB/s    eta 13s
+-                    74%[=============&gt;      ]  50.21M  1.84MB/s    eta 13s
+-                    75%[==============&gt;     ]  50.85M  1.88MB/s    eta 11s
+-                    76%[==============&gt;     ]  51.37M  1.86MB/s    eta 11s
+-                    77%[==============&gt;     ]  52.02M  1.86MB/s    eta 11s
+-                    77%[==============&gt;     ]  52.38M  1.81MB/s    eta 11s
+-                    78%[==============&gt;     ]  52.74M  1.82MB/s    eta 10s
+-                    78%[==============&gt;     ]  53.02M  1.80MB/s    eta 10s
+-                    79%[==============&gt;     ]  53.49M  1.75MB/s    eta 10s
+-                    80%[===============&gt;    ]  53.90M  1.71MB/s    eta 10s
+-                    80%[===============&gt;    ]  54.47M  1.78MB/s    eta 9s
+-                    81%[===============&gt;    ]  54.78M  1.77MB/s    eta 9s
+-                    82%[===============&gt;    ]  55.41M  1.79MB/s    eta 9s
+-                    83%[===============&gt;    ]  56.03M  1.68MB/s    eta 9s
+-                    84%[===============&gt;    ]  56.61M  1.69MB/s    eta 7s
+-                    84%[===============&gt;    ]  56.98M  1.67MB/s    eta 7s
+-                    85%[================&gt;   ]  57.39M  1.60MB/s    eta 7s
+-                    85%[================&gt;   ]  57.84M  1.58MB/s    eta 7s
+-                    87%[================&gt;   ]  58.54M  1.65MB/s    eta 6s
+-                    87%[================&gt;   ]  58.93M  1.62MB/s    eta 6s
+-                    88%[================&gt;   ]  59.59M  1.73MB/s    eta 6s
+-                    89%[================&gt;   ]  60.05M  1.75MB/s    eta 6s
+-                    89%[================&gt;   ]  60.48M  1.75MB/s    eta 4s
+-                    90%[=================&gt;  ]  61.08M  1.76MB/s    eta 4s
+-                    91%[=================&gt;  ]  61.46M  1.76MB/s    eta 4s
+-                    91%[=================&gt;  ]  61.88M  1.74MB/s    eta 4s
+-                    92%[=================&gt;  ]  62.29M  1.67MB/s    eta 3s
+-                    92%[=================&gt;  ]  62.54M  1.61MB/s    eta 3s
+-                    93%[=================&gt;  ]  63.13M  1.64MB/s    eta 3s
+-                    94%[=================&gt;  ]  63.66M  1.67MB/s    eta 3s
+-                    95%[==================&gt; ]  64.02M  1.65MB/s    eta 2s
+-                    95%[==================&gt; ]  64.38M  1.60MB/s    eta 2s
+-                    96%[==================&gt; ]  64.91M  1.62MB/s    eta 2s
+-                    97%[==================&gt; ]  65.73M  1.64MB/s    eta 2s
+-                    98%[==================&gt; ]  66.18M  1.64MB/s    eta 1s
+-                    99%[==================&gt; ]  66.68M  1.66MB/s    eta 1s
+-                    99%[==================&gt; ]  66.96M  1.59MB/s    eta 1s
+-                   100%[===================&gt;]  67.27M  1.63MB/s    in 44s     
 
-2026-05-07 15:49:39 (4.93 MB/s) - written to stdout [70537865/70537865]
+2026-05-14 14:21:21 (1.52 MB/s) - written to stdout [70537865/70537865]
 </pre></div>
 </div>
 </div>
@@ -701,7 +804,7 @@ Loading 24 local datasets in &#39;data/gapflow_training_lj&#39;.
 - 3cb97a66-ff04-4c0a-87c2-c957aeba9bf8 (20260224_162410_lj-004)
 - 78fbb59f-b0ba-4f7c-b81e-52576dacd430 (20260224_171301_lj-010)
                                                              
- Writing output into: data/2026-05-07_154945_parabolic_lj_md
+ Writing output into: data/2026-05-14_142126_parabolic_lj_md
 </pre></div>
 </div>
 </div>
@@ -810,12 +913,12 @@ Step   Timestep   Time       CFL        Residual
 7000   1.1012e-01 7.7131e+02 5.0000e-01 1.3565e-07
 7077   1.1012e-01 7.7979e+02 5.0000e-01 2.8284e-09
 =================================
-Total walltime   : 0:04:21
-(27.06 steps/s)
+Total walltime   : 0:03:55
+(30.03 steps/s)
  - GP train (zz) : 0:00:00
- - GP infer (zz) : 0:00:26
+ - GP infer (zz) : 0:00:23
  - GP train (xz) : 0:00:00
- - GP infer (xz) : 0:00:41
+ - GP infer (xz) : 0:00:35
 =================================
 </pre></div>
 </div>
@@ -1013,42 +1116,42 @@ input[type=range].anim-slider {
 </style>
 
 <div class="animation">
-  <img id="_anim_img5765fa91e485493fb616b0d620d29ab3">
+  <img id="_anim_img0cdc330300d2478abc2a2160f1dcebb2">
   <div class="anim-controls">
-    <input id="_anim_slider5765fa91e485493fb616b0d620d29ab3" type="range" class="anim-slider"
+    <input id="_anim_slider0cdc330300d2478abc2a2160f1dcebb2" type="range" class="anim-slider"
            name="points" min="0" max="1" step="1" value="0"
-           oninput="anim5765fa91e485493fb616b0d620d29ab3.set_frame(parseInt(this.value));">
+           oninput="anim0cdc330300d2478abc2a2160f1dcebb2.set_frame(parseInt(this.value));">
     <div class="anim-buttons">
-      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim5765fa91e485493fb616b0d620d29ab3.slower()">
+      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.slower()">
           <i class="fa fa-minus"></i></button>
-      <button title="First frame" aria-label="First frame" onclick="anim5765fa91e485493fb616b0d620d29ab3.first_frame()">
+      <button title="First frame" aria-label="First frame" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.first_frame()">
         <i class="fa fa-fast-backward"></i></button>
-      <button title="Previous frame" aria-label="Previous frame" onclick="anim5765fa91e485493fb616b0d620d29ab3.previous_frame()">
+      <button title="Previous frame" aria-label="Previous frame" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.previous_frame()">
           <i class="fa fa-step-backward"></i></button>
-      <button title="Play backwards" aria-label="Play backwards" onclick="anim5765fa91e485493fb616b0d620d29ab3.reverse_animation()">
+      <button title="Play backwards" aria-label="Play backwards" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.reverse_animation()">
           <i class="fa fa-play fa-flip-horizontal"></i></button>
-      <button title="Pause" aria-label="Pause" onclick="anim5765fa91e485493fb616b0d620d29ab3.pause_animation()">
+      <button title="Pause" aria-label="Pause" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.pause_animation()">
           <i class="fa fa-pause"></i></button>
-      <button title="Play" aria-label="Play" onclick="anim5765fa91e485493fb616b0d620d29ab3.play_animation()">
+      <button title="Play" aria-label="Play" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.play_animation()">
           <i class="fa fa-play"></i></button>
-      <button title="Next frame" aria-label="Next frame" onclick="anim5765fa91e485493fb616b0d620d29ab3.next_frame()">
+      <button title="Next frame" aria-label="Next frame" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.next_frame()">
           <i class="fa fa-step-forward"></i></button>
-      <button title="Last frame" aria-label="Last frame" onclick="anim5765fa91e485493fb616b0d620d29ab3.last_frame()">
+      <button title="Last frame" aria-label="Last frame" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.last_frame()">
           <i class="fa fa-fast-forward"></i></button>
-      <button title="Increase speed" aria-label="Increase speed" onclick="anim5765fa91e485493fb616b0d620d29ab3.faster()">
+      <button title="Increase speed" aria-label="Increase speed" onclick="anim0cdc330300d2478abc2a2160f1dcebb2.faster()">
           <i class="fa fa-plus"></i></button>
     </div>
-    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select5765fa91e485493fb616b0d620d29ab3"
+    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select0cdc330300d2478abc2a2160f1dcebb2"
           class="anim-state">
-      <input type="radio" name="state" value="once" id="_anim_radio1_5765fa91e485493fb616b0d620d29ab3"
+      <input type="radio" name="state" value="once" id="_anim_radio1_0cdc330300d2478abc2a2160f1dcebb2"
              >
-      <label for="_anim_radio1_5765fa91e485493fb616b0d620d29ab3">Once</label>
-      <input type="radio" name="state" value="loop" id="_anim_radio2_5765fa91e485493fb616b0d620d29ab3"
+      <label for="_anim_radio1_0cdc330300d2478abc2a2160f1dcebb2">Once</label>
+      <input type="radio" name="state" value="loop" id="_anim_radio2_0cdc330300d2478abc2a2160f1dcebb2"
              checked>
-      <label for="_anim_radio2_5765fa91e485493fb616b0d620d29ab3">Loop</label>
-      <input type="radio" name="state" value="reflect" id="_anim_radio3_5765fa91e485493fb616b0d620d29ab3"
+      <label for="_anim_radio2_0cdc330300d2478abc2a2160f1dcebb2">Loop</label>
+      <input type="radio" name="state" value="reflect" id="_anim_radio3_0cdc330300d2478abc2a2160f1dcebb2"
              >
-      <label for="_anim_radio3_5765fa91e485493fb616b0d620d29ab3">Reflect</label>
+      <label for="_anim_radio3_0cdc330300d2478abc2a2160f1dcebb2">Reflect</label>
     </form>
   </div>
 </div>
@@ -1058,9 +1161,9 @@ input[type=range].anim-slider {
   /* Instantiate the Animation class. */
   /* The IDs given should match those used in the template above. */
   (function() {
-    var img_id = "_anim_img5765fa91e485493fb616b0d620d29ab3";
-    var slider_id = "_anim_slider5765fa91e485493fb616b0d620d29ab3";
-    var loop_select_id = "_anim_loop_select5765fa91e485493fb616b0d620d29ab3";
+    var img_id = "_anim_img0cdc330300d2478abc2a2160f1dcebb2";
+    var slider_id = "_anim_slider0cdc330300d2478abc2a2160f1dcebb2";
+    var loop_select_id = "_anim_loop_select0cdc330300d2478abc2a2160f1dcebb2";
     var frames = new Array(72);
     
   frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABaAAAALQCAYAAABmJdeHAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -161410,7 +161513,7 @@ AABJRU5ErkJggg==\
     /* set a timeout to make sure all the above elements are created before
        the object is initialized. */
     setTimeout(function() {
-        anim5765fa91e485493fb616b0d620d29ab3 = new Animation(frames, img_id, slider_id, 100.0,
+        anim0cdc330300d2478abc2a2160f1dcebb2 = new Animation(frames, img_id, slider_id, 100.0,
                                  loop_select_id);
     }, 0);
   })()
@@ -161505,10 +161608,10 @@ If we decrease the minimum gap height of parbolic gap profile, more anomalies ap
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-05-07 15:54:56--  https://zenodo.org/records/18761223/files/gapflow_training_mol.tar.gz
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>--2026-05-14 14:26:04--  https://zenodo.org/records/18761223/files/gapflow_training_mol.tar.gz
 Resolving zenodo.org (zenodo.org)...
-137.138.153.219, 188.184.103.118, 188.184.98.114, ...
-Connecting to zenodo.org (zenodo.org)|137.138.153.219|:443...
+188.185.43.153, 188.184.98.114, 188.185.48.75, ...
+Connecting to zenodo.org (zenodo.org)|188.185.43.153|:443...
 connected.
 HTTP request sent, awaiting response...
 200 OK
@@ -161516,1934 +161619,108 @@ Length: 729782870 (696M) [application/octet-stream]
 Saving to: ‘STDOUT’
 
 -                     0%[                    ]       0  --.-KB/s
--                     0%[                    ]  25.16K   111KB/s
--                     0%[                    ] 154.17K   300KB/s
--                     0%[                    ] 373.05K   465KB/s
--                     0%[                    ] 666.72K   612KB/s
--                     0%[                    ] 922.22K   669KB/s
--                     0%[                    ]   1.21M   745KB/s
--                     0%[                    ]   1.54M   807KB/s
--                     0%[                    ]   1.84M   838KB/s
--                     0%[                    ]   2.15M   869KB/s
--                     0%[                    ]   2.58M   939KB/s
--                     0%[                    ]   2.94M   970KB/s    eta 12m 11s
--                     0%[                    ]   3.33M  1005KB/s    eta 12m 11s
--                     0%[                    ]   3.66M  1018KB/s    eta 12m 11s
--                     0%[                    ]   4.10M  1.03MB/s    eta 12m 11s
--                     0%[                    ]   4.74M  1.21MB/s    eta 10m 22s
--                     0%[                    ]   5.03M  1.23MB/s    eta 10m 22s
--                     0%[                    ]   5.42M  1.26MB/s    eta 10m 22s
--                     0%[                    ]   5.91M  1.31MB/s    eta 10m 22s
--                     0%[                    ]   6.28M  1.34MB/s    eta 9m 54s
--                     0%[                    ]   6.65M  1.36MB/s    eta 9m 54s
--                     1%[                    ]   7.33M  1.45MB/s    eta 9m 54s
--                     1%[                    ]   7.76M  1.49MB/s    eta 9m 54s
--                     1%[                    ]   8.10M  1.49MB/s    eta 9m 17s
--                     1%[                    ]   8.39M  1.45MB/s    eta 9m 17s
--                     1%[                    ]   8.88M  1.47MB/s    eta 9m 17s
--                     1%[                    ]   9.34M  1.50MB/s    eta 9m 17s
--                     1%[                    ]   9.95M  1.55MB/s    eta 8m 52s
--                     1%[                    ]  10.30M  1.52MB/s    eta 8m 52s
--                     1%[                    ]  10.74M  1.51MB/s    eta 8m 52s
--                     1%[                    ]  11.27M  1.54MB/s    eta 8m 52s
--                     1%[                    ]  11.80M  1.58MB/s    eta 8m 34s
--                     1%[                    ]  12.50M  1.65MB/s    eta 8m 34s
--                     1%[                    ]  12.85M  1.65MB/s    eta 8m 34s
--                     1%[                    ]  13.31M  1.61MB/s    eta 8m 34s
--                     1%[                    ]  13.66M  1.59MB/s    eta 8m 21s
--                     2%[                    ]  14.00M  1.56MB/s    eta 8m 21s
--                     2%[                    ]  14.31M  1.57MB/s    eta 8m 21s
--                     2%[                    ]  14.59M  1.55MB/s    eta 8m 21s
--                     2%[                    ]  14.94M  1.48MB/s    eta 8m 29s
--                     2%[                    ]  15.29M  1.45MB/s    eta 8m 29s
--                     2%[                    ]  15.73M  1.44MB/s    eta 8m 29s
--                     2%[                    ]  16.04M  1.42MB/s    eta 8m 29s
--                     2%[                    ]  16.35M  1.38MB/s    eta 8m 32s
--                     2%[                    ]  16.57M  1.32MB/s    eta 8m 32s
--                     2%[                    ]  16.84M  1.16MB/s    eta 8m 32s
--                     2%[                    ]  17.17M  1.16MB/s    eta 8m 32s
--                     2%[                    ]  17.45M  1.14MB/s    eta 8m 44s
--                     2%[                    ]  17.84M  1.13MB/s    eta 8m 44s
--                     2%[                    ]  18.09M  1.11MB/s    eta 8m 44s
--                     2%[                    ]  18.40M  1.10MB/s    eta 8m 44s
--                     2%[                    ]  18.74M  1.11MB/s    eta 8m 48s
--                     2%[                    ]  19.05M  1.11MB/s    eta 8m 48s
--                     2%[                    ]  19.46M  1.12MB/s    eta 8m 48s
--                     2%[                    ]  19.94M  1.13MB/s    eta 8m 48s
--                     2%[                    ]  20.33M  1.13MB/s    eta 8m 44s
--                     2%[                    ]  20.61M  1.13MB/s    eta 8m 44s
--                     2%[                    ]  20.86M  1.14MB/s    eta 8m 44s
--                     3%[                    ]  21.31M  1.19MB/s    eta 8m 44s
--                     3%[                    ]  21.72M  1.21MB/s    eta 8m 45s
--                     3%[                    ]  22.20M  1.26MB/s    eta 8m 45s
--                     3%[                    ]  22.73M  1.30MB/s    eta 8m 45s
--                     3%[                    ]  23.06M  1.32MB/s    eta 8m 45s
--                     3%[                    ]  23.39M  1.33MB/s    eta 8m 40s
--                     3%[                    ]  23.64M  1.30MB/s    eta 8m 40s
--                     3%[                    ]  23.89M  1.29MB/s    eta 8m 40s
--                     3%[                    ]  24.34M  1.32MB/s    eta 8m 40s
--                     3%[                    ]  24.76M  1.30MB/s    eta 8m 41s
--                     3%[                    ]  25.15M  1.30MB/s    eta 8m 41s
--                     3%[                    ]  25.71M  1.35MB/s    eta 8m 41s
--                     3%[                    ]  26.33M  1.43MB/s    eta 8m 41s
--                     3%[                    ]  26.58M  1.44MB/s    eta 8m 33s
--                     3%[                    ]  26.91M  1.38MB/s    eta 8m 33s
--                     3%[                    ]  27.19M  1.37MB/s    eta 8m 33s
--                     3%[                    ]  27.54M  1.28MB/s    eta 8m 33s
--                     4%[                    ]  27.94M  1.31MB/s    eta 8m 35s
--                     4%[                    ]  28.22M  1.29MB/s    eta 8m 35s
--                     4%[                    ]  28.55M  1.31MB/s    eta 8m 35s
--                     4%[                    ]  28.97M  1.33MB/s    eta 8m 35s
--                     4%[                    ]  29.38M  1.35MB/s    eta 8m 34s
--                     4%[                    ]  29.81M  1.33MB/s    eta 8m 34s
--                     4%[                    ]  30.19M  1.36MB/s    eta 8m 34s
--                     4%[                    ]  30.53M  1.33MB/s    eta 8m 34s
--                     4%[                    ]  30.90M  1.23MB/s    eta 8m 33s
--                     4%[                    ]  31.15M  1.20MB/s    eta 8m 33s
--                     4%[                    ]  31.54M  1.23MB/s    eta 8m 33s
--                     4%[                    ]  31.92M  1.26MB/s    eta 8m 33s
--                     4%[                    ]  32.29M  1.27MB/s    eta 8m 33s
--                     4%[                    ]  32.67M  1.28MB/s    eta 8m 33s
--                     4%[                    ]  32.96M  1.26MB/s    eta 8m 33s
--                     4%[                    ]  33.24M  1.25MB/s    eta 8m 33s
--                     4%[                    ]  33.52M  1.21MB/s    eta 8m 36s
--                     4%[                    ]  33.96M  1.23MB/s    eta 8m 36s
--                     4%[                    ]  34.38M  1.23MB/s    eta 8m 36s
--                     5%[&gt;                   ]  34.88M  1.25MB/s    eta 8m 36s
--                     5%[&gt;                   ]  35.22M  1.25MB/s    eta 8m 32s
--                     5%[&gt;                   ]  35.47M  1.24MB/s    eta 8m 32s
--                     5%[&gt;                   ]  35.72M  1.22MB/s    eta 8m 32s
--                     5%[&gt;                   ]  36.07M  1.21MB/s    eta 8m 32s
--                     5%[&gt;                   ]  36.46M  1.22MB/s    eta 8m 34s
--                     5%[&gt;                   ]  36.88M  1.24MB/s    eta 8m 34s
--                     5%[&gt;                   ]  37.45M  1.27MB/s    eta 8m 34s
--                     5%[&gt;                   ]  37.83M  1.30MB/s    eta 8m 34s
--                     5%[&gt;                   ]  38.05M  1.28MB/s    eta 8m 31s
--                     5%[&gt;                   ]  38.67M  1.36MB/s    eta 8m 31s
--                     5%[&gt;                   ]  38.95M  1.34MB/s    eta 8m 31s
--                     5%[&gt;                   ]  39.20M  1.30MB/s    eta 8m 31s
--                     5%[&gt;                   ]  39.56M  1.29MB/s    eta 8m 30s
--                     5%[&gt;                   ]  39.92M  1.24MB/s    eta 8m 30s
--                     5%[&gt;                   ]  40.25M  1.27MB/s    eta 8m 30s
--                     5%[&gt;                   ]  40.50M  1.26MB/s    eta 8m 30s
--                     5%[&gt;                   ]  40.78M  1.25MB/s    eta 8m 32s
--                     5%[&gt;                   ]  41.12M  1.25MB/s    eta 8m 32s
--                     5%[&gt;                   ]  41.59M  1.29MB/s    eta 8m 32s
--                     6%[&gt;                   ]  41.90M  1.22MB/s    eta 8m 32s
--                     6%[&gt;                   ]  42.34M  1.20MB/s    eta 8m 30s
--                     6%[&gt;                   ]  42.58M  1.19MB/s    eta 8m 30s
--                     6%[&gt;                   ]  42.93M  1.15MB/s    eta 8m 30s
--                     6%[&gt;                   ]  43.33M  1.16MB/s    eta 8m 30s
--                     6%[&gt;                   ]  43.61M  1.17MB/s    eta 8m 31s
--                     6%[&gt;                   ]  43.89M  1.17MB/s    eta 8m 31s
--                     6%[&gt;                   ]  44.29M  1.16MB/s    eta 8m 31s
--                     6%[&gt;                   ]  44.61M  1.17MB/s    eta 8m 31s
--                     6%[&gt;                   ]  45.02M  1.19MB/s    eta 8m 31s
--                     6%[&gt;                   ]  45.30M  1.20MB/s    eta 8m 31s
--                     6%[&gt;                   ]  45.61M  1.21MB/s    eta 8m 31s
--                     6%[&gt;                   ]  45.97M  1.20MB/s    eta 8m 31s
--                     6%[&gt;                   ]  46.38M  1.19MB/s    eta 8m 31s
--                     6%[&gt;                   ]  46.81M  1.22MB/s    eta 8m 31s
--                     6%[&gt;                   ]  47.15M  1.21MB/s    eta 8m 31s
--                     6%[&gt;                   ]  47.59M  1.25MB/s    eta 8m 31s
--                     6%[&gt;                   ]  48.06M  1.29MB/s    eta 8m 27s
--                     6%[&gt;                   ]  48.34M  1.25MB/s    eta 8m 27s
--                     7%[&gt;                   ]  48.78M  1.29MB/s    eta 8m 27s
--                     7%[&gt;                   ]  49.06M  1.29MB/s    eta 8m 27s
--                     7%[&gt;                   ]  49.35M  1.27MB/s    eta 8m 28s
--                     7%[&gt;                   ]  49.68M  1.24MB/s    eta 8m 28s
--                     7%[&gt;                   ]  49.93M  1.23MB/s    eta 8m 28s
--                     7%[&gt;                   ]  50.43M  1.27MB/s    eta 8m 28s
--                     7%[&gt;                   ]  50.79M  1.29MB/s    eta 8m 27s
--                     7%[&gt;                   ]  51.12M  1.27MB/s    eta 8m 27s
--                     7%[&gt;                   ]  51.47M  1.24MB/s    eta 8m 27s
--                     7%[&gt;                   ]  51.72M  1.22MB/s    eta 8m 27s
--                     7%[&gt;                   ]  52.16M  1.22MB/s    eta 8m 27s
--                     7%[&gt;                   ]  52.55M  1.24MB/s    eta 8m 27s
--                     7%[&gt;                   ]  52.89M  1.21MB/s    eta 8m 27s
--                     7%[&gt;                   ]  53.11M  1.18MB/s    eta 8m 27s
--                     7%[&gt;                   ]  53.49M  1.18MB/s    eta 8m 27s
--                     7%[&gt;                   ]  53.83M  1.20MB/s    eta 8m 27s
--                     7%[&gt;                   ]  54.38M  1.26MB/s    eta 8m 27s
--                     7%[&gt;                   ]  54.89M  1.30MB/s    eta 8m 27s
--                     7%[&gt;                   ]  55.22M  1.29MB/s    eta 8m 23s
--                     7%[&gt;                   ]  55.59M  1.28MB/s    eta 8m 23s
--                     8%[&gt;                   ]  56.25M  1.37MB/s    eta 8m 23s
--                     8%[&gt;                   ]  56.70M  1.40MB/s    eta 8m 23s
--                     8%[&gt;                   ]  56.98M  1.39MB/s    eta 8m 19s
--                     8%[&gt;                   ]  57.26M  1.35MB/s    eta 8m 19s
--                     8%[&gt;                   ]  57.59M  1.34MB/s    eta 8m 19s
--                     8%[&gt;                   ]  57.95M  1.35MB/s    eta 8m 19s
--                     8%[&gt;                   ]  58.24M  1.35MB/s    eta 8m 20s
--                     8%[&gt;                   ]  58.58M  1.35MB/s    eta 8m 20s
--                     8%[&gt;                   ]  58.91M  1.37MB/s    eta 8m 20s
--                     8%[&gt;                   ]  59.29M  1.33MB/s    eta 8m 20s
--                     8%[&gt;                   ]  59.65M  1.31MB/s    eta 8m 20s
--                     8%[&gt;                   ]  59.99M  1.27MB/s    eta 8m 20s
--                     8%[&gt;                   ]  60.57M  1.33MB/s    eta 8m 20s
--                     8%[&gt;                   ]  60.85M  1.28MB/s    eta 8m 20s
--                     8%[&gt;                   ]  61.30M  1.26MB/s    eta 8m 17s
--                     8%[&gt;                   ]  61.89M  1.30MB/s    eta 8m 17s
--                     8%[&gt;                   ]  62.17M  1.31MB/s    eta 8m 17s
--                     9%[&gt;                   ]  62.73M  1.36MB/s    eta 8m 17s
--                     9%[&gt;                   ]  62.98M  1.34MB/s    eta 8m 14s
--                     9%[&gt;                   ]  63.39M  1.35MB/s    eta 8m 14s
--                     9%[&gt;                   ]  63.89M  1.41MB/s    eta 8m 14s
--                     9%[&gt;                   ]  64.26M  1.42MB/s    eta 8m 14s
--                     9%[&gt;                   ]  64.73M  1.44MB/s    eta 8m 10s
--                     9%[&gt;                   ]  65.03M  1.44MB/s    eta 8m 10s
--                     9%[&gt;                   ]  65.31M  1.41MB/s    eta 8m 10s
--                     9%[&gt;                   ]  65.96M  1.45MB/s    eta 8m 10s
--                     9%[&gt;                   ]  66.29M  1.44MB/s    eta 8m 9s
--                     9%[&gt;                   ]  66.57M  1.43MB/s    eta 8m 9s
--                     9%[&gt;                   ]  66.96M  1.37MB/s    eta 8m 9s
--                     9%[&gt;                   ]  67.49M  1.40MB/s    eta 8m 9s
--                     9%[&gt;                   ]  67.94M  1.41MB/s    eta 8m 6s
--                     9%[&gt;                   ]  68.22M  1.37MB/s    eta 8m 6s
--                     9%[&gt;                   ]  68.61M  1.40MB/s    eta 8m 6s
--                     9%[&gt;                   ]  69.21M  1.41MB/s    eta 8m 6s
--                    10%[=&gt;                  ]  69.77M  1.47MB/s    eta 8m 2s
--                    10%[=&gt;                  ]  70.11M  1.43MB/s    eta 8m 2s
--                    10%[=&gt;                  ]  70.42M  1.42MB/s    eta 8m 2s
--                    10%[=&gt;                  ]  70.73M  1.43MB/s    eta 8m 2s
--                    10%[=&gt;                  ]  71.08M  1.42MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  71.42M  1.36MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  71.76M  1.38MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  72.09M  1.38MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  72.34M  1.31MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  72.64M  1.28MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  72.98M  1.26MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  73.32M  1.26MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  73.57M  1.23MB/s    eta 8m 4s
--                    10%[=&gt;                  ]  74.05M  1.21MB/s    eta 8m 4s
--                    10%[=&gt;                  ]  74.38M  1.14MB/s    eta 8m 4s
--                    10%[=&gt;                  ]  74.69M  1.13MB/s    eta 8m 4s
--                    10%[=&gt;                  ]  74.98M  1.13MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  75.44M  1.17MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  75.75M  1.17MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  76.21M  1.19MB/s    eta 8m 3s
--                    10%[=&gt;                  ]  76.46M  1.18MB/s    eta 8m 2s
--                    11%[=&gt;                  ]  76.85M  1.19MB/s    eta 8m 2s
--                    11%[=&gt;                  ]  77.42M  1.26MB/s    eta 8m 2s
--                    11%[=&gt;                  ]  77.80M  1.27MB/s    eta 8m 2s
--                    11%[=&gt;                  ]  78.45M  1.38MB/s    eta 7m 57s
--                    11%[=&gt;                  ]  78.78M  1.36MB/s    eta 7m 57s
--                    11%[=&gt;                  ]  79.26M  1.38MB/s    eta 7m 57s
--                    11%[=&gt;                  ]  79.75M  1.41MB/s    eta 7m 57s
--                    11%[=&gt;                  ]  80.06M  1.42MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  80.39M  1.42MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  80.76M  1.45MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  81.15M  1.43MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  81.43M  1.39MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  81.76M  1.39MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  82.09M  1.40MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  82.54M  1.39MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  82.82M  1.35MB/s    eta 7m 55s
--                    11%[=&gt;                  ]  83.29M  1.34MB/s    eta 7m 55s
--                    12%[=&gt;                  ]  83.79M  1.33MB/s    eta 7m 55s
--                    12%[=&gt;                  ]  84.24M  1.35MB/s    eta 7m 55s
--                    12%[=&gt;                  ]  84.52M  1.28MB/s    eta 7m 52s
--                    12%[=&gt;                  ]  85.00M  1.31MB/s    eta 7m 52s
--                    12%[=&gt;                  ]  85.36M  1.33MB/s    eta 7m 52s
--                    12%[=&gt;                  ]  85.83M  1.34MB/s    eta 7m 52s
--                    12%[=&gt;                  ]  86.11M  1.32MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  86.44M  1.32MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  86.75M  1.34MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  87.11M  1.34MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  87.44M  1.30MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  87.92M  1.34MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  88.36M  1.35MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  88.64M  1.30MB/s    eta 7m 50s
--                    12%[=&gt;                  ]  88.93M  1.25MB/s    eta 7m 49s
--                    12%[=&gt;                  ]  89.49M  1.31MB/s    eta 7m 49s
--                    12%[=&gt;                  ]  89.74M  1.26MB/s    eta 7m 49s
--                    12%[=&gt;                  ]  89.99M  1.25MB/s    eta 7m 49s
--                    12%[=&gt;                  ]  90.29M  1.19MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  90.62M  1.19MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  90.96M  1.20MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  91.37M  1.23MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  91.68M  1.22MB/s    eta 7m 48s
--                    13%[=&gt;                  ]  91.93M  1.19MB/s    eta 7m 48s
--                    13%[=&gt;                  ]  92.18M  1.17MB/s    eta 7m 48s
--                    13%[=&gt;                  ]  92.46M  1.13MB/s    eta 7m 48s
--                    13%[=&gt;                  ]  92.83M  1.12MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  93.16M  1.13MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  93.69M  1.14MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  94.09M  1.15MB/s    eta 7m 49s
--                    13%[=&gt;                  ]  94.61M  1.23MB/s    eta 7m 46s
--                    13%[=&gt;                  ]  94.89M  1.23MB/s    eta 7m 46s
--                    13%[=&gt;                  ]  95.45M  1.28MB/s    eta 7m 46s
--                    13%[=&gt;                  ]  95.70M  1.25MB/s    eta 7m 46s
--                    13%[=&gt;                  ]  96.01M  1.24MB/s    eta 7m 45s
--                    13%[=&gt;                  ]  96.40M  1.25MB/s    eta 7m 45s
--                    13%[=&gt;                  ]  96.68M  1.26MB/s    eta 7m 45s
--                    13%[=&gt;                  ]  97.00M  1.27MB/s    eta 7m 45s
--                    13%[=&gt;                  ]  97.40M  1.31MB/s    eta 7m 45s
--                    14%[=&gt;                  ]  97.76M  1.31MB/s    eta 7m 45s
--                    14%[=&gt;                  ]  98.15M  1.32MB/s    eta 7m 45s
--                    14%[=&gt;                  ]  98.54M  1.31MB/s    eta 7m 45s
--                    14%[=&gt;                  ]  99.04M  1.31MB/s    eta 7m 43s
--                    14%[=&gt;                  ]  99.29M  1.28MB/s    eta 7m 43s
--                    14%[=&gt;                  ]  99.60M  1.24MB/s    eta 7m 43s
--                    14%[=&gt;                  ]  99.91M  1.24MB/s    eta 7m 43s
--                    14%[=&gt;                  ] 100.19M  1.20MB/s    eta 7m 43s
--                    14%[=&gt;                  ] 100.55M  1.20MB/s    eta 7m 43s
--                    14%[=&gt;                  ] 100.85M  1.18MB/s    eta 7m 43s
--                    14%[=&gt;                  ] 101.28M  1.22MB/s    eta 7m 43s
--                    14%[=&gt;                  ] 101.71M  1.26MB/s    eta 7m 42s
--                    14%[=&gt;                  ] 101.95M  1.23MB/s    eta 7m 42s
--                    14%[=&gt;                  ] 102.28M  1.22MB/s    eta 7m 42s
--                    14%[=&gt;                  ] 102.67M  1.22MB/s    eta 7m 42s
--                    14%[=&gt;                  ] 103.09M  1.23MB/s    eta 7m 41s
--                    14%[=&gt;                  ] 103.48M  1.22MB/s    eta 7m 41s
--                    14%[=&gt;                  ] 103.86M  1.21MB/s    eta 7m 41s
--                    14%[=&gt;                  ] 104.17M  1.22MB/s    eta 7m 41s
--                    15%[==&gt;                 ] 104.48M  1.21MB/s    eta 7m 41s
--                    15%[==&gt;                 ] 104.84M  1.23MB/s    eta 7m 41s
--                    15%[==&gt;                 ] 105.15M  1.22MB/s    eta 7m 41s
--                    15%[==&gt;                 ] 105.40M  1.20MB/s    eta 7m 41s
--                    15%[==&gt;                 ] 105.78M  1.23MB/s    eta 7m 40s
--                    15%[==&gt;                 ] 106.13M  1.20MB/s    eta 7m 40s
--                    15%[==&gt;                 ] 106.51M  1.20MB/s    eta 7m 40s
--                    15%[==&gt;                 ] 107.08M  1.28MB/s    eta 7m 40s
--                    15%[==&gt;                 ] 107.37M  1.26MB/s    eta 7m 39s
--                    15%[==&gt;                 ] 107.69M  1.25MB/s    eta 7m 39s
--                    15%[==&gt;                 ] 107.94M  1.18MB/s    eta 7m 39s
--                    15%[==&gt;                 ] 108.38M  1.21MB/s    eta 7m 39s
--                    15%[==&gt;                 ] 108.69M  1.20MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 108.97M  1.19MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 109.25M  1.18MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 109.56M  1.17MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 110.00M  1.22MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 110.39M  1.22MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 110.73M  1.22MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 111.01M  1.22MB/s    eta 7m 38s
--                    15%[==&gt;                 ] 111.30M  1.12MB/s    eta 7m 38s
--                    16%[==&gt;                 ] 111.62M  1.13MB/s    eta 7m 38s
--                    16%[==&gt;                 ] 111.90M  1.12MB/s    eta 7m 38s
--                    16%[==&gt;                 ] 112.31M  1.15MB/s    eta 7m 38s
--                    16%[==&gt;                 ] 112.64M  1.14MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 113.01M  1.15MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 113.26M  1.14MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 113.60M  1.15MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 113.92M  1.16MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 114.34M  1.20MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 114.84M  1.19MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 115.08M  1.17MB/s    eta 7m 37s
--                    16%[==&gt;                 ] 115.37M  1.16MB/s    eta 7m 36s
--                    16%[==&gt;                 ] 115.87M  1.21MB/s    eta 7m 36s
--                    16%[==&gt;                 ] 116.19M  1.21MB/s    eta 7m 36s
--                    16%[==&gt;                 ] 116.58M  1.24MB/s    eta 7m 36s
--                    16%[==&gt;                 ] 116.86M  1.23MB/s    eta 7m 35s
--                    16%[==&gt;                 ] 117.25M  1.23MB/s    eta 7m 35s
--                    16%[==&gt;                 ] 117.58M  1.21MB/s    eta 7m 35s
--                    16%[==&gt;                 ] 118.00M  1.24MB/s    eta 7m 35s
--                    17%[==&gt;                 ] 118.39M  1.27MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 118.72M  1.28MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 119.01M  1.28MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 119.47M  1.24MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 119.72M  1.23MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 120.18M  1.27MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 120.56M  1.25MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 120.84M  1.23MB/s    eta 7m 33s
--                    17%[==&gt;                 ] 121.25M  1.26MB/s    eta 7m 31s
--                    17%[==&gt;                 ] 121.59M  1.24MB/s    eta 7m 31s
--                    17%[==&gt;                 ] 122.23M  1.32MB/s    eta 7m 31s
--                    17%[==&gt;                 ] 122.55M  1.32MB/s    eta 7m 31s
--                    17%[==&gt;                 ] 122.90M  1.32MB/s    eta 7m 29s
--                    17%[==&gt;                 ] 123.40M  1.34MB/s    eta 7m 29s
--                    17%[==&gt;                 ] 123.72M  1.33MB/s    eta 7m 29s
--                    17%[==&gt;                 ] 124.18M  1.35MB/s    eta 7m 29s
--                    17%[==&gt;                 ] 124.54M  1.38MB/s    eta 7m 27s
--                    17%[==&gt;                 ] 124.88M  1.35MB/s    eta 7m 27s
--                    17%[==&gt;                 ] 125.25M  1.37MB/s    eta 7m 27s
--                    18%[==&gt;                 ] 125.67M  1.37MB/s    eta 7m 27s
--                    18%[==&gt;                 ] 126.02M  1.37MB/s    eta 7m 26s
--                    18%[==&gt;                 ] 126.33M  1.35MB/s    eta 7m 26s
--                    18%[==&gt;                 ] 126.78M  1.39MB/s    eta 7m 26s
--                    18%[==&gt;                 ] 127.06M  1.32MB/s    eta 7m 26s
--                    18%[==&gt;                 ] 127.39M  1.28MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 127.70M  1.27MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 128.01M  1.26MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 128.40M  1.24MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 128.71M  1.24MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 129.06M  1.22MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 129.48M  1.24MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 129.92M  1.25MB/s    eta 7m 25s
--                    18%[==&gt;                 ] 130.34M  1.24MB/s    eta 7m 23s
--                    18%[==&gt;                 ] 130.96M  1.32MB/s    eta 7m 23s
--                    18%[==&gt;                 ] 131.24M  1.31MB/s    eta 7m 23s
--                    18%[==&gt;                 ] 131.49M  1.29MB/s    eta 7m 23s
--                    18%[==&gt;                 ] 132.05M  1.33MB/s    eta 7m 21s
--                    19%[==&gt;                 ] 132.36M  1.32MB/s    eta 7m 21s
--                    19%[==&gt;                 ] 132.71M  1.33MB/s    eta 7m 21s
--                    19%[==&gt;                 ] 133.04M  1.33MB/s    eta 7m 21s
--                    19%[==&gt;                 ] 133.42M  1.34MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 133.71M  1.33MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 133.96M  1.30MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 134.30M  1.27MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 134.55M  1.26MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 134.97M  1.26MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 135.22M  1.15MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 135.62M  1.16MB/s    eta 7m 20s
--                    19%[==&gt;                 ] 136.03M  1.21MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 136.36M  1.21MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 136.65M  1.14MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 136.93M  1.12MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 137.25M  1.13MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 137.63M  1.15MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 137.95M  1.13MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 138.38M  1.17MB/s    eta 7m 19s
--                    19%[==&gt;                 ] 138.95M  1.24MB/s    eta 7m 17s
--                    20%[===&gt;                ] 139.26M  1.24MB/s    eta 7m 17s
--                    20%[===&gt;                ] 139.58M  1.26MB/s    eta 7m 17s
--                    20%[===&gt;                ] 139.90M  1.23MB/s    eta 7m 17s
--                    20%[===&gt;                ] 140.15M  1.20MB/s    eta 7m 17s
--                    20%[===&gt;                ] 140.50M  1.23MB/s    eta 7m 17s
--                    20%[===&gt;                ] 140.86M  1.20MB/s    eta 7m 17s
--                    20%[===&gt;                ] 141.24M  1.21MB/s    eta 7m 17s
--                    20%[===&gt;                ] 141.81M  1.30MB/s    eta 7m 15s
--                    20%[===&gt;                ] 142.10M  1.29MB/s    eta 7m 15s
--                    20%[===&gt;                ] 142.38M  1.26MB/s    eta 7m 15s
--                    20%[===&gt;                ] 142.73M  1.27MB/s    eta 7m 15s
--                    20%[===&gt;                ] 143.06M  1.24MB/s    eta 7m 15s
--                    20%[===&gt;                ] 143.39M  1.26MB/s    eta 7m 15s
--                    20%[===&gt;                ] 143.72M  1.20MB/s    eta 7m 15s
--                    20%[===&gt;                ] 144.00M  1.18MB/s    eta 7m 15s
--                    20%[===&gt;                ] 144.36M  1.19MB/s    eta 7m 14s
--                    20%[===&gt;                ] 144.68M  1.19MB/s    eta 7m 14s
--                    20%[===&gt;                ] 145.17M  1.23MB/s    eta 7m 14s
--                    20%[===&gt;                ] 145.56M  1.25MB/s    eta 7m 14s
--                    20%[===&gt;                ] 146.04M  1.28MB/s    eta 7m 12s
--                    21%[===&gt;                ] 146.32M  1.20MB/s    eta 7m 12s
--                    21%[===&gt;                ] 146.79M  1.25MB/s    eta 7m 12s
--                    21%[===&gt;                ] 147.10M  1.25MB/s    eta 7m 12s
--                    21%[===&gt;                ] 147.38M  1.23MB/s    eta 7m 11s
--                    21%[===&gt;                ] 147.82M  1.26MB/s    eta 7m 11s
--                    21%[===&gt;                ] 148.07M  1.24MB/s    eta 7m 11s
--                    21%[===&gt;                ] 148.46M  1.26MB/s    eta 7m 11s
--                    21%[===&gt;                ] 148.86M  1.29MB/s    eta 7m 10s
--                    21%[===&gt;                ] 149.22M  1.30MB/s    eta 7m 10s
--                    21%[===&gt;                ] 149.50M  1.29MB/s    eta 7m 10s
--                    21%[===&gt;                ] 149.86M  1.29MB/s    eta 7m 10s
--                    21%[===&gt;                ] 150.14M  1.22MB/s    eta 7m 10s
--                    21%[===&gt;                ] 150.66M  1.24MB/s    eta 7m 10s
--                    21%[===&gt;                ] 151.12M  1.27MB/s    eta 7m 10s
--                    21%[===&gt;                ] 151.56M  1.26MB/s    eta 7m 10s
--                    21%[===&gt;                ] 151.89M  1.27MB/s    eta 7m 8s
--                    21%[===&gt;                ] 152.20M  1.27MB/s    eta 7m 8s
--                    21%[===&gt;                ] 152.56M  1.29MB/s    eta 7m 8s
--                    21%[===&gt;                ] 152.95M  1.28MB/s    eta 7m 8s
--                    22%[===&gt;                ] 153.28M  1.29MB/s    eta 7m 7s
--                    22%[===&gt;                ] 153.59M  1.28MB/s    eta 7m 7s
--                    22%[===&gt;                ] 154.10M  1.31MB/s    eta 7m 7s
--                    22%[===&gt;                ] 154.49M  1.31MB/s    eta 7m 7s
--                    22%[===&gt;                ] 154.98M  1.36MB/s    eta 7m 5s
--                    22%[===&gt;                ] 155.41M  1.39MB/s    eta 7m 5s
--                    22%[===&gt;                ] 156.04M  1.43MB/s    eta 7m 5s
--                    22%[===&gt;                ] 156.35M  1.41MB/s    eta 7m 5s
--                    22%[===&gt;                ] 156.96M  1.45MB/s    eta 7m 2s
--                    22%[===&gt;                ] 157.25M  1.41MB/s    eta 7m 2s
--                    22%[===&gt;                ] 157.66M  1.45MB/s    eta 7m 2s
--                    22%[===&gt;                ] 158.00M  1.45MB/s    eta 7m 2s
--                    22%[===&gt;                ] 158.34M  1.43MB/s    eta 7m 1s
--                    22%[===&gt;                ] 158.69M  1.44MB/s    eta 7m 1s
--                    22%[===&gt;                ] 159.03M  1.44MB/s    eta 7m 1s
--                    22%[===&gt;                ] 159.36M  1.44MB/s    eta 7m 1s
--                    22%[===&gt;                ] 159.58M  1.38MB/s    eta 7m 1s
--                    22%[===&gt;                ] 159.87M  1.31MB/s    eta 7m 1s
--                    23%[===&gt;                ] 160.31M  1.33MB/s    eta 7m 1s
--                    23%[===&gt;                ] 160.72M  1.32MB/s    eta 7m 1s
--                    23%[===&gt;                ] 161.00M  1.24MB/s    eta 7m 0s
--                    23%[===&gt;                ] 161.31M  1.19MB/s    eta 7m 0s
--                    23%[===&gt;                ] 161.64M  1.17MB/s    eta 7m 0s
--                    23%[===&gt;                ] 161.98M  1.18MB/s    eta 7m 0s
--                    23%[===&gt;                ] 162.26M  1.13MB/s    eta 6m 59s
--                    23%[===&gt;                ] 162.68M  1.17MB/s    eta 6m 59s
--                    23%[===&gt;                ] 163.05M  1.16MB/s    eta 6m 59s
--                    23%[===&gt;                ] 163.46M  1.17MB/s    eta 6m 59s
--                    23%[===&gt;                ] 163.74M  1.17MB/s    eta 6m 58s
--                    23%[===&gt;                ] 164.27M  1.23MB/s    eta 6m 58s
--                    23%[===&gt;                ] 164.85M  1.32MB/s    eta 6m 58s
--                    23%[===&gt;                ] 165.13M  1.31MB/s    eta 6m 58s
--                    23%[===&gt;                ] 165.57M  1.32MB/s    eta 6m 56s
--                    23%[===&gt;                ] 165.85M  1.28MB/s    eta 6m 56s
--                    23%[===&gt;                ] 166.19M  1.30MB/s    eta 6m 56s
--                    23%[===&gt;                ] 166.55M  1.31MB/s    eta 6m 56s
--                    23%[===&gt;                ] 166.88M  1.30MB/s    eta 6m 55s
--                    24%[===&gt;                ] 167.22M  1.31MB/s    eta 6m 55s
--                    24%[===&gt;                ] 167.61M  1.32MB/s    eta 6m 55s
--                    24%[===&gt;                ] 168.04M  1.34MB/s    eta 6m 55s
--                    24%[===&gt;                ] 168.48M  1.33MB/s    eta 6m 53s
--                    24%[===&gt;                ] 168.73M  1.32MB/s    eta 6m 53s
--                    24%[===&gt;                ] 169.11M  1.30MB/s    eta 6m 53s
--                    24%[===&gt;                ] 169.46M  1.30MB/s    eta 6m 53s
--                    24%[===&gt;                ] 169.71M  1.22MB/s    eta 6m 53s
--                    24%[===&gt;                ] 170.10M  1.24MB/s    eta 6m 53s
--                    24%[===&gt;                ] 170.43M  1.22MB/s    eta 6m 53s
--                    24%[===&gt;                ] 170.68M  1.20MB/s    eta 6m 53s
--                    24%[===&gt;                ] 171.01M  1.20MB/s    eta 6m 52s
--                    24%[===&gt;                ] 171.29M  1.17MB/s    eta 6m 52s
--                    24%[===&gt;                ] 171.66M  1.20MB/s    eta 6m 52s
--                    24%[===&gt;                ] 172.13M  1.20MB/s    eta 6m 52s
--                    24%[===&gt;                ] 172.43M  1.20MB/s    eta 6m 51s
--                    24%[===&gt;                ] 172.97M  1.23MB/s    eta 6m 51s
--                    24%[===&gt;                ] 173.33M  1.22MB/s    eta 6m 51s
--                    24%[===&gt;                ] 173.69M  1.23MB/s    eta 6m 51s
--                    25%[====&gt;               ] 174.00M  1.21MB/s    eta 6m 50s
--                    25%[====&gt;               ] 174.34M  1.22MB/s    eta 6m 50s
--                    25%[====&gt;               ] 174.63M  1.22MB/s    eta 6m 50s
--                    25%[====&gt;               ] 174.97M  1.21MB/s    eta 6m 50s
--                    25%[====&gt;               ] 175.28M  1.22MB/s    eta 6m 49s
--                    25%[====&gt;               ] 175.89M  1.29MB/s    eta 6m 49s
--                    25%[====&gt;               ] 176.28M  1.32MB/s    eta 6m 49s
--                    25%[====&gt;               ] 176.64M  1.34MB/s    eta 6m 49s
--                    25%[====&gt;               ] 176.86M  1.29MB/s    eta 6m 48s
--                    25%[====&gt;               ] 177.23M  1.27MB/s    eta 6m 48s
--                    25%[====&gt;               ] 177.82M  1.31MB/s    eta 6m 48s
--                    25%[====&gt;               ] 178.23M  1.30MB/s    eta 6m 48s
--                    25%[====&gt;               ] 178.71M  1.33MB/s    eta 6m 45s
--                    25%[====&gt;               ] 179.15M  1.36MB/s    eta 6m 45s
--                    25%[====&gt;               ] 179.55M  1.40MB/s    eta 6m 45s
--                    25%[====&gt;               ] 179.91M  1.39MB/s    eta 6m 45s
--                    25%[====&gt;               ] 180.26M  1.41MB/s    eta 6m 44s
--                    25%[====&gt;               ] 180.60M  1.41MB/s    eta 6m 44s
--                    25%[====&gt;               ] 180.85M  1.35MB/s    eta 6m 44s
--                    26%[====&gt;               ] 181.13M  1.29MB/s    eta 6m 44s
--                    26%[====&gt;               ] 181.50M  1.30MB/s    eta 6m 44s
--                    26%[====&gt;               ] 181.96M  1.34MB/s    eta 6m 44s
--                    26%[====&gt;               ] 182.24M  1.34MB/s    eta 6m 44s
--                    26%[====&gt;               ] 182.52M  1.29MB/s    eta 6m 44s
--                    26%[====&gt;               ] 183.00M  1.29MB/s    eta 6m 42s
--                    26%[====&gt;               ] 183.41M  1.29MB/s    eta 6m 42s
--                    26%[====&gt;               ] 183.87M  1.29MB/s    eta 6m 42s
--                    26%[====&gt;               ] 184.20M  1.23MB/s    eta 6m 42s
--                    26%[====&gt;               ] 184.54M  1.25MB/s    eta 6m 41s
--                    26%[====&gt;               ] 184.79M  1.21MB/s    eta 6m 41s
--                    26%[====&gt;               ] 185.20M  1.23MB/s    eta 6m 41s
--                    26%[====&gt;               ] 185.51M  1.23MB/s    eta 6m 41s
--                    26%[====&gt;               ] 185.82M  1.25MB/s    eta 6m 40s
--                    26%[====&gt;               ] 186.13M  1.22MB/s    eta 6m 40s
--                    26%[====&gt;               ] 186.52M  1.22MB/s    eta 6m 40s
--                    26%[====&gt;               ] 187.02M  1.27MB/s    eta 6m 40s
--                    26%[====&gt;               ] 187.44M  1.31MB/s    eta 6m 39s
--                    26%[====&gt;               ] 187.83M  1.30MB/s    eta 6m 39s
--                    27%[====&gt;               ] 188.15M  1.27MB/s    eta 6m 39s
--                    27%[====&gt;               ] 188.68M  1.30MB/s    eta 6m 39s
--                    27%[====&gt;               ] 189.02M  1.29MB/s    eta 6m 37s
--                    27%[====&gt;               ] 189.30M  1.27MB/s    eta 6m 37s
--                    27%[====&gt;               ] 189.55M  1.26MB/s    eta 6m 37s
--                    27%[====&gt;               ] 189.83M  1.24MB/s    eta 6m 37s
--                    27%[====&gt;               ] 190.17M  1.26MB/s    eta 6m 37s
--                    27%[====&gt;               ] 190.50M  1.24MB/s    eta 6m 37s
--                    27%[====&gt;               ] 190.97M  1.29MB/s    eta 6m 37s
--                    27%[====&gt;               ] 191.25M  1.27MB/s    eta 6m 37s
--                    27%[====&gt;               ] 191.58M  1.21MB/s    eta 6m 36s
--                    27%[====&gt;               ] 191.89M  1.18MB/s    eta 6m 36s
--                    27%[====&gt;               ] 192.22M  1.17MB/s    eta 6m 36s
--                    27%[====&gt;               ] 192.95M  1.27MB/s    eta 6m 36s
--                    27%[====&gt;               ] 193.51M  1.34MB/s    eta 6m 34s
--                    27%[====&gt;               ] 193.82M  1.27MB/s    eta 6m 34s
--                    27%[====&gt;               ] 194.18M  1.30MB/s    eta 6m 34s
--                    27%[====&gt;               ] 194.57M  1.32MB/s    eta 6m 34s
--                    28%[====&gt;               ] 194.95M  1.36MB/s    eta 6m 33s
--                    28%[====&gt;               ] 195.27M  1.35MB/s    eta 6m 33s
--                    28%[====&gt;               ] 195.63M  1.36MB/s    eta 6m 33s
--                    28%[====&gt;               ] 196.27M  1.44MB/s    eta 6m 33s
--                    28%[====&gt;               ] 196.65M  1.43MB/s    eta 6m 31s
--                    28%[====&gt;               ] 196.97M  1.43MB/s    eta 6m 31s
--                    28%[====&gt;               ] 197.19M  1.41MB/s    eta 6m 31s
--                    28%[====&gt;               ] 197.72M  1.46MB/s    eta 6m 31s
--                    28%[====&gt;               ] 198.02M  1.40MB/s    eta 6m 30s
--                    28%[====&gt;               ] 198.30M  1.32MB/s    eta 6m 30s
--                    28%[====&gt;               ] 198.70M  1.30MB/s    eta 6m 30s
--                    28%[====&gt;               ] 199.05M  1.31MB/s    eta 6m 30s
--                    28%[====&gt;               ] 199.38M  1.31MB/s    eta 6m 29s
--                    28%[====&gt;               ] 199.70M  1.28MB/s    eta 6m 29s
--                    28%[====&gt;               ] 199.95M  1.26MB/s    eta 6m 29s
--                    28%[====&gt;               ] 200.23M  1.24MB/s    eta 6m 29s
--                    28%[====&gt;               ] 200.64M  1.18MB/s    eta 6m 28s
--                    28%[====&gt;               ] 201.04M  1.19MB/s    eta 6m 28s
--                    28%[====&gt;               ] 201.36M  1.18MB/s    eta 6m 28s
--                    28%[====&gt;               ] 201.70M  1.18MB/s    eta 6m 28s
--                    29%[====&gt;               ] 202.13M  1.18MB/s    eta 6m 27s
--                    29%[====&gt;               ] 202.38M  1.15MB/s    eta 6m 27s
--                    29%[====&gt;               ] 202.74M  1.18MB/s    eta 6m 27s
--                    29%[====&gt;               ] 203.24M  1.21MB/s    eta 6m 27s
--                    29%[====&gt;               ] 203.63M  1.23MB/s    eta 6m 26s
--                    29%[====&gt;               ] 203.98M  1.23MB/s    eta 6m 26s
--                    29%[====&gt;               ] 204.27M  1.23MB/s    eta 6m 26s
--                    29%[====&gt;               ] 204.57M  1.21MB/s    eta 6m 26s
--                    29%[====&gt;               ] 204.82M  1.22MB/s    eta 6m 26s
--                    29%[====&gt;               ] 205.19M  1.23MB/s    eta 6m 26s
--                    29%[====&gt;               ] 205.74M  1.27MB/s    eta 6m 26s
--                    29%[====&gt;               ] 206.07M  1.24MB/s    eta 6m 26s
--                    29%[====&gt;               ] 206.49M  1.27MB/s    eta 6m 24s
--                    29%[====&gt;               ] 206.74M  1.22MB/s    eta 6m 24s
--                    29%[====&gt;               ] 207.08M  1.25MB/s    eta 6m 24s
--                    29%[====&gt;               ] 207.38M  1.24MB/s    eta 6m 24s
--                    29%[====&gt;               ] 207.76M  1.22MB/s    eta 6m 23s
--                    29%[====&gt;               ] 207.98M  1.15MB/s    eta 6m 23s
--                    29%[====&gt;               ] 208.26M  1.16MB/s    eta 6m 23s
--                    29%[====&gt;               ] 208.50M  1.11MB/s    eta 6m 23s
--                    30%[=====&gt;              ] 208.81M  1.12MB/s    eta 6m 23s
--                    30%[=====&gt;              ] 209.15M  1.14MB/s    eta 6m 23s
--                    30%[=====&gt;              ] 209.50M  1.16MB/s    eta 6m 23s
--                    30%[=====&gt;              ] 209.90M  1.13MB/s    eta 6m 23s
--                    30%[=====&gt;              ] 210.24M  1.11MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 210.49M  1.07MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 210.74M  1.07MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 211.04M  1.06MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 211.29M  1.05MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 211.63M  1.03MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 211.93M  1.05MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 212.38M  1.10MB/s    eta 6m 22s
--                    30%[=====&gt;              ] 212.63M  1.11MB/s    eta 6m 21s
--                    30%[=====&gt;              ] 212.91M  1.10MB/s    eta 6m 21s
--                    30%[=====&gt;              ] 213.24M  1.09MB/s    eta 6m 21s
--                    30%[=====&gt;              ] 213.54M  1.08MB/s    eta 6m 21s
--                    30%[=====&gt;              ] 214.05M  1.11MB/s    eta 6m 20s
--                    30%[=====&gt;              ] 214.52M  1.14MB/s    eta 6m 20s
--                    30%[=====&gt;              ] 214.80M  1.14MB/s    eta 6m 20s
--                    30%[=====&gt;              ] 215.20M  1.18MB/s    eta 6m 20s
--                    30%[=====&gt;              ] 215.69M  1.23MB/s    eta 6m 19s
--                    31%[=====&gt;              ] 215.97M  1.23MB/s    eta 6m 19s
--                    31%[=====&gt;              ] 216.33M  1.27MB/s    eta 6m 19s
--                    31%[=====&gt;              ] 216.64M  1.24MB/s    eta 6m 19s
--                    31%[=====&gt;              ] 217.14M  1.27MB/s    eta 6m 17s
--                    31%[=====&gt;              ] 217.50M  1.29MB/s    eta 6m 17s
--                    31%[=====&gt;              ] 217.93M  1.33MB/s    eta 6m 17s
--                    31%[=====&gt;              ] 218.31M  1.34MB/s    eta 6m 17s
--                    31%[=====&gt;              ] 218.73M  1.38MB/s    eta 6m 16s
--                    31%[=====&gt;              ] 219.13M  1.40MB/s    eta 6m 16s
--                    31%[=====&gt;              ] 219.43M  1.31MB/s    eta 6m 16s
--                    31%[=====&gt;              ] 219.76M  1.31MB/s    eta 6m 16s
--                    31%[=====&gt;              ] 220.10M  1.30MB/s    eta 6m 15s
--                    31%[=====&gt;              ] 220.44M  1.31MB/s    eta 6m 15s
--                    31%[=====&gt;              ] 220.82M  1.28MB/s    eta 6m 15s
--                    31%[=====&gt;              ] 221.13M  1.27MB/s    eta 6m 15s
--                    31%[=====&gt;              ] 221.50M  1.30MB/s    eta 6m 14s
--                    31%[=====&gt;              ] 221.91M  1.31MB/s    eta 6m 14s
--                    31%[=====&gt;              ] 222.33M  1.31MB/s    eta 6m 14s
--                    32%[=====&gt;              ] 222.84M  1.34MB/s    eta 6m 14s
--                    32%[=====&gt;              ] 223.09M  1.29MB/s    eta 6m 12s
--                    32%[=====&gt;              ] 223.45M  1.29MB/s    eta 6m 12s
--                    32%[=====&gt;              ] 223.84M  1.27MB/s    eta 6m 12s
--                    32%[=====&gt;              ] 224.19M  1.26MB/s    eta 6m 12s
--                    32%[=====&gt;              ] 224.56M  1.28MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 224.84M  1.27MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 225.18M  1.27MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 225.46M  1.25MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 225.75M  1.23MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 226.09M  1.23MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 226.48M  1.24MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 226.87M  1.23MB/s    eta 6m 11s
--                    32%[=====&gt;              ] 227.20M  1.17MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 227.45M  1.15MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 227.85M  1.16MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 228.04M  1.13MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 228.26M  1.09MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 228.80M  1.16MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 229.18M  1.16MB/s    eta 6m 10s
--                    32%[=====&gt;              ] 229.55M  1.17MB/s    eta 6m 10s
--                    33%[=====&gt;              ] 229.80M  1.15MB/s    eta 6m 8s
--                    33%[=====&gt;              ] 230.17M  1.17MB/s    eta 6m 8s
--                    33%[=====&gt;              ] 230.55M  1.20MB/s    eta 6m 8s
--                    33%[=====&gt;              ] 230.83M  1.18MB/s    eta 6m 8s
--                    33%[=====&gt;              ] 231.13M  1.16MB/s    eta 6m 7s
--                    33%[=====&gt;              ] 231.50M  1.15MB/s    eta 6m 7s
--                    33%[=====&gt;              ] 231.84M  1.17MB/s    eta 6m 7s
--                    33%[=====&gt;              ] 232.17M  1.15MB/s    eta 6m 7s
--                    33%[=====&gt;              ] 232.54M  1.19MB/s    eta 6m 6s
--                    33%[=====&gt;              ] 233.03M  1.25MB/s    eta 6m 6s
--                    33%[=====&gt;              ] 233.40M  1.22MB/s    eta 6m 6s
--                    33%[=====&gt;              ] 233.71M  1.21MB/s    eta 6m 6s
--                    33%[=====&gt;              ] 234.03M  1.20MB/s    eta 6m 5s
--                    33%[=====&gt;              ] 234.25M  1.17MB/s    eta 6m 5s
--                    33%[=====&gt;              ] 234.63M  1.20MB/s    eta 6m 5s
--                    33%[=====&gt;              ] 234.98M  1.19MB/s    eta 6m 5s
--                    33%[=====&gt;              ] 235.38M  1.21MB/s    eta 6m 4s
--                    33%[=====&gt;              ] 235.71M  1.23MB/s    eta 6m 4s
--                    33%[=====&gt;              ] 235.99M  1.21MB/s    eta 6m 4s
--                    33%[=====&gt;              ] 236.37M  1.21MB/s    eta 6m 4s
--                    34%[=====&gt;              ] 236.74M  1.24MB/s    eta 6m 3s
--                    34%[=====&gt;              ] 237.02M  1.21MB/s    eta 6m 3s
--                    34%[=====&gt;              ] 237.49M  1.20MB/s    eta 6m 3s
--                    34%[=====&gt;              ] 237.82M  1.17MB/s    eta 6m 3s
--                    34%[=====&gt;              ] 238.17M  1.20MB/s    eta 6m 2s
--                    34%[=====&gt;              ] 238.58M  1.21MB/s    eta 6m 2s
--                    34%[=====&gt;              ] 238.99M  1.25MB/s    eta 6m 2s
--                    34%[=====&gt;              ] 239.36M  1.26MB/s    eta 6m 2s
--                    34%[=====&gt;              ] 239.80M  1.28MB/s    eta 6m 1s
--                    34%[=====&gt;              ] 240.05M  1.27MB/s    eta 6m 1s
--                    34%[=====&gt;              ] 240.37M  1.24MB/s    eta 6m 1s
--                    34%[=====&gt;              ] 240.95M  1.31MB/s    eta 6m 1s
--                    34%[=====&gt;              ] 241.25M  1.31MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 241.54M  1.29MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 241.79M  1.26MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 242.04M  1.22MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 242.37M  1.23MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 242.65M  1.19MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 243.06M  1.19MB/s    eta 5m 59s
--                    34%[=====&gt;              ] 243.41M  1.21MB/s    eta 5m 59s
--                    35%[======&gt;             ] 243.88M  1.21MB/s    eta 5m 58s
--                    35%[======&gt;             ] 244.21M  1.21MB/s    eta 5m 58s
--                    35%[======&gt;             ] 244.57M  1.20MB/s    eta 5m 58s
--                    35%[======&gt;             ] 245.00M  1.23MB/s    eta 5m 58s
--                    35%[======&gt;             ] 245.25M  1.15MB/s    eta 5m 57s
--                    35%[======&gt;             ] 245.77M  1.20MB/s    eta 5m 57s
--                    35%[======&gt;             ] 246.02M  1.18MB/s    eta 5m 57s
--                    35%[======&gt;             ] 246.27M  1.19MB/s    eta 5m 57s
--                    35%[======&gt;             ] 246.61M  1.22MB/s    eta 5m 56s
--                    35%[======&gt;             ] 247.14M  1.27MB/s    eta 5m 56s
--                    35%[======&gt;             ] 247.58M  1.31MB/s    eta 5m 56s
--                    35%[======&gt;             ] 247.97M  1.31MB/s    eta 5m 56s
--                    35%[======&gt;             ] 248.33M  1.32MB/s    eta 5m 54s
--                    35%[======&gt;             ] 249.06M  1.40MB/s    eta 5m 54s
--                    35%[======&gt;             ] 249.46M  1.39MB/s    eta 5m 54s
--                    35%[======&gt;             ] 249.89M  1.41MB/s    eta 5m 54s
--                    35%[======&gt;             ] 250.23M  1.40MB/s    eta 5m 52s
--                    35%[======&gt;             ] 250.54M  1.38MB/s    eta 5m 52s
--                    36%[======&gt;             ] 250.87M  1.41MB/s    eta 5m 52s
--                    36%[======&gt;             ] 251.29M  1.39MB/s    eta 5m 52s
--                    36%[======&gt;             ] 251.54M  1.40MB/s    eta 5m 51s
--                    36%[======&gt;             ] 251.99M  1.43MB/s    eta 5m 51s
--                    36%[======&gt;             ] 252.32M  1.41MB/s    eta 5m 51s
--                    36%[======&gt;             ] 252.85M  1.42MB/s    eta 5m 51s
--                    36%[======&gt;             ] 253.19M  1.39MB/s    eta 5m 50s
--                    36%[======&gt;             ] 253.44M  1.37MB/s    eta 5m 50s
--                    36%[======&gt;             ] 253.72M  1.28MB/s    eta 5m 50s
--                    36%[======&gt;             ] 254.00M  1.23MB/s    eta 5m 50s
--                    36%[======&gt;             ] 254.35M  1.21MB/s    eta 5m 49s
--                    36%[======&gt;             ] 254.94M  1.25MB/s    eta 5m 49s
--                    36%[======&gt;             ] 255.25M  1.25MB/s    eta 5m 49s
--                    36%[======&gt;             ] 255.64M  1.26MB/s    eta 5m 49s
--                    36%[======&gt;             ] 256.06M  1.27MB/s    eta 5m 47s
--                    36%[======&gt;             ] 256.70M  1.35MB/s    eta 5m 47s
--                    36%[======&gt;             ] 257.01M  1.35MB/s    eta 5m 47s
--                    36%[======&gt;             ] 257.29M  1.31MB/s    eta 5m 47s
--                    37%[======&gt;             ] 257.64M  1.30MB/s    eta 5m 46s
--                    37%[======&gt;             ] 257.89M  1.24MB/s    eta 5m 46s
--                    37%[======&gt;             ] 258.23M  1.27MB/s    eta 5m 46s
--                    37%[======&gt;             ] 258.48M  1.27MB/s    eta 5m 46s
--                    37%[======&gt;             ] 258.76M  1.26MB/s    eta 5m 46s
--                    37%[======&gt;             ] 259.09M  1.27MB/s    eta 5m 46s
--                    37%[======&gt;             ] 259.48M  1.21MB/s    eta 5m 46s
--                    37%[======&gt;             ] 260.02M  1.27MB/s    eta 5m 46s
--                    37%[======&gt;             ] 260.38M  1.28MB/s    eta 5m 44s
--                    37%[======&gt;             ] 260.66M  1.23MB/s    eta 5m 44s
--                    37%[======&gt;             ] 260.97M  1.19MB/s    eta 5m 44s
--                    37%[======&gt;             ] 261.41M  1.17MB/s    eta 5m 44s
--                    37%[======&gt;             ] 261.82M  1.20MB/s    eta 5m 43s
--                    37%[======&gt;             ] 262.17M  1.22MB/s    eta 5m 43s
--                    37%[======&gt;             ] 262.47M  1.21MB/s    eta 5m 43s
--                    37%[======&gt;             ] 262.91M  1.26MB/s    eta 5m 43s
--                    37%[======&gt;             ] 263.25M  1.27MB/s    eta 5m 42s
--                    37%[======&gt;             ] 263.61M  1.28MB/s    eta 5m 42s
--                    37%[======&gt;             ] 263.94M  1.30MB/s    eta 5m 42s
--                    37%[======&gt;             ] 264.34M  1.31MB/s    eta 5m 42s
--                    38%[======&gt;             ] 264.76M  1.30MB/s    eta 5m 41s
--                    38%[======&gt;             ] 265.23M  1.29MB/s    eta 5m 41s
--                    38%[======&gt;             ] 265.59M  1.31MB/s    eta 5m 41s
--                    38%[======&gt;             ] 266.12M  1.36MB/s    eta 5m 41s
--                    38%[======&gt;             ] 266.40M  1.35MB/s    eta 5m 39s
--                    38%[======&gt;             ] 266.85M  1.34MB/s    eta 5m 39s
--                    38%[======&gt;             ] 267.21M  1.35MB/s    eta 5m 39s
--                    38%[======&gt;             ] 267.46M  1.33MB/s    eta 5m 39s
--                    38%[======&gt;             ] 267.80M  1.30MB/s    eta 5m 38s
--                    38%[======&gt;             ] 268.29M  1.34MB/s    eta 5m 38s
--                    38%[======&gt;             ] 268.76M  1.37MB/s    eta 5m 38s
--                    38%[======&gt;             ] 269.13M  1.38MB/s    eta 5m 38s
--                    38%[======&gt;             ] 269.44M  1.37MB/s    eta 5m 36s
--                    38%[======&gt;             ] 269.74M  1.32MB/s    eta 5m 36s
--                    38%[======&gt;             ] 270.02M  1.29MB/s    eta 5m 36s
--                    38%[======&gt;             ] 270.35M  1.26MB/s    eta 5m 36s
--                    38%[======&gt;             ] 270.72M  1.24MB/s    eta 5m 36s
--                    38%[======&gt;             ] 270.97M  1.21MB/s    eta 5m 36s
--                    38%[======&gt;             ] 271.38M  1.20MB/s    eta 5m 36s
--                    39%[======&gt;             ] 271.70M  1.21MB/s    eta 5m 36s
--                    39%[======&gt;             ] 271.98M  1.20MB/s    eta 5m 35s
--                    39%[======&gt;             ] 272.20M  1.17MB/s    eta 5m 35s
--                    39%[======&gt;             ] 272.51M  1.16MB/s    eta 5m 35s
--                    39%[======&gt;             ] 273.00M  1.14MB/s    eta 5m 35s
--                    39%[======&gt;             ] 273.40M  1.15MB/s    eta 5m 34s
--                    39%[======&gt;             ] 273.68M  1.13MB/s    eta 5m 34s
--                    39%[======&gt;             ] 273.96M  1.12MB/s    eta 5m 34s
--                    39%[======&gt;             ] 274.20M  1.11MB/s    eta 5m 34s
--                    39%[======&gt;             ] 274.48M  1.10MB/s    eta 5m 33s
--                    39%[======&gt;             ] 274.84M  1.11MB/s    eta 5m 33s
--                    39%[======&gt;             ] 275.20M  1.13MB/s    eta 5m 33s
--                    39%[======&gt;             ] 275.54M  1.14MB/s    eta 5m 33s
--                    39%[======&gt;             ] 275.82M  1.10MB/s    eta 5m 33s
--                    39%[======&gt;             ] 276.10M  1.09MB/s    eta 5m 33s
--                    39%[======&gt;             ] 276.38M  1.11MB/s    eta 5m 33s
--                    39%[======&gt;             ] 276.76M  1.13MB/s    eta 5m 33s
--                    39%[======&gt;             ] 277.04M  1.08MB/s    eta 5m 32s
--                    39%[======&gt;             ] 277.38M  1.09MB/s    eta 5m 32s
--                    39%[======&gt;             ] 277.88M  1.12MB/s    eta 5m 32s
--                    39%[======&gt;             ] 278.24M  1.13MB/s    eta 5m 32s
--                    40%[=======&gt;            ] 278.55M  1.16MB/s    eta 5m 31s
--                    40%[=======&gt;            ] 279.13M  1.24MB/s    eta 5m 31s
--                    40%[=======&gt;            ] 279.58M  1.26MB/s    eta 5m 31s
--                    40%[=======&gt;            ] 279.91M  1.25MB/s    eta 5m 31s
--                    40%[=======&gt;            ] 280.28M  1.28MB/s    eta 5m 29s
--                    40%[=======&gt;            ] 280.61M  1.27MB/s    eta 5m 29s
--                    40%[=======&gt;            ] 280.90M  1.28MB/s    eta 5m 29s
--                    40%[=======&gt;            ] 281.42M  1.34MB/s    eta 5m 29s
--                    40%[=======&gt;            ] 281.67M  1.31MB/s    eta 5m 28s
--                    40%[=======&gt;            ] 281.98M  1.31MB/s    eta 5m 28s
--                    40%[=======&gt;            ] 282.23M  1.31MB/s    eta 5m 28s
--                    40%[=======&gt;            ] 282.57M  1.30MB/s    eta 5m 28s
--                    40%[=======&gt;            ] 282.82M  1.23MB/s    eta 5m 27s
--                    40%[=======&gt;            ] 283.26M  1.26MB/s    eta 5m 27s
--                    40%[=======&gt;            ] 283.60M  1.20MB/s    eta 5m 27s
--                    40%[=======&gt;            ] 283.91M  1.16MB/s    eta 5m 27s
--                    40%[=======&gt;            ] 284.26M  1.15MB/s    eta 5m 26s
--                    40%[=======&gt;            ] 284.54M  1.16MB/s    eta 5m 26s
--                    40%[=======&gt;            ] 284.91M  1.15MB/s    eta 5m 26s
--                    40%[=======&gt;            ] 285.30M  1.18MB/s    eta 5m 26s
--                    41%[=======&gt;            ] 285.52M  1.10MB/s    eta 5m 25s
--                    41%[=======&gt;            ] 286.02M  1.15MB/s    eta 5m 25s
--                    41%[=======&gt;            ] 286.63M  1.23MB/s    eta 5m 25s
--                    41%[=======&gt;            ] 286.97M  1.25MB/s    eta 5m 25s
--                    41%[=======&gt;            ] 287.34M  1.27MB/s    eta 5m 24s
--                    41%[=======&gt;            ] 287.63M  1.27MB/s    eta 5m 24s
--                    41%[=======&gt;            ] 287.88M  1.23MB/s    eta 5m 24s
--                    41%[=======&gt;            ] 288.16M  1.22MB/s    eta 5m 24s
--                    41%[=======&gt;            ] 288.61M  1.25MB/s    eta 5m 23s
--                    41%[=======&gt;            ] 289.40M  1.37MB/s    eta 5m 23s
--                    41%[=======&gt;            ] 289.73M  1.38MB/s    eta 5m 23s
--                    41%[=======&gt;            ] 290.09M  1.39MB/s    eta 5m 23s
--                    41%[=======&gt;            ] 290.37M  1.36MB/s    eta 5m 21s
--                    41%[=======&gt;            ] 290.78M  1.38MB/s    eta 5m 21s
--                    41%[=======&gt;            ] 291.17M  1.37MB/s    eta 5m 21s
--                    41%[=======&gt;            ] 291.51M  1.29MB/s    eta 5m 21s
--                    41%[=======&gt;            ] 291.80M  1.29MB/s    eta 5m 20s
--                    41%[=======&gt;            ] 292.26M  1.32MB/s    eta 5m 20s
--                    42%[=======&gt;            ] 292.63M  1.33MB/s    eta 5m 20s
--                    42%[=======&gt;            ] 293.07M  1.36MB/s    eta 5m 20s
--                    42%[=======&gt;            ] 293.38M  1.39MB/s    eta 5m 19s
--                    42%[=======&gt;            ] 293.83M  1.40MB/s    eta 5m 19s
--                    42%[=======&gt;            ] 294.14M  1.37MB/s    eta 5m 19s
--                    42%[=======&gt;            ] 294.42M  1.25MB/s    eta 5m 19s
--                    42%[=======&gt;            ] 294.71M  1.23MB/s    eta 5m 18s
--                    42%[=======&gt;            ] 295.02M  1.23MB/s    eta 5m 18s
--                    42%[=======&gt;            ] 295.33M  1.21MB/s    eta 5m 18s
--                    42%[=======&gt;            ] 295.64M  1.22MB/s    eta 5m 18s
--                    42%[=======&gt;            ] 295.97M  1.19MB/s    eta 5m 17s
--                    42%[=======&gt;            ] 296.25M  1.18MB/s    eta 5m 17s
--                    42%[=======&gt;            ] 296.62M  1.16MB/s    eta 5m 17s
--                    42%[=======&gt;            ] 296.90M  1.17MB/s    eta 5m 17s
--                    42%[=======&gt;            ] 297.19M  1.11MB/s    eta 5m 16s
--                    42%[=======&gt;            ] 297.62M  1.13MB/s    eta 5m 16s
--                    42%[=======&gt;            ] 297.90M  1.12MB/s    eta 5m 16s
--                    42%[=======&gt;            ] 298.15M  1.07MB/s    eta 5m 16s
--                    42%[=======&gt;            ] 298.67M  1.13MB/s    eta 5m 15s
--                    42%[=======&gt;            ] 298.98M  1.13MB/s    eta 5m 15s
--                    43%[=======&gt;            ] 299.54M  1.21MB/s    eta 5m 15s
--                    43%[=======&gt;            ] 300.04M  1.25MB/s    eta 5m 15s
--                    43%[=======&gt;            ] 300.40M  1.26MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 300.65M  1.25MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 300.97M  1.26MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 301.26M  1.25MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 301.54M  1.23MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 301.99M  1.26MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 302.30M  1.28MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 302.80M  1.29MB/s    eta 5m 13s
--                    43%[=======&gt;            ] 303.13M  1.32MB/s    eta 5m 11s
--                    43%[=======&gt;            ] 303.41M  1.31MB/s    eta 5m 11s
--                    43%[=======&gt;            ] 303.89M  1.30MB/s    eta 5m 11s
--                    43%[=======&gt;            ] 304.23M  1.30MB/s    eta 5m 11s
--                    43%[=======&gt;            ] 304.67M  1.27MB/s    eta 5m 10s
--                    43%[=======&gt;            ] 305.00M  1.24MB/s    eta 5m 10s
--                    43%[=======&gt;            ] 305.22M  1.22MB/s    eta 5m 10s
--                    43%[=======&gt;            ] 305.65M  1.24MB/s    eta 5m 10s
--                    43%[=======&gt;            ] 306.21M  1.32MB/s    eta 5m 9s
--                    44%[=======&gt;            ] 306.50M  1.31MB/s    eta 5m 9s
--                    44%[=======&gt;            ] 306.79M  1.31MB/s    eta 5m 9s
--                    44%[=======&gt;            ] 307.17M  1.28MB/s    eta 5m 9s
--                    44%[=======&gt;            ] 307.62M  1.29MB/s    eta 5m 8s
--                    44%[=======&gt;            ] 307.96M  1.28MB/s    eta 5m 8s
--                    44%[=======&gt;            ] 308.35M  1.31MB/s    eta 5m 8s
--                    44%[=======&gt;            ] 308.68M  1.28MB/s    eta 5m 8s
--                    44%[=======&gt;            ] 308.93M  1.26MB/s    eta 5m 7s
--                    44%[=======&gt;            ] 309.24M  1.25MB/s    eta 5m 7s
--                    44%[=======&gt;            ] 309.58M  1.22MB/s    eta 5m 7s
--                    44%[=======&gt;            ] 309.97M  1.25MB/s    eta 5m 7s
--                    44%[=======&gt;            ] 310.39M  1.27MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 310.64M  1.20MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 311.00M  1.20MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 311.35M  1.21MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 311.63M  1.20MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 311.95M  1.19MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 312.20M  1.13MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 312.48M  1.11MB/s    eta 5m 5s
--                    44%[=======&gt;            ] 312.84M  1.11MB/s    eta 5m 4s
--                    44%[=======&gt;            ] 313.12M  1.10MB/s    eta 5m 4s
--                    45%[========&gt;           ] 313.40M  1.11MB/s    eta 5m 4s
--                    45%[========&gt;           ] 313.84M  1.12MB/s    eta 5m 4s
--                    45%[========&gt;           ] 314.17M  1.12MB/s    eta 5m 3s
--                    45%[========&gt;           ] 314.39M  1.06MB/s    eta 5m 3s
--                    45%[========&gt;           ] 314.57M  1.05MB/s    eta 5m 3s
--                    45%[========&gt;           ] 315.15M  1.11MB/s    eta 5m 3s
--                    45%[========&gt;           ] 315.48M  1.10MB/s    eta 5m 2s
--                    45%[========&gt;           ] 315.82M  1.11MB/s    eta 5m 2s
--                    45%[========&gt;           ] 316.21M  1.15MB/s    eta 5m 2s
--                    45%[========&gt;           ] 316.49M  1.13MB/s    eta 5m 2s
--                    45%[========&gt;           ] 316.82M  1.15MB/s    eta 5m 1s
--                    45%[========&gt;           ] 317.10M  1.14MB/s    eta 5m 1s
--                    45%[========&gt;           ] 317.57M  1.18MB/s    eta 5m 1s
--                    45%[========&gt;           ] 317.85M  1.18MB/s    eta 5m 1s
--                    45%[========&gt;           ] 318.18M  1.15MB/s    eta 5m 0s
--                    45%[========&gt;           ] 318.50M  1.15MB/s    eta 5m 0s
--                    45%[========&gt;           ] 318.78M  1.16MB/s    eta 5m 0s
--                    45%[========&gt;           ] 319.06M  1.17MB/s    eta 5m 0s
--                    45%[========&gt;           ] 319.35M  1.12MB/s    eta 5m 0s
--                    45%[========&gt;           ] 319.63M  1.11MB/s    eta 5m 0s
--                    45%[========&gt;           ] 320.00M  1.11MB/s    eta 5m 0s
--                    46%[========&gt;           ] 320.34M  1.11MB/s    eta 5m 0s
--                    46%[========&gt;           ] 320.62M  1.10MB/s    eta 4m 59s
--                    46%[========&gt;           ] 320.91M  1.10MB/s    eta 4m 59s
--                    46%[========&gt;           ] 321.28M  1.12MB/s    eta 4m 59s
--                    46%[========&gt;           ] 321.70M  1.10MB/s    eta 4m 59s
--                    46%[========&gt;           ] 321.98M  1.10MB/s    eta 4m 58s
--                    46%[========&gt;           ] 322.31M  1.11MB/s    eta 4m 58s
--                    46%[========&gt;           ] 322.59M  1.09MB/s    eta 4m 58s
--                    46%[========&gt;           ] 322.98M  1.11MB/s    eta 4m 58s
--                    46%[========&gt;           ] 323.48M  1.17MB/s    eta 4m 56s
--                    46%[========&gt;           ] 323.87M  1.20MB/s    eta 4m 56s
--                    46%[========&gt;           ] 324.35M  1.26MB/s    eta 4m 56s
--                    46%[========&gt;           ] 324.74M  1.26MB/s    eta 4m 56s
--                    46%[========&gt;           ] 325.07M  1.27MB/s    eta 4m 55s
--                    46%[========&gt;           ] 325.46M  1.28MB/s    eta 4m 55s
--                    46%[========&gt;           ] 325.80M  1.29MB/s    eta 4m 55s
--                    46%[========&gt;           ] 326.08M  1.28MB/s    eta 4m 55s
--                    46%[========&gt;           ] 326.44M  1.26MB/s    eta 4m 54s
--                    46%[========&gt;           ] 326.63M  1.23MB/s    eta 4m 54s
--                    46%[========&gt;           ] 326.88M  1.22MB/s    eta 4m 54s
--                    47%[========&gt;           ] 327.13M  1.20MB/s    eta 4m 54s
--                    47%[========&gt;           ] 327.35M  1.16MB/s    eta 4m 54s
--                    47%[========&gt;           ] 327.75M  1.14MB/s    eta 4m 54s
--                    47%[========&gt;           ] 328.03M  1.15MB/s    eta 4m 54s
--                    47%[========&gt;           ] 328.48M  1.15MB/s    eta 4m 54s
--                    47%[========&gt;           ] 328.83M  1.09MB/s    eta 4m 53s
--                    47%[========&gt;           ] 329.01M  1.07MB/s    eta 4m 53s
--                    47%[========&gt;           ] 329.26M  1.02MB/s    eta 4m 53s
--                    47%[========&gt;           ] 329.70M  1.05MB/s    eta 4m 53s
--                    47%[========&gt;           ] 330.08M  1.06MB/s    eta 4m 52s
--                    47%[========&gt;           ] 330.42M  1.08MB/s    eta 4m 52s
--                    47%[========&gt;           ] 330.76M  1.09MB/s    eta 4m 52s
--                    47%[========&gt;           ] 331.15M  1.13MB/s    eta 4m 52s
--                    47%[========&gt;           ] 331.73M  1.22MB/s    eta 4m 50s
--                    47%[========&gt;           ] 332.10M  1.25MB/s    eta 4m 50s
--                    47%[========&gt;           ] 332.43M  1.25MB/s    eta 4m 50s
--                    47%[========&gt;           ] 332.83M  1.27MB/s    eta 4m 50s
--                    47%[========&gt;           ] 333.12M  1.25MB/s    eta 4m 49s
--                    47%[========&gt;           ] 333.44M  1.24MB/s    eta 4m 49s
--                    47%[========&gt;           ] 334.02M  1.32MB/s    eta 4m 49s
--                    48%[========&gt;           ] 334.33M  1.34MB/s    eta 4m 49s
--                    48%[========&gt;           ] 334.67M  1.35MB/s    eta 4m 48s
--                    48%[========&gt;           ] 334.99M  1.29MB/s    eta 4m 48s
--                    48%[========&gt;           ] 335.33M  1.30MB/s    eta 4m 48s
--                    48%[========&gt;           ] 335.58M  1.28MB/s    eta 4m 48s
--                    48%[========&gt;           ] 335.91M  1.27MB/s    eta 4m 47s
--                    48%[========&gt;           ] 336.31M  1.24MB/s    eta 4m 47s
--                    48%[========&gt;           ] 336.59M  1.20MB/s    eta 4m 47s
--                    48%[========&gt;           ] 336.95M  1.21MB/s    eta 4m 47s
--                    48%[========&gt;           ] 337.28M  1.18MB/s    eta 4m 46s
--                    48%[========&gt;           ] 337.61M  1.19MB/s    eta 4m 46s
--                    48%[========&gt;           ] 337.79M  1.16MB/s    eta 4m 46s
--                    48%[========&gt;           ] 338.01M  1.11MB/s    eta 4m 46s
--                    48%[========&gt;           ] 338.36M  1.07MB/s    eta 4m 45s
--                    48%[========&gt;           ] 338.73M  1.09MB/s    eta 4m 45s
--                    48%[========&gt;           ] 339.03M  1.08MB/s    eta 4m 45s
--                    48%[========&gt;           ] 339.38M  1.10MB/s    eta 4m 45s
--                    48%[========&gt;           ] 339.71M  1.10MB/s    eta 4m 44s
--                    48%[========&gt;           ] 340.06M  1.10MB/s    eta 4m 44s
--                    48%[========&gt;           ] 340.40M  1.09MB/s    eta 4m 44s
--                    48%[========&gt;           ] 340.85M  1.13MB/s    eta 4m 44s
--                    49%[========&gt;           ] 341.27M  1.15MB/s    eta 4m 43s
--                    49%[========&gt;           ] 341.75M  1.19MB/s    eta 4m 43s
--                    49%[========&gt;           ] 342.04M  1.18MB/s    eta 4m 43s
--                    49%[========&gt;           ] 342.29M  1.17MB/s    eta 4m 43s
--                    49%[========&gt;           ] 342.58M  1.22MB/s    eta 4m 42s
--                    49%[========&gt;           ] 342.96M  1.21MB/s    eta 4m 42s
--                    49%[========&gt;           ] 343.28M  1.21MB/s    eta 4m 42s
--                    49%[========&gt;           ] 343.56M  1.21MB/s    eta 4m 42s
--                    49%[========&gt;           ] 343.88M  1.23MB/s    eta 4m 41s
--                    49%[========&gt;           ] 344.23M  1.20MB/s    eta 4m 41s
--                    49%[========&gt;           ] 344.67M  1.23MB/s    eta 4m 41s
--                    49%[========&gt;           ] 345.08M  1.25MB/s    eta 4m 41s
--                    49%[========&gt;           ] 345.40M  1.21MB/s    eta 4m 40s
--                    49%[========&gt;           ] 345.72M  1.18MB/s    eta 4m 40s
--                    49%[========&gt;           ] 346.28M  1.20MB/s    eta 4m 40s
--                    49%[========&gt;           ] 346.67M  1.23MB/s    eta 4m 40s
--                    49%[========&gt;           ] 347.03M  1.25MB/s    eta 4m 39s
--                    49%[========&gt;           ] 347.35M  1.27MB/s    eta 4m 39s
--                    49%[========&gt;           ] 347.63M  1.24MB/s    eta 4m 39s
--                    49%[========&gt;           ] 347.96M  1.24MB/s    eta 4m 39s
--                    50%[=========&gt;          ] 348.32M  1.26MB/s    eta 4m 38s
--                    50%[=========&gt;          ] 348.66M  1.27MB/s    eta 4m 38s
--                    50%[=========&gt;          ] 348.94M  1.26MB/s    eta 4m 38s
--                    50%[=========&gt;          ] 349.24M  1.23MB/s    eta 4m 38s
--                    50%[=========&gt;          ] 349.46M  1.17MB/s    eta 4m 37s
--                    50%[=========&gt;          ] 349.91M  1.21MB/s    eta 4m 37s
--                    50%[=========&gt;          ] 350.19M  1.21MB/s    eta 4m 37s
--                    50%[=========&gt;          ] 350.41M  1.15MB/s    eta 4m 37s
--                    50%[=========&gt;          ] 350.74M  1.09MB/s    eta 4m 36s
--                    50%[=========&gt;          ] 351.02M  1.07MB/s    eta 4m 36s
--                    50%[=========&gt;          ] 351.30M  1.06MB/s    eta 4m 36s
--                    50%[=========&gt;          ] 351.58M  1.05MB/s    eta 4m 36s
--                    50%[=========&gt;          ] 351.94M  1.07MB/s    eta 4m 35s
--                    50%[=========&gt;          ] 352.42M  1.11MB/s    eta 4m 35s
--                    50%[=========&gt;          ] 352.75M  1.09MB/s    eta 4m 35s
--                    50%[=========&gt;          ] 353.06M  1.10MB/s    eta 4m 35s
--                    50%[=========&gt;          ] 353.39M  1.12MB/s    eta 4m 34s
--                    50%[=========&gt;          ] 353.61M  1.09MB/s    eta 4m 34s
--                    50%[=========&gt;          ] 353.97M  1.09MB/s    eta 4m 34s
--                    50%[=========&gt;          ] 354.46M  1.13MB/s    eta 4m 34s
--                    50%[=========&gt;          ] 354.76M  1.16MB/s    eta 4m 33s
--                    51%[=========&gt;          ] 355.01M  1.15MB/s    eta 4m 33s
--                    51%[=========&gt;          ] 355.42M  1.17MB/s    eta 4m 33s
--                    51%[=========&gt;          ] 355.79M  1.19MB/s    eta 4m 33s
--                    51%[=========&gt;          ] 356.32M  1.26MB/s    eta 4m 32s
--                    51%[=========&gt;          ] 356.65M  1.27MB/s    eta 4m 32s
--                    51%[=========&gt;          ] 356.96M  1.22MB/s    eta 4m 32s
--                    51%[=========&gt;          ] 357.33M  1.23MB/s    eta 4m 32s
--                    51%[=========&gt;          ] 357.79M  1.26MB/s    eta 4m 31s
--                    51%[=========&gt;          ] 358.07M  1.24MB/s    eta 4m 31s
--                    51%[=========&gt;          ] 358.35M  1.25MB/s    eta 4m 31s
--                    51%[=========&gt;          ] 358.68M  1.27MB/s    eta 4m 31s
--                    51%[=========&gt;          ] 358.92M  1.25MB/s    eta 4m 30s
--                    51%[=========&gt;          ] 359.25M  1.19MB/s    eta 4m 30s
--                    51%[=========&gt;          ] 359.53M  1.20MB/s    eta 4m 30s
--                    51%[=========&gt;          ] 359.89M  1.20MB/s    eta 4m 30s
--                    51%[=========&gt;          ] 360.39M  1.22MB/s    eta 4m 29s
--                    51%[=========&gt;          ] 360.70M  1.16MB/s    eta 4m 29s
--                    51%[=========&gt;          ] 361.00M  1.16MB/s    eta 4m 29s
--                    51%[=========&gt;          ] 361.34M  1.16MB/s    eta 4m 29s
--                    51%[=========&gt;          ] 361.67M  1.17MB/s    eta 4m 28s
--                    52%[=========&gt;          ] 362.28M  1.23MB/s    eta 4m 28s
--                    52%[=========&gt;          ] 362.62M  1.21MB/s    eta 4m 28s
--                    52%[=========&gt;          ] 363.12M  1.25MB/s    eta 4m 28s
--                    52%[=========&gt;          ] 363.65M  1.32MB/s    eta 4m 26s
--                    52%[=========&gt;          ] 364.09M  1.35MB/s    eta 4m 26s
--                    52%[=========&gt;          ] 364.45M  1.39MB/s    eta 4m 26s
--                    52%[=========&gt;          ] 364.84M  1.39MB/s    eta 4m 26s
--                    52%[=========&gt;          ] 365.18M  1.41MB/s    eta 4m 24s
--                    52%[=========&gt;          ] 365.40M  1.32MB/s    eta 4m 24s
--                    52%[=========&gt;          ] 365.85M  1.37MB/s    eta 4m 24s
--                    52%[=========&gt;          ] 366.41M  1.42MB/s    eta 4m 24s
--                    52%[=========&gt;          ] 366.88M  1.48MB/s    eta 4m 23s
--                    52%[=========&gt;          ] 367.22M  1.46MB/s    eta 4m 23s
--                    52%[=========&gt;          ] 367.69M  1.47MB/s    eta 4m 23s
--                    52%[=========&gt;          ] 368.06M  1.45MB/s    eta 4m 23s
--                    52%[=========&gt;          ] 368.58M  1.50MB/s    eta 4m 21s
--                    53%[=========&gt;          ] 368.98M  1.44MB/s    eta 4m 21s
--                    53%[=========&gt;          ] 369.34M  1.39MB/s    eta 4m 21s
--                    53%[=========&gt;          ] 369.76M  1.40MB/s    eta 4m 21s
--                    53%[=========&gt;          ] 370.15M  1.43MB/s    eta 4m 20s
--                    53%[=========&gt;          ] 370.71M  1.45MB/s    eta 4m 20s
--                    53%[=========&gt;          ] 371.15M  1.51MB/s    eta 4m 20s
--                    53%[=========&gt;          ] 371.48M  1.49MB/s    eta 4m 20s
--                    53%[=========&gt;          ] 371.76M  1.45MB/s    eta 4m 19s
--                    53%[=========&gt;          ] 372.04M  1.41MB/s    eta 4m 19s
--                    53%[=========&gt;          ] 372.35M  1.36MB/s    eta 4m 19s
--                    53%[=========&gt;          ] 372.68M  1.33MB/s    eta 4m 19s
--                    53%[=========&gt;          ] 372.96M  1.31MB/s    eta 4m 18s
--                    53%[=========&gt;          ] 373.27M  1.29MB/s    eta 4m 18s
--                    53%[=========&gt;          ] 373.77M  1.28MB/s    eta 4m 18s
--                    53%[=========&gt;          ] 374.08M  1.26MB/s    eta 4m 18s
--                    53%[=========&gt;          ] 374.46M  1.25MB/s    eta 4m 17s
--                    53%[=========&gt;          ] 374.71M  1.23MB/s    eta 4m 17s
--                    53%[=========&gt;          ] 375.07M  1.17MB/s    eta 4m 17s
--                    53%[=========&gt;          ] 375.47M  1.19MB/s    eta 4m 17s
--                    54%[=========&gt;          ] 375.86M  1.18MB/s    eta 4m 16s
--                    54%[=========&gt;          ] 376.14M  1.16MB/s    eta 4m 16s
--                    54%[=========&gt;          ] 376.47M  1.17MB/s    eta 4m 16s
--                    54%[=========&gt;          ] 376.92M  1.22MB/s    eta 4m 16s
--                    54%[=========&gt;          ] 377.17M  1.20MB/s    eta 4m 15s
--                    54%[=========&gt;          ] 377.58M  1.22MB/s    eta 4m 15s
--                    54%[=========&gt;          ] 377.97M  1.25MB/s    eta 4m 15s
--                    54%[=========&gt;          ] 378.45M  1.25MB/s    eta 4m 15s
--                    54%[=========&gt;          ] 378.73M  1.24MB/s    eta 4m 13s
--                    54%[=========&gt;          ] 379.03M  1.23MB/s    eta 4m 13s
--                    54%[=========&gt;          ] 379.39M  1.24MB/s    eta 4m 13s
--                    54%[=========&gt;          ] 379.67M  1.24MB/s    eta 4m 13s
--                    54%[=========&gt;          ] 380.04M  1.22MB/s    eta 4m 12s
--                    54%[=========&gt;          ] 380.62M  1.28MB/s    eta 4m 12s
--                    54%[=========&gt;          ] 380.95M  1.28MB/s    eta 4m 12s
--                    54%[=========&gt;          ] 381.49M  1.32MB/s    eta 4m 12s
--                    54%[=========&gt;          ] 381.80M  1.31MB/s    eta 4m 11s
--                    54%[=========&gt;          ] 382.13M  1.31MB/s    eta 4m 11s
--                    54%[=========&gt;          ] 382.58M  1.33MB/s    eta 4m 11s
--                    55%[==========&gt;         ] 382.91M  1.32MB/s    eta 4m 11s
--                    55%[==========&gt;         ] 383.28M  1.31MB/s    eta 4m 9s
--                    55%[==========&gt;         ] 383.74M  1.32MB/s    eta 4m 9s
--                    55%[==========&gt;         ] 384.06M  1.34MB/s    eta 4m 9s
--                    55%[==========&gt;         ] 384.42M  1.34MB/s    eta 4m 9s
--                    55%[==========&gt;         ] 384.84M  1.37MB/s    eta 4m 8s
--                    55%[==========&gt;         ] 385.33M  1.40MB/s    eta 4m 8s
--                    55%[==========&gt;         ] 385.70M  1.36MB/s    eta 4m 8s
--                    55%[==========&gt;         ] 386.22M  1.40MB/s    eta 4m 8s
--                    55%[==========&gt;         ] 386.59M  1.37MB/s    eta 4m 7s
--                    55%[==========&gt;         ] 387.14M  1.40MB/s    eta 4m 7s
--                    55%[==========&gt;         ] 387.62M  1.45MB/s    eta 4m 7s
--                    55%[==========&gt;         ] 387.96M  1.45MB/s    eta 4m 7s
--                    55%[==========&gt;         ] 388.31M  1.43MB/s    eta 4m 5s
--                    55%[==========&gt;         ] 388.62M  1.41MB/s    eta 4m 5s
--                    55%[==========&gt;         ] 388.96M  1.39MB/s    eta 4m 5s
--                    55%[==========&gt;         ] 389.26M  1.38MB/s    eta 4m 5s
--                    55%[==========&gt;         ] 389.57M  1.36MB/s    eta 4m 4s
--                    56%[==========&gt;         ] 390.05M  1.40MB/s    eta 4m 4s
--                    56%[==========&gt;         ] 390.36M  1.35MB/s    eta 4m 4s
--                    56%[==========&gt;         ] 390.71M  1.33MB/s    eta 4m 4s
--                    56%[==========&gt;         ] 391.02M  1.28MB/s    eta 4m 3s
--                    56%[==========&gt;         ] 391.38M  1.26MB/s    eta 4m 3s
--                    56%[==========&gt;         ] 391.72M  1.26MB/s    eta 4m 3s
--                    56%[==========&gt;         ] 392.00M  1.18MB/s    eta 4m 3s
--                    56%[==========&gt;         ] 392.38M  1.19MB/s    eta 4m 2s
--                    56%[==========&gt;         ] 392.62M  1.16MB/s    eta 4m 2s
--                    56%[==========&gt;         ] 393.09M  1.19MB/s    eta 4m 2s
--                    56%[==========&gt;         ] 393.37M  1.19MB/s    eta 4m 2s
--                    56%[==========&gt;         ] 393.72M  1.20MB/s    eta 4m 1s
--                    56%[==========&gt;         ] 393.97M  1.17MB/s    eta 4m 1s
--                    56%[==========&gt;         ] 394.22M  1.15MB/s    eta 4m 1s
--                    56%[==========&gt;         ] 394.56M  1.11MB/s    eta 4m 1s
--                    56%[==========&gt;         ] 395.01M  1.15MB/s    eta 4m 0s
--                    56%[==========&gt;         ] 395.28M  1.14MB/s    eta 4m 0s
--                    56%[==========&gt;         ] 395.54M  1.10MB/s    eta 4m 0s
--                    56%[==========&gt;         ] 396.03M  1.14MB/s    eta 4m 0s
--                    56%[==========&gt;         ] 396.37M  1.15MB/s    eta 3m 59s
--                    56%[==========&gt;         ] 396.70M  1.17MB/s    eta 3m 59s
--                    57%[==========&gt;         ] 397.01M  1.17MB/s    eta 3m 59s
--                    57%[==========&gt;         ] 397.35M  1.17MB/s    eta 3m 59s
--                    57%[==========&gt;         ] 397.60M  1.12MB/s    eta 3m 58s
--                    57%[==========&gt;         ] 397.94M  1.12MB/s    eta 3m 58s
--                    57%[==========&gt;         ] 398.29M  1.15MB/s    eta 3m 58s
--                    57%[==========&gt;         ] 398.61M  1.16MB/s    eta 3m 58s
--                    57%[==========&gt;         ] 399.00M  1.19MB/s    eta 3m 57s
--                    57%[==========&gt;         ] 399.39M  1.16MB/s    eta 3m 57s
--                    57%[==========&gt;         ] 399.92M  1.22MB/s    eta 3m 57s
--                    57%[==========&gt;         ] 400.17M  1.22MB/s    eta 3m 57s
--                    57%[==========&gt;         ] 400.67M  1.23MB/s    eta 3m 56s
--                    57%[==========&gt;         ] 401.09M  1.25MB/s    eta 3m 56s
--                    57%[==========&gt;         ] 401.41M  1.26MB/s    eta 3m 56s
--                    57%[==========&gt;         ] 401.72M  1.25MB/s    eta 3m 56s
--                    57%[==========&gt;         ] 402.00M  1.23MB/s    eta 3m 55s
--                    57%[==========&gt;         ] 402.37M  1.25MB/s    eta 3m 55s
--                    57%[==========&gt;         ] 402.81M  1.29MB/s    eta 3m 55s
--                    57%[==========&gt;         ] 403.06M  1.26MB/s    eta 3m 55s
--                    57%[==========&gt;         ] 403.53M  1.30MB/s    eta 3m 53s
--                    58%[==========&gt;         ] 403.87M  1.30MB/s    eta 3m 53s
--                    58%[==========&gt;         ] 404.17M  1.27MB/s    eta 3m 53s
--                    58%[==========&gt;         ] 404.48M  1.30MB/s    eta 3m 53s
--                    58%[==========&gt;         ] 404.95M  1.27MB/s    eta 3m 52s
--                    58%[==========&gt;         ] 405.33M  1.31MB/s    eta 3m 52s
--                    58%[==========&gt;         ] 405.69M  1.27MB/s    eta 3m 52s
--                    58%[==========&gt;         ] 406.01M  1.25MB/s    eta 3m 52s
--                    58%[==========&gt;         ] 406.32M  1.24MB/s    eta 3m 51s
--                    58%[==========&gt;         ] 406.80M  1.30MB/s    eta 3m 51s
--                    58%[==========&gt;         ] 407.13M  1.30MB/s    eta 3m 51s
--                    58%[==========&gt;         ] 407.50M  1.28MB/s    eta 3m 51s
--                    58%[==========&gt;         ] 407.78M  1.26MB/s    eta 3m 50s
--                    58%[==========&gt;         ] 408.27M  1.33MB/s    eta 3m 50s
--                    58%[==========&gt;         ] 408.58M  1.28MB/s    eta 3m 50s
--                    58%[==========&gt;         ] 408.94M  1.29MB/s    eta 3m 50s
--                    58%[==========&gt;         ] 409.25M  1.29MB/s    eta 3m 49s
--                    58%[==========&gt;         ] 409.58M  1.24MB/s    eta 3m 49s
--                    58%[==========&gt;         ] 409.89M  1.21MB/s    eta 3m 49s
--                    58%[==========&gt;         ] 410.17M  1.19MB/s    eta 3m 49s
--                    59%[==========&gt;         ] 410.73M  1.25MB/s    eta 3m 48s
--                    59%[==========&gt;         ] 411.12M  1.27MB/s    eta 3m 48s
--                    59%[==========&gt;         ] 411.57M  1.27MB/s    eta 3m 48s
--                    59%[==========&gt;         ] 411.85M  1.25MB/s    eta 3m 48s
--                    59%[==========&gt;         ] 412.29M  1.25MB/s    eta 3m 46s
--                    59%[==========&gt;         ] 412.60M  1.28MB/s    eta 3m 46s
--                    59%[==========&gt;         ] 412.88M  1.27MB/s    eta 3m 46s
--                    59%[==========&gt;         ] 413.18M  1.22MB/s    eta 3m 46s
--                    59%[==========&gt;         ] 413.48M  1.22MB/s    eta 3m 45s
--                    59%[==========&gt;         ] 414.04M  1.27MB/s    eta 3m 45s
--                    59%[==========&gt;         ] 414.32M  1.26MB/s    eta 3m 45s
--                    59%[==========&gt;         ] 414.60M  1.25MB/s    eta 3m 45s
--                    59%[==========&gt;         ] 414.88M  1.25MB/s    eta 3m 44s
--                    59%[==========&gt;         ] 415.19M  1.21MB/s    eta 3m 44s
--                    59%[==========&gt;         ] 415.52M  1.18MB/s    eta 3m 44s
--                    59%[==========&gt;         ] 415.89M  1.16MB/s    eta 3m 44s
--                    59%[==========&gt;         ] 416.22M  1.16MB/s    eta 3m 43s
--                    59%[==========&gt;         ] 416.58M  1.17MB/s    eta 3m 43s
--                    59%[==========&gt;         ] 416.83M  1.13MB/s    eta 3m 43s
--                    59%[==========&gt;         ] 417.17M  1.14MB/s    eta 3m 43s
--                    60%[===========&gt;        ] 417.66M  1.19MB/s    eta 3m 42s
--                    60%[===========&gt;        ] 418.14M  1.24MB/s    eta 3m 42s
--                    60%[===========&gt;        ] 418.39M  1.21MB/s    eta 3m 42s
--                    60%[===========&gt;        ] 418.68M  1.16MB/s    eta 3m 42s
--                    60%[===========&gt;        ] 419.09M  1.19MB/s    eta 3m 41s
--                    60%[===========&gt;        ] 419.46M  1.22MB/s    eta 3m 41s
--                    60%[===========&gt;        ] 419.71M  1.21MB/s    eta 3m 41s
--                    60%[===========&gt;        ] 420.32M  1.28MB/s    eta 3m 41s
--                    60%[===========&gt;        ] 420.60M  1.25MB/s    eta 3m 40s
--                    60%[===========&gt;        ] 420.85M  1.23MB/s    eta 3m 40s
--                    60%[===========&gt;        ] 421.21M  1.24MB/s    eta 3m 40s
--                    60%[===========&gt;        ] 421.52M  1.25MB/s    eta 3m 40s
--                    60%[===========&gt;        ] 421.99M  1.29MB/s    eta 3m 39s
--                    60%[===========&gt;        ] 422.27M  1.24MB/s    eta 3m 39s
--                    60%[===========&gt;        ] 422.58M  1.19MB/s    eta 3m 39s
--                    60%[===========&gt;        ] 422.94M  1.21MB/s    eta 3m 39s
--                    60%[===========&gt;        ] 423.30M  1.23MB/s    eta 3m 38s
--                    60%[===========&gt;        ] 423.55M  1.22MB/s    eta 3m 38s
--                    60%[===========&gt;        ] 423.74M  1.16MB/s    eta 3m 38s
--                    60%[===========&gt;        ] 424.22M  1.19MB/s    eta 3m 38s
--                    61%[===========&gt;        ] 424.56M  1.20MB/s    eta 3m 37s
--                    61%[===========&gt;        ] 424.88M  1.14MB/s    eta 3m 37s
--                    61%[===========&gt;        ] 425.25M  1.16MB/s    eta 3m 37s
--                    61%[===========&gt;        ] 425.62M  1.17MB/s    eta 3m 37s
--                    61%[===========&gt;        ] 426.15M  1.23MB/s    eta 3m 35s
--                    61%[===========&gt;        ] 426.56M  1.24MB/s    eta 3m 35s
--                    61%[===========&gt;        ] 427.00M  1.25MB/s    eta 3m 35s
--                    61%[===========&gt;        ] 427.28M  1.25MB/s    eta 3m 35s
--                    61%[===========&gt;        ] 427.75M  1.28MB/s    eta 3m 34s
--                    61%[===========&gt;        ] 428.13M  1.30MB/s    eta 3m 34s
--                    61%[===========&gt;        ] 428.46M  1.29MB/s    eta 3m 34s
--                    61%[===========&gt;        ] 428.77M  1.33MB/s    eta 3m 34s
--                    61%[===========&gt;        ] 429.09M  1.34MB/s    eta 3m 33s
--                    61%[===========&gt;        ] 429.40M  1.29MB/s    eta 3m 33s
--                    61%[===========&gt;        ] 429.85M  1.30MB/s    eta 3m 33s
--                    61%[===========&gt;        ] 430.19M  1.33MB/s    eta 3m 33s
--                    61%[===========&gt;        ] 430.47M  1.31MB/s    eta 3m 32s
--                    61%[===========&gt;        ] 430.91M  1.30MB/s    eta 3m 32s
--                    61%[===========&gt;        ] 431.16M  1.25MB/s    eta 3m 32s
--                    61%[===========&gt;        ] 431.47M  1.20MB/s    eta 3m 32s
--                    62%[===========&gt;        ] 431.82M  1.20MB/s    eta 3m 31s
--                    62%[===========&gt;        ] 432.10M  1.20MB/s    eta 3m 31s
--                    62%[===========&gt;        ] 432.59M  1.21MB/s    eta 3m 31s
--                    62%[===========&gt;        ] 433.09M  1.24MB/s    eta 3m 31s
--                    62%[===========&gt;        ] 433.39M  1.23MB/s    eta 3m 30s
--                    62%[===========&gt;        ] 433.80M  1.26MB/s    eta 3m 30s
--                    62%[===========&gt;        ] 434.14M  1.25MB/s    eta 3m 30s
--                    62%[===========&gt;        ] 434.42M  1.22MB/s    eta 3m 30s
--                    62%[===========&gt;        ] 434.75M  1.22MB/s    eta 3m 29s
--                    62%[===========&gt;        ] 434.96M  1.20MB/s    eta 3m 29s
--                    62%[===========&gt;        ] 435.32M  1.18MB/s    eta 3m 29s
--                    62%[===========&gt;        ] 435.76M  1.23MB/s    eta 3m 29s
--                    62%[===========&gt;        ] 436.20M  1.25MB/s    eta 3m 27s
--                    62%[===========&gt;        ] 436.54M  1.26MB/s    eta 3m 27s
--                    62%[===========&gt;        ] 436.82M  1.25MB/s    eta 3m 27s
--                    62%[===========&gt;        ] 437.15M  1.25MB/s    eta 3m 27s
--                    62%[===========&gt;        ] 437.45M  1.19MB/s    eta 3m 27s
--                    62%[===========&gt;        ] 437.73M  1.15MB/s    eta 3m 27s
--                    62%[===========&gt;        ] 438.26M  1.19MB/s    eta 3m 27s
--                    63%[===========&gt;        ] 438.57M  1.17MB/s    eta 3m 27s
--                    63%[===========&gt;        ] 439.02M  1.22MB/s    eta 3m 25s
--                    63%[===========&gt;        ] 439.27M  1.20MB/s    eta 3m 25s
--                    63%[===========&gt;        ] 439.63M  1.23MB/s    eta 3m 25s
--                    63%[===========&gt;        ] 439.94M  1.23MB/s    eta 3m 25s
--                    63%[===========&gt;        ] 440.39M  1.22MB/s    eta 3m 24s
--                    63%[===========&gt;        ] 440.77M  1.24MB/s    eta 3m 24s
--                    63%[===========&gt;        ] 441.02M  1.19MB/s    eta 3m 24s
--                    63%[===========&gt;        ] 441.41M  1.23MB/s    eta 3m 24s
--                    63%[===========&gt;        ] 441.72M  1.22MB/s    eta 3m 23s
--                    63%[===========&gt;        ] 442.11M  1.23MB/s    eta 3m 23s
--                    63%[===========&gt;        ] 442.42M  1.24MB/s    eta 3m 23s
--                    63%[===========&gt;        ] 442.72M  1.22MB/s    eta 3m 23s
--                    63%[===========&gt;        ] 442.93M  1.17MB/s    eta 3m 22s
--                    63%[===========&gt;        ] 443.31M  1.18MB/s    eta 3m 22s
--                    63%[===========&gt;        ] 443.59M  1.14MB/s    eta 3m 22s
--                    63%[===========&gt;        ] 443.84M  1.13MB/s    eta 3m 22s
--                    63%[===========&gt;        ] 444.12M  1.12MB/s    eta 3m 21s
--                    63%[===========&gt;        ] 444.43M  1.10MB/s    eta 3m 21s
--                    63%[===========&gt;        ] 444.84M  1.08MB/s    eta 3m 21s
--                    63%[===========&gt;        ] 445.09M  1.09MB/s    eta 3m 21s
--                    64%[===========&gt;        ] 445.43M  1.08MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 445.90M  1.11MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 446.22M  1.12MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 446.47M  1.08MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 446.69M  1.05MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 446.94M  1.06MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 447.19M  1.06MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 447.80M  1.12MB/s    eta 3m 20s
--                    64%[===========&gt;        ] 448.13M  1.13MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 448.38M  1.13MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 448.63M  1.11MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 448.91M  1.09MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 449.19M  1.09MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 449.69M  1.15MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 449.97M  1.08MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 450.29M  1.09MB/s    eta 3m 18s
--                    64%[===========&gt;        ] 450.76M  1.13MB/s    eta 3m 16s
--                    64%[===========&gt;        ] 451.01M  1.14MB/s    eta 3m 16s
--                    64%[===========&gt;        ] 451.39M  1.18MB/s    eta 3m 16s
--                    64%[===========&gt;        ] 451.67M  1.19MB/s    eta 3m 16s
--                    64%[===========&gt;        ] 452.09M  1.19MB/s    eta 3m 15s
--                    65%[============&gt;       ] 452.59M  1.19MB/s    eta 3m 15s
--                    65%[============&gt;       ] 452.88M  1.19MB/s    eta 3m 15s
--                    65%[============&gt;       ] 453.37M  1.26MB/s    eta 3m 15s
--                    65%[============&gt;       ] 453.65M  1.25MB/s    eta 3m 14s
--                    65%[============&gt;       ] 453.96M  1.27MB/s    eta 3m 14s
--                    65%[============&gt;       ] 454.21M  1.25MB/s    eta 3m 14s
--                    65%[============&gt;       ] 454.72M  1.27MB/s    eta 3m 14s
--                    65%[============&gt;       ] 455.10M  1.27MB/s    eta 3m 13s
--                    65%[============&gt;       ] 455.41M  1.28MB/s    eta 3m 13s
--                    65%[============&gt;       ] 455.75M  1.25MB/s    eta 3m 13s
--                    65%[============&gt;       ] 456.03M  1.24MB/s    eta 3m 13s
--                    65%[============&gt;       ] 456.38M  1.25MB/s    eta 3m 12s
--                    65%[============&gt;       ] 456.69M  1.22MB/s    eta 3m 12s
--                    65%[============&gt;       ] 456.94M  1.19MB/s    eta 3m 12s
--                    65%[============&gt;       ] 457.22M  1.15MB/s    eta 3m 12s
--                    65%[============&gt;       ] 457.61M  1.13MB/s    eta 3m 11s
--                    65%[============&gt;       ] 457.95M  1.15MB/s    eta 3m 11s
--                    65%[============&gt;       ] 458.36M  1.17MB/s    eta 3m 11s
--                    65%[============&gt;       ] 458.81M  1.21MB/s    eta 3m 11s
--                    65%[============&gt;       ] 459.15M  1.22MB/s    eta 3m 10s
--                    66%[============&gt;       ] 459.48M  1.17MB/s    eta 3m 10s
--                    66%[============&gt;       ] 459.79M  1.16MB/s    eta 3m 10s
--                    66%[============&gt;       ] 460.20M  1.18MB/s    eta 3m 10s
--                    66%[============&gt;       ] 460.45M  1.17MB/s    eta 3m 9s
--                    66%[============&gt;       ] 460.79M  1.17MB/s    eta 3m 9s
--                    66%[============&gt;       ] 461.13M  1.18MB/s    eta 3m 9s
--                    66%[============&gt;       ] 461.49M  1.20MB/s    eta 3m 9s
--                    66%[============&gt;       ] 462.05M  1.28MB/s    eta 3m 7s
--                    66%[============&gt;       ] 462.38M  1.28MB/s    eta 3m 7s
--                    66%[============&gt;       ] 462.72M  1.28MB/s    eta 3m 7s
--                    66%[============&gt;       ] 463.05M  1.26MB/s    eta 3m 7s
--                    66%[============&gt;       ] 463.55M  1.30MB/s    eta 3m 6s
--                    66%[============&gt;       ] 464.14M  1.32MB/s    eta 3m 6s
--                    66%[============&gt;       ] 464.66M  1.36MB/s    eta 3m 6s
--                    66%[============&gt;       ] 465.02M  1.39MB/s    eta 3m 6s
--                    66%[============&gt;       ] 465.44M  1.41MB/s    eta 3m 5s
--                    66%[============&gt;       ] 465.83M  1.42MB/s    eta 3m 5s
--                    66%[============&gt;       ] 466.11M  1.40MB/s    eta 3m 5s
--                    67%[============&gt;       ] 466.59M  1.45MB/s    eta 3m 5s
--                    67%[============&gt;       ] 466.93M  1.43MB/s    eta 3m 3s
--                    67%[============&gt;       ] 467.26M  1.45MB/s    eta 3m 3s
--                    67%[============&gt;       ] 467.57M  1.37MB/s    eta 3m 3s
--                    67%[============&gt;       ] 468.09M  1.43MB/s    eta 3m 3s
--                    67%[============&gt;       ] 468.37M  1.40MB/s    eta 3m 2s
--                    67%[============&gt;       ] 468.68M  1.38MB/s    eta 3m 2s
--                    67%[============&gt;       ] 468.99M  1.33MB/s    eta 3m 2s
--                    67%[============&gt;       ] 469.30M  1.25MB/s    eta 3m 2s
--                    67%[============&gt;       ] 469.79M  1.28MB/s    eta 3m 1s
--                    67%[============&gt;       ] 470.23M  1.31MB/s    eta 3m 1s
--                    67%[============&gt;       ] 470.57M  1.27MB/s    eta 3m 1s
--                    67%[============&gt;       ] 470.90M  1.27MB/s    eta 3m 1s
--                    67%[============&gt;       ] 471.30M  1.29MB/s    eta 3m 0s
--                    67%[============&gt;       ] 471.58M  1.24MB/s    eta 3m 0s
--                    67%[============&gt;       ] 471.97M  1.26MB/s    eta 3m 0s
--                    67%[============&gt;       ] 472.28M  1.25MB/s    eta 3m 0s
--                    67%[============&gt;       ] 472.67M  1.28MB/s    eta 2m 59s
--                    67%[============&gt;       ] 473.03M  1.24MB/s    eta 2m 59s
--                    68%[============&gt;       ] 473.36M  1.24MB/s    eta 2m 59s
--                    68%[============&gt;       ] 473.64M  1.24MB/s    eta 2m 59s
--                    68%[============&gt;       ] 474.01M  1.25MB/s    eta 2m 58s
--                    68%[============&gt;       ] 474.40M  1.25MB/s    eta 2m 58s
--                    68%[============&gt;       ] 474.89M  1.24MB/s    eta 2m 58s
--                    68%[============&gt;       ] 475.17M  1.22MB/s    eta 2m 58s
--                    68%[============&gt;       ] 475.45M  1.20MB/s    eta 2m 57s
--                    68%[============&gt;       ] 476.20M  1.32MB/s    eta 2m 57s
--                    68%[============&gt;       ] 476.45M  1.28MB/s    eta 2m 57s
--                    68%[============&gt;       ] 476.87M  1.31MB/s    eta 2m 57s
--                    68%[============&gt;       ] 477.12M  1.28MB/s    eta 2m 55s
--                    68%[============&gt;       ] 477.51M  1.30MB/s    eta 2m 55s
--                    68%[============&gt;       ] 477.79M  1.28MB/s    eta 2m 55s
--                    68%[============&gt;       ] 478.12M  1.27MB/s    eta 2m 55s
--                    68%[============&gt;       ] 478.49M  1.28MB/s    eta 2m 54s
--                    68%[============&gt;       ] 478.93M  1.30MB/s    eta 2m 54s
--                    68%[============&gt;       ] 479.15M  1.27MB/s    eta 2m 54s
--                    68%[============&gt;       ] 479.43M  1.25MB/s    eta 2m 54s
--                    68%[============&gt;       ] 479.68M  1.19MB/s    eta 2m 53s
--                    68%[============&gt;       ] 480.05M  1.22MB/s    eta 2m 53s
--                    69%[============&gt;       ] 480.33M  1.19MB/s    eta 2m 53s
--                    69%[============&gt;       ] 480.81M  1.16MB/s    eta 2m 53s
--                    69%[============&gt;       ] 481.14M  1.13MB/s    eta 2m 52s
--                    69%[============&gt;       ] 481.52M  1.16MB/s    eta 2m 52s
--                    69%[============&gt;       ] 481.97M  1.20MB/s    eta 2m 52s
--                    69%[============&gt;       ] 482.47M  1.24MB/s    eta 2m 52s
--                    69%[============&gt;       ] 483.03M  1.31MB/s    eta 2m 50s
--                    69%[============&gt;       ] 483.43M  1.32MB/s    eta 2m 50s
--                    69%[============&gt;       ] 483.75M  1.29MB/s    eta 2m 50s
--                    69%[============&gt;       ] 484.09M  1.31MB/s    eta 2m 50s
--                    69%[============&gt;       ] 484.40M  1.31MB/s    eta 2m 49s
--                    69%[============&gt;       ] 484.74M  1.34MB/s    eta 2m 49s
--                    69%[============&gt;       ] 485.20M  1.38MB/s    eta 2m 49s
--                    69%[============&gt;       ] 485.66M  1.41MB/s    eta 2m 49s
--                    69%[============&gt;       ] 485.91M  1.36MB/s    eta 2m 48s
--                    69%[============&gt;       ] 486.19M  1.35MB/s    eta 2m 48s
--                    69%[============&gt;       ] 486.72M  1.39MB/s    eta 2m 48s
--                    69%[============&gt;       ] 487.04M  1.34MB/s    eta 2m 48s
--                    70%[=============&gt;      ] 487.41M  1.34MB/s    eta 2m 47s
--                    70%[=============&gt;      ] 487.75M  1.25MB/s    eta 2m 47s
--                    70%[=============&gt;      ] 488.10M  1.26MB/s    eta 2m 47s
--                    70%[=============&gt;      ] 488.47M  1.25MB/s    eta 2m 47s
--                    70%[=============&gt;      ] 488.81M  1.25MB/s    eta 2m 46s
--                    70%[=============&gt;      ] 489.14M  1.27MB/s    eta 2m 46s
--                    70%[=============&gt;      ] 489.47M  1.26MB/s    eta 2m 46s
--                    70%[=============&gt;      ] 489.78M  1.22MB/s    eta 2m 46s
--                    70%[=============&gt;      ] 490.09M  1.21MB/s    eta 2m 45s
--                    70%[=============&gt;      ] 490.50M  1.22MB/s    eta 2m 45s
--                    70%[=============&gt;      ] 490.84M  1.23MB/s    eta 2m 45s
--                    70%[=============&gt;      ] 491.20M  1.20MB/s    eta 2m 45s
--                    70%[=============&gt;      ] 491.56M  1.21MB/s    eta 2m 44s
--                    70%[=============&gt;      ] 491.96M  1.21MB/s    eta 2m 44s
--                    70%[=============&gt;      ] 492.42M  1.25MB/s    eta 2m 44s
--                    70%[=============&gt;      ] 492.73M  1.24MB/s    eta 2m 44s
--                    70%[=============&gt;      ] 493.23M  1.27MB/s    eta 2m 42s
--                    70%[=============&gt;      ] 493.51M  1.24MB/s    eta 2m 42s
--                    70%[=============&gt;      ] 493.84M  1.24MB/s    eta 2m 42s
--                    70%[=============&gt;      ] 494.12M  1.24MB/s    eta 2m 42s
--                    71%[=============&gt;      ] 494.43M  1.24MB/s    eta 2m 41s
--                    71%[=============&gt;      ] 494.77M  1.25MB/s    eta 2m 41s
--                    71%[=============&gt;      ] 495.08M  1.23MB/s    eta 2m 41s
--                    71%[=============&gt;      ] 495.33M  1.20MB/s    eta 2m 41s
--                    71%[=============&gt;      ] 495.61M  1.17MB/s    eta 2m 40s
--                    71%[=============&gt;      ] 495.96M  1.19MB/s    eta 2m 40s
--                    71%[=============&gt;      ] 496.24M  1.17MB/s    eta 2m 40s
--                    71%[=============&gt;      ] 496.50M  1.13MB/s    eta 2m 40s
--                    71%[=============&gt;      ] 496.80M  1.07MB/s    eta 2m 39s
--                    71%[=============&gt;      ] 497.36M  1.11MB/s    eta 2m 39s
--                    71%[=============&gt;      ] 497.69M  1.11MB/s    eta 2m 39s
--                    71%[=============&gt;      ] 498.06M  1.13MB/s    eta 2m 39s
--                    71%[=============&gt;      ] 498.39M  1.13MB/s    eta 2m 38s
--                    71%[=============&gt;      ] 498.72M  1.14MB/s    eta 2m 38s
--                    71%[=============&gt;      ] 499.00M  1.14MB/s    eta 2m 38s
--                    71%[=============&gt;      ] 499.25M  1.10MB/s    eta 2m 38s
--                    71%[=============&gt;      ] 499.56M  1.11MB/s    eta 2m 37s
--                    71%[=============&gt;      ] 499.93M  1.15MB/s    eta 2m 37s
--                    71%[=============&gt;      ] 500.21M  1.13MB/s    eta 2m 37s
--                    71%[=============&gt;      ] 500.50M  1.14MB/s    eta 2m 37s
--                    71%[=============&gt;      ] 500.90M  1.16MB/s    eta 2m 36s
--                    72%[=============&gt;      ] 501.24M  1.20MB/s    eta 2m 36s
--                    72%[=============&gt;      ] 501.49M  1.09MB/s    eta 2m 36s
--                    72%[=============&gt;      ] 501.77M  1.09MB/s    eta 2m 36s
--                    72%[=============&gt;      ] 502.13M  1.11MB/s    eta 2m 35s
--                    72%[=============&gt;      ] 502.38M  1.07MB/s    eta 2m 35s
--                    72%[=============&gt;      ] 502.74M  1.08MB/s    eta 2m 35s
--                    72%[=============&gt;      ] 503.27M  1.14MB/s    eta 2m 35s
--                    72%[=============&gt;      ] 503.63M  1.15MB/s    eta 2m 34s
--                    72%[=============&gt;      ] 503.88M  1.15MB/s    eta 2m 34s
--                    72%[=============&gt;      ] 504.24M  1.15MB/s    eta 2m 34s
--                    72%[=============&gt;      ] 504.46M  1.13MB/s    eta 2m 34s
--                    72%[=============&gt;      ] 504.74M  1.13MB/s    eta 2m 33s
--                    72%[=============&gt;      ] 505.02M  1.11MB/s    eta 2m 33s
--                    72%[=============&gt;      ] 505.42M  1.12MB/s    eta 2m 33s
--                    72%[=============&gt;      ] 505.77M  1.14MB/s    eta 2m 33s
--                    72%[=============&gt;      ] 506.19M  1.17MB/s    eta 2m 32s
--                    72%[=============&gt;      ] 506.50M  1.16MB/s    eta 2m 32s
--                    72%[=============&gt;      ] 507.03M  1.23MB/s    eta 2m 32s
--                    72%[=============&gt;      ] 507.34M  1.23MB/s    eta 2m 32s
--                    72%[=============&gt;      ] 507.75M  1.20MB/s    eta 2m 31s
--                    72%[=============&gt;      ] 508.00M  1.18MB/s    eta 2m 31s
--                    73%[=============&gt;      ] 508.40M  1.19MB/s    eta 2m 31s
--                    73%[=============&gt;      ] 508.78M  1.23MB/s    eta 2m 31s
--                    73%[=============&gt;      ] 509.06M  1.20MB/s    eta 2m 30s
--                    73%[=============&gt;      ] 509.31M  1.21MB/s    eta 2m 30s
--                    73%[=============&gt;      ] 509.59M  1.21MB/s    eta 2m 30s
--                    73%[=============&gt;      ] 510.01M  1.25MB/s    eta 2m 30s
--                    73%[=============&gt;      ] 510.26M  1.19MB/s    eta 2m 29s
--                    73%[=============&gt;      ] 510.80M  1.24MB/s    eta 2m 29s
--                    73%[=============&gt;      ] 511.25M  1.26MB/s    eta 2m 29s
--                    73%[=============&gt;      ] 511.54M  1.21MB/s    eta 2m 29s
--                    73%[=============&gt;      ] 511.85M  1.20MB/s    eta 2m 28s
--                    73%[=============&gt;      ] 512.69M  1.31MB/s    eta 2m 28s
--                    73%[=============&gt;      ] 513.00M  1.31MB/s    eta 2m 28s
--                    73%[=============&gt;      ] 513.45M  1.34MB/s    eta 2m 28s
--                    73%[=============&gt;      ] 513.77M  1.35MB/s    eta 2m 26s
--                    73%[=============&gt;      ] 514.11M  1.33MB/s    eta 2m 26s
--                    73%[=============&gt;      ] 514.42M  1.34MB/s    eta 2m 26s
--                    73%[=============&gt;      ] 514.70M  1.36MB/s    eta 2m 26s
--                    73%[=============&gt;      ] 515.01M  1.36MB/s    eta 2m 25s
--                    74%[=============&gt;      ] 515.39M  1.35MB/s    eta 2m 25s
--                    74%[=============&gt;      ] 515.70M  1.36MB/s    eta 2m 25s
--                    74%[=============&gt;      ] 516.12M  1.31MB/s    eta 2m 25s
--                    74%[=============&gt;      ] 516.50M  1.31MB/s    eta 2m 24s
--                    74%[=============&gt;      ] 516.82M  1.33MB/s    eta 2m 24s
--                    74%[=============&gt;      ] 517.07M  1.22MB/s    eta 2m 24s
--                    74%[=============&gt;      ] 517.52M  1.22MB/s    eta 2m 24s
--                    74%[=============&gt;      ] 517.85M  1.21MB/s    eta 2m 23s
--                    74%[=============&gt;      ] 518.10M  1.16MB/s    eta 2m 23s
--                    74%[=============&gt;      ] 518.44M  1.16MB/s    eta 2m 23s
--                    74%[=============&gt;      ] 519.01M  1.22MB/s    eta 2m 23s
--                    74%[=============&gt;      ] 519.38M  1.24MB/s    eta 2m 22s
--                    74%[=============&gt;      ] 519.75M  1.25MB/s    eta 2m 22s
--                    74%[=============&gt;      ] 520.16M  1.25MB/s    eta 2m 22s
--                    74%[=============&gt;      ] 520.38M  1.25MB/s    eta 2m 22s
--                    74%[=============&gt;      ] 520.72M  1.22MB/s    eta 2m 20s
--                    74%[=============&gt;      ] 521.16M  1.25MB/s    eta 2m 20s
--                    74%[=============&gt;      ] 521.47M  1.24MB/s    eta 2m 20s
--                    74%[=============&gt;      ] 521.75M  1.24MB/s    eta 2m 20s
--                    75%[==============&gt;     ] 522.22M  1.27MB/s    eta 2m 19s
--                    75%[==============&gt;     ] 522.44M  1.23MB/s    eta 2m 19s
--                    75%[==============&gt;     ] 522.75M  1.22MB/s    eta 2m 19s
--                    75%[==============&gt;     ] 523.00M  1.21MB/s    eta 2m 19s
--                    75%[==============&gt;     ] 523.31M  1.18MB/s    eta 2m 18s
--                    75%[==============&gt;     ] 523.73M  1.16MB/s    eta 2m 18s
--                    75%[==============&gt;     ] 524.17M  1.20MB/s    eta 2m 18s
--                    75%[==============&gt;     ] 524.46M  1.17MB/s    eta 2m 18s
--                    75%[==============&gt;     ] 524.78M  1.15MB/s    eta 2m 17s
--                    75%[==============&gt;     ] 525.09M  1.16MB/s    eta 2m 17s
--                    75%[==============&gt;     ] 525.46M  1.18MB/s    eta 2m 17s
--                    75%[==============&gt;     ] 525.84M  1.16MB/s    eta 2m 17s
--                    75%[==============&gt;     ] 526.12M  1.15MB/s    eta 2m 16s
--                    75%[==============&gt;     ] 526.52M  1.15MB/s    eta 2m 16s
--                    75%[==============&gt;     ] 526.90M  1.17MB/s    eta 2m 16s
--                    75%[==============&gt;     ] 527.21M  1.18MB/s    eta 2m 16s
--                    75%[==============&gt;     ] 527.57M  1.21MB/s    eta 2m 15s
--                    75%[==============&gt;     ] 527.99M  1.25MB/s    eta 2m 15s
--                    75%[==============&gt;     ] 528.38M  1.26MB/s    eta 2m 15s
--                    75%[==============&gt;     ] 528.82M  1.28MB/s    eta 2m 15s
--                    76%[==============&gt;     ] 529.06M  1.21MB/s    eta 2m 14s
--                    76%[==============&gt;     ] 529.58M  1.28MB/s    eta 2m 14s
--                    76%[==============&gt;     ] 529.89M  1.28MB/s    eta 2m 14s
--                    76%[==============&gt;     ] 530.16M  1.27MB/s    eta 2m 14s
--                    76%[==============&gt;     ] 530.53M  1.24MB/s    eta 2m 13s
--                    76%[==============&gt;     ] 530.87M  1.26MB/s    eta 2m 13s
--                    76%[==============&gt;     ] 531.19M  1.26MB/s    eta 2m 13s
--                    76%[==============&gt;     ] 531.43M  1.21MB/s    eta 2m 13s
--                    76%[==============&gt;     ] 531.83M  1.22MB/s    eta 2m 12s
--                    76%[==============&gt;     ] 532.20M  1.23MB/s    eta 2m 12s
--                    76%[==============&gt;     ] 532.53M  1.24MB/s    eta 2m 12s
--                    76%[==============&gt;     ] 532.93M  1.23MB/s    eta 2m 12s
--                    76%[==============&gt;     ] 533.21M  1.21MB/s    eta 2m 11s
--                    76%[==============&gt;     ] 533.49M  1.17MB/s    eta 2m 11s
--                    76%[==============&gt;     ] 533.87M  1.20MB/s    eta 2m 11s
--                    76%[==============&gt;     ] 534.20M  1.14MB/s    eta 2m 11s
--                    76%[==============&gt;     ] 534.54M  1.17MB/s    eta 2m 10s
--                    76%[==============&gt;     ] 534.88M  1.16MB/s    eta 2m 10s
--                    76%[==============&gt;     ] 535.22M  1.16MB/s    eta 2m 10s
--                    76%[==============&gt;     ] 535.58M  1.17MB/s    eta 2m 10s
--                    76%[==============&gt;     ] 535.83M  1.16MB/s    eta 2m 9s
--                    77%[==============&gt;     ] 536.08M  1.14MB/s    eta 2m 9s
--                    77%[==============&gt;     ] 536.44M  1.13MB/s    eta 2m 9s
--                    77%[==============&gt;     ] 536.78M  1.14MB/s    eta 2m 9s
--                    77%[==============&gt;     ] 537.16M  1.16MB/s    eta 2m 7s
--                    77%[==============&gt;     ] 537.45M  1.13MB/s    eta 2m 7s
--                    77%[==============&gt;     ] 538.06M  1.21MB/s    eta 2m 7s
--                    77%[==============&gt;     ] 538.39M  1.23MB/s    eta 2m 7s
--                    77%[==============&gt;     ] 538.90M  1.26MB/s    eta 2m 6s
--                    77%[==============&gt;     ] 539.43M  1.30MB/s    eta 2m 6s
--                    77%[==============&gt;     ] 539.72M  1.28MB/s    eta 2m 6s
--                    77%[==============&gt;     ] 540.07M  1.29MB/s    eta 2m 6s
--                    77%[==============&gt;     ] 540.29M  1.27MB/s    eta 2m 5s
--                    77%[==============&gt;     ] 540.82M  1.32MB/s    eta 2m 5s
--                    77%[==============&gt;     ] 541.10M  1.31MB/s    eta 2m 5s
--                    77%[==============&gt;     ] 541.32M  1.32MB/s    eta 2m 5s
--                    77%[==============&gt;     ] 541.70M  1.31MB/s    eta 2m 4s
--                    77%[==============&gt;     ] 542.10M  1.32MB/s    eta 2m 4s
--                    77%[==============&gt;     ] 542.38M  1.31MB/s    eta 2m 4s
--                    77%[==============&gt;     ] 542.76M  1.29MB/s    eta 2m 4s
--                    78%[==============&gt;     ] 543.08M  1.25MB/s    eta 2m 3s
--                    78%[==============&gt;     ] 543.47M  1.28MB/s    eta 2m 3s
--                    78%[==============&gt;     ] 543.83M  1.18MB/s    eta 2m 3s
--                    78%[==============&gt;     ] 544.30M  1.22MB/s    eta 2m 3s
--                    78%[==============&gt;     ] 544.64M  1.23MB/s    eta 2m 1s
--                    78%[==============&gt;     ] 544.94M  1.24MB/s    eta 2m 1s
--                    78%[==============&gt;     ] 545.27M  1.21MB/s    eta 2m 1s
--                    78%[==============&gt;     ] 545.59M  1.20MB/s    eta 2m 1s
--                    78%[==============&gt;     ] 545.94M  1.20MB/s    eta 2m 0s
--                    78%[==============&gt;     ] 546.33M  1.26MB/s    eta 2m 0s
--                    78%[==============&gt;     ] 546.67M  1.22MB/s    eta 2m 0s
--                    78%[==============&gt;     ] 547.09M  1.25MB/s    eta 2m 0s
--                    78%[==============&gt;     ] 547.50M  1.28MB/s    eta 1m 59s
--                    78%[==============&gt;     ] 547.79M  1.26MB/s    eta 1m 59s
--                    78%[==============&gt;     ] 548.28M  1.28MB/s    eta 1m 59s
--                    78%[==============&gt;     ] 548.70M  1.29MB/s    eta 1m 59s
--                    78%[==============&gt;     ] 549.03M  1.25MB/s    eta 1m 58s
--                    78%[==============&gt;     ] 549.42M  1.28MB/s    eta 1m 58s
--                    78%[==============&gt;     ] 549.70M  1.27MB/s    eta 1m 58s
--                    79%[==============&gt;     ] 550.04M  1.27MB/s    eta 1m 58s
--                    79%[==============&gt;     ] 550.35M  1.27MB/s    eta 1m 57s
--                    79%[==============&gt;     ] 550.66M  1.26MB/s    eta 1m 57s
--                    79%[==============&gt;     ] 550.91M  1.20MB/s    eta 1m 57s
--                    79%[==============&gt;     ] 551.44M  1.28MB/s    eta 1m 57s
--                    79%[==============&gt;     ] 551.69M  1.25MB/s    eta 1m 56s
--                    79%[==============&gt;     ] 551.99M  1.20MB/s    eta 1m 56s
--                    79%[==============&gt;     ] 552.29M  1.20MB/s    eta 1m 56s
--                    79%[==============&gt;     ] 552.64M  1.18MB/s    eta 1m 56s
--                    79%[==============&gt;     ] 552.94M  1.13MB/s    eta 1m 55s
--                    79%[==============&gt;     ] 553.31M  1.14MB/s    eta 1m 55s
--                    79%[==============&gt;     ] 553.66M  1.14MB/s    eta 1m 55s
--                    79%[==============&gt;     ] 554.25M  1.22MB/s    eta 1m 55s
--                    79%[==============&gt;     ] 554.58M  1.22MB/s    eta 1m 53s
--                    79%[==============&gt;     ] 555.08M  1.25MB/s    eta 1m 53s
--                    79%[==============&gt;     ] 555.58M  1.30MB/s    eta 1m 53s
--                    79%[==============&gt;     ] 555.90M  1.32MB/s    eta 1m 53s
--                    79%[==============&gt;     ] 556.39M  1.37MB/s    eta 1m 52s
--                    79%[==============&gt;     ] 556.78M  1.34MB/s    eta 1m 52s
--                    80%[===============&gt;    ] 557.03M  1.34MB/s    eta 1m 52s
--                    80%[===============&gt;    ] 557.38M  1.36MB/s    eta 1m 52s
--                    80%[===============&gt;    ] 557.70M  1.33MB/s    eta 1m 51s
--                    80%[===============&gt;    ] 558.20M  1.39MB/s    eta 1m 51s
--                    80%[===============&gt;    ] 558.45M  1.38MB/s    eta 1m 51s
--                    80%[===============&gt;    ] 559.01M  1.43MB/s    eta 1m 51s
--                    80%[===============&gt;    ] 559.49M  1.44MB/s    eta 1m 49s
--                    80%[===============&gt;    ] 559.83M  1.39MB/s    eta 1m 49s
--                    80%[===============&gt;    ] 560.11M  1.37MB/s    eta 1m 49s
--                    80%[===============&gt;    ] 560.55M  1.36MB/s    eta 1m 49s
--                    80%[===============&gt;    ] 560.91M  1.33MB/s    eta 1m 48s
--                    80%[===============&gt;    ] 561.28M  1.30MB/s    eta 1m 48s
--                    80%[===============&gt;    ] 561.66M  1.32MB/s    eta 1m 48s
--                    80%[===============&gt;    ] 561.97M  1.31MB/s    eta 1m 48s
--                    80%[===============&gt;    ] 562.45M  1.34MB/s    eta 1m 47s
--                    80%[===============&gt;    ] 562.76M  1.35MB/s    eta 1m 47s
--                    80%[===============&gt;    ] 563.15M  1.35MB/s    eta 1m 47s
--                    80%[===============&gt;    ] 563.50M  1.33MB/s    eta 1m 47s
--                    81%[===============&gt;    ] 563.75M  1.31MB/s    eta 1m 46s
--                    81%[===============&gt;    ] 563.97M  1.19MB/s    eta 1m 46s
--                    81%[===============&gt;    ] 564.40M  1.23MB/s    eta 1m 46s
--                    81%[===============&gt;    ] 564.73M  1.22MB/s    eta 1m 46s
--                    81%[===============&gt;    ] 565.07M  1.21MB/s    eta 1m 45s
--                    81%[===============&gt;    ] 565.32M  1.20MB/s    eta 1m 45s
--                    81%[===============&gt;    ] 565.57M  1.15MB/s    eta 1m 45s
--                    81%[===============&gt;    ] 565.96M  1.16MB/s    eta 1m 45s
--                    81%[===============&gt;    ] 566.34M  1.17MB/s    eta 1m 44s
--                    81%[===============&gt;    ] 566.62M  1.12MB/s    eta 1m 44s
--                    81%[===============&gt;    ] 567.21M  1.18MB/s    eta 1m 44s
--                    81%[===============&gt;    ] 567.54M  1.20MB/s    eta 1m 44s
--                    81%[===============&gt;    ] 567.85M  1.17MB/s    eta 1m 43s
--                    81%[===============&gt;    ] 568.36M  1.22MB/s    eta 1m 43s
--                    81%[===============&gt;    ] 568.82M  1.27MB/s    eta 1m 43s
--                    81%[===============&gt;    ] 569.30M  1.32MB/s    eta 1m 43s
--                    81%[===============&gt;    ] 569.78M  1.35MB/s    eta 1m 41s
--                    81%[===============&gt;    ] 570.09M  1.33MB/s    eta 1m 41s
--                    81%[===============&gt;    ] 570.45M  1.35MB/s    eta 1m 41s
--                    82%[===============&gt;    ] 570.78M  1.38MB/s    eta 1m 41s
--                    82%[===============&gt;    ] 571.14M  1.39MB/s    eta 1m 40s
--                    82%[===============&gt;    ] 571.47M  1.38MB/s    eta 1m 40s
--                    82%[===============&gt;    ] 571.81M  1.37MB/s    eta 1m 40s
--                    82%[===============&gt;    ] 572.14M  1.32MB/s    eta 1m 40s
--                    82%[===============&gt;    ] 572.50M  1.32MB/s    eta 99s
--                    82%[===============&gt;    ] 573.00M  1.37MB/s    eta 99s
--                    82%[===============&gt;    ] 573.28M  1.31MB/s    eta 99s
--                    82%[===============&gt;    ] 573.59M  1.28MB/s    eta 99s
--                    82%[===============&gt;    ] 573.96M  1.28MB/s    eta 98s
--                    82%[===============&gt;    ] 574.27M  1.21MB/s    eta 98s
--                    82%[===============&gt;    ] 574.74M  1.24MB/s    eta 98s
--                    82%[===============&gt;    ] 575.18M  1.26MB/s    eta 98s
--                    82%[===============&gt;    ] 575.43M  1.24MB/s    eta 97s
--                    82%[===============&gt;    ] 575.90M  1.29MB/s    eta 97s
--                    82%[===============&gt;    ] 576.22M  1.25MB/s    eta 97s
--                    82%[===============&gt;    ] 576.55M  1.28MB/s    eta 97s
--                    82%[===============&gt;    ] 577.14M  1.33MB/s    eta 95s
--                    82%[===============&gt;    ] 577.49M  1.33MB/s    eta 95s
--                    83%[===============&gt;    ] 577.94M  1.36MB/s    eta 95s
--                    83%[===============&gt;    ] 578.41M  1.36MB/s    eta 95s
--                    83%[===============&gt;    ] 579.16M  1.47MB/s    eta 93s
--                    83%[===============&gt;    ] 579.61M  1.50MB/s    eta 93s
--                    83%[===============&gt;    ] 579.98M  1.51MB/s    eta 93s
--                    83%[===============&gt;    ] 580.23M  1.47MB/s    eta 93s
--                    83%[===============&gt;    ] 580.68M  1.45MB/s    eta 92s
--                    83%[===============&gt;    ] 581.09M  1.50MB/s    eta 92s
--                    83%[===============&gt;    ] 581.34M  1.48MB/s    eta 92s
--                    83%[===============&gt;    ] 581.59M  1.42MB/s    eta 92s
--                    83%[===============&gt;    ] 582.02M  1.45MB/s    eta 91s
--                    83%[===============&gt;    ] 582.34M  1.45MB/s    eta 91s
--                    83%[===============&gt;    ] 582.94M  1.45MB/s    eta 91s
--                    83%[===============&gt;    ] 583.30M  1.46MB/s    eta 91s
--                    83%[===============&gt;    ] 583.60M  1.40MB/s    eta 90s
--                    83%[===============&gt;    ] 583.93M  1.31MB/s    eta 90s
--                    83%[===============&gt;    ] 584.29M  1.27MB/s    eta 90s
--                    83%[===============&gt;    ] 584.60M  1.23MB/s    eta 90s
--                    84%[===============&gt;    ] 584.97M  1.25MB/s    eta 89s
--                    84%[===============&gt;    ] 585.32M  1.27MB/s    eta 89s
--                    84%[===============&gt;    ] 585.72M  1.26MB/s    eta 89s
--                    84%[===============&gt;    ] 586.13M  1.27MB/s    eta 89s
--                    84%[===============&gt;    ] 586.48M  1.29MB/s    eta 88s
--                    84%[===============&gt;    ] 586.84M  1.30MB/s    eta 88s
--                    84%[===============&gt;    ] 587.30M  1.32MB/s    eta 88s
--                    84%[===============&gt;    ] 587.72M  1.32MB/s    eta 88s
--                    84%[===============&gt;    ] 588.20M  1.31MB/s    eta 86s
--                    84%[===============&gt;    ] 588.53M  1.31MB/s    eta 86s
--                    84%[===============&gt;    ] 588.92M  1.32MB/s    eta 86s
--                    84%[===============&gt;    ] 589.32M  1.35MB/s    eta 86s
--                    84%[===============&gt;    ] 589.82M  1.38MB/s    eta 85s
--                    84%[===============&gt;    ] 590.18M  1.37MB/s    eta 85s
--                    84%[===============&gt;    ] 590.57M  1.40MB/s    eta 85s
--                    84%[===============&gt;    ] 590.90M  1.41MB/s    eta 85s
--                    84%[===============&gt;    ] 591.24M  1.35MB/s    eta 84s
--                    84%[===============&gt;    ] 591.55M  1.35MB/s    eta 84s
--                    85%[================&gt;   ] 591.88M  1.35MB/s    eta 84s
--                    85%[================&gt;   ] 592.33M  1.36MB/s    eta 84s
--                    85%[================&gt;   ] 592.88M  1.37MB/s    eta 82s
--                    85%[================&gt;   ] 593.21M  1.34MB/s    eta 82s
--                    85%[================&gt;   ] 593.60M  1.35MB/s    eta 82s
--                    85%[================&gt;   ] 594.08M  1.37MB/s    eta 82s
--                    85%[================&gt;   ] 594.48M  1.36MB/s    eta 81s
--                    85%[================&gt;   ] 594.94M  1.38MB/s    eta 81s
--                    85%[================&gt;   ] 595.28M  1.37MB/s    eta 81s
--                    85%[================&gt;   ] 595.69M  1.36MB/s    eta 81s
--                    85%[================&gt;   ] 596.01M  1.35MB/s    eta 80s
--                    85%[================&gt;   ] 596.34M  1.35MB/s    eta 80s
--                    85%[================&gt;   ] 596.65M  1.35MB/s    eta 80s
--                    85%[================&gt;   ] 597.00M  1.36MB/s    eta 80s
--                    85%[================&gt;   ] 597.51M  1.41MB/s    eta 79s
--                    85%[================&gt;   ] 597.85M  1.32MB/s    eta 79s
--                    85%[================&gt;   ] 598.40M  1.37MB/s    eta 79s
--                    86%[================&gt;   ] 598.73M  1.37MB/s    eta 79s
--                    86%[================&gt;   ] 598.95M  1.34MB/s    eta 77s
--                    86%[================&gt;   ] 599.44M  1.32MB/s    eta 77s
--                    86%[================&gt;   ] 599.69M  1.29MB/s    eta 77s
--                    86%[================&gt;   ] 599.94M  1.26MB/s    eta 77s
--                    86%[================&gt;   ] 600.16M  1.19MB/s    eta 77s
--                    86%[================&gt;   ] 600.66M  1.24MB/s    eta 77s
--                    86%[================&gt;   ] 601.22M  1.30MB/s    eta 77s
--                    86%[================&gt;   ] 601.50M  1.29MB/s    eta 77s
--                    86%[================&gt;   ] 601.85M  1.28MB/s    eta 75s
--                    86%[================&gt;   ] 602.17M  1.24MB/s    eta 75s
--                    86%[================&gt;   ] 602.62M  1.28MB/s    eta 75s
--                    86%[================&gt;   ] 603.01M  1.27MB/s    eta 75s
--                    86%[================&gt;   ] 603.41M  1.25MB/s    eta 74s
--                    86%[================&gt;   ] 603.81M  1.29MB/s    eta 74s
--                    86%[================&gt;   ] 604.20M  1.32MB/s    eta 74s
--                    86%[================&gt;   ] 604.51M  1.27MB/s    eta 74s
--                    86%[================&gt;   ] 604.76M  1.27MB/s    eta 73s
--                    86%[================&gt;   ] 605.17M  1.32MB/s    eta 73s
--                    86%[================&gt;   ] 605.46M  1.28MB/s    eta 73s
--                    87%[================&gt;   ] 606.01M  1.33MB/s    eta 73s
--                    87%[================&gt;   ] 606.43M  1.31MB/s    eta 71s
--                    87%[================&gt;   ] 606.80M  1.32MB/s    eta 71s
--                    87%[================&gt;   ] 607.08M  1.31MB/s    eta 71s
--                    87%[================&gt;   ] 607.41M  1.27MB/s    eta 71s
--                    87%[================&gt;   ] 607.82M  1.30MB/s    eta 70s
--                    87%[================&gt;   ] 608.04M  1.23MB/s    eta 70s
--                    87%[================&gt;   ] 608.36M  1.24MB/s    eta 70s
--                    87%[================&gt;   ] 608.74M  1.20MB/s    eta 70s
--                    87%[================&gt;   ] 609.05M  1.21MB/s    eta 69s
--                    87%[================&gt;   ] 609.33M  1.22MB/s    eta 69s
--                    87%[================&gt;   ] 610.03M  1.32MB/s    eta 69s
--                    87%[================&gt;   ] 610.34M  1.29MB/s    eta 69s
--                    87%[================&gt;   ] 610.62M  1.27MB/s    eta 68s
--                    87%[================&gt;   ] 611.39M  1.32MB/s    eta 68s
--                    87%[================&gt;   ] 611.76M  1.32MB/s    eta 68s
--                    87%[================&gt;   ] 612.04M  1.32MB/s    eta 68s
--                    87%[================&gt;   ] 612.36M  1.32MB/s    eta 67s
--                    88%[================&gt;   ] 612.64M  1.27MB/s    eta 67s
--                    88%[================&gt;   ] 612.96M  1.29MB/s    eta 67s
--                    88%[================&gt;   ] 613.29M  1.31MB/s    eta 67s
--                    88%[================&gt;   ] 613.57M  1.29MB/s    eta 66s
--                    88%[================&gt;   ] 614.10M  1.35MB/s    eta 66s
--                    88%[================&gt;   ] 614.46M  1.35MB/s    eta 66s
--                    88%[================&gt;   ] 614.82M  1.28MB/s    eta 66s
--                    88%[================&gt;   ] 615.13M  1.27MB/s    eta 65s
--                    88%[================&gt;   ] 615.43M  1.28MB/s    eta 65s
--                    88%[================&gt;   ] 615.79M  1.26MB/s    eta 65s
--                    88%[================&gt;   ] 616.30M  1.22MB/s    eta 65s
--                    88%[================&gt;   ] 616.64M  1.22MB/s    eta 63s
--                    88%[================&gt;   ] 616.99M  1.23MB/s    eta 63s
--                    88%[================&gt;   ] 617.27M  1.23MB/s    eta 63s
--                    88%[================&gt;   ] 617.67M  1.25MB/s    eta 63s
--                    88%[================&gt;   ] 618.11M  1.27MB/s    eta 62s
--                    88%[================&gt;   ] 618.41M  1.29MB/s    eta 62s
--                    88%[================&gt;   ] 618.78M  1.27MB/s    eta 62s
--                    88%[================&gt;   ] 619.11M  1.24MB/s    eta 62s
--                    89%[================&gt;   ] 619.70M  1.31MB/s    eta 61s
--                    89%[================&gt;   ] 620.11M  1.33MB/s    eta 61s
--                    89%[================&gt;   ] 620.42M  1.32MB/s    eta 61s
--                    89%[================&gt;   ] 620.70M  1.31MB/s    eta 61s
--                    89%[================&gt;   ] 621.09M  1.32MB/s    eta 60s
--                    89%[================&gt;   ] 621.39M  1.28MB/s    eta 60s
--                    89%[================&gt;   ] 621.68M  1.23MB/s    eta 60s
--                    89%[================&gt;   ] 621.90M  1.23MB/s    eta 60s
--                    89%[================&gt;   ] 622.18M  1.23MB/s    eta 59s
--                    89%[================&gt;   ] 622.70M  1.22MB/s    eta 59s
--                    89%[================&gt;   ] 623.10M  1.25MB/s    eta 59s
--                    89%[================&gt;   ] 623.43M  1.24MB/s    eta 59s
--                    89%[================&gt;   ] 623.90M  1.27MB/s    eta 58s
--                    89%[================&gt;   ] 624.21M  1.22MB/s    eta 58s
--                    89%[================&gt;   ] 624.55M  1.18MB/s    eta 58s
--                    89%[================&gt;   ] 625.14M  1.26MB/s    eta 58s
--                    89%[================&gt;   ] 625.58M  1.29MB/s    eta 56s
--                    89%[================&gt;   ] 625.91M  1.28MB/s    eta 56s
--                    89%[================&gt;   ] 626.31M  1.29MB/s    eta 56s
--                    90%[=================&gt;  ] 626.70M  1.35MB/s    eta 56s
--                    90%[=================&gt;  ] 626.98M  1.33MB/s    eta 55s
--                    90%[=================&gt;  ] 627.31M  1.36MB/s    eta 55s
--                    90%[=================&gt;  ] 627.66M  1.37MB/s    eta 55s
--                    90%[=================&gt;  ] 628.03M  1.31MB/s    eta 55s
--                    90%[=================&gt;  ] 628.43M  1.33MB/s    eta 54s
--                    90%[=================&gt;  ] 628.76M  1.33MB/s    eta 54s
--                    90%[=================&gt;  ] 629.07M  1.29MB/s    eta 54s
--                    90%[=================&gt;  ] 629.50M  1.31MB/s    eta 54s
--                    90%[=================&gt;  ] 629.85M  1.27MB/s    eta 53s
--                    90%[=================&gt;  ] 630.15M  1.22MB/s    eta 53s
--                    90%[=================&gt;  ] 630.63M  1.26MB/s    eta 53s
--                    90%[=================&gt;  ] 630.96M  1.24MB/s    eta 53s
--                    90%[=================&gt;  ] 631.27M  1.23MB/s    eta 52s
--                    90%[=================&gt;  ] 631.58M  1.22MB/s    eta 52s
--                    90%[=================&gt;  ] 631.80M  1.20MB/s    eta 52s
--                    90%[=================&gt;  ] 632.12M  1.19MB/s    eta 52s
--                    90%[=================&gt;  ] 632.57M  1.23MB/s    eta 51s
--                    90%[=================&gt;  ] 632.82M  1.18MB/s    eta 51s
--                    90%[=================&gt;  ] 633.11M  1.16MB/s    eta 51s
--                    91%[=================&gt;  ] 633.46M  1.17MB/s    eta 51s
--                    91%[=================&gt;  ] 633.92M  1.19MB/s    eta 50s
--                    91%[=================&gt;  ] 634.17M  1.16MB/s    eta 50s
--                    91%[=================&gt;  ] 634.56M  1.18MB/s    eta 50s
--                    91%[=================&gt;  ] 634.92M  1.18MB/s    eta 50s
--                    91%[=================&gt;  ] 635.37M  1.18MB/s    eta 48s
--                    91%[=================&gt;  ] 635.69M  1.17MB/s    eta 48s
--                    91%[=================&gt;  ] 636.28M  1.26MB/s    eta 48s
--                    91%[=================&gt;  ] 636.68M  1.29MB/s    eta 48s
--                    91%[=================&gt;  ] 637.20M  1.35MB/s    eta 47s
--                    91%[=================&gt;  ] 637.62M  1.36MB/s    eta 47s
--                    91%[=================&gt;  ] 637.95M  1.35MB/s    eta 47s
--                    91%[=================&gt;  ] 638.40M  1.42MB/s    eta 47s
--                    91%[=================&gt;  ] 638.73M  1.41MB/s    eta 46s
--                    91%[=================&gt;  ] 639.04M  1.38MB/s    eta 46s
--                    91%[=================&gt;  ] 639.43M  1.38MB/s    eta 46s
--                    91%[=================&gt;  ] 639.76M  1.40MB/s    eta 46s
--                    91%[=================&gt;  ] 640.01M  1.35MB/s    eta 45s
--                    92%[=================&gt;  ] 640.36M  1.36MB/s    eta 45s
--                    92%[=================&gt;  ] 640.79M  1.35MB/s    eta 45s
--                    92%[=================&gt;  ] 641.24M  1.38MB/s    eta 45s
--                    92%[=================&gt;  ] 641.58M  1.33MB/s    eta 43s
--                    92%[=================&gt;  ] 641.88M  1.26MB/s    eta 43s
--                    92%[=================&gt;  ] 642.27M  1.27MB/s    eta 43s
--                    92%[=================&gt;  ] 642.59M  1.25MB/s    eta 43s
--                    92%[=================&gt;  ] 642.88M  1.23MB/s    eta 42s
--                    92%[=================&gt;  ] 643.25M  1.20MB/s    eta 42s
--                    92%[=================&gt;  ] 643.56M  1.20MB/s    eta 42s
--                    92%[=================&gt;  ] 643.84M  1.18MB/s    eta 42s
--                    92%[=================&gt;  ] 644.14M  1.17MB/s    eta 41s
--                    92%[=================&gt;  ] 644.42M  1.18MB/s    eta 41s
--                    92%[=================&gt;  ] 644.76M  1.17MB/s    eta 41s
--                    92%[=================&gt;  ] 645.23M  1.18MB/s    eta 41s
--                    92%[=================&gt;  ] 645.56M  1.18MB/s    eta 40s
--                    92%[=================&gt;  ] 645.85M  1.15MB/s    eta 40s
--                    92%[=================&gt;  ] 646.29M  1.17MB/s    eta 40s
--                    92%[=================&gt;  ] 646.62M  1.18MB/s    eta 40s
--                    92%[=================&gt;  ] 647.04M  1.19MB/s    eta 39s
--                    93%[=================&gt;  ] 647.37M  1.20MB/s    eta 39s
--                    93%[=================&gt;  ] 648.01M  1.26MB/s    eta 39s
--                    93%[=================&gt;  ] 648.30M  1.25MB/s    eta 39s
--                    93%[=================&gt;  ] 648.80M  1.31MB/s    eta 38s
--                    93%[=================&gt;  ] 649.36M  1.40MB/s    eta 38s
--                    93%[=================&gt;  ] 649.61M  1.37MB/s    eta 38s
--                    93%[=================&gt;  ] 649.86M  1.35MB/s    eta 38s
--                    93%[=================&gt;  ] 650.31M  1.37MB/s    eta 36s
--                    93%[=================&gt;  ] 650.66M  1.35MB/s    eta 36s
--                    93%[=================&gt;  ] 651.03M  1.38MB/s    eta 36s
--                    93%[=================&gt;  ] 651.36M  1.39MB/s    eta 36s
--                    93%[=================&gt;  ] 651.61M  1.33MB/s    eta 35s
--                    93%[=================&gt;  ] 651.94M  1.31MB/s    eta 35s
--                    93%[=================&gt;  ] 652.25M  1.30MB/s    eta 35s
--                    93%[=================&gt;  ] 652.70M  1.29MB/s    eta 35s
--                    93%[=================&gt;  ] 653.07M  1.27MB/s    eta 34s
--                    93%[=================&gt;  ] 653.39M  1.23MB/s    eta 34s
--                    93%[=================&gt;  ] 653.88M  1.25MB/s    eta 34s
--                    94%[=================&gt;  ] 654.34M  1.25MB/s    eta 34s
--                    94%[=================&gt;  ] 654.73M  1.29MB/s    eta 33s
--                    94%[=================&gt;  ] 655.15M  1.29MB/s    eta 33s
--                    94%[=================&gt;  ] 655.49M  1.29MB/s    eta 33s
--                    94%[=================&gt;  ] 656.08M  1.35MB/s    eta 33s
--                    94%[=================&gt;  ] 656.55M  1.37MB/s    eta 31s
--                    94%[=================&gt;  ] 656.97M  1.42MB/s    eta 31s
--                    94%[=================&gt;  ] 657.22M  1.40MB/s    eta 31s
--                    94%[=================&gt;  ] 657.55M  1.42MB/s    eta 31s
--                    94%[=================&gt;  ] 657.86M  1.39MB/s    eta 30s
--                    94%[=================&gt;  ] 658.27M  1.40MB/s    eta 30s
--                    94%[=================&gt;  ] 658.66M  1.39MB/s    eta 30s
--                    94%[=================&gt;  ] 658.98M  1.40MB/s    eta 30s
--                    94%[=================&gt;  ] 659.27M  1.31MB/s    eta 29s
--                    94%[=================&gt;  ] 659.59M  1.32MB/s    eta 29s
--                    94%[=================&gt;  ] 659.84M  1.28MB/s    eta 29s
--                    94%[=================&gt;  ] 660.26M  1.29MB/s    eta 29s
--                    94%[=================&gt;  ] 660.72M  1.27MB/s    eta 28s
--                    94%[=================&gt;  ] 661.00M  1.22MB/s    eta 28s
--                    95%[==================&gt; ] 661.56M  1.25MB/s    eta 28s
--                    95%[==================&gt; ] 662.10M  1.29MB/s    eta 28s
--                    95%[==================&gt; ] 662.35M  1.27MB/s    eta 27s
--                    95%[==================&gt; ] 662.60M  1.27MB/s    eta 27s
--                    95%[==================&gt; ] 662.95M  1.27MB/s    eta 27s
--                    95%[==================&gt; ] 663.48M  1.29MB/s    eta 27s
--                    95%[==================&gt; ] 663.97M  1.33MB/s    eta 25s
--                    95%[==================&gt; ] 664.37M  1.36MB/s    eta 25s
--                    95%[==================&gt; ] 664.75M  1.37MB/s    eta 25s
--                    95%[==================&gt; ] 665.14M  1.40MB/s    eta 25s
--                    95%[==================&gt; ] 665.36M  1.38MB/s    eta 24s
--                    95%[==================&gt; ] 665.61M  1.30MB/s    eta 24s
--                    95%[==================&gt; ] 665.96M  1.31MB/s    eta 24s
--                    95%[==================&gt; ] 666.17M  1.27MB/s    eta 24s
--                    95%[==================&gt; ] 666.42M  1.20MB/s    eta 24s
--                    95%[==================&gt; ] 666.88M  1.20MB/s    eta 24s
--                    95%[==================&gt; ] 667.30M  1.23MB/s    eta 24s
--                    95%[==================&gt; ] 667.55M  1.22MB/s    eta 24s
--                    95%[==================&gt; ] 667.81M  1.19MB/s    eta 22s
--                    96%[==================&gt; ] 668.19M  1.16MB/s    eta 22s
--                    96%[==================&gt; ] 668.78M  1.19MB/s    eta 22s
--                    96%[==================&gt; ] 669.32M  1.25MB/s    eta 22s
--                    96%[==================&gt; ] 669.64M  1.18MB/s    eta 21s
--                    96%[==================&gt; ] 670.15M  1.27MB/s    eta 21s
--                    96%[==================&gt; ] 670.51M  1.29MB/s    eta 21s
--                    96%[==================&gt; ] 670.92M  1.33MB/s    eta 21s
--                    96%[==================&gt; ] 671.23M  1.32MB/s    eta 20s
--                    96%[==================&gt; ] 671.60M  1.37MB/s    eta 20s
--                    96%[==================&gt; ] 672.12M  1.39MB/s    eta 20s
--                    96%[==================&gt; ] 672.54M  1.39MB/s    eta 20s
--                    96%[==================&gt; ] 672.96M  1.42MB/s    eta 18s
--                    96%[==================&gt; ] 673.24M  1.44MB/s    eta 18s
--                    96%[==================&gt; ] 673.49M  1.41MB/s    eta 18s
--                    96%[==================&gt; ] 674.00M  1.40MB/s    eta 18s
--                    96%[==================&gt; ] 674.25M  1.33MB/s    eta 17s
--                    96%[==================&gt; ] 674.53M  1.31MB/s    eta 17s
--                    96%[==================&gt; ] 674.91M  1.30MB/s    eta 17s
--                    97%[==================&gt; ] 675.19M  1.25MB/s    eta 17s
--                    97%[==================&gt; ] 675.56M  1.25MB/s    eta 16s
--                    97%[==================&gt; ] 676.04M  1.28MB/s    eta 16s
--                    97%[==================&gt; ] 676.40M  1.29MB/s    eta 16s
--                    97%[==================&gt; ] 676.87M  1.26MB/s    eta 16s
--                    97%[==================&gt; ] 677.28M  1.28MB/s    eta 15s
--                    97%[==================&gt; ] 677.62M  1.29MB/s    eta 15s
--                    97%[==================&gt; ] 677.90M  1.23MB/s    eta 15s
--                    97%[==================&gt; ] 678.12M  1.23MB/s    eta 15s
--                    97%[==================&gt; ] 678.63M  1.25MB/s    eta 14s
--                    97%[==================&gt; ] 679.07M  1.27MB/s    eta 14s
--                    97%[==================&gt; ] 679.38M  1.28MB/s    eta 14s
--                    97%[==================&gt; ] 679.80M  1.30MB/s    eta 14s
--                    97%[==================&gt; ] 680.21M  1.32MB/s    eta 13s
--                    97%[==================&gt; ] 680.46M  1.31MB/s    eta 13s
--                    97%[==================&gt; ] 681.10M  1.38MB/s    eta 13s
--                    97%[==================&gt; ] 681.49M  1.35MB/s    eta 13s
--                    98%[==================&gt; ] 682.22M  1.46MB/s    eta 11s
--                    98%[==================&gt; ] 682.59M  1.43MB/s    eta 11s
--                    98%[==================&gt; ] 682.88M  1.41MB/s    eta 11s
--                    98%[==================&gt; ] 683.20M  1.41MB/s    eta 11s
--                    98%[==================&gt; ] 683.72M  1.46MB/s    eta 10s
--                    98%[==================&gt; ] 684.37M  1.58MB/s    eta 10s
--                    98%[==================&gt; ] 684.79M  1.51MB/s    eta 10s
--                    98%[==================&gt; ] 685.11M  1.52MB/s    eta 10s
--                    98%[==================&gt; ] 685.36M  1.46MB/s    eta 8s
--                    98%[==================&gt; ] 685.64M  1.44MB/s    eta 8s
--                    98%[==================&gt; ] 685.92M  1.43MB/s    eta 8s
--                    98%[==================&gt; ] 686.46M  1.46MB/s    eta 8s
--                    98%[==================&gt; ] 686.87M  1.42MB/s    eta 7s
--                    98%[==================&gt; ] 687.16M  1.33MB/s    eta 7s
--                    98%[==================&gt; ] 687.45M  1.31MB/s    eta 7s
--                    98%[==================&gt; ] 687.87M  1.32MB/s    eta 7s
--                    98%[==================&gt; ] 688.12M  1.30MB/s    eta 6s
--                    98%[==================&gt; ] 688.40M  1.25MB/s    eta 6s
--                    98%[==================&gt; ] 688.65M  1.22MB/s    eta 6s
--                    99%[==================&gt; ] 689.11M  1.15MB/s    eta 6s
--                    99%[==================&gt; ] 689.46M  1.16MB/s    eta 5s
--                    99%[==================&gt; ] 690.02M  1.24MB/s    eta 5s
--                    99%[==================&gt; ] 690.41M  1.26MB/s    eta 5s
--                    99%[==================&gt; ] 690.81M  1.30MB/s    eta 5s
--                    99%[==================&gt; ] 691.16M  1.27MB/s    eta 4s
--                    99%[==================&gt; ] 691.56M  1.26MB/s    eta 4s
--                    99%[==================&gt; ] 691.86M  1.24MB/s    eta 4s
--                    99%[==================&gt; ] 692.14M  1.25MB/s    eta 4s
--                    99%[==================&gt; ] 692.62M  1.28MB/s    eta 3s
--                    99%[==================&gt; ] 692.84M  1.26MB/s    eta 3s
--                    99%[==================&gt; ] 693.31M  1.30MB/s    eta 3s
--                    99%[==================&gt; ] 693.56M  1.30MB/s    eta 3s
--                    99%[==================&gt; ] 693.84M  1.27MB/s    eta 2s
--                    99%[==================&gt; ] 694.09M  1.23MB/s    eta 2s
--                    99%[==================&gt; ] 694.37M  1.19MB/s    eta 2s
--                    99%[==================&gt; ] 694.67M  1.15MB/s    eta 2s
--                    99%[==================&gt; ] 694.98M  1.12MB/s    eta 1s
--                    99%[==================&gt; ] 695.32M  1.12MB/s    eta 1s
--                    99%[==================&gt; ] 695.65M  1.12MB/s    eta 1s
--                   100%[===================&gt;] 695.97M  1.15MB/s    in 9m 14s  
+-                     0%[                    ]  48.86K   240KB/s
+-                     0%[                    ] 238.73K   487KB/s
+-                     0%[                    ] 690.10K   889KB/s
+-                     0%[                    ]   1.55M  1.46MB/s
+-                     0%[                    ]   3.15M  2.49MB/s
+-                     0%[                    ]   6.15M  4.19MB/s
+-                     1%[                    ]  10.90M  6.52MB/s
+-                     2%[                    ]  16.89M  9.00MB/s
+-                     3%[                    ]  23.91M  11.5MB/s
+-                     4%[                    ]  31.41M  13.8MB/s
+-                     5%[&gt;                   ]  38.90M  15.6MB/s
+-                     6%[&gt;                   ]  46.90M  17.4MB/s
+-                     7%[&gt;                   ]  52.90M  18.3MB/s
+-                     8%[&gt;                   ]  60.38M  19.5MB/s    eta 33s
+-                     9%[&gt;                   ]  67.90M  20.6MB/s    eta 33s
+-                    10%[=&gt;                  ]  74.40M  21.3MB/s    eta 33s
+-                    11%[=&gt;                  ]  81.91M  24.7MB/s    eta 33s
+-                    12%[=&gt;                  ]  88.39M  26.5MB/s    eta 33s
+-                    13%[=&gt;                  ]  96.41M  28.7MB/s    eta 26s
+-                    14%[=&gt;                  ] 103.91M  32.2MB/s    eta 26s
+-                    15%[==&gt;                 ] 110.65M  33.6MB/s    eta 26s
+-                    16%[==&gt;                 ] 116.40M  34.2MB/s    eta 26s
+-                    17%[==&gt;                 ] 124.65M  35.4MB/s    eta 26s
+-                    19%[==&gt;                 ] 132.65M  35.5MB/s    eta 22s
+-                    20%[===&gt;                ] 139.90M  35.6MB/s    eta 22s
+-                    21%[===&gt;                ] 147.90M  35.8MB/s    eta 22s
+-                    22%[===&gt;                ] 154.90M  35.5MB/s    eta 22s
+-                    23%[===&gt;                ] 162.90M  35.9MB/s    eta 22s
+-                    24%[===&gt;                ] 169.16M  35.7MB/s    eta 19s
+-                    25%[====&gt;               ] 175.16M  35.3MB/s    eta 19s
+-                    26%[====&gt;               ] 181.90M  35.1MB/s    eta 19s
+-                    27%[====&gt;               ] 189.15M  35.2MB/s    eta 19s
+-                    28%[====&gt;               ] 197.15M  35.8MB/s    eta 19s
+-                    29%[====&gt;               ] 204.65M  35.7MB/s    eta 17s
+-                    30%[=====&gt;              ] 212.65M  35.9MB/s    eta 17s
+-                    31%[=====&gt;              ] 220.40M  36.2MB/s    eta 17s
+-                    32%[=====&gt;              ] 227.90M  36.3MB/s    eta 17s
+-                    33%[=====&gt;              ] 235.65M  36.6MB/s    eta 17s
+-                    34%[=====&gt;              ] 243.15M  36.4MB/s    eta 15s
+-                    35%[======&gt;             ] 249.64M  36.1MB/s    eta 15s
+-                    36%[======&gt;             ] 257.16M  36.1MB/s    eta 15s
+-                    38%[======&gt;             ] 264.88M  35.7MB/s    eta 15s
+-                    39%[======&gt;             ] 271.83M  35.4MB/s    eta 15s
+-                    40%[=======&gt;            ] 278.63M  35.5MB/s    eta 14s
+-                    40%[=======&gt;            ] 284.65M  35.6MB/s    eta 14s
+-                    41%[=======&gt;            ] 291.40M  35.4MB/s    eta 14s
+-                    42%[=======&gt;            ] 298.16M  35.4MB/s    eta 14s
+-                    43%[=======&gt;            ] 304.64M  35.1MB/s    eta 14s
+-                    44%[=======&gt;            ] 310.90M  34.7MB/s    eta 13s
+-                    45%[========&gt;           ] 317.90M  34.5MB/s    eta 13s
+-                    46%[========&gt;           ] 325.40M  34.3MB/s    eta 13s
+-                    47%[========&gt;           ] 332.65M  34.1MB/s    eta 13s
+-                    48%[========&gt;           ] 339.15M  34.0MB/s    eta 13s
+-                    49%[========&gt;           ] 346.91M  33.9MB/s    eta 11s
+-                    50%[=========&gt;          ] 354.66M  34.3MB/s    eta 11s
+-                    52%[=========&gt;          ] 362.41M  34.2MB/s    eta 11s
+-                    53%[=========&gt;          ] 369.91M  34.2MB/s    eta 11s
+-                    54%[=========&gt;          ] 377.66M  34.9MB/s    eta 11s
+-                    55%[==========&gt;         ] 385.16M  34.8MB/s    eta 10s
+-                    56%[==========&gt;         ] 392.91M  35.2MB/s    eta 10s
+-                    57%[==========&gt;         ] 400.89M  35.8MB/s    eta 10s
+-                    58%[==========&gt;         ] 408.64M  36.1MB/s    eta 10s
+-                    59%[==========&gt;         ] 415.91M  36.6MB/s    eta 10s
+-                    60%[===========&gt;        ] 423.66M  36.8MB/s    eta 9s
+-                    61%[===========&gt;        ] 431.40M  37.0MB/s    eta 9s
+-                    63%[===========&gt;        ] 439.15M  37.2MB/s    eta 9s
+-                    64%[===========&gt;        ] 446.90M  37.3MB/s    eta 9s
+-                    65%[============&gt;       ] 454.65M  37.7MB/s    eta 9s
+-                    66%[============&gt;       ] 461.90M  37.8MB/s    eta 7s
+-                    67%[============&gt;       ] 468.15M  37.2MB/s    eta 7s
+-                    68%[============&gt;       ] 474.16M  36.8MB/s    eta 7s
+-                    69%[============&gt;       ] 482.08M  36.8MB/s    eta 7s
+-                    70%[=============&gt;      ] 489.38M  36.7MB/s    eta 7s
+-                    71%[=============&gt;      ] 496.97M  36.7MB/s    eta 6s
+-                    72%[=============&gt;      ] 504.66M  36.7MB/s    eta 6s
+-                    73%[=============&gt;      ] 512.16M  36.6MB/s    eta 6s
+-                    74%[=============&gt;      ] 520.15M  36.8MB/s    eta 6s
+-                    75%[==============&gt;     ] 527.90M  36.8MB/s    eta 6s
+-                    76%[==============&gt;     ] 535.65M  36.8MB/s    eta 5s
+-                    78%[==============&gt;     ] 543.40M  36.9MB/s    eta 5s
+-                    79%[==============&gt;     ] 551.15M  36.9MB/s    eta 5s
+-                    80%[===============&gt;    ] 558.90M  36.6MB/s    eta 5s
+-                    81%[===============&gt;    ] 566.65M  36.8MB/s    eta 5s
+-                    82%[===============&gt;    ] 574.40M  36.9MB/s    eta 4s
+-                    83%[===============&gt;    ] 582.15M  37.6MB/s    eta 4s
+-                    84%[===============&gt;    ] 589.65M  37.7MB/s    eta 4s
+-                    85%[================&gt;   ] 597.40M  38.1MB/s    eta 4s
+-                    86%[================&gt;   ] 605.15M  38.1MB/s    eta 4s
+-                    87%[================&gt;   ] 612.15M  37.9MB/s    eta 3s
+-                    89%[================&gt;   ] 619.90M  38.0MB/s    eta 3s
+-                    90%[=================&gt;  ] 627.64M  37.9MB/s    eta 3s
+-                    91%[=================&gt;  ] 635.41M  38.0MB/s    eta 3s
+-                    92%[=================&gt;  ] 643.16M  38.0MB/s    eta 3s
+-                    93%[=================&gt;  ] 650.91M  37.9MB/s    eta 1s
+-                    94%[=================&gt;  ] 658.66M  37.9MB/s    eta 1s
+-                    95%[==================&gt; ] 666.66M  38.0MB/s    eta 1s
+-                    96%[==================&gt; ] 674.16M  37.9MB/s    eta 1s
+-                    97%[==================&gt; ] 681.66M  37.8MB/s    eta 1s
+-                    99%[==================&gt; ] 689.41M  37.8MB/s    eta 0s
+-                   100%[===================&gt;] 695.97M  38.1MB/s    in 21s     
 
-2026-05-07 16:04:11 (1.26 MB/s) - written to stdout [729782870/729782870]
+2026-05-14 14:26:25 (33.9 MB/s) - written to stdout [729782870/729782870]
 </pre></div>
 </div>
 <div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/usr/lib/python3.12/pty.py:95: RuntimeWarning: os.fork() was called. os.fork() is incompatible with multithreaded code, and JAX is multithreaded, so this will likely lead to a deadlock.
@@ -163685,7 +161962,7 @@ Loading 33 local datasets in &#39;data/gapflow_training_mol&#39;.
 - 3adb390c-3fb1-4aaf-82f6-060c583c9ec4 (20260225_134301_mol-032)
 - 4bc51e82-b605-4780-88d3-3a018eb61e6d (20260225_130434_mol-029)
                                                             
-   Writing output into: data/2026-05-07_160414_cosine_mol
+   Writing output into: data/2026-05-14_142628_cosine_mol
 </pre></div>
 </div>
 </div>
@@ -163762,12 +162039,12 @@ Step   Timestep   Time       CFL        Residual
 19500  2.8919e+01 5.6390e+05 5.0000e-01 3.8368e-06
 20000  2.8921e+01 5.7836e+05 5.0000e-01 3.8121e-06
 =================================
-Total walltime   : 0:13:09
-(25.33 steps/s)
+Total walltime   : 0:10:33
+(31.59 steps/s)
  - GP train (zz) : 0:00:00
- - GP infer (zz) : 0:01:19
+ - GP infer (zz) : 0:01:03
  - GP train (xz) : 0:00:00
- - GP infer (xz) : 0:01:56
+ - GP infer (xz) : 0:01:33
 =================================
 </pre></div>
 </div>
@@ -163966,42 +162243,42 @@ input[type=range].anim-slider {
 </style>
 
 <div class="animation">
-  <img id="_anim_img2788f0ee17114bacbd5926437de3bbb8">
+  <img id="_anim_img8b9f27f49a264812ab0edbba31421f42">
   <div class="anim-controls">
-    <input id="_anim_slider2788f0ee17114bacbd5926437de3bbb8" type="range" class="anim-slider"
+    <input id="_anim_slider8b9f27f49a264812ab0edbba31421f42" type="range" class="anim-slider"
            name="points" min="0" max="1" step="1" value="0"
-           oninput="anim2788f0ee17114bacbd5926437de3bbb8.set_frame(parseInt(this.value));">
+           oninput="anim8b9f27f49a264812ab0edbba31421f42.set_frame(parseInt(this.value));">
     <div class="anim-buttons">
-      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim2788f0ee17114bacbd5926437de3bbb8.slower()">
+      <button title="Decrease speed" aria-label="Decrease speed" onclick="anim8b9f27f49a264812ab0edbba31421f42.slower()">
           <i class="fa fa-minus"></i></button>
-      <button title="First frame" aria-label="First frame" onclick="anim2788f0ee17114bacbd5926437de3bbb8.first_frame()">
+      <button title="First frame" aria-label="First frame" onclick="anim8b9f27f49a264812ab0edbba31421f42.first_frame()">
         <i class="fa fa-fast-backward"></i></button>
-      <button title="Previous frame" aria-label="Previous frame" onclick="anim2788f0ee17114bacbd5926437de3bbb8.previous_frame()">
+      <button title="Previous frame" aria-label="Previous frame" onclick="anim8b9f27f49a264812ab0edbba31421f42.previous_frame()">
           <i class="fa fa-step-backward"></i></button>
-      <button title="Play backwards" aria-label="Play backwards" onclick="anim2788f0ee17114bacbd5926437de3bbb8.reverse_animation()">
+      <button title="Play backwards" aria-label="Play backwards" onclick="anim8b9f27f49a264812ab0edbba31421f42.reverse_animation()">
           <i class="fa fa-play fa-flip-horizontal"></i></button>
-      <button title="Pause" aria-label="Pause" onclick="anim2788f0ee17114bacbd5926437de3bbb8.pause_animation()">
+      <button title="Pause" aria-label="Pause" onclick="anim8b9f27f49a264812ab0edbba31421f42.pause_animation()">
           <i class="fa fa-pause"></i></button>
-      <button title="Play" aria-label="Play" onclick="anim2788f0ee17114bacbd5926437de3bbb8.play_animation()">
+      <button title="Play" aria-label="Play" onclick="anim8b9f27f49a264812ab0edbba31421f42.play_animation()">
           <i class="fa fa-play"></i></button>
-      <button title="Next frame" aria-label="Next frame" onclick="anim2788f0ee17114bacbd5926437de3bbb8.next_frame()">
+      <button title="Next frame" aria-label="Next frame" onclick="anim8b9f27f49a264812ab0edbba31421f42.next_frame()">
           <i class="fa fa-step-forward"></i></button>
-      <button title="Last frame" aria-label="Last frame" onclick="anim2788f0ee17114bacbd5926437de3bbb8.last_frame()">
+      <button title="Last frame" aria-label="Last frame" onclick="anim8b9f27f49a264812ab0edbba31421f42.last_frame()">
           <i class="fa fa-fast-forward"></i></button>
-      <button title="Increase speed" aria-label="Increase speed" onclick="anim2788f0ee17114bacbd5926437de3bbb8.faster()">
+      <button title="Increase speed" aria-label="Increase speed" onclick="anim8b9f27f49a264812ab0edbba31421f42.faster()">
           <i class="fa fa-plus"></i></button>
     </div>
-    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select2788f0ee17114bacbd5926437de3bbb8"
+    <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select8b9f27f49a264812ab0edbba31421f42"
           class="anim-state">
-      <input type="radio" name="state" value="once" id="_anim_radio1_2788f0ee17114bacbd5926437de3bbb8"
+      <input type="radio" name="state" value="once" id="_anim_radio1_8b9f27f49a264812ab0edbba31421f42"
              >
-      <label for="_anim_radio1_2788f0ee17114bacbd5926437de3bbb8">Once</label>
-      <input type="radio" name="state" value="loop" id="_anim_radio2_2788f0ee17114bacbd5926437de3bbb8"
+      <label for="_anim_radio1_8b9f27f49a264812ab0edbba31421f42">Once</label>
+      <input type="radio" name="state" value="loop" id="_anim_radio2_8b9f27f49a264812ab0edbba31421f42"
              checked>
-      <label for="_anim_radio2_2788f0ee17114bacbd5926437de3bbb8">Loop</label>
-      <input type="radio" name="state" value="reflect" id="_anim_radio3_2788f0ee17114bacbd5926437de3bbb8"
+      <label for="_anim_radio2_8b9f27f49a264812ab0edbba31421f42">Loop</label>
+      <input type="radio" name="state" value="reflect" id="_anim_radio3_8b9f27f49a264812ab0edbba31421f42"
              >
-      <label for="_anim_radio3_2788f0ee17114bacbd5926437de3bbb8">Reflect</label>
+      <label for="_anim_radio3_8b9f27f49a264812ab0edbba31421f42">Reflect</label>
     </form>
   </div>
 </div>
@@ -164011,9 +162288,9 @@ input[type=range].anim-slider {
   /* Instantiate the Animation class. */
   /* The IDs given should match those used in the template above. */
   (function() {
-    var img_id = "_anim_img2788f0ee17114bacbd5926437de3bbb8";
-    var slider_id = "_anim_slider2788f0ee17114bacbd5926437de3bbb8";
-    var loop_select_id = "_anim_loop_select2788f0ee17114bacbd5926437de3bbb8";
+    var img_id = "_anim_img8b9f27f49a264812ab0edbba31421f42";
+    var slider_id = "_anim_slider8b9f27f49a264812ab0edbba31421f42";
+    var loop_select_id = "_anim_loop_select8b9f27f49a264812ab0edbba31421f42";
     var frames = new Array(41);
     
   frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABaAAAALQCAYAAABmJdeHAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -244059,7 +242336,7 @@ IlHx/wHdgeJ7F2CFvAAAAABJRU5ErkJggg==\
     /* set a timeout to make sure all the above elements are created before
        the object is initialized. */
     setTimeout(function() {
-        anim2788f0ee17114bacbd5926437de3bbb8 = new Animation(frames, img_id, slider_id, 100.0,
+        anim8b9f27f49a264812ab0edbba31421f42 = new Animation(frames, img_id, slider_id, 100.0,
                                  loop_select_id);
     }, 0);
   })()
