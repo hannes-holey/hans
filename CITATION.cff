@@ -1,0 +1,34 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Huber
+  given-names: Christoph
+  orcid: "https://orcid.org/0009-0003-3034-0364"
+- family-names: Holey
+  given-names: Hannes
+  orcid: "https://orcid.org/0000-0002-4547-8791"
+doi: 10.5281/zenodo.20021529
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Huber
+    given-names: Christoph
+    orcid: "https://orcid.org/0009-0003-3034-0364"
+  - family-names: Holey
+    given-names: Hannes
+    orcid: "https://orcid.org/0000-0002-4547-8791"
+  date-published: 2026-05-13
+  doi: 10.21105/joss.09645
+  issn: 2475-9066
+  issue: 121
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 9645
+  title: "GaPFlow: Gap-averaged flow simulations with Gaussian process
+    regression"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.09645"
+  volume: 11
+title: "GaPFlow: Gap-averaged flow simulations with Gaussian process
+  regression"

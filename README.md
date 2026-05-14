@@ -1,6 +1,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/GaPFlow)](https://pypi.org/project/GaPFlow/)
 [![Tests](https://github.com/hannes-holey/GaPFlow/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/hannes-holey/GaPFlow/actions/workflows/test.yaml)
 [![Coverage](https://gist.githubusercontent.com/hannes-holey/fac7fa61e1899b1e74b3bab598fe6513/raw/badge.svg)](https://github.com/hannes-holey/GaPFlow/actions/workflows/test.yaml)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.09645/status.svg)](https://doi.org/10.21105/joss.09645)
 
 # GaPFlow
 *Gap-averaged flow simulations with Gaussian Process regression.*
