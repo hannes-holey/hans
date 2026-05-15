@@ -59,11 +59,11 @@ def journal_bearing(xx, grid, geo):
     Lx = grid['Lx']
     freq = 2. * np.pi / Lx
 
-    if 'CR' and 'eps' in geo.keys():
+    if 'CR' in geo.keys() and 'eps' in geo.keys():
         shift = geo['CR'] / freq
         amp = geo['eps'] * shift
 
-    elif 'hmin' and 'hmax' in geo.keys():
+    elif 'hmin' in geo.keys() and 'hmax' in geo.keys():
         amp = (geo['hmax'] - geo['hmin']) / 2.
         shift = (geo['hmax'] + geo['hmin']) / 2.
 

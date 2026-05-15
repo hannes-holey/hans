@@ -237,10 +237,10 @@ def sanitize_geometry(d):
         raise IOError("Specify a valid geometry type")
 
     if out['type'] == 'journal':
-        if "CR" and 'eps' in d.keys():
+        if "CR" in d.keys() and 'eps' in d.keys():
             out["CR"] = float(d.get("CR"))
             out["eps"] = float(d.get("eps"))
-        elif "hmin" and 'hmax' in d.keys():
+        elif "hmin" in d.keys() and 'hmax' in d.keys():
             out["hmin"] = float(d.get("hmin"))
             out["hmax"] = float(d.get("hmax"))
         else:
