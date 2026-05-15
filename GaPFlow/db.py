@@ -327,7 +327,7 @@ class Database:
         """
 
         init_method = self._db['init_method']
-        init_width = self._db['init_width']
+        init_halfwidth = self._db['init_halfwidth']
         init_seed = self._db['init_seed']
         init_size = self._db['init_size']
 
@@ -338,21 +338,17 @@ class Database:
             logger.info("Generate new training data in %s", self.training_path)
 
             if dim == 1:
-                flux = jnp.mean(Xtest[:, 1])
                 active = jnp.array([0, 1])
             else:
-                flux = jnp.hypot(jnp.mean(Xtest[:, 1]), jnp.mean(Xtest[:, 2]))
                 active = jnp.array([0, 1, 2])
 
-            rho = jnp.mean(Xtest[:, 0])
-
-            l_bounds = jnp.array([(1.0 - init_width) * rho,
-                                  0.5 * flux,
-                                  -0.5 * flux])[active]
-
-            u_bounds = jnp.array([(1.0 + init_width) * rho,
-                                  1.5 * flux,
-                                  0.5 * flux])[active]
+            central_values = jnp.mean(Xtest, axis=0)
+            ref_values = jnp.array([central_values[0],
+                                    jnp.hypot(central_values[1], central_values[2]),
+                                    jnp.hypot(central_values[1], central_values[2])])[active]
+            half_widths = jnp.array(init_halfwidth)[active]
+            l_bounds = central_values[active] - half_widths * ref_values
+            u_bounds = central_values[active] + half_widths * ref_values
 
             key = jr.key(init_seed)
             key, subkey = jr.split(key)
