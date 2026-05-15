@@ -407,20 +407,23 @@ def sanitize_gp(d):
         if active:
             out[sk] = {}
             ds = d[sk]
-            out[sk]['atol'] = float(ds.get('atol', 1.))
-            out[sk]['rtol'] = float(ds.get('rtol', 0.))
             out[sk]['obs_stddev'] = float(ds.get('obs_stddev', 0.))
             out[sk]['fix_noise'] = bool(ds.get('fix_noise', True))
             out[sk]['max_steps'] = int(ds.get('max_steps', 5))
-            out[sk]['pause_steps'] = int(ds.get('pause_steps', 100))
+            out[sk]['pause_steps'] = int(ds.get('pause_steps', 1000))
             out[sk]['active_learning'] = bool(ds.get('active_learning', True))
-            out[sk]['similarity_check'] = bool(ds.get('similarity_check', True))
+            out[sk]['similarity_check'] = bool(ds.get('similarity_check', False))
             out[sk]['allowed_skips'] = int(ds.get('allowed_skips', 0))
             out[sk]['perturb_target'] = bool(ds.get('perturb_target', False))
             out[sk]['pause_on_high_residual'] = bool(ds.get('pause_on_high_residual', False))
 
-            out[sk]['tolerance_protocol'] = ds.get('tolerance_protocol', 'atol_rtol_delta')
-            assert out[sk]['tolerance_protocol'] in ['atol_rtol_delta', 'atol_sigmoid']
+            out[sk]['tolerance_protocol'] = ds.get('tolerance_protocol', 'rtol_delta')
+            assert out[sk]['tolerance_protocol'] in ['rtol_delta', 'sigmoid', 'linear']
+            out[sk]['atol'] = float(ds.get('atol', 1.))
+            out[sk]['rtol'] = float(ds.get('rtol', 0.))
+            out[sk]['atol_reduction_factor'] = float(ds.get('atol_reduction_factor', 0.5))
+            out[sk]['tol_rmid'] = float(ds.get('tol_rmid', 1e-6))
+            out[sk]['tol_alpha'] = float(ds.get('tol_alpha', 2.))
 
             # For shear/2D: need to distinguish (x and y)
             if sk == 'press':

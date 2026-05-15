@@ -68,6 +68,9 @@ class GaussianProcessSurrogate:
     tolerance_protocol: str
     rtol: float
     atol: float
+    atol_reduction_factor: float
+    tol_rmid: float
+    tol_alpha: float
     max_steps: int
     pause_steps: int
     similarity_check: bool
@@ -467,28 +470,34 @@ class GaussianProcessSurrogate:
         ----------
         m : jax.Array
             Predictive mean
+        residual : jax.Array
+            Current residual, used by the sigmoid and linear tolerance protocols.
 
         Returns
         -------
-        float
-            Maximum allowed tolerance
+        jax.Array
+            Maximum allowed variance tolerance
         """
 
         noise = self.Yerr * self.Yscale
         atol = self.atol * noise  # "lower bound", multiple of observation noise
 
-        if self.tolerance_protocol == 'atol_rtol_delta':
+        if self.tolerance_protocol == 'rtol_delta':
             delta = jnp.max(m) - jnp.min(m)
             rtol = self.rtol * delta
             std_tol = jnp.maximum(atol, rtol)
 
-        elif self.tolerance_protocol == 'atol_sigmoid':
-            def tolerance(r, rmid=1e-6, t0=10., t1=5., alpha=2.):
-                return -(t1 - t0) / (1. + jnp.exp(-alpha * jnp.log(r / rmid))) + t1
-
+        elif self.tolerance_protocol == 'sigmoid':
             atol_init = atol
-            atol_final = 0.5 * atol
-            std_tol = tolerance(residual, t0=atol_init, t1=atol_final)
+            atol_final = self.atol_reduction_factor * atol
+            x = self.tol_alpha * jnp.log(residual / self.tol_rmid)
+            std_tol = atol_final + (atol_init - atol_final) / (1. + jnp.exp(-x))
+
+        elif self.tolerance_protocol == 'linear':
+            atol_init = atol
+            atol_final = self.atol_reduction_factor * atol
+            x = jnp.clip(self.tol_alpha * jnp.log(residual / self.tol_rmid), -1., 1.)
+            std_tol = atol_final + (atol_init - atol_final) * (x + 1.) / 2.
 
         else:
             raise RuntimeError('No tolerance calculation configured.')
