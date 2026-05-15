@@ -704,18 +704,18 @@ class Problem:
         `self.grid`. This mutates the solution field `self.__field.p`.
         """
         # x0 (left)
-        if all(self.grid["bc_xE_P"]):
+        if np.all(self.grid["bc_xW_P"]):
             self.__field.p[:, 0, :] = self.__field.p[:, -2, :].copy()
         else:
-            self.__field.p[self.grid["bc_xE_D"], :1, :] = self._get_ghost_cell_values("D", axis=0, direction=-1)
-            self.__field.p[self.grid["bc_xE_N"], :1, :] = self._get_ghost_cell_values("N", axis=0, direction=-1)
+            self.__field.p[self.grid["bc_xW_D"], :1, :] = self._get_ghost_cell_values("D", axis=0, direction=-1)
+            self.__field.p[self.grid["bc_xW_N"], :1, :] = self._get_ghost_cell_values("N", axis=0, direction=-1)
 
         # x1 (right)
-        if np.all(self.grid["bc_xW_P"]):
+        if np.all(self.grid["bc_xE_P"]):
             self.__field.p[:, -1, :] = self.__field.p[:, 1, :].copy()
         else:
-            self.__field.p[self.grid["bc_xW_D"], -1:, :] = self._get_ghost_cell_values("D", axis=0, direction=1)
-            self.__field.p[self.grid["bc_xW_N"], -1:, :] = self._get_ghost_cell_values("N", axis=0, direction=1)
+            self.__field.p[self.grid["bc_xE_D"], -1:, :] = self._get_ghost_cell_values("D", axis=0, direction=1)
+            self.__field.p[self.grid["bc_xE_N"], -1:, :] = self._get_ghost_cell_values("N", axis=0, direction=1)
 
         # y0 (bottom)
         if np.all(self.grid["bc_yS_P"]):
@@ -770,12 +770,12 @@ class Problem:
 
         elif axis == 1:  # y-axis
             if direction > 0:  # downstream
-                mask = self.grid[f"bc_yS_{bc_type}"]
-                q_target = self.grid["bc_yS_D_val"]
-                q_adj = self.__field.p[mask, :, -(num_ghost + num_ghost): -num_ghost]
-            else:  # upstream
                 mask = self.grid[f"bc_yN_{bc_type}"]
                 q_target = self.grid["bc_yN_D_val"]
+                q_adj = self.__field.p[mask, :, -(num_ghost + num_ghost): -num_ghost]
+            else:  # upstream
+                mask = self.grid[f"bc_yS_{bc_type}"]
+                q_target = self.grid["bc_yS_D_val"]
                 q_adj = self.__field.p[mask, :, num_ghost: num_ghost + num_ghost]
         else:
             raise RuntimeError("axis must be either 0 (x) or 1 (y)")
