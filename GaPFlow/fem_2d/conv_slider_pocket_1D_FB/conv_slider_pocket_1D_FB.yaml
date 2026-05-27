@@ -74,9 +74,12 @@ fem_solver:
         inertia: true
         lap_pressure: false
         lap_theta: false
-        theta_stab: true
+        upwind_theta: false
+        oss_theta: true
     lap_theta_alpha: 1e-8
-    theta_stab_alpha: 0.0001
+    theta_stab: false
+    oss_theta_alpha: 1.0
+    oss_correction_alpha: 1.0
     max_iter: 5
     R_norm_tol: 1e-9
     newton_debug: False

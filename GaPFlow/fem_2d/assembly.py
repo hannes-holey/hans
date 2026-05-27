@@ -69,8 +69,8 @@ class AssemblyTemplate:
 # Residual, Variable
 BLOCK = (('p', 'p'), ('p', 'v'), ('v', 'p'), ('v', 'v'))
 DOF_GRID = {
-    'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p', 'fb': 'p',
-    'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p',
+    'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p', 'fb': 'p', 'xi': 'p',
+    'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p', 'R_oss': 'p',
 }
 DOF_IDX = {
     'jx': 0, 'jy': 1, 'p': 2, 'E': 3,
@@ -464,46 +464,51 @@ class Assembly:
 
     def build_assembly_templates(self, terms) -> None:
         """Precompute injection templates for all (res, var, deriv_key) combinations.
-        deriv_key = (depvar_deriv, testfun_deriv) from term.deriv_key.
+        deriv_key = (depvar_deriv, testfun_deriv) from term.depvar_deriv_for(var).
         Shape weighting depends on deriv_key; nnz_index depends only on (res, var).
         """
         self.assembly_templates = {}
 
-        # Collect all (depvar_deriv, testfun_deriv) pairs from active terms
-        deriv_keys = set(term.deriv_key for term in terms)
+        # Collect all (res, var, dd, td) quadruples actually needed
+        needed = set()
+        for term in terms:
+            td = term.testfun_deriv
+            for var in term.dep_vars:
+                dd = term.depvar_deriv_for(var)
+                needed.add((term.res, var, dd, td))
+            # residual-only key for assemble_rhs
+            # rhs uses a single dd per term derived from whether any dep_var has a deriv
+            # (handled separately below)
 
-        for res in self.residuals:
-            for dd, td in deriv_keys:
-                for var in self.variables:
+        for res, var, dd, td in needed:
+            key = (res, var, dd, td)
+            if key not in self.assembly_templates:
+                self.assembly_templates[key] = {}
+                shape_weighting, entries_per_quad = self._build_weighting(res, var, dd, td)
+                self.assembly_templates[key]['w'] = shape_weighting
+                self.assembly_templates[key]['entries_per_quad'] = entries_per_quad
+                self.assembly_templates[key]['nnz'] = self._build_nnz(res, var)
 
-                    if not self._term_exists(terms, res, var, dd, td):
-                        continue
-
-                    key = (res, var, dd, td)
-                    self.assembly_templates[key] = {}
-
-                    shape_weighting, entries_per_quad = self._build_weighting(res, var, dd, td)
-                    self.assembly_templates[key]['w'] = shape_weighting
-                    self.assembly_templates[key]['entries_per_quad'] = entries_per_quad
-                    self.assembly_templates[key]['nnz'] = self._build_nnz(res, var)
-
-                key = (res, dd, td)
-                if key not in self.assembly_templates:
-                    res_weighting, entries_per_quad = self._build_res_weighting(res, dd, td)
-                    self.assembly_templates[key] = {}
-                    self.assembly_templates[key]['w'] = res_weighting
-                    self.assembly_templates[key]['entries_per_quad'] = entries_per_quad
-                    self.assembly_templates[key]['nnz'] = self._build_nnz_res(res)
+        # Residual-only keys for assemble_rhs (one key per term: (res, dd, td))
+        for term in terms:
+            dd, td = term.deriv_key
+            key = (term.res, dd, td)
+            if key not in self.assembly_templates:
+                res_weighting, entries_per_quad = self._build_res_weighting(term.res, dd, td)
+                self.assembly_templates[key] = {}
+                self.assembly_templates[key]['w'] = res_weighting
+                self.assembly_templates[key]['entries_per_quad'] = entries_per_quad
+                self.assembly_templates[key]['nnz'] = self._build_nnz_res(term.res)
 
 
 
 
     def _term_exists(self, terms, res: str, var: str,
                      depvar_deriv: str, testfun_deriv) -> bool:
-        """Check if any term has the given (res, var, deriv_key) combination."""
+        """Check if any term has the given (res, var, dd, td) combination."""
         for term in terms:
             if term.res == res and var in term.dep_vars:
-                if term.deriv_key == (depvar_deriv, testfun_deriv):
+                if term.depvar_deriv_for(var) == depvar_deriv and term.testfun_deriv == testfun_deriv:
                     return True
         return False
 
@@ -630,7 +635,7 @@ class Assembly:
 
         for term in terms:
 
-            dd, td = term.deriv_key
+            td = term.testfun_deriv
             dep_vars = [quad_fields[v] for v in term.dep_vars]
             res = term.res
             nb_sq = self.grid_idx.nb_sq
@@ -638,6 +643,7 @@ class Assembly:
 
             for var in term.dep_vars:
 
+                dd = term.depvar_deriv_for(var)
                 key = (res, var, dd, td)
                 sw = self.assembly_templates[key]['w']
                 entries_per_quad = self.assembly_templates[key]['entries_per_quad']
@@ -754,14 +760,14 @@ class Assembly:
             entries_per_quad = self.assembly_templates[key_res]['entries_per_quad']
             sw = self.assembly_templates[key_res]['w']
 
-            if dd == 'none':
-                quad_vals = term.evaluate(*dep_vars)  # shape (n_sq, n_quad_sq)
-            else:
-                # Chain rule: sum df/dvar * dvar/d{dd} over all dep_vars
-                quad_vals = sum(
-                    term.evaluate_deriv(v, *dep_vars) * quad_fields[f'd_d{dd}_{v}']
-                    for v in term.dep_vars
-                )
+            # Evaluate quad values: pass each dep_var's field or its spatial derivative
+            dep_vars_rhs = [
+                quad_fields[f'd_d{term.depvar_deriv_for(v)}_{v}']
+                if term.depvar_deriv_for(v) != 'none'
+                else quad_fields[v]
+                for v in term.dep_vars
+            ]
+            quad_vals = term.evaluate(*dep_vars_rhs)
 
             #self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)

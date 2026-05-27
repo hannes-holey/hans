@@ -41,10 +41,10 @@ properties:
 
 fem_solver:
     type: newton_alpha
-    R_norm_tol: 1e-04
+    R_norm_tol: 1e-06
     max_iter: 10
     pspg_boundary_decay: 2.0
     physics:
-        pspg: true
-        gls: true
+        pspg: False
+        gls: False
     pspg_C_I: 2.

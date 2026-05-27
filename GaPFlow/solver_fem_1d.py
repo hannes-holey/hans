@@ -339,9 +339,10 @@ class FEMSolver1D:
                 self.quad_fields[('dp_drho', nb_quad)].p[:] = p.pressure.dp_drho(q('rho'))
 
             # Wall stress xz
-            # Args: rho, jx, jy, h, hx, U_bot, V_bot, U_top, V_top, Ls
+            # Args: rho, jx, jy, h, hx, U_bot, V_bot, U_top, V_top, Ls, theta
+            theta_q = np.zeros_like(q('rho'))
             args_xz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dx'),
-                       q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'))
+                       q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q)
 
             if ('tau_xz', nb_quad) in self.quad_fields:
                 self.quad_fields[('tau_xz', nb_quad)].p[:] = p.wall_stress_xz.tau_xz(*args_xz)
@@ -357,9 +358,9 @@ class FEMSolver1D:
                 self.quad_fields[('dtau_xz_bot_djx', nb_quad)].p[:] = p.wall_stress_xz.dtau_xz_bot_djx(*args_xz)
 
             # Wall stress yz (uses dh_dy instead of dh_dx)
-            # Args: rho, jx, jy, h, hy, U_bot, V_bot, U_top, V_top, Ls
+            # Args: rho, jx, jy, h, hy, U_bot, V_bot, U_top, V_top, Ls, theta
             args_yz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dy'),
-                       q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'))
+                       q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q)
 
             if ('tau_yz', nb_quad) in self.quad_fields:
                 self.quad_fields[('tau_yz', nb_quad)].p[:] = p.wall_stress_yz.tau_yz(*args_yz)

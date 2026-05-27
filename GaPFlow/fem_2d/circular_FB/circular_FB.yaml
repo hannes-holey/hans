@@ -99,8 +99,8 @@ fem_solver:
         gap_shear: true
         plane_shear: false
         inertia: true
-        theta_stab: true
-    theta_stab_alpha: 0.001
+        upwind_theta: true
+    theta_stab: false
     max_iter: 5
     R_norm_tol: 1.0e-09
     newton_debug: False

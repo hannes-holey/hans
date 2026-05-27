@@ -109,7 +109,7 @@ class GridIndexManager:
         # ------------------------------------------------------------------
         self._bc_neumann = {}
         _BC_LIST_ORDER = ['rho', 'jx', 'jy']
-        _BC_VAR_ALIAS = {'p': 'rho', 'theta': 'rho', 'fb': 'rho'}  # internal DOF name → user-facing BC name
+        _BC_VAR_ALIAS = {'p': 'rho', 'theta': 'rho', 'fb': 'rho', 'xi': 'rho'}  # internal DOF name → user-facing BC name
 
         def _is_neumann(side, var):
             bc_var = _BC_VAR_ALIAS.get(var, var)

@@ -212,6 +212,8 @@ def compute_characteristic_scales(problem: "Problem",
     if cavitation:
         scales['theta'] = 1.0
         scales['fb'] = 1.0
+        scales['xi'] = 1.0
+        scales['R_oss'] = 1.0
 
     return scales
 

@@ -282,8 +282,8 @@ _TERM_GROUPS = [
     ['R21y'],
     ['R2Tx'],
     ['R2Ty'],
-    ['R24x'],
-    ['R24y'],
+    ['R24x_fb'],
+    ['R24y_fb'],
 ]
 
 
@@ -519,3 +519,9 @@ if __name__ == '__main__':
     compare_matrices('R11y_fb  + R11y_fb_corr',  'p', eps=1e-6, var_scales=_SCALES)
     compare_matrices('R11Sx_fb + R11Sx_fb_corr', 'p', eps=1e-6, var_scales=_SCALES)
     compare_matrices('R11Sy_fb + R11Sy_fb_corr', 'p', eps=1e-6, var_scales=_SCALES)
+    compare_matrices('R24x_fb', 'p',     eps=1e-6, var_scales=_SCALES)
+    compare_matrices('R24x_fb', 'jx',    eps=1e-6, var_scales=_SCALES)
+    compare_matrices('R24x_fb', 'theta', eps=1e-6, var_scales=_SCALES)
+    compare_matrices('R24y_fb', 'p',     eps=1e-6, var_scales=_SCALES)
+    compare_matrices('R24y_fb', 'jy',    eps=1e-6, var_scales=_SCALES)
+    compare_matrices('R24y_fb', 'theta', eps=1e-6, var_scales=_SCALES)

@@ -27,7 +27,7 @@ import numpy as np
 import numpy.typing as npt
 from typing import TYPE_CHECKING
 
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, coo_matrix
 from scipy.sparse.linalg import spsolve, gmres
 
 if TYPE_CHECKING:
@@ -56,15 +56,36 @@ class ScipySystem:
         self._info = info
         self._solver_type = solver_type
         self._size = info.local_size
-        self._rows = info.mat_global_rows
-        self._cols = info.mat_global_cols
         self._rhs_rows = info.rhs_global_rows
 
-        self._mat: csr_matrix | None = None
-        self._rhs: NDArray | None = None
-
+        self._rhs: NDArray = np.zeros(self._size)
         self._iterations = 0
         self._converged = True
+
+        # Build CSR structure once from the fixed sparsity pattern.
+        # COO (rows, cols) have no duplicates (asserted in _build_coo_lookups),
+        # so csr_matrix merely sorts entries — no summation. We capture the
+        # permutation from COO order to CSR data order so future assemble()
+        # calls only update mat.data in-place without any allocation.
+        dummy = csr_matrix(
+            (np.ones(len(info.mat_global_rows), dtype=np.float64),
+             (info.mat_global_rows, info.mat_global_cols)),
+            shape=(self._size, self._size),
+        )
+        dummy.sum_duplicates()
+        dummy.sort_indices()
+        self._mat = dummy
+
+        # Permutation: coo_values[i] lands at _mat.data[_coo_to_csr[i]]
+        coo = coo_matrix(
+            (np.arange(len(info.mat_global_rows), dtype=np.int32),
+             (info.mat_global_rows, info.mat_global_cols)),
+            shape=(self._size, self._size),
+        )
+        csr_perm = coo.tocsr()
+        csr_perm.sum_duplicates()
+        csr_perm.sort_indices()
+        self._coo_to_csr = csr_perm.data.copy()
 
     def assemble(self, coo_values: NDArray, R_local: NDArray) -> None:
         """Assemble sparse matrix and RHS vector.
@@ -76,11 +97,8 @@ class ScipySystem:
         R_local : NDArray, shape (local_size,)
             Local residual vector (will be negated for Newton RHS).
         """
-        self._mat = csr_matrix(
-            (coo_values, (self._rows, self._cols)),
-            shape=(self._size, self._size),
-        )
-        self._rhs = np.zeros(self._size)
+        self._mat.data[self._coo_to_csr] = coo_values
+        self._rhs[:] = 0.0
         np.add.at(self._rhs, self._rhs_rows, -R_local)
 
     def solve(self) -> NDArray:
@@ -91,9 +109,6 @@ class ScipySystem:
         NDArray, shape (local_size,)
             Solution vector in block ordering (all jx, all jy, all rho).
         """
-        if self._mat is None or self._rhs is None:
-            raise RuntimeError("Must call assemble() before solve()")
-
         if self._solver_type == "iterative":
             sol, info = gmres(self._mat, self._rhs, rtol=1e-8, atol=1e-12,
                               maxiter=1000)

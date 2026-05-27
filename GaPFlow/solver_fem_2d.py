@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 NDArray = npt.NDArray[np.floating]
 
 # Variable-to-grid mapping: which grid each variable lives on
-_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p'}
+_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p', 'xi': 'p'}
 # Residual-to-grid mapping: which grid each residual equation lives on
 _RES_TO_GRID = {
     'momentum_x': 'v',
@@ -61,6 +61,7 @@ _RES_TO_GRID = {
     'mass':       'p',
     'energy':     'p',
     'fb':         'p',
+    'R_oss':      'p',
 }
 
 
@@ -101,6 +102,9 @@ class FEMSolver2d:
         if self.cavitation:
             self.variables.append('theta')
             self.residuals.append('fb')
+        if self.cavitation and p.fem_solver.get('physics', {}).get('oss_theta', False):
+            self.variables.append('xi')
+            self.residuals.append('R_oss')
 
         self._sync_rho = p.fem_solver.get('sync_rho_before_exchange', True)
 
@@ -190,6 +194,12 @@ class FEMSolver2d:
             ctx['theta_stab_alpha'] = lambda: p.fem_solver.get(
                 'theta_stab_alpha', 0.0)
             ctx['p_cav'] = lambda: p.prop['p_cav']
+            ctx['fb_p_ref'] = lambda: p.prop['P0']
+            ctx['dx'] = lambda: p.grid['dx']
+            ctx['dy'] = lambda: p.grid['dy']
+            ctx['pspg_fb_alpha'] = lambda: p.fem_solver.get('pspg_fb_alpha', 0.0)
+            ctx['supg_theta_alpha'] = lambda: p.fem_solver.get('supg_theta_alpha', 0.0)
+            ctx['oss_correction_alpha'] = lambda: p.fem_solver.get('oss_correction_alpha', 1.0)
             ctx['pen_eps'] = lambda: p.fem_solver.get('pen_eps', 0.0)
             if self.energy:
                 ctx['k'] = lambda: p.energy.k
@@ -239,6 +249,7 @@ class FEMSolver2d:
                 Ny_v=self.grid_idx.Ny_v_inner,
                 terms=self.terms,
                 problem=self.problem,
+                quad_mgr=self.quad_mgr,
             )
             self._debug_from = debug_from
             self._debug_steps_done = 0
@@ -308,6 +319,8 @@ class FEMSolver2d:
         exchange_specs = [(rho, 'P1'), (p_field, 'P1'), (jx, 'P2'), (jy, 'P2')]
         if self.cavitation:
             exchange_specs.append((self.quad_mgr.nodal_fields['theta'], 'P1'))
+        if 'xi' in self.variables:
+            exchange_specs.append((self.quad_mgr.nodal_fields['xi'], 'P1'))
 
         p.decomp.update_ghosts(
             exchange_specs=exchange_specs,
@@ -321,6 +334,8 @@ class FEMSolver2d:
         self._fill_p_at_physical_boundaries()
         if self.cavitation:
             self._fill_theta_at_physical_boundaries()
+        if 'xi' in self.variables:
+            self._fill_xi_at_physical_boundaries()
 
     def _fill_p_at_physical_boundaries(self) -> None:
         """Fill p at physical-boundary ghost strips from the BC-applied rho.
@@ -355,6 +370,19 @@ class FEMSolver2d:
             theta[:, 0] = 0.0
         if decomp.bc_at_N:
             theta[:, -1] = 0.0
+
+    def _fill_xi_at_physical_boundaries(self) -> None:
+        """Set xi=0 at physical-boundary ghost strips (no mathematical BC needed)."""
+        decomp = self.problem.decomp
+        xi = self.quad_mgr.nodal_fields['xi'].pg[0]
+        if decomp.bc_at_W:
+            xi[0, :] = 0.0
+        if decomp.bc_at_E:
+            xi[-1, :] = 0.0
+        if decomp.bc_at_S:
+            xi[:, 0] = 0.0
+        if decomp.bc_at_N:
+            xi[:, -1] = 0.0
 
     def _log_bc_pressures(self) -> None:
         """Print pressure at each active Dirichlet boundary ghost strip.
@@ -614,6 +642,111 @@ class FEMSolver2d:
             (np.abs(a) < theta_min) & (th < theta_min),
             theta_min, th)
         return q
+
+    def _log_upwind_theta_factors(self) -> None:
+        """Print quad-point statistics of the R1UWx/y integrand factors.
+
+        Decomposes the upwind coefficient dp_drho·|jx|·dx/2 (and y) into its
+        factors so the dominant contributor to under/over-stabilization is visible.
+        Also prints ratio of upwind coefficient to the R11x_fb coefficient dp_drho·|jx|
+        to show what fraction of the advective flux the upwind term represents.
+        """
+        dp   = self.quad_mgr.get_quad('dp_drho').ravel()
+        jx   = self.quad_mgr.get_quad('jx').ravel()
+        jy   = self.quad_mgr.get_quad('jy').ravel()
+        th   = self.quad_mgr.get_quad('theta').ravel()
+        dx   = self.problem.grid['dx']
+        dy   = self.problem.grid['dy']
+
+        coeff_x = dp * np.abs(jx) * dx / 2.0
+        coeff_y = dp * np.abs(jy) * dy / 2.0
+        ref_x   = dp * np.abs(jx)   # R11x_fb integrand scale
+        ref_y   = dp * np.abs(jy)
+
+        def stats(arr, name):
+            return (f'{name}: min={arr.min():.3e} mean={arr.mean():.3e} '
+                    f'max={arr.max():.3e}')
+
+        print('  [upwind_theta factors]')
+        print(f'    dx={dx:.3e}  dy={dy:.3e}')
+        print(f'    {stats(dp,   "dp_drho")}')
+        print(f'    {stats(np.abs(jx), "|jx|")}')
+        print(f'    {stats(np.abs(jy), "|jy|")}')
+        print(f'    {stats(th,   "theta")}')
+        print(f'    {stats(coeff_x, "dp*|jx|*dx/2 (UWx coeff)")}')
+        print(f'    {stats(coeff_y, "dp*|jy|*dy/2 (UWy coeff)")}')
+        print(f'    UWx/R11x ratio: mean={np.where(ref_x>0, coeff_x/ref_x, 0).mean():.3e}  '
+              f'(= dx/2 = {dx/2:.3e})')
+        print(f'    UWy/R11y ratio: mean={np.where(ref_y>0, coeff_y/ref_y, 0).mean():.3e}  '
+              f'(= dy/2 = {dy/2:.3e})')
+
+    def _log_theta_stab_contribution(self, R: NDArray) -> None:
+        """Print theta_stab residual contribution relative to gross mass flux."""
+        stab_terms = [t for t in self.terms if t.name in {'R1STx', 'R1STy'}]
+        if not stab_terms:
+            return
+        qf = self._build_all_quad_fields()
+        mass_sl = self._res_slices['mass']
+
+        # Per-term absolute norms in the mass row
+        other_mass_terms = [t for t in self.terms
+                            if t.res == 'mass' and t.name not in {'R1STx', 'R1STy'}]
+        gross = sum(
+            np.linalg.norm(self.assembly.assemble_rhs(qf, [t])[mass_sl])
+            for t in other_mass_terms
+        )
+        R_stab = self.assembly.assemble_rhs(qf, stab_terms)
+        R_stab_norm = np.linalg.norm(R_stab[mass_sl])
+        ratio = R_stab_norm / (gross + 1e-30)
+
+        alpha = self.problem.fem_solver.get('theta_stab_alpha', 0.0)
+        print(f'  [theta_stab] ||R_stab||={R_stab_norm:.3e}  '
+              f'gross_mass_flux={gross:.3e}  ratio={ratio:.3e}  alpha={alpha:.3e}')
+
+    def _log_supg_contribution(self, R: NDArray) -> None:
+        """Print SUPG residual contribution relative to gross mass flux, plus tau stats."""
+        from .fem_2d.terms_supg import SUPG_TERM_NAMES
+        supg_terms = [t for t in self.terms if t.name in set(SUPG_TERM_NAMES)]
+        if not supg_terms:
+            print('  [supg] no SUPG terms active')
+            return
+        qf = self._build_all_quad_fields()
+        mass_sl = self._res_slices['mass']
+
+        other_mass_terms = [t for t in self.terms
+                            if t.res == 'mass' and t.name not in set(SUPG_TERM_NAMES)]
+        gross = sum(
+            np.linalg.norm(self.assembly.assemble_rhs(qf, [t])[mass_sl])
+            for t in other_mass_terms
+        )
+        R_supg = self.assembly.assemble_rhs(qf, supg_terms)
+        R_supg_norm = np.linalg.norm(R_supg[mass_sl])
+        ratio = R_supg_norm / (gross + 1e-30)
+
+        tau_jx = self.quad_mgr.get_quad('tau_jx')
+        tau_jy = self.quad_mgr.get_quad('tau_jy')
+        theta_q = self.quad_mgr.get_quad('theta')
+        osc = theta_q * (1 - theta_q)
+        alpha = self.problem.fem_solver.get('supg_theta_alpha', 0.0)
+        print(f'  [supg] ||R_supg||={R_supg_norm:.3e}  gross_mass={gross:.3e}  '
+              f'ratio={ratio:.3e}  alpha={alpha:.3e}  '
+              f'tau_jx_max={np.max(np.abs(tau_jx)):.3e}  tau_jy_max={np.max(np.abs(tau_jy)):.3e}  '
+              f'theta_osc_max={np.max(osc):.3e}  theta_osc_mean={np.mean(np.abs(osc)):.3e}')
+
+    def _log_pspg_fb_contribution(self, R: NDArray) -> None:
+        """Print PSPG-FB residual contribution relative to total mass residual."""
+        pspg_names = {'R1FBpx', 'R1FBpy', 'R1FBtx', 'R1FBty'}
+        pspg_terms = [t for t in self.terms if t.name in pspg_names]
+        if not pspg_terms:
+            return
+        qf = self._build_all_quad_fields()
+        R_pspg = self.assembly.assemble_rhs(qf, pspg_terms)
+        mass_sl = self._res_slices['mass']
+        R_mass_norm = np.linalg.norm(R[mass_sl])
+        R_pspg_norm = np.linalg.norm(R_pspg[mass_sl])
+        ratio = R_pspg_norm / (R_mass_norm + 1e-30)
+        print(f'  [pspg_fb] ||R_pspg_mass||={R_pspg_norm:.3e}  '
+              f'||R_mass||={R_mass_norm:.3e}  ratio={ratio:.3e}')
 
     def _print_nodal_diagnostics(self, label: str = '') -> None:
         """Print min/max of inner nodal fields and quad arrays for diagnostics."""
@@ -946,6 +1079,15 @@ class FEMSolver2d:
                 self.R_norm_history[-1].append(R_norm)
                 print(f'{R_norm}')
 
+            if rank == 0 and fem_solver.get('physics', {}).get('pspg_fb', False):
+                self._log_pspg_fb_contribution(R)
+            if rank == 0 and fem_solver.get('physics', {}).get('upwind_theta', False):
+                self._log_upwind_theta_factors()
+            if rank == 0 and fem_solver.get('physics', {}).get('theta_stab', False):
+                self._log_theta_stab_contribution(R)
+            if rank == 0 and fem_solver.get('physics', {}).get('supg_theta', False):
+                self._log_supg_contribution(R)
+
             if R_norm < tol and it > 0:
                 break
 
@@ -1002,24 +1144,19 @@ class FEMSolver2d:
                 if self.cavitation:
                     q = self._clamp_cavitation(q)
                 dq_guarded = q - q_before
-                # Use scaled norm when available, unscaled otherwise
-                use_scaled = fem_solver.get('scaling', False)
-                R_ref = R_scaled_norm if use_scaled else R_norm
+                R_ref = R_norm
 
                 def _ls_norm(R_raw):
-                    if use_scaled:
-                        return self.get_R_norm_global(R_raw / self.scaling.rhs_scale)
                     return self.get_R_norm_global(R_raw)
 
                 R_new = self.get_R(q)
                 R_new_norm = _ls_norm(R_new)
                 if rank == 0:
-                    label = 'R_scaled' if use_scaled else 'R'
-                    print(f"  [LineSearch] {label}: {R_ref:.6e} -> {R_new_norm:.6e}"
+                    print(f"  [LineSearch] R: {R_ref:.6e} -> {R_new_norm:.6e}"
                           f" ({'OK' if R_new_norm < R_ref else 'INCREASED'})")
                 if R_new_norm >= R_ref:
                     ls_alpha = 0.5
-                    ls_min = fem_solver.get('line_search_alpha_min', 1e-12)
+                    ls_min = fem_solver.get('line_search_alpha_min', 1e-4)
                     accepted = False
                     while ls_alpha >= ls_min:
                         q_trial = q_before + ls_alpha * dq_guarded
@@ -1032,16 +1169,17 @@ class FEMSolver2d:
                             accepted = True
                             if rank == 0:
                                 print(f"  [LineSearch] accepted ls_alpha={ls_alpha:.2e},"
-                                      f" {label} {R_ref:.4e} -> {R_trial_norm:.4e}")
+                                      f" R {R_ref:.4e} -> {R_trial_norm:.4e}")
                             break
                         ls_alpha *= 0.5
                     if not accepted:
-                        q = q_before
+                        fallback_alpha = 1e-1
+                        q = q_before + fallback_alpha * dq_guarded
+                        if self.cavitation:
+                            q = self._clamp_cavitation(q)
                         if rank == 0:
                             print(f"  [LineSearch] exhausted (ls_min={ls_min:.2e}),"
-                                  f" reverting step, stopping simulation")
-                        p._stop = True
-                        break
+                                  f" falling back to alpha={fallback_alpha:.2e} and continuing")
 
             if fem_solver.get('mass_diffusion_adaptive', False):
                 R_new = self.get_R(q)

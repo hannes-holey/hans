@@ -584,14 +584,22 @@ def sanitize_fem_solver(d):
         'lap_pressure': bool(physics.get('lap_pressure', False)),
         'lap_theta': bool(physics.get('lap_theta', False)),
         'theta_stab': bool(physics.get('theta_stab', False)),
+        'upwind_theta': bool(physics.get('upwind_theta', False)),
+        'pspg_fb': bool(physics.get('pspg_fb', False)),
         'mass_diffusion': bool(physics.get('mass_diffusion', False)),
         'pspg': bool(physics.get('pspg', False)),
         'gls': bool(physics.get('gls', False)),
+        'supg_theta': bool(physics.get('supg_theta', False)),
+        'oss_theta': bool(physics.get('oss_theta', False)),
     }
 
     out['lap_pressure_alpha'] = float(d.get('lap_pressure_alpha', 0.0))
     out['lap_theta_alpha'] = float(d.get('lap_theta_alpha', 0.0))
     out['theta_stab_alpha'] = float(d.get('theta_stab_alpha', 0.0))
+    out['pspg_fb_alpha'] = float(d.get('pspg_fb_alpha', 0.0))
+    out['supg_theta_alpha'] = float(d.get('supg_theta_alpha', 0.0))
+    out['oss_theta_alpha'] = float(d.get('oss_theta_alpha', 0.0))
+    out['oss_correction_alpha'] = float(d.get('oss_correction_alpha', 1.0))
     out['mass_diffusion_alpha'] = float(d.get('mass_diffusion_alpha', 1e-3))
     out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
     out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))

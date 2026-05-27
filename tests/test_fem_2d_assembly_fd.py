@@ -105,6 +105,64 @@ properties:
 _CONFIG_DH = _COMMON_GRID + _PROPS_DH
 _CONFIG_BAYADA = _COMMON_GRID + _PROPS_BAYADA
 
+# Cavitation variant: same grid/props but with cavitation: True in the equations block.
+# p_cav is added to properties so the FB term has a reference.
+_COMMON_GRID_CAV = """
+options:
+    output: /tmp/fem2d_fd_test_{label}
+    write_freq: 1000
+    silent: True
+
+grid:
+    Lx: 0.1
+    Ly: 0.1
+    Nx: {Nx}
+    Ny: {Ny}
+    xE: {xE}
+    xW: {xW}
+    yS: {yS}
+    yN: {yN}
+    xE_D: 1.1
+    xW_D: 1.0
+    yS_D: 1.05
+    yN_D: 1.05
+
+geometry:
+    type: parabolic_2d
+    hmax: 2e-5
+    hmin: 1e-5
+    U: 1.0
+    V: 2.0
+
+numerics:
+    solver: fem
+    dt: 1e-8
+    tol: 1e-6
+    max_it: 100
+
+fem_solver:
+    type: newton_alpha
+    equations:
+        energy: False
+        cavitation: True
+        {term_list_entry}
+"""
+
+_PROPS_BAYADA_CAV = """
+properties:
+    EOS: Bayada
+    rho0: 850.0
+    rho_l: 850.0
+    rho_v: 0.019
+    c_l: 1600.0
+    c_v: 352.0
+    shear: 0.039
+    bulk: 0.0
+    p_cav: 0.0
+"""
+
+_CONFIG_BAYADA_CAV = _COMMON_GRID_CAV + _PROPS_BAYADA_CAV
+
 # =============================================================================
 # Boundary condition presets
 # =============================================================================
@@ -135,7 +193,7 @@ BC_CONFIGS = {
 # =============================================================================
 
 def make_problem(eos: str, Nx: int, Ny: int, bc: str = 'periodic',
-                 term_list: list = None) -> tuple:
+                 term_list: list = None, cavitation: bool = False) -> tuple:
     """Create and pre-run a (problem, solver) pair.
 
     Parameters
@@ -144,13 +202,19 @@ def make_problem(eos: str, Nx: int, Ny: int, bc: str = 'periodic',
     Nx, Ny : grid dimensions
     bc : key into BC_CONFIGS
     term_list : restrict active terms to this subset (passed through YAML)
+    cavitation : if True, use the cavitation config (Bayada EOS + cavitation: True)
     """
-    template = _CONFIG_DH if eos == 'DH' else _CONFIG_BAYADA
+    if cavitation:
+        template = _CONFIG_BAYADA_CAV
+    elif eos == 'DH':
+        template = _CONFIG_DH
+    else:
+        template = _CONFIG_BAYADA
     bc_cfg = BC_CONFIGS[bc]
     term_list_entry = f"term_list: {term_list}" if term_list is not None else ""
 
     config = template.format(
-        label=eos.lower(),
+        label=eos.lower() + ('_cav' if cavitation else ''),
         Nx=Nx, Ny=Ny,
         xE=bc_cfg['xE'], xW=bc_cfg['xW'],
         yS=bc_cfg['yS'], yN=bc_cfg['yN'],
@@ -161,8 +225,8 @@ def make_problem(eos: str, Nx: int, Ny: int, bc: str = 'periodic',
     solver = problem.solver
     solver.pre_run()
 
-    if eos == 'Bayada':
-        _init_bayada_straddling(solver)
+    if eos == 'Bayada' or cavitation:
+        _init_bayada_straddling(solver, cavitation=cavitation)
 
     return problem, solver
 
@@ -176,14 +240,23 @@ def _pcav(prop: dict) -> float:
     return rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
 
-def _init_bayada_straddling(solver: FEMSolver2d) -> None:
-    """Set p as a ramp straddling Pcav so correction terms are nonzero."""
+def _init_bayada_straddling(solver: FEMSolver2d,
+                            cavitation: bool = False) -> None:
+    """Set p as a ramp straddling Pcav so correction terms are nonzero.
+
+    When cavitation=True, also sets theta to a smooth ramp in (0.1, 0.9) so
+    the dtau/dtheta Jacobian block is exercised at non-trivial theta values.
+    """
     Pcav = _pcav(solver.problem.prop)
     delta = 0.05 * abs(Pcav)
     q = solver.get_q_nodal().copy()
     p_sl = solver._sol_slices['p']
     n_p = p_sl.stop - p_sl.start
     q[p_sl] = np.linspace(Pcav - delta, Pcav + delta, n_p)
+    if cavitation and 'theta' in solver._sol_slices:
+        theta_sl = solver._sol_slices['theta']
+        n_th = theta_sl.stop - theta_sl.start
+        q[theta_sl] = np.linspace(0.1, 0.9, n_th)
     _set_and_sync(solver, q)
 
 
@@ -266,6 +339,12 @@ _TERM_GROUPS = [
     ['R2Ty'],
     ['R24x'],
     ['R24y'],
+]
+
+# Term groups that require cavitation=True (theta DOF present)
+_TERM_GROUPS_CAV = [
+    ['R24x_fb'],
+    ['R24y_fb'],
 ]
 
 

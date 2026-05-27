@@ -45,7 +45,7 @@ geometry:
 numerics:
     solver: fem
     dt: 0.1
-    tol: 1e-13
+    tol: 1e-14
     max_it: 100
 
 properties:
@@ -61,21 +61,29 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 0.4
+    newton_relax: 0.02 # 0.4
     equations:
         energy: False
         cavitation: True
     physics:
         gap_shear: true
         plane_shear: false
-        inertia: true
+        inertia: false
         lap_pressure: false
         lap_theta: false
-        theta_stab: true
-    lap_theta_alpha: 1e-8
+        upwind_theta: false
+        pspg_fb: false
+        theta_stab: false
+        supg_theta: false
+        oss_theta: true
     theta_stab_alpha: 0.001
+    supg_theta_alpha: 2
+    lap_theta_alpha: 1e-8
+    pspg_fb_alpha: 0.5e08
+    oss_theta_alpha: 2.0
+    oss_correction_alpha: 1.0
     max_iter: 1
     R_norm_tol: 1e-9
     newton_debug: False
-    scaling: True
+    scaling: False
     line_search: False

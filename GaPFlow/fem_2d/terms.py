@@ -67,8 +67,8 @@ class NonLinearTerm():
                  dep_vals: list[str],
                  fun: Callable,
                  der_funs: list[Callable],
-                 d_dx_resfun: bool = False,
-                 d_dy_resfun: bool = False,
+                 d_dx_resfun: 'bool | list[bool]' = False,
+                 d_dy_resfun: 'bool | list[bool]' = False,
                  der_testfun=False):
         self.name = name
         self.description = description
@@ -98,12 +98,24 @@ class NonLinearTerm():
         i = self.dep_vars.index(dep_var)
         return self.der_funs[i](*args)
     
+    def depvar_deriv_for(self, var: str) -> str:
+        """Direction of spatial derivative acting on dep_var 'var': 'none', 'x', or 'y'."""
+        i = self.dep_vars.index(var)
+        dx = self.d_dx_resfun[i] if isinstance(self.d_dx_resfun, list) else self.d_dx_resfun
+        dy = self.d_dy_resfun[i] if isinstance(self.d_dy_resfun, list) else self.d_dy_resfun
+        if dx:
+            return 'x'
+        if dy:
+            return 'y'
+        return 'none'
+
     @property
     def depvar_deriv(self):
-        """Direction of spatial derivative acting on dep_var: 'none', 'x', or 'y'."""
-        if self.d_dx_resfun:
+        """Direction of spatial derivative acting on dep_var: 'none', 'x', or 'y'.
+        All dep_vars must share the same derivative direction (use depvar_deriv_for otherwise)."""
+        if self.d_dx_resfun if not isinstance(self.d_dx_resfun, list) else any(self.d_dx_resfun):
             return 'x'
-        elif self.d_dy_resfun:
+        elif self.d_dy_resfun if not isinstance(self.d_dy_resfun, list) else any(self.d_dy_resfun):
             return 'y'
         else:
             return 'none'
@@ -115,7 +127,8 @@ class NonLinearTerm():
 
     @property
     def deriv_key(self):
-        """Return (depvar_deriv, testfun_deriv) tuple for template lookup."""
+        """Return (depvar_deriv, testfun_deriv) tuple for template lookup.
+        Only valid when all dep_vars share the same derivative direction."""
         return (self.depvar_deriv, self.testfun_deriv)
 
 
@@ -257,8 +270,8 @@ R1T = NonLinearTerm(
     res='mass',
     dep_vars=['p'],
     dep_vals=['drho_dp'],
-    fun=lambda ctx: lambda p: - ctx['drho_dp']() * (p - ctx['p_prev']()) / ctx['dt'](),
-    der_funs=[lambda ctx: lambda p: - ctx['drho_dp']() / ctx['dt']()],
+    fun=lambda ctx: lambda p: - (p - ctx['p_prev']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda p: - np.ones_like(p) / ctx['dt']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -444,7 +457,10 @@ R1PSPG_Wy = NonLinearTerm(
 # Momentum equation terms (R2*)
 # -----------------------------------------------------------------------------
 
-# R21: Pressure gradient (pressure form: ∫ Nᵢ · (-∂p/∂x) dΩ)
+# R21: Pressure gradient, IBP form: ∫ (∂Nᵢ^P2/∂x) · p dΩ
+# Derivative on the P2 test function (IBP of ∫ Nᵢ · ∂p/∂x dΩ, boundary term dropped).
+# fun = -p so that assembly factor -1/dx from der_testfun='x' gives net +∫ (∂Nᵢ/∂x)·p dΩ,
+# i.e. the momentum residual contribution is -∂p/∂x.
 # p is the DOF, so der is the trivial -1 — no chain rule, no _corr term.
 R21x = NonLinearTerm(
     name='R21x',
@@ -454,9 +470,9 @@ R21x = NonLinearTerm(
     dep_vals=[],
     fun=lambda ctx: lambda p: -p,
     der_funs=[lambda ctx: lambda p: np.full_like(p, -1.0)],
-    d_dx_resfun=True,
+    d_dx_resfun=False,
     d_dy_resfun=False,
-    der_testfun=False)
+    der_testfun='x')
 
 R21y = NonLinearTerm(
     name='R21y',
@@ -467,8 +483,8 @@ R21y = NonLinearTerm(
     fun=lambda ctx: lambda p: -p,
     der_funs=[lambda ctx: lambda p: np.full_like(p, -1.0)],
     d_dx_resfun=False,
-    d_dy_resfun=True,
-    der_testfun=False)
+    d_dy_resfun=False,
+    der_testfun='y')
 
 # R21x_corr / R21y_corr deleted in the pressure formulation: they existed to
 # add the d²p/dρ² chain-rule contribution that is absent once p is the DOF.
@@ -603,69 +619,67 @@ R22yyS = NonLinearTerm(
     der_testfun=False)
 
 # R23: In-plane shear stress (viscous diffusion, integrated by parts)
-# Weak form: ∫ (∂N_i/∂y) * η * ∂(jx/ρ)/∂y dΩ  for momentum_x
-# f(rho, jx) = +η * jx/ρ; _build_weighting contributes -1/dy² for double derivative,
-# giving net -η/dy² * ∫ dN_i/dy * dN_j/dy * (∂jx/∂y) dΩ  (correct diffusion sign)
+# Weak form: -∫ (∂N_i/∂y) * η/ρ * ∂jx/∂y dΩ  for momentum_x
+# ρ is frozen (dep_val); p enters only via the Jacobian chain rule d/dp = d/dρ * dρ/dp.
+# dep_var derivative: only jx gets ∂/∂y (list form); p enters undifferentiated.
 R23xy = NonLinearTerm(
     name='R23xy',
     description='shear viscous stress tau_xy in y (for momentum_x)',
     res='momentum_x',
-    dep_vars=['rho', 'jx'],
-    dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jx: ctx['eta']() * jx / rho,
+    dep_vars=['p', 'jx'],
+    dep_vals=['rho', 'drho_dp', 'eta'],
+    fun=lambda ctx: lambda p, jx: ctx['eta']() * jx / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx: - ctx['eta']() * jx / (rho ** 2),
-        lambda ctx: lambda rho, jx: ctx['eta']() / rho
+        lambda ctx: lambda p, jx: -ctx['eta']() * jx / ctx['rho']()**2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx: ctx['eta']() / ctx['rho']()
     ],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
+    d_dx_resfun=[False, False],
+    d_dy_resfun=[False, True],
     der_testfun='y')
 
-# Weak form: ∫ (∂N_i/∂x) * η * ∂(jy/ρ)/∂x dΩ  for momentum_y
-# f(rho, jy) = -η * jy/ρ, dep_var derivative ∂/∂x, test function derivative ∂/∂x
 R23yx = NonLinearTerm(
     name='R23yx',
     description='shear viscous stress tau_xy in x (for momentum_y)',
     res='momentum_y',
-    dep_vars=['rho', 'jy'],
-    dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jy: ctx['eta']() * jy / rho,
+    dep_vars=['p', 'jy'],
+    dep_vals=['rho', 'drho_dp', 'eta'],
+    fun=lambda ctx: lambda p, jy: ctx['eta']() * jy / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jy: - ctx['eta']() * jy / (rho ** 2),
-        lambda ctx: lambda rho, jy: ctx['eta']() / rho
+        lambda ctx: lambda p, jy: -ctx['eta']() * jy / ctx['rho']()**2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jy: ctx['eta']() / ctx['rho']()
     ],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
+    d_dx_resfun=[False, True],
+    d_dy_resfun=[False, False],
     der_testfun='x')
 
 R23xx = NonLinearTerm(
     name='R23xx',
     description='shear viscous stress tau_xx in x (for momentum_x)',
     res='momentum_x',
-    dep_vars=['rho', 'jx'],
-    dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jx: ctx['eta']() * jx / rho,
+    dep_vars=['p', 'jx'],
+    dep_vals=['rho', 'drho_dp', 'eta'],
+    fun=lambda ctx: lambda p, jx: ctx['eta']() * jx / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jx: -ctx['eta']() * jx / (rho ** 2),
-        lambda ctx: lambda rho, jx: ctx['eta']() / rho
+        lambda ctx: lambda p, jx: -ctx['eta']() * jx / ctx['rho']()**2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jx: ctx['eta']() / ctx['rho']()
     ],
-    d_dx_resfun=True,
-    d_dy_resfun=False,
+    d_dx_resfun=[False, True],
+    d_dy_resfun=[False, False],
     der_testfun='x')
 
 R23yy = NonLinearTerm(
     name='R23yy',
     description='shear viscous stress tau_yy in y (for momentum_y)',
     res='momentum_y',
-    dep_vars=['rho', 'jy'],
-    dep_vals=['eta'],
-    fun=lambda ctx: lambda rho, jy: ctx['eta']() * jy / rho,
+    dep_vars=['p', 'jy'],
+    dep_vals=['rho', 'drho_dp', 'eta'],
+    fun=lambda ctx: lambda p, jy: ctx['eta']() * jy / ctx['rho'](),
     der_funs=[
-        lambda ctx: lambda rho, jy: -ctx['eta']() * jy / (rho ** 2),
-        lambda ctx: lambda rho, jy: ctx['eta']() / rho
+        lambda ctx: lambda p, jy: -ctx['eta']() * jy / ctx['rho']()**2 * ctx['drho_dp'](),
+        lambda ctx: lambda p, jy: ctx['eta']() / ctx['rho']()
     ],
-    d_dx_resfun=False,
-    d_dy_resfun=True,
+    d_dx_resfun=[False, False],
+    d_dy_resfun=[False, True],
     der_testfun='y')
 
 # R24: Wall stress (chain rule on p-slot: ∂f/∂p = ∂f/∂ρ · dρ/dp)
@@ -695,15 +709,54 @@ R24y = NonLinearTerm(
     d_dy_resfun=False,
     der_testfun=False)
 
+# R24x_fb / R24y_fb: Wall stress with theta-dependent effective density.
+# Activating cavitation changes rho_eff = (1-theta)*rho inside get_tau, so the
+# velocity seen by the wall stress model u = jx/rho_eff increases in cavitated cells.
+# tau_xz already encodes the effect; the new Jacobian block d/dtheta comes from
+# the chain rule through rho_eff.  The d/dp and d/jx blocks are unchanged in form
+# but now evaluated at rho_eff (handled inside the JAX-traced tau functions).
+# Activated when gap_shear: true AND cavitation: true (replaces R24x/R24y).
+R24x_fb = NonLinearTerm(
+    name='R24x_fb',
+    description='wall stress x with theta-dependent effective density',
+    res='momentum_x',
+    dep_vars=['p', 'jx', 'theta'],
+    dep_vals=['h', 'tau_xz', 'dtau_xz_drho', 'dtau_xz_djx', 'dtau_xz_dtheta', 'drho_dp'],
+    fun=lambda ctx: lambda *args: 1 / ctx['h']() * ctx['tau_xz'](),
+    der_funs=[
+        lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_drho']() * ctx['drho_dp'](),
+        lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_djx'](),
+        lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_dtheta'](),
+    ],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
+R24y_fb = NonLinearTerm(
+    name='R24y_fb',
+    description='wall stress y with theta-dependent effective density',
+    res='momentum_y',
+    dep_vars=['p', 'jy', 'theta'],
+    dep_vals=['h', 'tau_yz', 'dtau_yz_drho', 'dtau_yz_djy', 'dtau_yz_dtheta', 'drho_dp'],
+    fun=lambda ctx: lambda *args: 1 / ctx['h']() * ctx['tau_yz'](),
+    der_funs=[
+        lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_yz_drho']() * ctx['drho_dp'](),
+        lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_yz_djy'](),
+        lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_yz_dtheta'](),
+    ],
+    d_dx_resfun=False,
+    d_dy_resfun=False,
+    der_testfun=False)
+
 # R25: Body force
 R25x = NonLinearTerm(
     name='R25x',
     description='body force x',
     res='momentum_x',
-    dep_vars=['rho'],
-    dep_vals=['h', 'force_x'],
-    fun=lambda ctx: lambda rho: ctx['h']() * rho * ctx['force_x'](),
-    der_funs=[lambda ctx: lambda rho: ctx['h']() * ctx['force_x']() * np.ones_like(rho)],
+    dep_vars=['p'],
+    dep_vals=['rho', 'drho_dp', 'h', 'force_x'],
+    fun=lambda ctx: lambda p: ctx['h']() * ctx['rho']() * ctx['force_x'](),
+    der_funs=[lambda ctx: lambda p: ctx['h']() * ctx['drho_dp']() * ctx['force_x']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -712,10 +765,10 @@ R25y = NonLinearTerm(
     name='R25y',
     description='body force y',
     res='momentum_y',
-    dep_vars=['rho'],
-    dep_vals=['h', 'force_y'],
-    fun=lambda ctx: lambda rho: ctx['h']() * rho * ctx['force_y'](),
-    der_funs=[lambda ctx: lambda rho: ctx['h']() * ctx['force_y']() * np.ones_like(rho)],
+    dep_vars=['p'],
+    dep_vals=['rho', 'drho_dp', 'h', 'force_y'],
+    fun=lambda ctx: lambda p: ctx['h']() * ctx['rho']() * ctx['force_y'](),
+    der_funs=[lambda ctx: lambda p: ctx['h']() * ctx['drho_dp']() * ctx['force_y']()],
     d_dx_resfun=False,
     d_dy_resfun=False,
     der_testfun=False)
@@ -1090,6 +1143,125 @@ R1STy = NonLinearTerm(
     d_dy_resfun=True,
     der_testfun='y')
 
+# R1UWx / R1UWy: donor-cell upwind stabilization for theta in the mass equation.
+# Derived from flux splitting of (1−θ)·j in the Elrod-Adams term:
+#   θ_upwind = θ_Galerkin − sign(jx)·dx/2·∂θ/∂x
+# The upwind correction contributes to the mass residual (before IBP):
+#   +dp_drho·|jx|·dx/2 · ∂θ/∂x
+# In weak form with ('x','x') (test and trial both differentiated, assembly
+# applies 1/dx² scaling), the net integrand coefficient is dp_drho·|jx|·dx/2,
+# which gives O(dx) relative to the main flux term — vanishes under refinement.
+# Jacobian is approximate: d/dtheta only, d/d|j| and d/dp dropped (frozen coefficients).
+# Activated by physics flag upwind_theta: true.
+R1UWx = NonLinearTerm(
+    name='R1UWx',
+    description='donor-cell upwind stabilization for theta in mass equation x',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['dp_drho', 'jx', 'dx'],
+    fun=lambda ctx: lambda theta: -ctx['dp_drho']() * np.abs(ctx['jx']()) * ctx['dx']() / 2.0 * theta,
+    der_funs=[lambda ctx: lambda theta: -ctx['dp_drho']() * np.abs(ctx['jx']()) * ctx['dx']() / 2.0],
+    d_dx_resfun=True,
+    d_dy_resfun=False,
+    der_testfun='x')
+
+R1UWy = NonLinearTerm(
+    name='R1UWy',
+    description='donor-cell upwind stabilization for theta in mass equation y',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['dp_drho', 'jy', 'dy'],
+    fun=lambda ctx: lambda theta: -ctx['dp_drho']() * np.abs(ctx['jy']()) * ctx['dy']() / 2.0 * theta,
+    der_funs=[lambda ctx: lambda theta: -ctx['dp_drho']() * np.abs(ctx['jy']()) * ctx['dy']() / 2.0],
+    d_dx_resfun=False,
+    d_dy_resfun=True,
+    der_testfun='y')
+
+# R1FBpx / R1FBpy / R1FBtx / R1FBty: PSPG-FB stabilization for mass equation.
+#
+# Adds −τ·∇φ projected onto ∇Nᵢ, where φ is the FB residual. Since φ=0 at
+# convergence, ∇φ=0 too — the term vanishes at the solution (residual-consistent).
+#
+# With φ = √(a_nd²+θ²) − a_nd − θ, a_nd = (p−p_cav)/P0:
+#   ∂φ/∂x = cp·∂p/∂x + cθ·∂θ/∂x
+#   cp = (a_nd/D − 1)/P0 ≤ 0,   cθ = θ/D − 1 ≤ 0,   D = √(a_nd²+θ²)
+#
+# Stabilization term (minus sign gives positive-definite diffusion since cp,cθ ≤ 0):
+#   −τ · ∫ (∂Nᵢ/∂x)(cp·∂p/∂x + cθ·∂θ/∂x) dΩ  (x) + same for y
+#
+# τ = pspg_fb_alpha · P0 · dx²  (dimensionless knob × pressure scale × mesh area)
+#
+# Jacobian: cp, cθ, τ frozen as coefficients (not differentiated through).
+# This is the standard PSPG approximation — consistent with how R_Lpx/R_Lpy work.
+# Activated by physics flag pspg_fb: true.
+# Coefficient set via fem_solver.pspg_fb_alpha (dimensionless, default 0.0).
+
+def _fb_cp_ct(ctx):
+    """Compute frozen FB gradient coefficients cp and cθ at quad points."""
+    a_nd = (ctx['p']() - ctx['p_cav']()) / ctx['fb_p_ref']()
+    theta = ctx['theta']()
+    D = _fb_denom(a_nd, theta)
+    cp = (a_nd / D - 1.0) / ctx['fb_p_ref']()
+    ct = theta / D - 1.0
+    tau = ctx['pspg_fb_alpha']() * ctx['fb_p_ref']() * ctx['dx']()**2
+    return cp, ct, tau
+
+R1FBpx = NonLinearTerm(
+    name='R1FBpx',
+    description='PSPG-FB stabilization mass eq x, dep_var=p',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['p_cav', 'fb_p_ref', 'p', 'theta', 'dx', 'pspg_fb_alpha'],
+    fun=lambda ctx: lambda p: (
+        lambda cp, ct, tau: tau * cp * p
+    )(*_fb_cp_ct(ctx)),
+    der_funs=[lambda ctx: lambda p: (
+        lambda cp, ct, tau: tau * cp
+    )(*_fb_cp_ct(ctx))],
+    d_dx_resfun=True, d_dy_resfun=False, der_testfun='x')
+
+R1FBpy = NonLinearTerm(
+    name='R1FBpy',
+    description='PSPG-FB stabilization mass eq y, dep_var=p',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['p_cav', 'fb_p_ref', 'p', 'theta', 'dx', 'pspg_fb_alpha'],
+    fun=lambda ctx: lambda p: (
+        lambda cp, ct, tau: tau * cp * p
+    )(*_fb_cp_ct(ctx)),
+    der_funs=[lambda ctx: lambda p: (
+        lambda cp, ct, tau: tau * cp
+    )(*_fb_cp_ct(ctx))],
+    d_dx_resfun=False, d_dy_resfun=True, der_testfun='y')
+
+R1FBtx = NonLinearTerm(
+    name='R1FBtx',
+    description='PSPG-FB stabilization mass eq x, dep_var=theta',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['p_cav', 'fb_p_ref', 'p', 'theta', 'dx', 'pspg_fb_alpha'],
+    fun=lambda ctx: lambda theta: (
+        lambda cp, ct, tau: tau * ct * theta
+    )(*_fb_cp_ct(ctx)),
+    der_funs=[lambda ctx: lambda theta: (
+        lambda cp, ct, tau: tau * ct
+    )(*_fb_cp_ct(ctx))],
+    d_dx_resfun=True, d_dy_resfun=False, der_testfun='x')
+
+R1FBty = NonLinearTerm(
+    name='R1FBty',
+    description='PSPG-FB stabilization mass eq y, dep_var=theta',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['p_cav', 'fb_p_ref', 'p', 'theta', 'dx', 'pspg_fb_alpha'],
+    fun=lambda ctx: lambda theta: (
+        lambda cp, ct, tau: tau * ct * theta
+    )(*_fb_cp_ct(ctx)),
+    der_funs=[lambda ctx: lambda theta: (
+        lambda cp, ct, tau: tau * ct
+    )(*_fb_cp_ct(ctx))],
+    d_dx_resfun=False, d_dy_resfun=True, der_testfun='y')
+
 # R_LTx / R_LTy: Laplacian theta stabilization for fb equation.
 # Weak form: +alpha * ∫ (∂Nᵢ/∂x)(∂theta/∂x) dΩ  (and y-direction).
 # Assembly applies -1/dx² for (d_dx_resfun=True, der_testfun='x'), so fun
@@ -1122,16 +1294,20 @@ R_LTy = NonLinearTerm(
 
 R_FB = NonLinearTerm(
     name='R_FB',
-    description='Fischer-Burmeister complementarity condition',
+    description='Fischer-Burmeister complementarity condition (p normalized by P0)',
     res='fb',
     dep_vars=['p', 'theta'],
-    dep_vals=['p_cav'],
+    dep_vals=['p_cav', 'fb_p_ref'],
     fun=lambda ctx: lambda p, theta: (
-        lambda a: np.sqrt(a**2 + theta**2) - a - theta
-    )(p - ctx['p_cav']()),
+        lambda a_nd: np.sqrt(a_nd**2 + theta**2) - a_nd - theta
+    )((p - ctx['p_cav']()) / ctx['fb_p_ref']()),
     der_funs=[
-        lambda ctx: lambda p, theta: (lambda a: a     / _fb_denom(a, theta) - 1.0)(p - ctx['p_cav']()),
-        lambda ctx: lambda p, theta: (lambda a: theta / _fb_denom(a, theta) - 1.0)(p - ctx['p_cav']()),
+        lambda ctx: lambda p, theta: (
+            lambda a_nd: (a_nd / _fb_denom(a_nd, theta) - 1.0) / ctx['fb_p_ref']()
+        )((p - ctx['p_cav']()) / ctx['fb_p_ref']()),
+        lambda ctx: lambda p, theta: (
+            lambda a_nd: theta / _fb_denom(a_nd, theta) - 1.0
+        )((p - ctx['p_cav']()) / ctx['fb_p_ref']()),
     ],
     d_dx_resfun=False, d_dy_resfun=False, der_testfun=False)
 
@@ -1151,6 +1327,10 @@ term_list = [
     R_Lpx, R_Lpy,
     # Theta diffusion stabilization in mass equation (dormant; physics.theta_stab default False)
     R1STx, R1STy,
+    # Donor-cell upwind stabilization for theta (dormant; physics.upwind_theta default False)
+    R1UWx, R1UWy,
+    # PSPG-FB residual-consistent stabilization (dormant; physics.pspg_fb default False)
+    R1FBpx, R1FBpy, R1FBtx, R1FBty,
     # Laplacian theta stabilization (dormant; physics.lap_theta default False)
     R_LTx, R_LTy,
     # Laplacian density diffusion (dormant; physics.mass_diffusion default False)
@@ -1163,6 +1343,7 @@ term_list = [
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
     R23xy, R23yx, R23xx, R23yy,
     R24x, R24y,
+    R24x_fb, R24y_fb,
     R25x, R25y,
     R2Tx, R2Ty,
     # Energy equation
@@ -1179,10 +1360,12 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     Physics flags (in fem_solver['physics']):
     - mass_diffusion:     Laplacian density diffusion (R1Lx, R1Ly)
     - pspg:               PSPG stabilization for mass eq (R1PSPG_*)
-    - gap_shear:          Gap-averaged wall shear τ/h (R24x, R24y)
+    - gap_shear:          Gap-averaged wall shear τ/h (R24x, R24y; R24x_fb, R24y_fb with cavitation)
     - plane_shear:        In-plane viscous diffusion (R23xy, R23yx)
     - inertia:            Momentum convection (R22*)
     - body_force:         Body force (R25x, R25y)
+    - upwind_theta:       Donor-cell upwind stabilization for theta (R1UWx, R1UWy)
+    - pspg_fb:            PSPG-FB residual-consistent stabilization (R1FBpx/py/tx/ty)
     - energy:             Energy equation master switch, subflags below default to True
     - energy_convection:  Energy advection (R31*)
     - pressure_work:      Pressure-volume work (R32*)
@@ -1216,11 +1399,29 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
     if physics.get('lap_pressure', False):
         terms.extend(['R_Lpx', 'R_Lpy'])
 
-    if physics.get('theta_stab', False):
+    if cavitation and physics.get('theta_stab', False):
         terms.extend(['R1STx', 'R1STy'])
 
-    if physics.get('lap_theta', False):
+    if cavitation and physics.get('upwind_theta', False):
+        terms.extend(['R1UWx', 'R1UWy'])
+
+    if cavitation and physics.get('pspg_fb', False):
+        terms.extend(['R1FBpx', 'R1FBpy', 'R1FBtx', 'R1FBty'])
+
+    if cavitation and physics.get('lap_theta', False):
         terms.extend(['R_LTx', 'R_LTy'])
+
+    if cavitation and physics.get('supg_theta', False):
+        terms.extend([
+            'R1SUPGxx', 'R1SUPGyy', 'R1SUPGxy', 'R1SUPGyx',
+            'R1SUPGhxx', 'R1SUPGhxy', 'R1SUPGhyx', 'R1SUPGhyy',
+            # 'R1SUPGdivxx', 'R1SUPGdivyy', 'R1SUPGdivyx', 'R1SUPGdivxy',
+            'R1SUPGTx', 'R1SUPGTy',
+        ])
+
+    if cavitation and physics.get('oss_theta', False):
+        from .terms_oss import OSS_TERM_NAMES
+        terms.extend(OSS_TERM_NAMES)
 
     if physics.get('mass_diffusion', False):
         terms.extend(['R1Lx', 'R1Ly'])
@@ -1231,7 +1432,10 @@ def _term_names_from_physics(fem_solver: dict) -> List[str]:
                       'R1PSPG_Wx', 'R1PSPG_Wy'])
 
     if physics.get('gap_shear', True):
-        terms.extend(['R24x', 'R24y'])
+        if cavitation:
+            terms.extend(['R24x_fb', 'R24y_fb'])
+        else:
+            terms.extend(['R24x', 'R24y'])
 
     # plane_shear default flipped to False for the pressure-based first
     # iteration. R23* terms themselves remain in density form in the
@@ -1280,5 +1484,17 @@ def get_active_terms(fem_solver: dict) -> List['NonLinearTerm']:
         requested = set(_term_names_from_physics(fem_solver))
 
     term_obj_list = [t for t in term_list if t.name in requested]
+
+    # SUPG terms (lazy import to avoid circular dependency)
+    from .terms_supg import get_supg_terms, SUPG_TERM_NAMES
+    if requested & set(SUPG_TERM_NAMES):
+        supg_terms = {t.name: t for t in get_supg_terms()}
+        term_obj_list += [supg_terms[n] for n in SUPG_TERM_NAMES if n in requested]
+
+    # OSS terms (lazy import to avoid circular dependency)
+    from .terms_oss import get_oss_terms, OSS_TERM_NAMES
+    if requested & set(OSS_TERM_NAMES):
+        oss_terms = {t.name: t for t in get_oss_terms()}
+        term_obj_list += [oss_terms[n] for n in OSS_TERM_NAMES if n in requested]
 
     return term_obj_list

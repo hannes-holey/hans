@@ -42,7 +42,7 @@ fem_solver:
     type: newton_alpha
     R_norm_tol: 1e-10
     physics:
-        pspg: true
-        gls: true
+        pspg: false
+        gls: false
     pspg_C_I: 2.
     pspg_boundary_decay: 2.0

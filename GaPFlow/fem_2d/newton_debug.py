@@ -39,13 +39,14 @@ from ..models.pressure import eos_pressure, eos_rho
 
 
 # Grid type for each variable / residual name
-_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'p': 'p', 'E': 'p', 'theta': 'p'}
-_RES_GRID = {'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p', 'fb': 'p'}
+_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'p': 'p', 'E': 'p', 'theta': 'p', 'xi': 'p'}
+_RES_GRID = {'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p', 'fb': 'p', 'R_oss': 'p'}
 
 # Display labels
-_VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'p': 'dq p', 'E': 'dq E', 'theta': 'dq theta'}
+_VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'p': 'dq p', 'E': 'dq E',
+              'theta': 'dq theta', 'xi': 'dq xi'}
 _RES_LABEL = {'momentum_x': 'R mom_x', 'momentum_y': 'R mom_y',
-              'mass': 'R mass', 'energy': 'R energy', 'fb': 'R FB'}
+              'mass': 'R mass', 'energy': 'R energy', 'fb': 'R FB', 'R_oss': 'R OSS'}
 
 
 def _minmax_title(label, field):
@@ -82,7 +83,7 @@ class NewtonDebugger:
 
     def __init__(self, output_dir, variables, residuals,
                  res_slices, sol_slices,
-                 Nx_p, Ny_p, Nx_v, Ny_v, terms, problem):
+                 Nx_p, Ny_p, Nx_v, Ny_v, terms, problem, quad_mgr=None):
         self.variables = variables
         self.residuals = residuals
         self.res_slices = res_slices
@@ -94,6 +95,7 @@ class NewtonDebugger:
         # Map term name -> residual equation name
         self.term_res = {t.name: t.res for t in terms}
         self.problem = problem
+        self.quad_mgr = quad_mgr
 
         self.plot_dir = os.path.join(output_dir, 'newton_debug')
         if os.path.isdir(self.plot_dir):
@@ -129,6 +131,8 @@ class NewtonDebugger:
         self._save_plots(timestep, it, R, dq)
         self._save_term_plots(timestep, it, R_per_term)
         self._save_solution_plots(timestep, it, q)
+        if 'xi' in self.variables and self.quad_mgr is not None:
+            self._save_oss_plots(timestep, it, q, R_per_term)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -301,5 +305,98 @@ class NewtonDebugger:
 
         fname = os.path.join(self.plot_dir,
                              f'ts{timestep:04d}_it{it:02d}_solution.png')
+        fig.savefig(fname, dpi=120, bbox_inches='tight', facecolor='white')
+        plt.close(fig)
+
+    def _quad_p1(self, name: str) -> np.ndarray:
+        """Average quad field over sub-points → inner (Nx_p, Ny_p) array."""
+        return self.quad_mgr.quad_fields[name].pg.mean(axis=0)[1:-1, 1:-1]
+
+    def _save_oss_plots(self, timestep: int, it: int, q: np.ndarray,
+                        R_per_term: dict) -> None:
+        """Save OSS stabilization diagnostic plot.
+
+        All residual contributions are taken directly from R_per_term (the exact
+        assembled values) rather than recomputed from quad fields.
+        """
+        alpha = self.problem.fem_solver.get('oss_theta_alpha', 1.0)
+
+        # Solution fields
+        theta = self._to_2d(q, 'theta', is_residual=False)
+        xi = self._to_2d(q, 'xi', is_residual=False)
+
+        # Context quad fields (averaged to P1 inner grid for display)
+        norm_a = np.sqrt(self._quad_p1('a_vec_x')**2 + self._quad_p1('a_vec_y')**2)
+        div_j = self._quad_p1('d_dx_jx') + self._quad_p1('d_dy_jy')
+
+        def _rterm(name):
+            """Extract the residual block for a term as a 2D array, or zeros."""
+            if name not in R_per_term:
+                return None
+            res_name = self.term_res[name]
+            return self._to_2d_res(R_per_term[name], res_name)
+
+        def _sum_terms(*names):
+            """Sum assembled residual blocks for the given term names, or None if all absent."""
+            arrays = [_rterm(n) for n in names if _rterm(n) is not None]
+            if not arrays:
+                return None
+            return arrays[0] if len(arrays) == 1 else sum(arrays[1:], arrays[0])
+
+        # R_oss equation contributions (projection equation)
+        R_adv  = _sum_terms('R_OSS_advx', 'R_OSS_advy')
+        R_div  = _rterm('R_OSS_div')
+        R_proj = _rterm('R_OSS_proj')
+        R_oss_net = _sum_terms('R_OSS_advx', 'R_OSS_advy', 'R_OSS_div', 'R_OSS_proj')
+
+        # mass equation OSS contributions
+        R_lap  = _sum_terms('R_OSS_mass_xx', 'R_OSS_mass_yy',
+                            'R_OSS_mass_xy', 'R_OSS_mass_yx')
+        R_corr = _sum_terms('R_OSS_corrx', 'R_OSS_corry')
+        R_mass_oss_net = _sum_terms('R_OSS_mass_xx', 'R_OSS_mass_yy',
+                                    'R_OSS_mass_xy', 'R_OSS_mass_yx',
+                                    'R_OSS_corrx', 'R_OSS_corry')
+
+        def _symvlim(*arrays):
+            vmax = max((np.abs(a).max() for a in arrays if a is not None), default=1e-30)
+            return dict(vmin=-vmax, vmax=vmax)
+
+        panels = [
+            # Row 1: solution context
+            (theta,       r'$\theta$',                       'viridis', {}),
+            (xi,          r'$\xi_h$',                        'RdBu_r',  {}),
+            (norm_a,      r'$|\mathbf{a}|$',                 'viridis', {}),
+            (div_j,       r'$\nabla\cdot j$ (context)',      'RdBu_r',  {}),
+            # Row 2: assembled R_oss contributions
+            (R_adv,       r'$R_{oss}$: adv ($a\cdot\nabla\theta$)',  'RdBu_r', _symvlim(R_adv, R_div, R_proj)),
+            (R_div,       r'$R_{oss}$: div ($(1-\theta)\nabla\cdot j$)', 'RdBu_r', _symvlim(R_adv, R_div, R_proj)),
+            (R_proj,      r'$R_{oss}$: proj ($-\xi$)',       'RdBu_r',  _symvlim(R_adv, R_div, R_proj)),
+            (R_oss_net,   r'$R_{oss}$ net',                  'RdBu_r',  _symvlim(R_adv, R_div, R_proj)),
+            # Row 3: assembled mass equation OSS contributions
+            (R_lap,       r'$R_{mass}$: OSS Laplacian',      'RdBu_r',  _symvlim(R_lap, R_corr, R_mass_oss_net)),
+            (R_corr,      r'$R_{mass}$: OSS correction',     'RdBu_r',  _symvlim(R_lap, R_corr, R_mass_oss_net)),
+            (R_mass_oss_net, r'$R_{mass}$: OSS net',         'RdBu_r',  _symvlim(R_lap, R_corr, R_mass_oss_net)),
+        ]
+        panels = [(f, l, c, kw) for f, l, c, kw in panels if f is not None]
+
+        n_cols = 4
+        n_rows = (len(panels) + n_cols - 1) // n_cols
+        fig, axes = plt.subplots(n_rows, n_cols,
+                                 figsize=(4.5 * n_cols, 3.5 * n_rows),
+                                 squeeze=False, facecolor='white')
+        for ax in axes.flat:
+            ax.set_facecolor('white')
+        fig.suptitle(f'OSS diagnostics  ts={timestep:04d}  it={it:02d}  α={alpha}',
+                     fontsize=11)
+
+        for ax, (field, label, cmap, kwargs) in zip(axes.flat, panels):
+            im = ax.imshow(field.T, origin='lower', aspect='auto', cmap=cmap, **kwargs)
+            ax.set_title(_minmax_title(label, field), fontsize=8)
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        for ax in list(axes.flat)[len(panels):]:
+            ax.set_visible(False)
+
+        fname = os.path.join(self.plot_dir,
+                             f'ts{timestep:04d}_it{it:02d}_oss.png')
         fig.savefig(fname, dpi=120, bbox_inches='tight', facecolor='white')
         plt.close(fig)

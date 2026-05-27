@@ -30,8 +30,10 @@ grid:
     xE: ['D', 'N', 'N']
     yS: ['P', 'P', 'P']
     yN: ['P', 'P', 'P']
-    xW_D: 877.7108
-    xE_D: 877.7108
+    #xW_D: 877.7108
+    #xE_D: 877.7108
+    xW_P: 0
+    xE_P: 0
 
 geometry:
     type: parabolic
@@ -44,7 +46,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 120
+    max_it: 50
 
 properties:
     EOS: DH
@@ -52,14 +54,14 @@ properties:
     P0: 101325
     C1: 3.5e10
     C2: 1.23
-    p_cav: 101325
+    p_cav: 0
     shear: 0.039
     bulk: 0.0
 
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 1.
+    newton_relax: 0.1
     p_init: 103338.25
     equations:
         energy: False
@@ -68,8 +70,11 @@ fem_solver:
         gap_shear: true
         plane_shear: false
         inertia: false
-        theta_stab: true
-    theta_stab_alpha: 0.0001
+        upwind_theta: false
+        theta_stab: false
+        oss_theta: false
+    oss_theta_alpha: 1.0
+    oss_correction_alpha: 1.0
     max_iter: 1
     R_norm_tol: 1e-9
     newton_debug: False
