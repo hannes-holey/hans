@@ -142,12 +142,8 @@ class Problem:
             from .solver_explicit import ExplicitSolver
             self.solver = ExplicitSolver(self)
         elif self.numerics['solver'] == 'fem':
-            if self.grid['Ny'] == 1:
-                from .solver_fem_1d import FEMSolver1D
-                self.solver = FEMSolver1D(self)
-            else:
-                from .solver_fem_2d import FEMSolver2d
-                self.solver = FEMSolver2d(self.fem_solver, self)
+            from .solver_fem_2d import FEMSolver2d
+            self.solver = FEMSolver2d(self.fem_solver, self)
 
         # Initialize domain decomposition and field collection
         self.decomp = DomainDecomposition(grid, numerics)

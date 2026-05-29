@@ -179,42 +179,30 @@ class GridIndexManager:
             mask[:, self.Ny_p_padded - 1] = mask[:, 1]
 
         # New indices for inter-subdomain (non-boundary) ghost nodes
-        cur_val = self.Nx_p_inner * self.Ny_p_inner
-        for x in range(self.Nx_p_padded):
-            for y in range(self.Ny_p_padded):
-                if mask[x, y] == -1 and not self._is_boundary_p(x, y):
-                    mask[x, y] = cur_val
-                    cur_val += 1
+        boundary_p = np.zeros((self.Nx_p_padded, self.Ny_p_padded), dtype=bool)
+        if self.bc_at_W: boundary_p[0,  :] = True
+        if self.bc_at_E: boundary_p[-1, :] = True
+        if self.bc_at_S: boundary_p[:,  0] = True
+        if self.bc_at_N: boundary_p[:, -1] = True
+        ghost_coords = np.argwhere((mask == -1) & ~boundary_p)
+        nb_inner_p = self.Nx_p_inner * self.Ny_p_inner
+        mask[ghost_coords[:, 0], ghost_coords[:, 1]] = np.arange(
+            nb_inner_p, nb_inner_p + len(ghost_coords), dtype=np.int32)
 
         # Neumann forwarding removed: natural BC via "do nothing" approach.
         # Ghost nodes at Neumann boundaries stay -1 (no DOF), same as Dirichlet.
         # The zero-flux condition is enforced naturally by the variational formulation.
-        if True:
-            if var:
-                if self.bc_at_W and self._bc_neumann['xW'][var]:
-                    mask[0, :] = mask[1, :]
-                if self.bc_at_E and self._bc_neumann['xE'][var]:
-                    mask[self.Nx_p_padded - 1, :] = mask[self.Nx_p_padded - 2, :]
-                if self.bc_at_S and self._bc_neumann['yS'][var]:
-                    mask[:, 0] = mask[:, 1]
-                if self.bc_at_N and self._bc_neumann['yN'][var]:
-                    mask[:, self.Ny_p_padded - 1] = mask[:, self.Ny_p_padded - 2]
+        if var:
+            if self.bc_at_W and self._bc_neumann['xW'][var]:
+                mask[0, :] = mask[1, :]
+            if self.bc_at_E and self._bc_neumann['xE'][var]:
+                mask[self.Nx_p_padded - 1, :] = mask[self.Nx_p_padded - 2, :]
+            if self.bc_at_S and self._bc_neumann['yS'][var]:
+                mask[:, 0] = mask[:, 1]
+            if self.bc_at_N and self._bc_neumann['yN'][var]:
+                mask[:, self.Ny_p_padded - 1] = mask[:, self.Ny_p_padded - 2]
 
         return mask
-
-    def _is_boundary_p(self, x: int, y: int) -> bool:
-        """True if (x, y) represents a boundary condition on the density grid.
-        """
-        if x == 0 and self.bc_at_W:
-            return True
-        if x == self.Nx_p_padded - 1 and self.bc_at_E:
-            return True
-        if y == 0 and self.bc_at_S:
-            return True
-        if y == self.Ny_p_padded - 1 and self.bc_at_N:
-            return True
-
-        return False
 
     @cached_property
     def nb_contributors_p(self) -> int:
@@ -280,43 +268,33 @@ class GridIndexManager:
             mask[:, self.Ny_v_padded - 1] = mask[:, 3]
 
         # New indices for inter-subdomain (non-boundary) ghost nodes
-        cur_val = self.Nx_v_inner * self.Ny_v_inner
-        for x in range(self.Nx_v_padded):
-            for y in range(self.Ny_v_padded):
-                if mask[x, y] == -1 and not self._is_boundary_v(x, y):
-                    mask[x, y] = cur_val
-                    cur_val += 1
+        boundary_v = np.zeros((self.Nx_v_padded, self.Ny_v_padded), dtype=bool)
+        if self.bc_at_W: boundary_v[:2,  :] = True
+        if self.bc_at_E: boundary_v[-2:, :] = True
+        if self.bc_at_S: boundary_v[:,  :2] = True
+        if self.bc_at_N: boundary_v[:, -2:] = True
+        ghost_coords = np.argwhere((mask == -1) & ~boundary_v)
+        nb_inner_v = self.Nx_v_inner * self.Ny_v_inner
+        mask[ghost_coords[:, 0], ghost_coords[:, 1]] = np.arange(
+            nb_inner_v, nb_inner_v + len(ghost_coords), dtype=np.int32)
 
         # Neumann forwarding removed: natural BC via "do nothing" approach.
         # Ghost nodes at Neumann boundaries stay -1 (no DOF), same as Dirichlet.
-        if True:
-            if var:
-                if self.bc_at_W and self._bc_neumann['xW'][var]:
-                    mask[1, :] = mask[2, :]
-                    mask[0, :] = mask[2, :]
-                if self.bc_at_E and self._bc_neumann['xE'][var]:
-                    mask[self.Nx_v_padded - 2, :] = mask[self.Nx_v_padded - 3, :]
-                    mask[self.Nx_v_padded - 1, :] = mask[self.Nx_v_padded - 3, :]
-                if self.bc_at_S and self._bc_neumann['yS'][var]:
-                    mask[:, 1] = mask[:, 2]
-                    mask[:, 0] = mask[:, 2]
-                if self.bc_at_N and self._bc_neumann['yN'][var]:
-                    mask[:, self.Ny_v_padded - 2] = mask[:, self.Ny_v_padded - 3]
-                    mask[:, self.Ny_v_padded - 1] = mask[:, self.Ny_v_padded - 3]
+        if var:
+            if self.bc_at_W and self._bc_neumann['xW'][var]:
+                mask[1, :] = mask[2, :]
+                mask[0, :] = mask[2, :]
+            if self.bc_at_E and self._bc_neumann['xE'][var]:
+                mask[self.Nx_v_padded - 2, :] = mask[self.Nx_v_padded - 3, :]
+                mask[self.Nx_v_padded - 1, :] = mask[self.Nx_v_padded - 3, :]
+            if self.bc_at_S and self._bc_neumann['yS'][var]:
+                mask[:, 1] = mask[:, 2]
+                mask[:, 0] = mask[:, 2]
+            if self.bc_at_N and self._bc_neumann['yN'][var]:
+                mask[:, self.Ny_v_padded - 2] = mask[:, self.Ny_v_padded - 3]
+                mask[:, self.Ny_v_padded - 1] = mask[:, self.Ny_v_padded - 3]
 
         return mask
-
-    def _is_boundary_v(self, x: int, y: int) -> bool:
-        """True if (x, y) is a boundary ghost node on the mass flux grid (depth 1 or 2)."""
-        if (x in (0, 1)) and self.bc_at_W:
-            return True
-        if (x in (self.Nx_v_padded - 1, self.Nx_v_padded - 2)) and self.bc_at_E:
-            return True
-        if (y in (0, 1)) and self.bc_at_S:
-            return True
-        if (y in (self.Ny_v_padded - 1, self.Ny_v_padded - 2)) and self.bc_at_N:
-            return True
-        return False
 
     @cached_property
     def nb_contributors_v(self) -> int:

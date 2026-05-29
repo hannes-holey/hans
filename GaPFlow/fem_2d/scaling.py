@@ -225,11 +225,11 @@ def _get_characteristic_velocity(problem: "Problem") -> float:
         return u_wall_max
 
     # Body-force driven flow: estimate U ~ f * Ly^2 / (8*mu)  (Poiseuille)
-    force_x = problem.geo.get('force_x', 0.0)
-    force_y = problem.geo.get('force_y', 0.0)
+    force_x = problem.prop['force_x']
+    force_y = problem.prop['force_y']
     force_mag = max(abs(force_x), abs(force_y))
     if force_mag > 0.0:
-        mu = problem.prop.get('shear', problem.prop.get('mu', 1.0))
+        mu = problem.prop['shear']
         Ly = problem.grid['Ly']
         return force_mag * Ly**2 / (8.0 * mu)
 

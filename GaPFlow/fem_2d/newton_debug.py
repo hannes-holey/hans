@@ -400,3 +400,59 @@ class NewtonDebugger:
                              f'ts{timestep:04d}_it{it:02d}_oss.png')
         fig.savefig(fname, dpi=120, bbox_inches='tight', facecolor='white')
         plt.close(fig)
+
+
+def log_jacobian_block_norms(assembly, scaling, M_coo, scaled=True):
+    """Print Frobenius norm of each (residual, variable) block of the Jacobian."""
+    import numpy as np
+
+    res_names = list(assembly._res_slices.keys())
+    var_names = list(assembly._sol_slices.keys())
+    res_idx = {r: i for i, r in enumerate(res_names)}
+    var_idx = {v: i for i, v in enumerate(var_names)}
+
+    r_blk = np.empty(len(M_coo), dtype=np.int32)
+    v_blk = np.empty(len(M_coo), dtype=np.int32)
+    for (res, var), block in assembly.block_order.items():
+        s = block['nnz_idx_start']
+        n = block['nb_nnz']
+        r_blk[s:s + n] = res_idx[res]
+        v_blk[s:s + n] = var_idx[var]
+
+    def _print_table(vals, title):
+        col_w = 11
+        hdr = f"  {'res \\ var':<14s}" + ''.join(f"{v:>{col_w}s}" for v in var_names)
+        print(f"\n{title}")
+        print(hdr)
+        print('  ' + '-' * (len(hdr) - 2))
+        for ri, res in enumerate(res_names):
+            row = f"  {res:<14s}"
+            for vi in range(len(var_names)):
+                mask = (r_blk == ri) & (v_blk == vi)
+                norm = np.linalg.norm(vals[mask]) if mask.any() else 0.0
+                row += f"{norm:>{col_w}.2e}"
+            print(row)
+
+    _print_table(M_coo, 'Jacobian block norms (unscaled)')
+
+    if scaled and scaling is not None:
+        _print_table(M_coo * scaling.display_scale, 'Jacobian block norms (scaled)')
+        cs = scaling.char_scales
+        print(f"\n  Characteristic scales: "
+              + '  '.join(f"{k}={v:.2e}" for k, v in cs.items()))
+
+
+def print_nodal_diagnostics(quad_mgr, cavitation, label=''):
+    """Print min/max of inner nodal fields and quad arrays for diagnostics."""
+    prefix = f'  [nodal {label}]' if label else '  [nodal]'
+    nodal_names = ['p', 'rho'] + (['theta'] if cavitation else [])
+    for name in nodal_names:
+        inner = quad_mgr.nodal_fields[name].p[0]
+        print(f'{prefix}  {name}: [{inner.min():.4e}, {inner.max():.4e}]')
+    prefix_q = f'  [quad  {label}]' if label else '  [quad]'
+    quad_names = ['p', 'rho'] + (['theta'] if cavitation else [])
+    for name in quad_names:
+        if name in quad_mgr.quad_fields:
+            quad_mgr.interpolate_nodal_to_quad(name)
+            q_arr = quad_mgr.get_quad(name)
+            print(f'{prefix_q}  {name}: [{q_arr.min():.4e}, {q_arr.max():.4e}]')

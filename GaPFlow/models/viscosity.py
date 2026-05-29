@@ -23,6 +23,7 @@
 #
 import numpy as np
 import numpy.typing as npt
+import jax.numpy as jnp
 
 
 def piezoviscosity(p: float | npt.NDArray,
@@ -128,11 +129,11 @@ def shear_rate_avg(dp_dx, dp_dy, h, u1, u2, mu):
     """
 
     # instead of different viscosities in x and y direction
-    grad_p = np.hypot(dp_dx, dp_dy)
+    grad_p = jnp.hypot(dp_dx, dp_dy)
 
     sr_bot, sr_top = srate_wall_newton(grad_p, h, u1, u2, mu)
 
-    return (np.abs(sr_top) + np.abs(sr_bot)) / 2.
+    return (jnp.abs(sr_top) + jnp.abs(sr_bot)) / 2.
 
 
 def barus_piezo(p, mu0, aB=2.e-8, name='Barus'):
@@ -156,7 +157,7 @@ def barus_piezo(p, mu0, aB=2.e-8, name='Barus'):
     float or Array
         Pressure-dependent viscosity.
     """
-    return mu0 * np.exp(aB * p)
+    return mu0 * jnp.exp(aB * p)
 
 
 def roelands_piezo(p, mu0, mu_inf=1.e-3, p_ref=1.96e8, z=0.68, name='Roelands'):
@@ -188,7 +189,7 @@ def roelands_piezo(p, mu0, mu_inf=1.e-3, p_ref=1.96e8, z=0.68, name='Roelands'):
         Pressure-dependent viscosity, same shape as `p`.
     """
 
-    return mu0 * np.exp(np.log(mu0 / mu_inf) * (-1 + (1 + p / p_ref)**z))
+    return mu0 * jnp.exp(jnp.log(mu0 / mu_inf) * (-1 + (1 + p / p_ref)**z))
 
 
 def dukler_mixture(rho, eta_l, eta_v=3.9e-5, rho_l=850., rho_v=0.019, name='Dukler'):
@@ -276,7 +277,7 @@ def eyring_shear(shear_rate, mu0, tauE=5.e5, name='Eyring'):
         Shear-rate-dependent viscosity.
     """
     tau0 = mu0 * shear_rate
-    return tauE / tau0 * np.arcsinh(tau0 / tauE)
+    return tauE / tau0 * jnp.arcsinh(tau0 / tauE)
 
 
 def carreau_shear(shear_rate, mu0, mu_inf=1.e-3, lam=0.02, a=2, N=0.8, name='Carreau'):

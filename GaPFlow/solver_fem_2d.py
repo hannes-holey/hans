@@ -38,12 +38,13 @@ from mpi4py import MPI
 from .fem_2d.elements import TaylorHoodP2P1
 from .fem_2d.grid_index import GridIndexManager
 from .fem_2d.quad_fields import QuadFieldManager
-from .fem_2d.assembly import Assembly
+from .fem_2d.assembly import Assembly, FieldSpec
 from .fem_2d.terms import NonLinearTerm, get_active_terms
-from .fem_2d.scaling import build_scaling, build_scaling_from_blocks
+from .fem_2d.scaling import build_scaling
 from .fem_2d.scipy_system import ScipySystem
 from .fem_2d.solution_guards import (linearization_guard, linearization_guard_p,  # noqa: F401
-                                      report_jacobian_block_changes)
+                                      report_jacobian_block_changes,
+                                      solve_linear_system, line_search)
 from .models.pressure import eos_pressure, eos_rho
 
 if TYPE_CHECKING:
@@ -52,10 +53,8 @@ if TYPE_CHECKING:
 
 NDArray = npt.NDArray[np.floating]
 
-# Variable-to-grid mapping: which grid each variable lives on
-_VAR_TO_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p', 'xi': 'p'}
-# Residual-to-grid mapping: which grid each residual equation lives on
-_RES_TO_GRID = {
+VAR_GRID = {'jx': 'v', 'jy': 'v', 'p': 'p', 'E': 'p', 'theta': 'p', 'xi': 'p'}
+RES_GRID = {
     'momentum_x': 'v',
     'momentum_y': 'v',
     'mass':       'p',
@@ -88,8 +87,8 @@ class FEMSolver2d:
 
     def _init_accessors(self) -> None:
         p = self.problem
-        self.energy = p.fem_solver['equations'].get('energy', False)
-        self.cavitation = p.fem_solver['equations'].get('cavitation', False)
+        self.energy = p.fem_solver['equations']['energy']
+        self.cavitation = p.fem_solver['equations']['cavitation']
 
         self.dx = p.grid['dx']
         self.dy = p.grid['dy']
@@ -102,14 +101,18 @@ class FEMSolver2d:
         if self.cavitation:
             self.variables.append('theta')
             self.residuals.append('fb')
-        if self.cavitation and p.fem_solver.get('physics', {}).get('oss_theta', False):
+        if self.cavitation and p.fem_solver['physics']['oss_theta']:
             self.variables.append('xi')
             self.residuals.append('R_oss')
 
         self._sync_rho = p.fem_solver.get('sync_rho_before_exchange', True)
 
-        self.var_to_grid = {v: _VAR_TO_GRID[v] for v in self.variables}
-        self.res_to_grid = {r: _RES_TO_GRID[r] for r in self.residuals}
+        self.var_specs = [FieldSpec(name=v, grid=VAR_GRID[v], idx=i)
+                          for i, v in enumerate(self.variables)]
+        self.res_specs = [FieldSpec(name=r, grid=RES_GRID[r], idx=i)
+                          for i, r in enumerate(self.residuals)]
+        self.var_to_grid = {s.name: s.grid for s in self.var_specs}
+        self.res_to_grid = {s.name: s.grid for s in self.res_specs}
 
         # Elements (carry dx, dy and shape function matrices)
         self.elements = TaylorHoodP2P1(self.dx, self.dy)
@@ -163,8 +166,8 @@ class FEMSolver2d:
         self.assembly = Assembly(
             grid_idx=self.grid_idx,
             element=self.elements,
-            variables=self.variables,
-            residuals=self.residuals,
+            var_specs=self.var_specs,
+            res_specs=self.res_specs,
         )
 
     def _build_jit_functions(self) -> None:
@@ -185,29 +188,19 @@ class FEMSolver2d:
         for term in self.terms:
             ctx = {name: make_getter(name) for name in all_field_names}
             ctx['dt'] = lambda: p.numerics['dt']
-            ctx['mass_diff_alpha'] = lambda: p.fem_solver.get(
-                'mass_diffusion_alpha', 1e-3)
-            ctx['lap_p_alpha'] = lambda: p.fem_solver.get(
-                'lap_pressure_alpha', 0.0)
-            ctx['lap_theta_alpha'] = lambda: p.fem_solver.get(
-                'lap_theta_alpha', 0.0)
-            ctx['theta_stab_alpha'] = lambda: p.fem_solver.get(
-                'theta_stab_alpha', 0.0)
+            ctx['theta_stab_alpha'] = lambda: p.fem_solver['theta_stab_alpha']
             ctx['p_cav'] = lambda: p.prop['p_cav']
             ctx['fb_p_ref'] = lambda: p.prop['P0']
             ctx['dx'] = lambda: p.grid['dx']
             ctx['dy'] = lambda: p.grid['dy']
-            ctx['pspg_fb_alpha'] = lambda: p.fem_solver.get('pspg_fb_alpha', 0.0)
-            ctx['supg_theta_alpha'] = lambda: p.fem_solver.get('supg_theta_alpha', 0.0)
-            ctx['oss_correction_alpha'] = lambda: p.fem_solver.get('oss_correction_alpha', 1.0)
-            ctx['pen_eps'] = lambda: p.fem_solver.get('pen_eps', 0.0)
+            ctx['oss_correction_alpha'] = lambda: p.fem_solver['oss_correction_alpha']
             if self.energy:
                 ctx['k'] = lambda: p.energy.k
             term.build(ctx)
 
     def _init_linear_solver(self) -> None:
         petsc_info = self.assembly.get_petsc_info(res_size=self.res_size)
-        solver_type = self.problem.fem_solver.get('linear_solver', 'direct')
+        solver_type = self.problem.fem_solver['linear_solver']
 
         try:
             from . import HAS_PETSC
@@ -234,7 +227,7 @@ class FEMSolver2d:
             print(f"[FEMSolver2d] Using reference pressure p_ref = "
                   f"{p_ref:.3e} Pa for scaling")
 
-        debug_from = self.problem.fem_solver.get('newton_debug', None)
+        debug_from = self.problem.fem_solver['newton_debug']
         if debug_from is not None:
             from .fem_2d.newton_debug import NewtonDebugger
             self.debugger = NewtonDebugger(
@@ -424,8 +417,8 @@ class FEMSolver2d:
         """Build the full quad_fields dict for all active terms.
 
         Includes plain values for all dep_vars and gradient fields
-        ('d_dx_<var>', 'd_dy_<var>') for any variable that appears in a
-        term with d_dx_resfun / d_dy_resfun set.
+        ('d_dx_<var>', 'd_dy_<var>') for any variable that needs a spatial
+        derivative (trial_deriv set on that variable's slot).
         """
         qf: dict = {}
         need_dx: set = set()
@@ -435,11 +428,10 @@ class FEMSolver2d:
             for v in term.dep_vars:
                 if v not in qf:
                     qf[v] = self.quad_mgr.get_quad(v)
-            if term.d_dx_resfun:
-                for v in term.dep_vars:
+                d = term.depvar_deriv_for(v)
+                if d == 'x':
                     need_dx.add(v)
-            if term.d_dy_resfun:
-                for v in term.dep_vars:
+                elif d == 'y':
                     need_dy.add(v)
 
         for v in need_dx:
@@ -541,100 +533,12 @@ class FEMSolver2d:
         R_norm_global = float(np.sqrt(R_norm_global_sq))
         return R_norm_global
 
-    def log_jacobian_block_norms(self, M_coo: NDArray = None,
-                                  scaled: bool = True) -> None:
-        """Print Frobenius norm of each (residual, variable) block of the Jacobian.
-
-        Assembles the Jacobian at the current state if M_coo is not supplied.
-        Prints two tables: raw COO norms, then scaled norms (if scaling exists).
-        Useful for diagnosing whether characteristic scales in scaling.py are
-        appropriate for the current physical regime.
-
-        Parameters
-        ----------
-        M_coo : array, optional
-            COO Jacobian values from get_M(). Assembled fresh if None.
-        scaled : bool
-            If True and self.scaling exists, also print the scaled table.
-        """
-        if M_coo is None:
-            qf = self._build_all_quad_fields()
-            M_coo = self.get_M(qf)
-
-        asm = self.assembly
-        res_names = list(asm._res_slices.keys())
-        var_names = list(asm._sol_slices.keys())
-        res_idx = {r: i for i, r in enumerate(res_names)}
-        var_idx = {v: i for i, v in enumerate(var_names)}
-
-        # Map each COO entry to its (res_block, var_block) indices
-        r_blk = np.empty(len(M_coo), dtype=np.int32)
-        v_blk = np.empty(len(M_coo), dtype=np.int32)
-        for (res, var), block in asm.block_order.items():
-            s = block['nnz_idx_start']
-            n = block['nb_nnz']
-            r_blk[s:s + n] = res_idx[res]
-            v_blk[s:s + n] = var_idx[var]
-
-        def _print_table(vals, title):
-            col_w = 11
-            hdr = f"  {'res \\ var':<14s}" + ''.join(f"{v:>{col_w}s}" for v in var_names)
-            print(f"\n{title}")
-            print(hdr)
-            print('  ' + '-' * (len(hdr) - 2))
-            for ri, res in enumerate(res_names):
-                row = f"  {res:<14s}"
-                for vi, var in enumerate(var_names):
-                    mask = (r_blk == ri) & (v_blk == vi)
-                    norm = np.linalg.norm(vals[mask]) if mask.any() else 0.0
-                    row += f"{norm:>{col_w}.2e}"
-                print(row)
-
-        _print_table(M_coo, 'Jacobian block norms (unscaled)')
-
-        if scaled and hasattr(self, 'scaling') and self.scaling is not None:
-            _print_table(M_coo * self.scaling.display_scale, 'Jacobian block norms (scaled)')
-            cs = self.scaling.char_scales
-            print(f"\n  Characteristic scales: "
-                  + '  '.join(f"{k}={v:.2e}" for k, v in cs.items()))
-
-    def _limit_cavitation_step(self, q: NDArray, dq: NDArray) -> NDArray:
-        """Limit the Newton step so no p-DOF changes by more than a relative fraction.
-
-        Computes a single global scalar factor
-            f = min(1, min_i( max_rel_dp * max(|p_i|, p_floor) / |dq_p_i| ))
-        and returns f * dq.  The floor prevents division-by-zero when p_cav = 0.
-
-        Activated by fem_solver.transition_damping: true.
-        Fraction: fem_solver.transition_damping_max_rel_dp  (default 0.05)
-        Floor:    fem_solver.transition_damping_p_floor     (default 1e3 Pa)
-        """
-        p_sl = self._sol_slice('p')
-        max_rel_dp = float(self.problem.fem_solver.get('transition_damping_max_rel_dp', 0.5))
-        p_floor = float(self.problem.fem_solver.get('transition_damping_p_floor', 1e4))
-
-        p_cur = q[p_sl]
-        dp = dq[p_sl]
-
-        allowed = max_rel_dp * np.maximum(np.abs(p_cur), p_floor)
-        with np.errstate(divide='ignore', invalid='ignore'):
-            factors = np.where(np.abs(dp) > 0.0, allowed / np.abs(dp), 1.0)
-        f = float(np.min(factors))
-        if f < 1.0:
-            if self.problem.decomp.rank == 0:
-                worst = int(np.argmin(factors))
-                print(f"  [transition_damping] f={f:.4e}  "
-                      f"worst node={worst}  |dp|={abs(dp[worst]):.3e}  "
-                      f"allowed={allowed[worst]:.3e}")
-            dq = dq * f
-        return dq
-
     def _clamp_cavitation(self, q: NDArray) -> NDArray:
         """Clamp p >= p_cav and theta >= 0, with singularity guard at (a,theta)=(0,0)."""
         p_sl = self._sol_slice('p')
         theta_sl = self._sol_slice('theta')
-        p_cav = float(self.problem.prop.get('p_cav', 0.0))
-        theta_min = self.problem.fem_solver.get('theta_min', np.finfo(float).eps)
+        p_cav = float(self.problem.prop['p_cav'])
+        theta_min = self.problem.fem_solver['theta_min']
         q[p_sl] = np.maximum(q[p_sl], p_cav)
         th = np.maximum(q[theta_sl], 0.0)
         a = q[p_sl] - p_cav
@@ -642,127 +546,6 @@ class FEMSolver2d:
             (np.abs(a) < theta_min) & (th < theta_min),
             theta_min, th)
         return q
-
-    def _log_upwind_theta_factors(self) -> None:
-        """Print quad-point statistics of the R1UWx/y integrand factors.
-
-        Decomposes the upwind coefficient dp_drho·|jx|·dx/2 (and y) into its
-        factors so the dominant contributor to under/over-stabilization is visible.
-        Also prints ratio of upwind coefficient to the R11x_fb coefficient dp_drho·|jx|
-        to show what fraction of the advective flux the upwind term represents.
-        """
-        dp   = self.quad_mgr.get_quad('dp_drho').ravel()
-        jx   = self.quad_mgr.get_quad('jx').ravel()
-        jy   = self.quad_mgr.get_quad('jy').ravel()
-        th   = self.quad_mgr.get_quad('theta').ravel()
-        dx   = self.problem.grid['dx']
-        dy   = self.problem.grid['dy']
-
-        coeff_x = dp * np.abs(jx) * dx / 2.0
-        coeff_y = dp * np.abs(jy) * dy / 2.0
-        ref_x   = dp * np.abs(jx)   # R11x_fb integrand scale
-        ref_y   = dp * np.abs(jy)
-
-        def stats(arr, name):
-            return (f'{name}: min={arr.min():.3e} mean={arr.mean():.3e} '
-                    f'max={arr.max():.3e}')
-
-        print('  [upwind_theta factors]')
-        print(f'    dx={dx:.3e}  dy={dy:.3e}')
-        print(f'    {stats(dp,   "dp_drho")}')
-        print(f'    {stats(np.abs(jx), "|jx|")}')
-        print(f'    {stats(np.abs(jy), "|jy|")}')
-        print(f'    {stats(th,   "theta")}')
-        print(f'    {stats(coeff_x, "dp*|jx|*dx/2 (UWx coeff)")}')
-        print(f'    {stats(coeff_y, "dp*|jy|*dy/2 (UWy coeff)")}')
-        print(f'    UWx/R11x ratio: mean={np.where(ref_x>0, coeff_x/ref_x, 0).mean():.3e}  '
-              f'(= dx/2 = {dx/2:.3e})')
-        print(f'    UWy/R11y ratio: mean={np.where(ref_y>0, coeff_y/ref_y, 0).mean():.3e}  '
-              f'(= dy/2 = {dy/2:.3e})')
-
-    def _log_theta_stab_contribution(self, R: NDArray) -> None:
-        """Print theta_stab residual contribution relative to gross mass flux."""
-        stab_terms = [t for t in self.terms if t.name in {'R1STx', 'R1STy'}]
-        if not stab_terms:
-            return
-        qf = self._build_all_quad_fields()
-        mass_sl = self._res_slices['mass']
-
-        # Per-term absolute norms in the mass row
-        other_mass_terms = [t for t in self.terms
-                            if t.res == 'mass' and t.name not in {'R1STx', 'R1STy'}]
-        gross = sum(
-            np.linalg.norm(self.assembly.assemble_rhs(qf, [t])[mass_sl])
-            for t in other_mass_terms
-        )
-        R_stab = self.assembly.assemble_rhs(qf, stab_terms)
-        R_stab_norm = np.linalg.norm(R_stab[mass_sl])
-        ratio = R_stab_norm / (gross + 1e-30)
-
-        alpha = self.problem.fem_solver.get('theta_stab_alpha', 0.0)
-        print(f'  [theta_stab] ||R_stab||={R_stab_norm:.3e}  '
-              f'gross_mass_flux={gross:.3e}  ratio={ratio:.3e}  alpha={alpha:.3e}')
-
-    def _log_supg_contribution(self, R: NDArray) -> None:
-        """Print SUPG residual contribution relative to gross mass flux, plus tau stats."""
-        from .fem_2d.terms_supg import SUPG_TERM_NAMES
-        supg_terms = [t for t in self.terms if t.name in set(SUPG_TERM_NAMES)]
-        if not supg_terms:
-            print('  [supg] no SUPG terms active')
-            return
-        qf = self._build_all_quad_fields()
-        mass_sl = self._res_slices['mass']
-
-        other_mass_terms = [t for t in self.terms
-                            if t.res == 'mass' and t.name not in set(SUPG_TERM_NAMES)]
-        gross = sum(
-            np.linalg.norm(self.assembly.assemble_rhs(qf, [t])[mass_sl])
-            for t in other_mass_terms
-        )
-        R_supg = self.assembly.assemble_rhs(qf, supg_terms)
-        R_supg_norm = np.linalg.norm(R_supg[mass_sl])
-        ratio = R_supg_norm / (gross + 1e-30)
-
-        tau_jx = self.quad_mgr.get_quad('tau_jx')
-        tau_jy = self.quad_mgr.get_quad('tau_jy')
-        theta_q = self.quad_mgr.get_quad('theta')
-        osc = theta_q * (1 - theta_q)
-        alpha = self.problem.fem_solver.get('supg_theta_alpha', 0.0)
-        print(f'  [supg] ||R_supg||={R_supg_norm:.3e}  gross_mass={gross:.3e}  '
-              f'ratio={ratio:.3e}  alpha={alpha:.3e}  '
-              f'tau_jx_max={np.max(np.abs(tau_jx)):.3e}  tau_jy_max={np.max(np.abs(tau_jy)):.3e}  '
-              f'theta_osc_max={np.max(osc):.3e}  theta_osc_mean={np.mean(np.abs(osc)):.3e}')
-
-    def _log_pspg_fb_contribution(self, R: NDArray) -> None:
-        """Print PSPG-FB residual contribution relative to total mass residual."""
-        pspg_names = {'R1FBpx', 'R1FBpy', 'R1FBtx', 'R1FBty'}
-        pspg_terms = [t for t in self.terms if t.name in pspg_names]
-        if not pspg_terms:
-            return
-        qf = self._build_all_quad_fields()
-        R_pspg = self.assembly.assemble_rhs(qf, pspg_terms)
-        mass_sl = self._res_slices['mass']
-        R_mass_norm = np.linalg.norm(R[mass_sl])
-        R_pspg_norm = np.linalg.norm(R_pspg[mass_sl])
-        ratio = R_pspg_norm / (R_mass_norm + 1e-30)
-        print(f'  [pspg_fb] ||R_pspg_mass||={R_pspg_norm:.3e}  '
-              f'||R_mass||={R_mass_norm:.3e}  ratio={ratio:.3e}')
-
-    def _print_nodal_diagnostics(self, label: str = '') -> None:
-        """Print min/max of inner nodal fields and quad arrays for diagnostics."""
-        qm = self.quad_mgr
-        prefix = f'  [nodal {label}]' if label else '  [nodal]'
-        nodal_names = ['p', 'rho'] + (['theta'] if self.cavitation else [])
-        for name in nodal_names:
-            inner = qm.nodal_fields[name].p[0]
-            print(f'{prefix}  {name}: [{inner.min():.4e}, {inner.max():.4e}]')
-        prefix_q = f'  [quad  {label}]' if label else '  [quad]'
-        quad_names = ['p', 'rho'] + (['theta'] if self.cavitation else [])
-        for name in quad_names:
-            if name in qm.quad_fields:
-                qm.interpolate_nodal_to_quad(name)
-                q_arr = qm.get_quad(name)
-                print(f'{prefix_q}  {name}: [{q_arr.min():.4e}, {q_arr.max():.4e}]')
 
     # =========================================================================
     # Output helpers
@@ -777,301 +560,31 @@ class FEMSolver2d:
             p.bulk_stress.update()
 
     # =========================================================================
-    # Conservative density smoothing
-    # =========================================================================
-
-    def smooth_rho(self, q: NDArray, beta: float, delta: float) -> NDArray:
-        """Apply one conservative flux-based smoothing sweep to the rho component.
-
-        Smoothing is localised around rho_l using a Gaussian weight:
-          w(rho) = exp(-((rho - rho_l) / delta)^2)
-        so at rho = rho_l +/- 3*delta the weight is ~0.0001 (negligible).
-        Set delta = eps / 3 so the smoothing support matches the EoS blend window.
-
-        For each pair of neighboring nodes, the flux is weighted by the
-        maximum of the two neighbors' weights, so smoothing activates if
-        *either* node is near the cavitation front. Mass is exactly conserved.
-
-        Parameters
-        ----------
-        q : NDArray
-            Flat Newton solution vector (modified in-place and returned).
-        beta : float
-            Smoothing strength in (0, 0.25) for stability.
-        delta : float
-            Gaussian half-width in density units. 3*delta ~ effective support.
-        """
-        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
-        rho_slice = self._sol_slice('rho')
-        Nx, Ny = self.problem.decomp.nb_subdomain_grid_pts
-        rho = q[rho_slice].reshape((Nx, Ny), order='F')
-
-        w = np.exp(-((rho - rho_l) / delta) ** 2)
-
-        # x-direction fluxes (between i and i+1)
-        w_x = np.maximum(w[:-1, :], w[1:, :])
-        flux_x = beta * w_x * (rho[:-1, :] - rho[1:, :])
-        rho[:-1, :] -= flux_x
-        rho[1:, :] += flux_x
-
-        # y-direction fluxes (between j and j+1)
-        w_y = np.maximum(w[:, :-1], w[:, 1:])
-        flux_y = beta * w_y * (rho[:, :-1] - rho[:, 1:])
-        rho[:, :-1] -= flux_y
-        rho[:, 1:] += flux_y
-
-        q[rho_slice] = rho.flatten(order='F')
-        return q
-
-    # =========================================================================
-    # Cavitation guard
-    # =========================================================================
-
-    def _detect_rho_oscillations(self, rho: np.ndarray) -> np.ndarray:
-        """Detect spurious density oscillations (checkerboard / wiggles).
-
-        A node is flagged if the density gradient changes sign between its
-        left and right neighbors (local extremum) in either x or y direction.
-        Only flags nodes near rho_l (within 5 * grid spacing worth of density
-        variation) to avoid flagging physical features far from cavitation.
-
-        Returns a boolean mask of shape (Nx, Ny) where True = oscillating.
-        """
-        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
-        Nx, Ny = rho.shape
-
-        osc = np.zeros_like(rho, dtype=bool)
-
-        # x-direction: sign change in diff between consecutive pairs
-        if Nx >= 3:
-            dx = np.diff(rho, axis=0)  # (Nx-1, Ny)
-            sign_change_x = dx[:-1, :] * dx[1:, :] < 0  # (Nx-2, Ny)
-            osc[1:-1, :] |= sign_change_x
-
-        # y-direction: same logic
-        if Ny >= 3:
-            dy = np.diff(rho, axis=1)  # (Nx, Ny-1)
-            sign_change_y = dy[:, :-1] * dy[:, 1:] < 0  # (Nx, Ny-2)
-            osc[:, 1:-1] |= sign_change_y
-
-        # Restrict to vicinity of rho_l
-        near_cav = np.abs(rho - rho_l) < 5.0
-        osc &= near_cav
-
-        n_osc = int(np.sum(osc))
-        if n_osc > 0:
-            osc_rho = rho[osc]
-            ix, iy = np.where(osc)
-            print(f"  Cavitation guard: {n_osc} oscillating nodes detected "
-                  f"(rho range [{osc_rho.min():.4f}, {osc_rho.max():.4f}], "
-                  f"x=[{ix.min()},{ix.max()}], y=[{iy.min()},{iy.max()}])")
-        return osc
-
-    def _detect_rho_crossings(self, rho_old: np.ndarray,
-                               rho_new: np.ndarray) -> np.ndarray:
-        """Detect nodes where rho crossed rho_l during the Newton update.
-
-        A crossing means the node switched between liquid (rho > rho_l)
-        and mixture (rho < rho_l) in a single Newton step, which can cause
-        the solver to oscillate between branches of the piecewise EoS.
-
-        Returns a boolean mask of shape (Nx, Ny) where True = crossed.
-        """
-        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
-
-        crossed = (rho_old - rho_l) * (rho_new - rho_l) < 0
-
-        n_cross = int(np.sum(crossed))
-        if n_cross > 0:
-            # Which direction: liquid->mixture or mixture->liquid
-            to_mix = crossed & (rho_old > rho_l)
-            to_liq = crossed & (rho_old < rho_l)
-            delta = np.abs(rho_new[crossed] - rho_old[crossed])
-            ix, iy = np.where(crossed)
-            print(f"  Cavitation guard: {n_cross} rho_l crossings "
-                  f"({int(np.sum(to_mix))} liq->mix, "
-                  f"{int(np.sum(to_liq))} mix->liq, "
-                  f"max |drho|={delta.max():.4f}, "
-                  f"x=[{ix.min()},{ix.max()}], y=[{iy.min()},{iy.max()}])")
-        return crossed
-
-    def _pressure_liquid(self, rho: np.ndarray) -> np.ndarray:
-        """Fast inline pressure for liquid branch: p = Pcav + (rho - rho_l) * c_l²."""
-        prop = self.problem.prop
-        rho_l = prop.get('rho_l', prop.get('rho0'))
-        c_l = prop.get('c_l', 1.0)
-        if not hasattr(self, '_Pcav'):
-            from .models.pressure import eos_pressure
-            self._Pcav = float(eos_pressure(np.array(rho_l), prop))
-        return self._Pcav + (rho - rho_l) * c_l**2
-
-    def _limit_pressure_change(self, rho_old: np.ndarray, rho_new: np.ndarray,
-                               p_old: np.ndarray, p_new: np.ndarray,
-                               max_rel_dp: float = 0.5) -> float:
-        """Compute step limiting factor from pressure change on liquid-side nodes.
-
-        For nodes with rho > rho_l where |dp/p_old| exceeds max_rel_dp,
-        compute the density that gives exactly the 50% capped pressure,
-        then derive the limiting factor from drho_limited / drho.
-
-        On the liquid branch: p = Pcav + (rho - rho_l) * c_l², so
-        rho(p) = rho_l + (p - Pcav) / c_l².
-
-        Returns the global minimum limiting factor (1.0 if no limiting needed).
-        """
-        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
-        c_l = self.problem.prop.get('c_l', 1.0)
-        if not hasattr(self, '_Pcav'):
-            from .models.pressure import eos_pressure
-            self._Pcav = float(eos_pressure(np.array(rho_l), self.problem.prop))
-        p_cav = self._Pcav
-
-        # Only consider liquid-side nodes (rho_old > rho_l)
-        liquid = rho_old > rho_l
-        if not np.any(liquid):
-            return 1.0
-
-        p_o = p_old[liquid]
-        p_n = p_new[liquid]
-        rel_dp = np.abs(p_n - p_o) / (np.abs(p_o) + 1e-10)
-
-        exceeds = rel_dp > max_rel_dp
-        if not np.any(exceeds):
-            return 1.0
-
-        # For each exceeding node, compute limited pressure and corresponding rho
-        drho_full = rho_new[liquid] - rho_old[liquid]
-        sign_dp = np.sign(p_n - p_o)
-        p_limited = p_o + sign_dp * max_rel_dp * np.abs(p_o)
-        # Invert liquid branch: rho = rho_l + (p - Pcav) / c_l²
-        rho_limited = rho_l + (p_limited - p_cav) / c_l**2
-        drho_limited = rho_limited - rho_old[liquid]
-
-        # Per-node factor: drho_limited / drho (only for exceeding nodes)
-        # Avoid div-by-zero for nodes with drho ~ 0
-        factors = np.where(
-            exceeds & (np.abs(drho_full) > 1e-15),
-            np.abs(drho_limited) / (np.abs(drho_full) + 1e-30),
-            1.0,
-        )
-        f_min = float(np.min(factors))
-
-        rank = self.problem.decomp.rank
-        if rank == 0:
-            n_exc = int(np.sum(exceeds))
-            ix_all, iy_all = np.where(liquid)
-            iworst = np.argmax(rel_dp)
-            print(f"  Pressure guard: {n_exc} nodes exceed {max_rel_dp:.0%} dp, "
-                  f"max |dp/p|={rel_dp[iworst]:.2e} "
-                  f"at ({ix_all[iworst]},{iy_all[iworst]}), "
-                  f"f_min={f_min:.4f}")
-        return f_min
-
-    def cavitation_guard(self, q_old: NDArray, q_new: NDArray) -> NDArray:
-        """Check for cavitation-related issues and limit the step if needed.
-
-        Detects:
-          1. Spurious rho oscillations (checkerboard pattern near rho_l)
-          2. Nodes where rho crossed rho_l during the update
-
-        If crossings are detected, the step is reduced so that the most
-        critical node barely crosses rho_l (plus eps), with a 0.5 safety
-        factor. This limits the full dq vector, not just rho.
-
-        Parameters
-        ----------
-        q_old : NDArray
-            Flat solution vector before the Newton update.
-        q_new : NDArray
-            Flat solution vector after the Newton update (= q_old + alpha*dq).
-
-        Returns
-        -------
-        NDArray
-            Possibly reduced solution vector.
-        """
-        rho_slice = self._sol_slice('rho')
-        Nx, Ny = self.problem.decomp.nb_subdomain_grid_pts
-
-        rho_old = q_old[rho_slice].reshape((Nx, Ny), order='F')
-        rho_new = q_new[rho_slice].reshape((Nx, Ny), order='F')
-
-        # Early exit: if no node is near rho_l, skip all checks
-        rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
-        near_threshold = 5.0
-        if not (np.any(np.abs(rho_old - rho_l) < near_threshold)
-                or np.any(np.abs(rho_new - rho_l) < near_threshold)):
-            return q_new
-
-        osc_mask = self._detect_rho_oscillations(rho_new)
-        cross_mask = self._detect_rho_crossings(rho_old, rho_new)
-
-        # Liquid-branch pressure (fast inline, no EoS dispatcher)
-        p_old = self._pressure_liquid(rho_old)
-        p_new = self._pressure_liquid(rho_new)
-
-        # Pressure change limiter
-        max_rel_dp = self.problem.fem_solver.get('cavitation_guard_max_rel_dp', 0.1)
-        f_pressure = self._limit_pressure_change(
-            rho_old, rho_new, p_old, p_new, max_rel_dp)
-
-        # Crossing limiter
-        f_crossing = 1.0
-        if np.any(cross_mask):
-            rho_l = self.problem.prop.get('rho_l', self.problem.prop.get('rho0'))
-            eps = self.problem.fem_solver.get('cavitation_guard_eps', 1e-3)
-            safety = self.problem.fem_solver.get('cavitation_guard_safety', 0.1)
-
-            drho = rho_new[cross_mask] - rho_old[cross_mask]
-            target = rho_l + np.sign(drho) * eps
-            f = (target - rho_old[cross_mask]) / drho
-
-            f_min = float(np.min(f))
-            f_crossing = f_min * safety
-
-            rank = self.problem.decomp.rank
-            if rank == 0:
-                print(f"  Cavitation guard: crossing limiter f={f_crossing:.4f} "
-                      f"(f_min={f_min:.4f}, {int(np.sum(cross_mask))} crossings)")
-
-        # Apply the most restrictive factor
-        f_total = min(f_crossing, f_pressure)
-        if f_total < 1.0:
-            dq_full = q_new - q_old
-            return q_old + f_total * dq_full
-
-        return q_new
-
-    # =========================================================================
     # Time step
     # =========================================================================
 
     def update_dynamic(self) -> None:
+        
+        tic = time.time()
+        
         p = self.problem
         fem_solver = p.fem_solver
-
         self.update_prev_quad()
-
-        tic = time.time()
         q = self.get_q_nodal().copy()
 
         max_iter = 1 if self._debug_active else fem_solver['max_iter']
         tol = fem_solver['R_norm_tol']
-        alpha = fem_solver.get('newton_relax', 1.0)
-        alpha_init = alpha
+        alpha = fem_solver['newton_relax']
         dt_init = p.numerics['dt']
-        md_alpha_init = fem_solver.get('mass_diffusion_alpha', 1e-3)
-        md_alpha_max = fem_solver.get('mass_diffusion_alpha_max', md_alpha_init * 1e5)
-        comm = p.decomp._mpi_comm
         rank = p.decomp.rank
 
         if rank == 0:
             self.R_norm_history.append([])
             self.R_scaled_norm_history.append([])
 
-        any_guard_fired = False
-        _M_prev = None
+        n_iter = 0
         for it in range(max_iter):
+            self._current_it = it
             M, R = self.solver_step_fun(q)
             R_norm = self.get_R_norm_global(R)
 
@@ -1079,48 +592,10 @@ class FEMSolver2d:
                 self.R_norm_history[-1].append(R_norm)
                 print(f'{R_norm}')
 
-            if rank == 0 and fem_solver.get('physics', {}).get('pspg_fb', False):
-                self._log_pspg_fb_contribution(R)
-            if rank == 0 and fem_solver.get('physics', {}).get('upwind_theta', False):
-                self._log_upwind_theta_factors()
-            if rank == 0 and fem_solver.get('physics', {}).get('theta_stab', False):
-                self._log_theta_stab_contribution(R)
-            if rank == 0 and fem_solver.get('physics', {}).get('supg_theta', False):
-                self._log_supg_contribution(R)
-
             if R_norm < tol and it > 0:
                 break
 
-            if fem_solver.get('log_jacobian_block_norms', False) and it == 0 and p.step == 0 and rank == 0:
-                self.log_jacobian_block_norms(M_coo=M, scaled=fem_solver.get('scaling', False))
-
-            if fem_solver.get('linearization_guard', False):
-                if _M_prev is not None:
-                    report_jacobian_block_changes(
-                        _M_prev, M, self.assembly.block_order,
-                        p.decomp._mpi_comm)
-                _M_prev = M.copy()
-
-            if fem_solver.get('scaling', False):
-                scale_interval = fem_solver.get('scaling_update_interval', 100)
-                if it == 0 and (p.step == 0 or p.step % scale_interval == 0):
-                    self.scaling = build_scaling_from_blocks(
-                        M, self.variables, self.residuals, self.assembly,
-                        n_iter=fem_solver.get('scaling_ruiz_iter', 10))
-                    if rank == 0:
-                        self.log_jacobian_block_norms(M_coo=M, scaled=True)
-                M_scaled, R_scaled = self.scaling.scale_system(M, R)
-                R_scaled_norm = self.get_R_norm_global(R_scaled)
-                if rank == 0:
-                    print(f'  R_scaled={R_scaled_norm:.6e}')
-                    self.R_scaled_norm_history[-1].append(R_scaled_norm)
-                self.linear_solver.assemble(M_scaled, R_scaled)
-                dq_scaled = self.linear_solver.solve()
-                dq = self.scaling.unscale_solution(dq_scaled)
-            else:
-                M_scaled = M
-                self.linear_solver.assemble(M, R)
-                dq = self.linear_solver.solve()
+            dq, M_scaled = solve_linear_system(M, R, self)
 
             if self._debug_active:
                 self.debugger.step(
@@ -1128,156 +603,27 @@ class FEMSolver2d:
                     R_per_term=self._last_R_per_term, M_scaled=M_scaled)
                 self._debug_steps_done += 1
 
-            if self.cavitation and fem_solver.get('transition_damping', False):
-                dq = self._limit_cavitation_step(q, dq)
-
-            q_before = q.copy()
-            q = q + alpha * dq
-
-            if fem_solver.get('linearization_guard', False):
-                q, fired = linearization_guard_p(q_before, q - q_before, self)
-                any_guard_fired |= fired
+            if fem_solver['line_search']:
+                q = line_search(q, alpha * dq, R_norm, self)
             else:
-                fired = False
-
-            if fem_solver.get('line_search', False):
+                q = q + alpha * dq
                 if self.cavitation:
                     q = self._clamp_cavitation(q)
-                dq_guarded = q - q_before
-                R_ref = R_norm
-
-                def _ls_norm(R_raw):
-                    return self.get_R_norm_global(R_raw)
-
-                R_new = self.get_R(q)
-                R_new_norm = _ls_norm(R_new)
-                if rank == 0:
-                    print(f"  [LineSearch] R: {R_ref:.6e} -> {R_new_norm:.6e}"
-                          f" ({'OK' if R_new_norm < R_ref else 'INCREASED'})")
-                if R_new_norm >= R_ref:
-                    ls_alpha = 0.5
-                    ls_min = fem_solver.get('line_search_alpha_min', 1e-4)
-                    accepted = False
-                    while ls_alpha >= ls_min:
-                        q_trial = q_before + ls_alpha * dq_guarded
-                        if self.cavitation:
-                            q_trial = self._clamp_cavitation(q_trial)
-                        R_trial = self.get_R(q_trial)
-                        R_trial_norm = _ls_norm(R_trial)
-                        if R_trial_norm < R_ref:
-                            q = q_trial
-                            accepted = True
-                            if rank == 0:
-                                print(f"  [LineSearch] accepted ls_alpha={ls_alpha:.2e},"
-                                      f" R {R_ref:.4e} -> {R_trial_norm:.4e}")
-                            break
-                        ls_alpha *= 0.5
-                    if not accepted:
-                        fallback_alpha = 1e-1
-                        q = q_before + fallback_alpha * dq_guarded
-                        if self.cavitation:
-                            q = self._clamp_cavitation(q)
-                        if rank == 0:
-                            print(f"  [LineSearch] exhausted (ls_min={ls_min:.2e}),"
-                                  f" falling back to alpha={fallback_alpha:.2e} and continuing")
-
-            if fem_solver.get('mass_diffusion_adaptive', False):
-                R_new = self.get_R(q)
-                R_new_norm = self.get_R_norm_global(R_new)
-                md_alpha = fem_solver['mass_diffusion_alpha']
-                if R_new_norm > R_norm:
-                    q = q - alpha * dq
-                    md_alpha_new = min(md_alpha * 2.0, md_alpha_max)
-                    fem_solver['mass_diffusion_alpha'] = md_alpha_new
-                    if rank == 0:
-                        print(f"Mass diffusion: R increased, "
-                              f"alpha {md_alpha:.2e} -> {md_alpha_new:.2e}")
-                    md_alpha = md_alpha_new
-                else:
-                    if md_alpha > md_alpha_init:
-                        md_alpha_new = max(md_alpha / 1.5, md_alpha_init)
-                        fem_solver['mass_diffusion_alpha'] = md_alpha_new
-                        if rank == 0:
-                            print(f"Mass diffusion: R decreased, "
-                                  f"alpha {md_alpha:.2e} -> {md_alpha_new:.2e}")
-                        md_alpha = md_alpha_new
-
-            if fem_solver.get('rho_smoothing', False):
-                R_new = self.get_R(q)
-                R_new_norm = self.get_R_norm_global(R_new)
-                if R_new_norm > R_norm:
-                    q = q - alpha * dq
-                    beta = fem_solver.get('rho_smoothing_beta', 1e-03)
-                    delta = fem_solver.get('rho_smoothing_delta', 0.01/3)
-                    q = self.smooth_rho(q, beta, delta)
-                    if rank == 0:
-                        print(f"Rho smoothing: R increased "
-                              f"({R_norm:.2e} -> {R_new_norm:.2e}), "
-                              f"applied beta={beta:.2e}")
-
-            if fem_solver.get('line_search_then_smooth', False):
-                alpha_min = fem_solver.get('line_search_alpha_min', 1e-8)
-                R_new = self.get_R(q)
-                R_new_norm = self.get_R_norm_global(R_new)
-                if R_new_norm > R_norm:
-                    # Phase 1: backtrack alpha until R decreases or alpha_min reached
-                    q = q - alpha * dq  # revert
-                    trial_alpha = alpha * 0.5
-                    while trial_alpha >= alpha_min:
-                        q_trial = q + trial_alpha * dq
-                        R_trial = self.get_R(q_trial)
-                        R_trial_norm = self.get_R_norm_global(R_trial)
-                        if R_trial_norm < R_norm:
-                            q = q_trial
-                            if rank == 0:
-                                print(f"LS+smooth: accepted alpha={trial_alpha:.2e}")
-                            alpha = trial_alpha
-                            break
-                        trial_alpha *= 0.5
-                    else:
-                        # Phase 2: line search exhausted, apply smoothing
-                        beta = fem_solver.get('rho_smoothing_beta', 1e-3)
-                        delta = fem_solver.get('rho_smoothing_delta', 0.01/3)
-                        q = self.smooth_rho(q, beta, delta)
-                        if rank == 0:
-                            print(f"LS+smooth: line search exhausted "
-                                  f"(alpha_min={alpha_min:.2e}), "
-                                  f"applied rho smoothing beta={beta:.2e}")
-
-            # if fem_solver.get('cavitation_guard', True):
-            #     q = self.cavitation_guard(q_before, q)
-
-            # q, fired = apply_guards(q_before, q - q_before, self)
-            # any_guard_fired |= fired
-
-            if self.cavitation:
-                q = self._clamp_cavitation(q)
 
             self.set_q_nodal(q)
             self._exchange_ghosts()
+            n_iter += 1
 
-            if fem_solver.get('nodal_diagnostics', False) and rank == 0:
-                self._print_nodal_diagnostics(f'it={it}')
-
-        # Final clamp + push: ensures the nodal state is physically valid even
-        # when the loop exited early via the convergence break (which fires after
-        # solver_step_fun has already pushed an unclamped q into the nodal fields).
         if self.cavitation:
             q = self._clamp_cavitation(q)
             self.set_q_nodal(q)
             self._exchange_ghosts()
 
         p.numerics['dt'] = dt_init
-        fem_solver['mass_diffusion_alpha'] = md_alpha_init
 
         toc = time.time()
         self.time_inner = toc - tic
-        self.inner_iterations = it + 1
-
-        # Signal the PID to hold during the next outer timestep if the
-        # solution guard had to intervene at any point in this timestep.
-        if any_guard_fired:
-            p.topo._fb_hold_next = True
+        self.inner_iterations = n_iter
 
         if self.debugger is not None and self._debug_steps_done >= 5:
             p._stop = True

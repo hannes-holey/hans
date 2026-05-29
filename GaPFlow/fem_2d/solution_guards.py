@@ -29,6 +29,8 @@ from mpi4py import MPI
 from typing import TYPE_CHECKING
 
 from ..models.pressure import eos_drho_dp
+from .newton_debug import log_jacobian_block_norms
+from .scaling import build_scaling_from_blocks
 
 if TYPE_CHECKING:
     from ..solver_fem_2d import FEMSolver2d
@@ -348,6 +350,106 @@ def linearization_guard_p(q: np.ndarray, dq: np.ndarray,
                 stacklevel=2)
 
     return q + f * dq, True
+
+
+def solve_linear_system(M: np.ndarray, R: np.ndarray,
+                        solver: "FEMSolver2d") -> tuple:
+    """Scale the system, solve for dq, and unscale.
+
+    Returns
+    -------
+    dq : ndarray
+        Unscaled Newton update.
+    M_scaled : ndarray
+        The matrix passed to the linear solver (M itself if scaling is off).
+    """
+    fem_solver = solver.problem.fem_solver
+    rank = solver.problem.decomp.rank
+
+    if fem_solver['scaling']:
+        scale_interval = fem_solver['scaling_update_interval']
+        step = solver.problem.step
+        if (solver._current_it == 0
+                and (step == 0 or step % scale_interval == 0)):
+            solver.scaling = build_scaling_from_blocks(
+                M, solver.variables, solver.residuals, solver.assembly,
+                n_iter=fem_solver['scaling_ruiz_iter'])
+            if rank == 0:
+                log_jacobian_block_norms(solver.assembly, solver.scaling,
+                                         M_coo=M, scaled=True)
+        M_scaled, R_scaled = solver.scaling.scale_system(M, R)
+        R_scaled_norm = solver.get_R_norm_global(R_scaled)
+        if rank == 0:
+            print(f'  R_scaled={R_scaled_norm:.6e}')
+            solver.R_scaled_norm_history[-1].append(R_scaled_norm)
+        solver.linear_solver.assemble(M_scaled, R_scaled)
+        dq = solver.scaling.unscale_solution(solver.linear_solver.solve())
+    else:
+        M_scaled = M
+        solver.linear_solver.assemble(M, R)
+        dq = solver.linear_solver.solve()
+
+    return dq, M_scaled
+
+
+def line_search(q: np.ndarray, dq: np.ndarray, R_norm: float,
+                solver: "FEMSolver2d") -> np.ndarray:
+    """Backtracking line search on the proposed step q + dq.
+
+    Clamps cavitation before evaluating residual norms if cavitation is active.
+    Falls back to a fixed small step if backtracking is exhausted.
+
+    Parameters
+    ----------
+    q : ndarray
+        Solution vector before the step.
+    dq : ndarray
+        Proposed full step (already multiplied by alpha).
+    R_norm : float
+        Residual norm before the step (reference for acceptance).
+
+    Returns
+    -------
+    q_new : ndarray
+        Accepted solution vector.
+    """
+    fem_solver = solver.problem.fem_solver
+    rank = solver.problem.decomp.rank
+
+    q_new = q + dq
+    if solver.cavitation:
+        q_new = solver._clamp_cavitation(q_new)
+
+    R_new_norm = solver.get_R_norm_global(solver.get_R(q_new))
+    if rank == 0:
+        print(f"  [LineSearch] R: {R_norm:.6e} -> {R_new_norm:.6e}"
+              f" ({'OK' if R_new_norm < R_norm else 'INCREASED'})")
+
+    if R_new_norm < R_norm:
+        return q_new
+
+    ls_alpha = 0.5
+    ls_min = fem_solver['line_search_alpha_min']
+    while ls_alpha >= ls_min:
+        q_trial = q + ls_alpha * dq
+        if solver.cavitation:
+            q_trial = solver._clamp_cavitation(q_trial)
+        R_trial_norm = solver.get_R_norm_global(solver.get_R(q_trial))
+        if R_trial_norm < R_norm:
+            if rank == 0:
+                print(f"  [LineSearch] accepted ls_alpha={ls_alpha:.2e},"
+                      f" R {R_norm:.4e} -> {R_trial_norm:.4e}")
+            return q_trial
+        ls_alpha *= 0.5
+
+    fallback_alpha = 1e-1
+    q_fallback = q + fallback_alpha * dq
+    if solver.cavitation:
+        q_fallback = solver._clamp_cavitation(q_fallback)
+    if rank == 0:
+        print(f"  [LineSearch] exhausted (ls_min={ls_min:.2e}),"
+              f" falling back to alpha={fallback_alpha:.2e} and continuing")
+    return q_fallback
 
 
 def apply_guards(q: np.ndarray, dq: np.ndarray, solver: "FEMSolver2d") -> tuple:

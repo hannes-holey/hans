@@ -408,23 +408,28 @@ class WallStress(GaussianProcessSurrogate):
             # theta=1 (full liquid) recovers the standard no-cavitation behaviour.
             # rho_eff = (1-theta)*rho models the velocity increase in cavitated cells:
             # u = jx/rho_eff = jx/((1-theta)*rho).
-            def get_tau(rho, jx, jy, h, hx, U_bot, V_bot, U_top, V_top, Ls, theta):
-                eta = get_shear_viscosity(self)
-                q = jnp.array([(1 - theta) * rho, jx, jy])
+            def get_tau(rho, jx, jy, h, hx, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
+                eta = get_shear_viscosity(self, eos_pressure(rho, self.prop) if 'piezo' in self.prop else None,
+                                          dp_dx=dp_dx, dp_dy=dp_dy, h=h)
+                liq = 1.0 - theta
+                q = jnp.array([rho, jx / liq, jy])
                 h_arr = jnp.array([h, hx])
                 tau_top = stress_top_xz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
                 tau_bot = stress_bottom_xz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
-                return tau_top - tau_bot
+                return liq * (tau_top - tau_bot)
 
-            def get_tau_bot(rho, jx, jy, h, hx, U_bot, V_bot, U_top, V_top, Ls, theta):
-                eta = get_shear_viscosity(self)
-                q = jnp.array([(1 - theta) * rho, jx, jy])
+            def get_tau_bot(rho, jx, jy, h, hx, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
+                eta = get_shear_viscosity(self, eos_pressure(rho, self.prop) if 'piezo' in self.prop else None,
+                                          dp_dx=dp_dx, dp_dy=dp_dy, h=h)
+                liq = 1.0 - theta
+                q = jnp.array([rho, jx / liq, jy])
                 h_arr = jnp.array([h, hx])
-                return stress_bottom_xz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
+                return liq * stress_bottom_xz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
 
             # For xz: V_bot (idx 6) and V_top (idx 8) are constant, grad w.r.t. jx (idx 1)
             # theta (idx 10) is a field — mapped over both spatial axes.
-            map_axes = (0, 0, 0, 0, 0, 0, None, 0, None, 0, 0)
+            # dp_dx (idx 11) and dp_dy (idx 12) are spatial fields, mapped over both axes.
+            map_axes = (0, 0, 0, 0, 0, 0, None, 0, None, 0, 0, 0, 0)
             grad_j_idx = 1  # jx
             grad_theta_idx = 10
 
@@ -440,23 +445,28 @@ class WallStress(GaussianProcessSurrogate):
 
         else:  # self.name == 'yz'
             # tau_yz functions (y-direction wall stress).
-            def get_tau(rho, jx, jy, h, hy, U_bot, V_bot, U_top, V_top, Ls, theta):
-                eta = get_shear_viscosity(self)
-                q = jnp.array([(1 - theta) * rho, jx, jy])
+            def get_tau(rho, jx, jy, h, hy, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
+                eta = get_shear_viscosity(self, eos_pressure(rho, self.prop) if 'piezo' in self.prop else None,
+                                          dp_dx=dp_dx, dp_dy=dp_dy, h=h)
+                liq = 1.0 - theta
+                q = jnp.array([rho, jx, jy / liq])
                 h_arr = jnp.array([h, hy])
                 tau_top = stress_top_yz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
                 tau_bot = stress_bottom_yz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
-                return tau_top - tau_bot
+                return liq * (tau_top - tau_bot)
 
-            def get_tau_bot(rho, jx, jy, h, hy, U_bot, V_bot, U_top, V_top, Ls, theta):
-                eta = get_shear_viscosity(self)
-                q = jnp.array([(1 - theta) * rho, jx, jy])
+            def get_tau_bot(rho, jx, jy, h, hy, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
+                eta = get_shear_viscosity(self, eos_pressure(rho, self.prop) if 'piezo' in self.prop else None,
+                                          dp_dx=dp_dx, dp_dy=dp_dy, h=h)
+                liq = 1.0 - theta
+                q = jnp.array([rho, jx, jy / liq])
                 h_arr = jnp.array([h, hy])
-                return stress_bottom_yz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
+                return liq * stress_bottom_yz(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
 
             # For yz: U_bot (idx 5) and U_top (idx 7) are constant, grad w.r.t. jy (idx 2)
             # theta (idx 10) is a field — mapped over both spatial axes.
-            map_axes = (0, 0, 0, 0, 0, None, 0, None, 0, 0, 0)
+            # dp_dx (idx 11) and dp_dy (idx 12) are spatial fields, mapped over both axes.
+            map_axes = (0, 0, 0, 0, 0, None, 0, None, 0, 0, 0, 0, 0)
             grad_j_idx = 2  # jy
             grad_theta_idx = 10
 

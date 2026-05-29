@@ -28,16 +28,17 @@ from .grid_index import GridIndexManager
 
 
 def field_to_global(field_idx,
-                    res_type: int,
+                    spec,
                     grid_index: GridIndexManager,
                     p_factor: int = 1,
                     ):
+    """Computes the unique global node index."""
 
-    decomp = grid_index._decomp  # DomainDecomposition object
+    decomp = grid_index._decomp
     Nx_global_p = decomp.nb_domain_grid_pts[0]
     Nx_global_v = decomp.nb_domain_grid_pts_v[0]
 
-    if res_type >= 2:  # density node
+    if spec.grid == 'p':
         y_p, x_p = np.divmod(field_idx, Nx_global_p)
         y_v, x_v = 2*y_p, 2*x_p
     else:
@@ -46,7 +47,7 @@ def field_to_global(field_idx,
     nb_nodes_cur_row = _get_nb_nodes_cur_row(x_v, y_v, p_factor)
     nb_nodes_block_below = _get_nb_nodes_block_below(y_v, Nx_global_v, Nx_global_p, p_factor)
 
-    return nb_nodes_block_below + nb_nodes_cur_row + res_type
+    return nb_nodes_block_below + nb_nodes_cur_row + spec.idx
 
 def _get_nb_nodes_cur_row(x_v, y_v, p_factor):
     """Number of nodes in the current row BEFORE x_v.

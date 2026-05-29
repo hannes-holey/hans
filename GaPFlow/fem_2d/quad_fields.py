@@ -80,8 +80,6 @@ ENERGY_FIELDS = {
 
 CAVITATION_FIELDS = {'theta'}
 
-SUPG_FIELDS = {'d_dy_jx', 'd_dx_jy', 'd_dx_theta', 'd_dy_theta', 'norm_j', 'tau_jx', 'tau_jy'}
-
 OSS_FIELDS = {'xi', 'a_vec_x', 'a_vec_y', 'tau_a_x', 'tau_a_y', 'one_minus_theta'}
 
 # Fields whose nodal values live on the fine (mass-flux) grid
@@ -192,7 +190,6 @@ class QuadFieldManager:
             needed |= CAVITATION_FIELDS
             needed |= STRESS_XZ_CAVITATION_FIELDS
             needed |= STRESS_YZ_CAVITATION_FIELDS
-            needed |= SUPG_FIELDS
         if 'xi' in self.variables:
             needed |= OSS_FIELDS
         return needed
@@ -222,8 +219,7 @@ class QuadFieldManager:
               else self.elements.P1.dy_operator)
         op.apply(self.nodal_fields[name], self._deriv_placeholder)
         sq = self._deriv_placeholder.pg[:, :-1, :-1]
-        result = sq.transpose(2, 1, 0).reshape(-1, sq.shape[0]) / self.dy
-        return result
+        return sq.transpose(2, 1, 0).reshape(-1, sq.shape[0]) / self.dy
 
     def interpolate_nodal_to_quad(self, name: str) -> None:
         """Interpolate a single nodal field to its quad output field.
@@ -392,28 +388,6 @@ class QuadFieldManager:
         self.elements.P2.dy_operator.apply(self.nodal_fields['jy'], self._deriv_placeholder)
         self.quad_fields['d_dy_jy'].pg[s] = self._deriv_placeholder.pg[s] / self.dy
 
-        if self.cavitation:
-            norm_j = np.sqrt(q('jx')**2 + q('jy')**2)
-            self.quad_fields['norm_j'].pg[s] = norm_j
-
-            alpha = self.problem.fem_solver.get('supg_theta_alpha', 0.0)
-            h_elem = min(self.dx, self.dy)
-            tau = alpha * h_elem / (2.0 * (norm_j + 1e-30))
-            self.quad_fields['tau_jx'].pg[s] = tau * q('jx')
-            self.quad_fields['tau_jy'].pg[s] = tau * q('jy')
-
-            self.elements.P2.dy_operator.apply(self.nodal_fields['jx'], self._deriv_placeholder)
-            self.quad_fields['d_dy_jx'].pg[s] = self._deriv_placeholder.pg[s] / self.dy
-
-            self.elements.P2.dx_operator.apply(self.nodal_fields['jy'], self._deriv_placeholder)
-            self.quad_fields['d_dx_jy'].pg[s] = self._deriv_placeholder.pg[s] / self.dx
-
-            self.elements.P1.dx_operator.apply(self.nodal_fields['theta'], self._deriv_placeholder)
-            self.quad_fields['d_dx_theta'].pg[s] = self._deriv_placeholder.pg[s] / self.dx
-
-            self.elements.P1.dy_operator.apply(self.nodal_fields['theta'], self._deriv_placeholder)
-            self.quad_fields['d_dy_theta'].pg[s] = self._deriv_placeholder.pg[s] / self.dy
-
         if 'xi' in self.variables:
             dp_drho_q = self.quad_fields['dp_drho'].pg[s]
             jx_q = self.quad_fields['jx'].pg[s]
@@ -429,17 +403,30 @@ class QuadFieldManager:
 
             norm_a = np.sqrt(a_vec_x**2 + a_vec_y**2)
             h_elem = min(self.dx, self.dy)
-            norm_a_mean = max(float(norm_a.mean()), 0.1)
-            tau = 1.0 / (2.0 / h_elem * norm_a_mean)
+            oss_tau_pointwise = self.problem.fem_solver.get('oss_tau_pointwise', True)
+            if oss_tau_pointwise:
+                # Pointwise tau: floor on the local norm to avoid blow-up where a=0.
+                tau = h_elem / (2.0 * np.maximum(norm_a, 0.1))
+            else:
+                # Legacy: single scalar tau based on domain-mean norm.
+                norm_a_mean = max(float(norm_a.mean()), 0.1)
+                tau = 1.0 / (2.0 / h_elem * norm_a_mean)
 
             alpha = self.problem.fem_solver.get('oss_theta_alpha', 0.0)
             self.quad_fields['tau_a_x'].pg[s] = alpha * tau * a_vec_x
             self.quad_fields['tau_a_y'].pg[s] = alpha * tau * a_vec_y
             self.quad_fields['one_minus_theta'].pg[s] = 1.0 - self.quad_fields['theta'].pg[s]
 
+        # Pressure gradients at quad points — needed by shear-thinning in get_tau.
+        self.elements.P1.dx_operator.apply(self.nodal_fields['p'], self._deriv_placeholder)
+        dp_dx_q = self._deriv_placeholder.pg[s] / self.dx
+        self.elements.P1.dy_operator.apply(self.nodal_fields['p'], self._deriv_placeholder)
+        dp_dy_q = self._deriv_placeholder.pg[s] / self.dy
+
         theta_q = q('theta') if self.cavitation else np.zeros_like(q('rho'))
         args_xz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dx'),
-                   q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q)
+                   q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q,
+                   dp_dx_q, dp_dy_q)
         for name in ['tau_xz', 'dtau_xz_drho', 'dtau_xz_djx',
                      'tau_xz_bot', 'dtau_xz_bot_drho', 'dtau_xz_bot_djx']:
             self.quad_fields[name].pg[s] = apply(
@@ -450,7 +437,8 @@ class QuadFieldManager:
                     getattr(p.wall_stress_xz, name), *args_xz)
 
         args_yz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dy'),
-                   q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q)
+                   q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q,
+                   dp_dx_q, dp_dy_q)
         for name in ['tau_yz', 'dtau_yz_drho', 'dtau_yz_djy',
                      'tau_yz_bot', 'dtau_yz_bot_drho', 'dtau_yz_bot_djy']:
             self.quad_fields[name].pg[s] = apply(
@@ -461,9 +449,9 @@ class QuadFieldManager:
                     getattr(p.wall_stress_yz, name), *args_yz)
 
         self.quad_fields['force_x'].pg[s] = np.full_like(
-            q('rho'), p.prop.get('force_x', 0.0))
+            q('rho'), p.prop['force_x'])
         self.quad_fields['force_y'].pg[s] = np.full_like(
-            q('rho'), p.prop.get('force_y', 0.0))
+            q('rho'), p.prop['force_y'])
 
         if self.energy:
             args_T = (q('rho'), q('jx'), q('jy'), q('E'))

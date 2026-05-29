@@ -1010,21 +1010,22 @@ def stress_top_yz(q, h, U_bot, V_bot, U_top, V_top, eta, zeta, Ls_bot, Ls_top,
     return tau_yz
 
 
-def get_shear_viscosity(stress_object):
+def get_shear_viscosity(stress_object, p=None, dp_dx=None, dp_dy=None, h=None):
     s = stress_object
 
     # piezoviscosity
     if 'piezo' in s.prop.keys():
-        mu0 = piezoviscosity(s.pressure if not s.prop['EOS'] == 'Bayada' else s.solution[0],
-                                s.prop['shear'],
-                                s.prop['piezo'])
+        mu0 = piezoviscosity(p, s.prop['shear'], s.prop['piezo'])
     else:
         mu0 = s.prop['shear']
     # shear-thinning
     if 'thinning' in s.prop.keys():
-        shear_rate = shear_rate_avg(s.dp_dx,
-                                    s.dp_dy,
-                                    s.height,
+        _dp_dx = dp_dx if dp_dx is not None else s.dp_dx
+        _dp_dy = dp_dy if dp_dy is not None else s.dp_dy
+        _h = h if h is not None else s.height
+        shear_rate = shear_rate_avg(_dp_dx,
+                                    _dp_dy,
+                                    _h,
                                     np.hypot(s.geo['U_bot'], s.geo['V_bot']),
                                     np.hypot(s.geo['U_top'], s.geo['V_top']),
                                     mu0)

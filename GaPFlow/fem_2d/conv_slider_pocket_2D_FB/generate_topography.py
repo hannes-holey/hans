@@ -3,24 +3,6 @@ Generate topography for the 2D convergent slider with pocket benchmark from:
   Bertocchi, L. et al. "Fluid film lubrication in the presence of cavitation:
   a mass-conserving two-dimensional formulation for compressible, piezoviscous
   and non-Newtonian fluids." Tribology International 67 (2013), 61–71.
-
-Domain layout (Lx = 20 mm, Ly = 10 mm):
-  Linear convergent wedge: h(x) = hmax - (hmax - hmin) * x / Lx
-  Rectangular pocket superimposed at x in [x_p_start, x_p_end],
-                                     y in [y_p_start, y_p_end]:
-    h(x, y) += h_pocket
-
-Geometry parameters:
-  hmin      = 1.0e-6 m   (outlet gap)
-  hmax      = 1.1e-6 m   (inlet gap)
-  h_pock    = 0.4e-6 m   (pocket depth)
-  x_p_start = 4.0e-3 m
-  x_p_end   = 11.0e-3 m  (pocket length = 7 mm)
-  y_p_start = 2.0e-3 m
-  y_p_end   = 8.0e-3 m   (pocket width = 6 mm, centred in y)
-
-Also prints the Bayada EOS cavitation pressure Pcav and the density
-corresponding to p_amb = 1e5 Pa (used as Dirichlet BC at inlet/outlet).
 """
 
 import os
@@ -45,9 +27,9 @@ hmax   = 1.1e-6   # [m]  gap at inlet
 h_pock = 0.4e-6   # [m]  pocket depth
 
 x_p_start = 4.0e-3    # [m]  pocket start in x
-x_p_end   = 11.0e-3   # [m]  pocket end in x  (length = 7 mm)
-y_p_start = 2.0e-3    # [m]  pocket start in y
-y_p_end   = 8.0e-3    # [m]  pocket end in y  (width = 6 mm)
+x_p_end   = 10.0e-3   # [m]  pocket end in x  (length = 6 mm)
+y_p_start = 1.5e-3    # [m]  pocket start in y
+y_p_end   = 8.5e-3    # [m]  pocket end in y  (width = 7 mm)
 
 # ── Build 2-D height field ─────────────────────────────────────────────────
 # Linear convergent wedge (x-dependent only)

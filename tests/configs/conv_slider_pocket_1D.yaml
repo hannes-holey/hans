@@ -1,0 +1,81 @@
+# 1D Convergent slider with pocket — Fischer-Burmeister cavitation
+#
+# Reference geometry from:
+#   Bertocchi, L. et al. "Fluid film lubrication in the presence of cavitation:
+#   a mass-conserving two-dimensional formulation for compressible, piezoviscous
+#   and non-Newtonian fluids." Tribology International 67 (2013), 61–71.
+#
+# Domain: Lx = 20 mm, periodic in y (effectively 1D).
+# Gap: linear convergent wedge (hmax=1.1 µm at inlet, hmin=1.0 µm at outlet)
+#      plus a rectangular pocket (depth=0.4 µm, x=[4 mm, 10 mm]).
+#
+# Fluid: Dowson-Higginson EOS
+#   p_cav = 0 Pa  (vacuum cavitation)
+#   shear = 0.01 Pa·s  (Bertocchi mu0, constant)
+#
+# Wall velocity: U = 1.0 m/s (upper wall), lower wall stationary
+# BCs: p_in = p_out = 1e5 Pa
+
+options:
+    output: /tmp/conv_slider_pocket_1D
+    write_freq: 50
+    save_output: False
+    output_plots: False
+    residual_analysis: False
+
+grid:
+    Lx: 0.020
+    Ly: 0.004
+    Nx: 128
+    Ny: 4
+    xW: ['D', 'N', 'N']
+    xE: ['D', 'N', 'N']
+    yS: ['P', 'P', 'P']
+    yN: ['P', 'P', 'P']
+    xW_P: 1e5
+    xE_P: 1e5
+
+geometry:
+    type: inclined      # placeholder — overwritten by _regen_topography in notebook
+    hmax: 1.1e-6
+    hmin: 1.0e-6
+    U: 1.0
+    V: 0.0
+    flip: false
+
+numerics:
+    solver: fem
+    dt: 1.0
+    tol: 0.0
+    max_it: 50
+
+properties:
+    EOS: DH
+    piezo:
+        name: Barus
+        aB: 1.2e-8
+    rho0: 850.
+    P0: 1e5
+    C1: 6.22e9
+    C2: 1.66
+    p_cav: 0.0
+    shear: 0.01
+    bulk: 0.0
+
+fem_solver:
+    type: newton_alpha
+    linear_solver: direct
+    newton_relax: 0.05 # 0.05 for coarse grid
+    equations:
+        cavitation: True
+    physics:
+        gap_shear: true
+        inertia: false
+        oss_theta: true
+        theta_stab: false
+    oss_theta_alpha: 1.0
+    theta_stab_alpha: 0.0001
+    oss_correction_alpha: 1.0
+    max_iter: 5
+    R_norm_tol: 1e-9
+    scaling: True

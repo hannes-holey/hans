@@ -25,6 +25,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib import animation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (required for 3d projection)
 from IPython.display import HTML
@@ -494,6 +495,156 @@ def plot_3d_snapshot(x_vec, y_vec, T_field, Lx=1.0, Ly=1.0,
     fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label='Temperature [K]')
 
     return fig, ax
+
+
+def plot_overview_1d(problem, title, ref_csv=None, ref_label=None,
+                     ref_x_scale=1.0, ref_p_scale=1.0,
+                     p_unit='bar', p_divisor=1e5):
+    """Plot pressure, theta, and effective density for a 1D (y-periodic) cavitation result.
+
+    Parameters
+    ----------
+    problem : Problem
+        GaPFlow Problem instance after simulation.
+    title : str
+        Figure title.
+    ref_csv : str or Path, optional
+        Path to a CSV with columns 'x' and 'y' for reference data.
+    ref_label : str, optional
+        Legend label for the reference data.
+    ref_x_scale : float
+        Multiplier applied to the reference x-column to convert to metres.
+    ref_p_scale : float
+        Multiplier applied to the reference y-column to convert to Pa.
+    p_unit : str
+        Pressure unit string used on the y-axis label (default 'bar').
+    p_divisor : float
+        Divisor applied to model pressure before plotting (default 1e5).
+    """
+    from GaPFlow.models.pressure import eos_pressure
+
+    Nx = problem.grid['Nx']
+    Lx = problem.grid['Lx']
+    x = np.linspace(0, Lx, Nx)
+
+    rho = problem.q[0][1:-1, 1:-1]
+    theta = problem.q[3][1:-1, 1:-1]
+    p_arr = np.asarray(eos_pressure(rho, problem.prop))
+
+    p_x = p_arr.mean(axis=1)
+    theta_x = theta.mean(axis=1)
+    rho_eff_x = (rho * (1 - theta)).mean(axis=1)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3), facecolor='white',
+                             constrained_layout=True)
+    fig.suptitle(title, fontweight='bold')
+
+    ax = axes[0]
+    ax.plot(x * 1e3, p_x / p_divisor, color='0.3', lw=1.5, label='FEM')
+    if ref_csv is not None:
+        ref = pd.read_csv(ref_csv, skipinitialspace=True)
+        ax.scatter(ref['x'].values * ref_x_scale * 1e3,
+                   ref['y'].values * ref_p_scale / p_divisor,
+                   color='#1f77b4', s=14, zorder=5, label=ref_label)
+        ax.legend(fontsize=8)
+    ax.set(xlabel='x [mm]', ylabel=f'p [{p_unit}]', title='Pressure')
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1]
+    ax.fill_between(x * 1e3, 0, theta_x, alpha=0.3, color='#d62728')
+    ax.plot(x * 1e3, theta_x, color='#d62728', lw=1.5)
+    ax.set(xlabel='x [mm]', ylabel=r'$\theta$ [-]', title='Fill fraction',
+           ylim=(-0.05, 1.1))
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[2]
+    ax.fill_between(x * 1e3, 0, rho_eff_x, alpha=0.25, color='#2ca02c')
+    ax.plot(x * 1e3, rho_eff_x, color='#2ca02c', lw=1.5)
+    ax.set(xlabel='x [mm]', ylabel=r'$\rho_{\rm eff}$ [kg/m³]', title='Effective density')
+    ax.grid(True, alpha=0.3)
+
+    plt.show()
+
+
+def plot_overview_2d(problem, title):
+    """Plot 2D pressure and fill-fraction fields for a full-2D cavitation result.
+
+    Parameters
+    ----------
+    problem : Problem
+        GaPFlow Problem instance after simulation.
+    title : str
+        Figure title.
+    """
+    from GaPFlow.models.pressure import eos_pressure
+
+    Lx, Ly = problem.grid['Lx'], problem.grid['Ly']
+    dx, dy = problem.grid['dx'], problem.grid['dy']
+    Nx, Ny = problem.grid['Nx'], problem.grid['Ny']
+
+    rho = problem.q[0][1:-1, 1:-1]
+    theta = problem.q[3][1:-1, 1:-1]
+    p_arr = np.asarray(eos_pressure(rho, problem.prop))
+
+    x = np.linspace(dx / 2, Lx - dx / 2, Nx)
+    y = np.linspace(dy / 2, Ly - dy / 2, Ny)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), facecolor='white',
+                             constrained_layout=True)
+    fig.suptitle(title, fontweight='bold')
+
+    im0 = axes[0].pcolormesh(X * 1e3, Y * 1e3, p_arr / 1e5,
+                             cmap='RdBu_r', shading='auto')
+    plt.colorbar(im0, ax=axes[0], label='p [bar]')
+    axes[0].set(xlabel='x [mm]', ylabel='y [mm]', title='Pressure')
+
+    im1 = axes[1].pcolormesh(X * 1e3, Y * 1e3, theta,
+                             cmap='Reds', shading='auto', vmin=0, vmax=1)
+    plt.colorbar(im1, ax=axes[1], label=r'$\theta$ [-]')
+    axes[1].set(xlabel='x [mm]', ylabel='y [mm]', title=r'Fill fraction $\theta$')
+
+    plt.show()
+
+
+def plot_midsection_2d(problem, title, ref_csv, ref_label):
+    """Plot the mid-section (y = Ly/2) pressure profile for a 2D cavitation result.
+
+    Parameters
+    ----------
+    problem : Problem
+        GaPFlow Problem instance after simulation.
+    title : str
+        Figure title.
+    ref_csv : str or Path
+        Path to a CSV with columns 'x' (normalised 0–1) and 'y' (pressure in MPa).
+    ref_label : str
+        Legend label for the reference data.
+    """
+    from GaPFlow.models.pressure import eos_pressure
+
+    Lx = problem.grid['Lx']
+    Nx, Ny = problem.grid['Nx'], problem.grid['Ny']
+    dx = problem.grid['dx']
+
+    rho = problem.q[0][1:-1, 1:-1]
+    p_arr = np.asarray(eos_pressure(rho, problem.prop))
+
+    x = np.linspace(dx / 2, Lx - dx / 2, Nx)
+    mid = Ny // 2
+    p_mid = p_arr[:, mid]
+
+    ref = pd.read_csv(ref_csv, skipinitialspace=True)
+
+    fig, ax = plt.subplots(figsize=(6, 3.5), facecolor='white', constrained_layout=True)
+    fig.suptitle(title, fontweight='bold')
+    ax.plot(x * 1e3, p_mid / 1e6, color='0.3', lw=1.5, label='FEM')
+    ax.scatter(ref['x'].values * Lx * 1e3, ref['y'].values,
+               color='#1f77b4', s=14, zorder=5, label=ref_label)
+    ax.legend(fontsize=8)
+    ax.set(xlabel='x [mm]', ylabel='p [MPa]', title='Pressure — mid-section (y = Ly/2)')
+    ax.grid(True, alpha=0.3)
+    plt.show()
 
 
 def plot_lid_driven_cavity(problem, title=None):

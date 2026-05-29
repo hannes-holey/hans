@@ -348,7 +348,7 @@ def sanitize_properties(d):
     if out['shear'] < 0.:
         raise IOError("Specify a a (non-negative) shear viscosity")
     out['bulk'] = float(d.get('bulk', -1.))
-    if out['shear'] < 0.:
+    if out['bulk'] < 0.:
         raise IOError("Specify a a (non-negative) bulk viscosity")
 
     # Body force (for periodic BC simulations)
@@ -555,16 +555,6 @@ def sanitize_fem_solver(d):
     out['scaling'] = bool(d.get('scaling', True))
     out['linear_solver'] = str(d.get('linear_solver', 'direct'))
 
-    out['osc_threshold'] = float(d.get('osc_threshold', 0.3))
-    out['osc_alpha_min_factor'] = float(d.get('osc_alpha_min_factor', 0.125))
-
-    out['pressure_stab_alpha'] = float(d.get('pressure_stab_alpha', 0.01))
-    out['momentum_stab_alpha'] = float(d.get('momentum_stab_alpha', 0.1))
-    out['energy_stab_alpha'] = float(d.get('energy_stab_alpha', 0.01))
-    out['boundary_stab_factor'] = float(d.get('boundary_stab_factor', 1.0))
-    out['boundary_stab_decay'] = float(d.get('boundary_stab_decay', 2.0))
-    out['pspg_boundary_decay'] = float(d.get('pspg_boundary_decay', 0.0))
-
     physics = d.get('physics', {})
     out['physics'] = {
         # Momentum physics
@@ -580,30 +570,13 @@ def sanitize_fem_solver(d):
         'wall_heat_balance': bool(physics.get('wall_heat_balance', True)),
         'wall_shear_work': bool(physics.get('wall_shear_work', True)),
         # Numerical
-        'stabilization': bool(physics.get('stabilization', True)),
-        'lap_pressure': bool(physics.get('lap_pressure', False)),
-        'lap_theta': bool(physics.get('lap_theta', False)),
         'theta_stab': bool(physics.get('theta_stab', False)),
-        'upwind_theta': bool(physics.get('upwind_theta', False)),
-        'pspg_fb': bool(physics.get('pspg_fb', False)),
-        'mass_diffusion': bool(physics.get('mass_diffusion', False)),
-        'pspg': bool(physics.get('pspg', False)),
-        'gls': bool(physics.get('gls', False)),
-        'supg_theta': bool(physics.get('supg_theta', False)),
         'oss_theta': bool(physics.get('oss_theta', False)),
     }
 
-    out['lap_pressure_alpha'] = float(d.get('lap_pressure_alpha', 0.0))
-    out['lap_theta_alpha'] = float(d.get('lap_theta_alpha', 0.0))
     out['theta_stab_alpha'] = float(d.get('theta_stab_alpha', 0.0))
-    out['pspg_fb_alpha'] = float(d.get('pspg_fb_alpha', 0.0))
-    out['supg_theta_alpha'] = float(d.get('supg_theta_alpha', 0.0))
     out['oss_theta_alpha'] = float(d.get('oss_theta_alpha', 0.0))
     out['oss_correction_alpha'] = float(d.get('oss_correction_alpha', 1.0))
-    out['mass_diffusion_alpha'] = float(d.get('mass_diffusion_alpha', 1e-3))
-    out['pspg_C_I'] = float(d.get('pspg_C_I', 1.0 / 3.0))
-    out['gls_C_I'] = float(d.get('gls_C_I', 1.0 / 3.0))
-    out['pen_eps'] = float(d.get('pen_eps', 0.0))
 
     if 'p_init' in d:
         out['p_init'] = float(d['p_init'])

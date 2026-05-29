@@ -7,10 +7,10 @@ grid:
     Ly: 0.25
     Nx: 20
     Ny: 50
-    xW: ['P', 'P', 'P']       # Periodic west
-    xE: ['P', 'P', 'P']       # Periodic east
-    yS: ['N', 'D', 'D']       # South wall: Neumann rho, Dirichlet jx=jy=0
-    yN: ['N', 'D', 'D']       # North wall: Neumann rho, Dirichlet jx=jy=0
+    xW: ['P', 'P', 'P']
+    xE: ['P', 'P', 'P']
+    yS: ['N', 'D', 'D']
+    yN: ['N', 'D', 'D']
     yS_D: 0.0
     yN_D: 0.0
 
@@ -34,7 +34,7 @@ properties:
     shear: 0.1
     bulk: 0.
     alpha: 1e-8
-    force_x: 1           # Body force in x (drives flow)
+    force_x: 1
     force_y: 0.0
 
 fem_solver:
@@ -53,6 +53,5 @@ fem_solver:
 options:
     output: /tmp/poiseuille_2d_test
     write_freq: 1
-    save_output: True
-    output_plots: True
-
+    save_output: False
+    output_plots: False

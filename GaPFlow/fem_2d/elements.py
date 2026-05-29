@@ -43,7 +43,7 @@ class TaylorHoodP2P1:
     |       |
     0 ----- 1
 
-    internal triangleindexing order:
+    internal triangle indexing order:
     2
     |
     |
@@ -77,7 +77,7 @@ class TaylorHoodP2P1:
     # Stencils
     # ===============================================================
 
-    # All u-u combinations. p-* combinations found by checking even points.
+    # All u-u combinations. p-* combinations are derived by checking even points.
     stencil_even_even = [
         (0, 0),
         (-2, 0), (-1, 0), (1, 0), (2, 0),
@@ -154,36 +154,24 @@ class TaylorHoodP2P1:
         def __init__(self, quadrature):
             self.quadrature = quadrature
 
-        @cached_property
-        def N(self):
-            """Returns shape (nb_quad_tri, nodes_per_tri).
-            """
-            N = np.empty((self.quadrature.nb_points, self.nodes_per_tri))
-            for i in range(self.quadrature.nb_points):
-                x, y = self.quadrature.coordinates[i]
-                N[i] = [N_func(x, y) for N_func in self._N_funcs]
+        def _eval_funcs(self, funcs) -> NDArray:
+            return np.array([[f(x, y) for f in funcs]
+                             for x, y in self.quadrature.coordinates])
 
-            return N
-        
+        @cached_property
+        def N(self) -> NDArray:
+            """Returns shape (nb_quad_tri, nodes_per_tri)."""
+            return self._eval_funcs(self._N_funcs)
+
         @cached_property
         def dN_dx(self) -> NDArray:
             """Returns shape (nb_quad_tri, nodes_per_tri)."""
-            dN_dx = np.empty((self.quadrature.nb_points, self.nodes_per_tri))
-            for i in range(self.quadrature.nb_points):
-                x, y = self.quadrature.coordinates[i]
-                dN_dx[i] = [N_x_func(x, y) for N_x_func in self._N_x_funcs]
-
-            return dN_dx
+            return self._eval_funcs(self._N_x_funcs)
 
         @cached_property
         def dN_dy(self) -> NDArray:
-            """Returns shape (nb_quad, nodes_per_tri)."""
-            dN_dy = np.empty((self.quadrature.nb_points, self.nodes_per_tri))
-            for i in range(self.quadrature.nb_points):
-                x, y = self.quadrature.coordinates[i]
-                dN_dy[i] = [N_y_func(x, y) for N_y_func in self._N_y_funcs]
-
-            return dN_dy
+            """Returns shape (nb_quad_tri, nodes_per_tri)."""
+            return self._eval_funcs(self._N_y_funcs)
 
         def _make_operator(self, dN: NDArray, apply_der_factor: bool = False) -> "QuadOperator":
             """Build a QuadOperator for a given shape function matrix dN (nb_q, nodes_per_tri).
@@ -284,35 +272,24 @@ class TaylorHoodP2P1:
         def __init__(self, quadrature):
             self.quadrature = quadrature
 
+        def _eval_funcs(self, funcs) -> NDArray:
+            return np.array([[f(x, y) for f in funcs]
+                             for x, y in self.quadrature.coordinates])
+
         @cached_property
         def N(self) -> NDArray:
             """Returns shape (nb_quad, nodes_per_tri)."""
-            N = np.empty((self.quadrature.nb_points, self.nodes_per_tri))
-            for i in range(self.quadrature.nb_points):
-                x, y = self.quadrature.coordinates[i]
-                N[i] = [N_func(x, y) for N_func in self._N_funcs]
-
-            return N
+            return self._eval_funcs(self._N_funcs)
 
         @cached_property
         def dN_dx(self) -> NDArray:
             """Returns shape (nb_quad, nodes_per_tri)."""
-            dN_dx = np.empty((self.quadrature.nb_points, self.nodes_per_tri))
-            for i in range(self.quadrature.nb_points):
-                x, y = self.quadrature.coordinates[i]
-                dN_dx[i] = [N_x_func(x, y) for N_x_func in self._N_x_funcs]
-
-            return dN_dx
+            return self._eval_funcs(self._N_x_funcs)
 
         @cached_property
         def dN_dy(self) -> NDArray:
             """Returns shape (nb_quad, nodes_per_tri)."""
-            dN_dy = np.empty((self.quadrature.nb_points, self.nodes_per_tri))
-            for i in range(self.quadrature.nb_points):
-                x, y = self.quadrature.coordinates[i]
-                dN_dy[i] = [N_y_func(x, y) for N_y_func in self._N_y_funcs]
-
-            return dN_dy
+            return self._eval_funcs(self._N_y_funcs)
 
         def _make_operator(self, dN: NDArray, apply_der_factor: bool = False) -> "QuadOperator":
             """Build a QuadOperator for a given shape function matrix dN (nb_q, nodes_per_tri).
@@ -429,9 +406,7 @@ class Quadrature7Points:
 
 class QuadOperator:
     """Wraps GenericLinearOperator with an optional numpy backend.
-
-    Exposes the same .apply(input_field, output_field) interface so it is a
-    drop-in replacement.  Set backend='numpy' to use the numpy function instead.
+    Right now, numpy is faster than muGrid.
     """
 
     def __init__(self, mugrid_op: GenericLinearOperator, numpy_fn=None,

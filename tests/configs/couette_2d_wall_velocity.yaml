@@ -7,10 +7,10 @@ grid:
     Ly: 0.25
     Nx: 20
     Ny: 50
-    xW: ['P', 'P', 'P']       # Periodic west
-    xE: ['P', 'P', 'P']       # Periodic east
-    yS: ['N', 'D', 'D']       # South: Neumann rho, Dirichlet jx=0, jy=0
-    yN: ['N', 'D', 'D']       # North: Neumann rho, Dirichlet jx=ρU, jy=0
+    xW: ['P', 'P', 'P']
+    xE: ['P', 'P', 'P']
+    yS: ['N', 'D', 'D']
+    yN: ['N', 'D', 'D']
     yS_D: [null, 0.0, 0.0]    # South wall stationary (jx=0, jy=0)
     yN_D: [null, 1.0, 0.0]    # North wall moving (jx=ρ*U=1*1=1, jy=0)
 
@@ -34,7 +34,7 @@ properties:
     shear: 0.1
     bulk: 0.
     alpha: 1e-8
-    force_x: 0.0              # No body force (shear-driven)
+    force_x: 0.0
     force_y: 0.0
 
 fem_solver:
