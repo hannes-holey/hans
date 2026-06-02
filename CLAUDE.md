@@ -1,29 +1,29 @@
 # Project Overview
 
 GaPFlow is a 2D height-averaged Navier-Stokes (lubrication) solver. The active backend is
-the Taylor-Hood P2/P1 FEM solver in `GaPFlow/fem_2d/`. P2 elements for mass flux `jx/jy`,
+the Taylor-Hood P2/P1 FEM solver in `GaPFlow/solver_fem/`. P2 elements for mass flux `jx/jy`,
 P1 for density `rho`. Variables: `['jx', 'jy', 'rho']` (+ `'E'` with energy). Equations:
 mass continuity + x/y momentum (+ energy). Terms are modular `NonLinearTerm` instances
 in `terms.py` (R1x=mass, R2x=momentum, R3x=energy).
 
 ## Key files
 
-- `GaPFlow/fem_2d/elements.py` — `TaylorHoodP2P1`: P1/P2 shape functions, quadrature (3pts/tri),
+- `GaPFlow/solver_fem/elements.py` — `TaylorHoodP2P1`: P1/P2 shape functions, quadrature (3pts/tri),
   each cell split into 2 triangles. Stencils for P1/P2 sparsity connectivity.
-- `GaPFlow/fem_2d/grid_index.py` — `GridIndexManager`: index masks for P1 (ghost=1) and P2
+- `GaPFlow/solver_fem/grid_index.py` — `GridIndexManager`: index masks for P1 (ghost=1) and P2
   (ghost=2) padded grids, L2G maps, square connectivity arrays `sq_TO_inner_*` / `sq_FROM_padded_*`.
-- `GaPFlow/fem_2d/global_matrix.py` — `field_to_global`: maps local block indices to interleaved
+- `GaPFlow/solver_fem/global_matrix.py` — `field_to_global`: maps local block indices to interleaved
   global DOF ordering for PETSc/SciPy.
-- `GaPFlow/fem_2d/assembly.py` — `Assembly`: COO sparsity, `AssemblyTemplate` (shape_weighting +
+- `GaPFlow/solver_fem/assembly.py` — `Assembly`: COO sparsity, `AssemblyTemplate` (shape_weighting +
   nnz_index), `assemble_matrix` (Jacobian) and `assemble_rhs` (residual). Fully vectorized,
   no Python loop per cell.
-- `GaPFlow/fem_2d/quad_fields.py` — `QuadFieldManager`: muGrid-backed nodal/quad fields,
+- `GaPFlow/solver_fem/quad_fields.py` — `QuadFieldManager`: muGrid-backed nodal/quad fields,
   interpolation to quad pts, physics updates. `sync_from_problem_q` uses `scipy.ndimage.zoom`
   (order=1) to upsample `jx/jy` from P1 to P2 grid.
-- `GaPFlow/fem_2d/terms.py` — `NonLinearTerm` instances + `get_active_terms()`.
-- `GaPFlow/fem_2d/petsc_system.py` / `scipy_system.py` — linear solver wrappers (same interface).
-- `GaPFlow/fem_2d/scaling.py` — `build_scaling` row-column preconditioner.
-- `GaPFlow/solver_fem_2d.py` — `FEMSolver2d`: Newton loop wiring all components.
+- `GaPFlow/solver_fem/terms.py` — `NonLinearTerm` instances + `get_active_terms()`.
+- `GaPFlow/solver_fem/petsc_system.py` / `scipy_system.py` — linear solver wrappers (same interface).
+- `GaPFlow/solver_fem/scaling.py` — `build_scaling` row-column preconditioner.
+- `GaPFlow/solver_fem.py` — `FEMSolver`: Newton loop wiring all components.
 - `GaPFlow/parallel.py` — `DomainDecomposition`: MPI decomp, ghost exchange, BC application.
   `BCContext` passed to user BC callbacks. `_apply_field_bcs` handles P1_cell, P1_nodal, P2_nodal.
 
@@ -55,11 +55,11 @@ stretches it to the P2 ghost shape using `scipy.ndimage.zoom(..., order=1)`.
 
 # Tests
 
-`tests/test_fem_2d_jacobian.py` and `tests/test_fem_2d_analytic.py` target the old
-fem_2d_v1 assembly and are NOT valid for the current Taylor-Hood P2P1 code in `fem_2d/`.
-The relevant test for the new code is `tests/test_fem_2d_assembly_fd.py`.
+`tests/test_solver_fem_jacobian.py` and `tests/test_solver_fem_analytic.py` target the old
+solver_fem_v1 assembly and are NOT valid for the current Taylor-Hood P2P1 code in `solver_fem/`.
+The relevant test for the new code is `tests/test_solver_fem_assembly_fd.py`.
 
-# FD Test Design (`tests/test_fem_2d_assembly_fd.py`)
+# FD Test Design (`tests/test_solver_fem_assembly_fd.py`)
 
 Progressive finite difference verification of `assemble_matrix` and `assemble_rhs`.
 Uses `Problem.from_string()` with a minimal YAML config. Infrastructure:

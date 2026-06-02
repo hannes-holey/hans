@@ -27,7 +27,7 @@ options:
 grid:
     Lx: 0.020
     Ly: 0.010
-    Nx: 360
+    Nx: 180
     Ny: 60
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
@@ -61,12 +61,12 @@ properties:
     p_cav: 0.0
     shear: 0.01
     bulk: 0.0
-    #piezo:
-    #    name: Barus
-    #    aB: 1.2e-8
-    #thinning:
-    #    name: Eyring
-    #    tauE: 5.0e6
+    piezo:
+        name: Barus
+        aB: 1.2e-8
+    thinning:
+        name: Eyring
+        tauE: 5.0e6
 
 fem_solver:
     type: newton_alpha

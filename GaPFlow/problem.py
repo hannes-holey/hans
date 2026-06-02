@@ -139,11 +139,11 @@ class Problem:
 
         # Initialize solver
         if self.numerics['solver'] == 'explicit':
-            from .solver_explicit import ExplicitSolver
+            from .solver_explicit.solver_explicit import ExplicitSolver
             self.solver = ExplicitSolver(self)
         elif self.numerics['solver'] == 'fem':
-            from .solver_fem_2d import FEMSolver2d
-            self.solver = FEMSolver2d(self.fem_solver, self)
+            from .solver_fem.solver_fem import FEMSolver
+            self.solver = FEMSolver(self.fem_solver, self)
 
         # Initialize domain decomposition and field collection
         self.decomp = DomainDecomposition(grid, numerics)
@@ -151,11 +151,7 @@ class Problem:
 
         # Solution field
         self.step = None
-        nb_sol = 3
-        if self.numerics['solver'] == 'fem':
-            nb_sol += int(self.fem_solver['equations'].get('energy', False))
-            nb_sol += int(self.fem_solver['equations'].get('cavitation', False))
-        self.__field = self.fc.real_field('solution', (nb_sol,))
+        self.__field = self.fc.real_field('solution', (self.solver.nb_sol,))
         self._initialize(rho0=prop['rho0'],
                          U_bot=geo['U_bot'], V_bot=geo['V_bot'],
                          U_top=geo['U_top'], V_top=geo['V_top'])
@@ -249,6 +245,9 @@ class Problem:
             # Energy and temperature fields
             if self.bEnergy:
                 self.file.register_field_collection(self.fc, field_names=['total_energy', 'temperature'])
+
+        # Boundary conditions
+        self.solver.build_boundary_conditions()
 
     # ---------------------------
     # Constructors
@@ -550,8 +549,8 @@ class Problem:
 
         # Residual analysis for FEM 2D solver
         if self.options.get('residual_analysis', False):
-            from .solver_fem_2d import FEMSolver2d
-            if isinstance(self.solver, FEMSolver2d) and hasattr(self.solver, 'run_residual_analysis'):
+            from .solver_fem.solver_fem import FEMSolver
+            if isinstance(self.solver, FEMSolver) and hasattr(self.solver, 'run_residual_analysis'):
                 self.solver.run_residual_analysis()
 
         walltime = datetime.now() - self._tic

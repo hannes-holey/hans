@@ -33,7 +33,7 @@ import numpy as np
 import pytest
 
 from GaPFlow.problem import Problem
-from GaPFlow.solver_fem_2d import FEMSolver2d
+from GaPFlow.solver_fem import FEMSolver
 
 # =============================================================================
 # YAML config templates
@@ -240,7 +240,7 @@ def _pcav(prop: dict) -> float:
     return rho_v * c_v**2 - N * np.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
 
 
-def _init_bayada_straddling(solver: FEMSolver2d,
+def _init_bayada_straddling(solver: FEMSolver,
                             cavitation: bool = False) -> None:
     """Set p as a ramp straddling Pcav so correction terms are nonzero.
 
@@ -260,7 +260,7 @@ def _init_bayada_straddling(solver: FEMSolver2d,
     _set_and_sync(solver, q)
 
 
-def _set_and_sync(solver: FEMSolver2d, q: np.ndarray) -> None:
+def _set_and_sync(solver: FEMSolver, q: np.ndarray) -> None:
     """Mirror the solver's own set→sync_rho→exchange→update_quad sequence."""
     solver.set_q_nodal(q)
     solver._sync_rho_before_exchange()
@@ -268,7 +268,7 @@ def _set_and_sync(solver: FEMSolver2d, q: np.ndarray) -> None:
     solver.update_quad()
 
 
-def build_scale_array(solver: FEMSolver2d,
+def build_scale_array(solver: FEMSolver,
                       scales: dict = None) -> np.ndarray:
     """Build a per-DOF scale array from per-variable characteristic scales.
 
@@ -288,7 +288,7 @@ def build_scale_array(solver: FEMSolver2d,
     return scale
 
 
-def compute_fd_jacobian(solver: FEMSolver2d, eps: float = 1e-6,
+def compute_fd_jacobian(solver: FEMSolver, eps: float = 1e-6,
                         scale: np.ndarray = None) -> np.ndarray:
     """Central finite difference Jacobian of get_R_ w.r.t. nodal DOFs.
 
@@ -564,7 +564,7 @@ def plot_initial_p(eos: str = 'Bayada', Nx: int = 6, Ny: int = 4,
 
     For Bayada, the ramp straddling Pcav is visible as a smooth gradient
     with the cavitation pressure marked as a contour line.
-    Run directly:  python tests/test_fem_2d_assembly_fd.py
+    Run directly:  python tests/test_solver_fem_assembly_fd.py
     """
     import matplotlib.pyplot as plt
     import matplotlib.ticker as ticker

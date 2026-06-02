@@ -65,7 +65,7 @@ import numpy as np
 import pytest
 
 from GaPFlow.problem import Problem
-from GaPFlow.solver_fem_2d import FEMSolver2d
+from GaPFlow.solver_fem import FEMSolver
 
 # =============================================================================
 # YAML config template
@@ -166,7 +166,7 @@ def make_problem(Nx: int, Ny: int, bc: str = 'periodic_y',
     return problem, solver
 
 
-def _init_fb_straddling(solver: FEMSolver2d) -> None:
+def _init_fb_straddling(solver: FEMSolver) -> None:
     """Set initial (p, theta, jx, jy) state covering all relevant interaction regimes.
 
     State design:
@@ -212,7 +212,7 @@ def _init_fb_straddling(solver: FEMSolver2d) -> None:
     _set_and_sync(solver, q)
 
 
-def _set_and_sync(solver: FEMSolver2d, q: np.ndarray) -> None:
+def _set_and_sync(solver: FEMSolver, q: np.ndarray) -> None:
     """Mirror the solver's own set→sync_rho→exchange→update_quad sequence."""
     solver.set_q_nodal(q)
     solver._sync_rho_before_exchange()
@@ -220,7 +220,7 @@ def _set_and_sync(solver: FEMSolver2d, q: np.ndarray) -> None:
     solver.update_quad()
 
 
-def build_scale_array(solver: FEMSolver2d, scales: dict = None) -> np.ndarray:
+def build_scale_array(solver: FEMSolver, scales: dict = None) -> np.ndarray:
     """Build a per-DOF scale array from per-variable characteristic scales."""
     if scales is None:
         scales = {}
@@ -231,7 +231,7 @@ def build_scale_array(solver: FEMSolver2d, scales: dict = None) -> np.ndarray:
     return scale
 
 
-def compute_fd_jacobian(solver: FEMSolver2d, eps: float = 1e-6,
+def compute_fd_jacobian(solver: FEMSolver, eps: float = 1e-6,
                         scale: np.ndarray = None) -> np.ndarray:
     """Central finite difference Jacobian of get_R_ w.r.t. all nodal DOFs."""
     q0 = solver.get_q_nodal().copy()
@@ -335,7 +335,7 @@ def check_all_terms(
     return results
 
 
-def print_term_check(results: dict, solver: FEMSolver2d = None,
+def print_term_check(results: dict, solver: FEMSolver = None,
                      dep_vars: list = None) -> None:
     """Pretty-print the output of check_all_terms."""
     if dep_vars is None:

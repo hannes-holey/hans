@@ -1,9 +1,9 @@
 """
-fem_2d integration tests.
+solver_fem integration tests.
 
 Solver comparison
 -----------------
-Compares fem_2d steady-state solutions against pre-saved explicit reference data
+Compares solver_fem steady-state solutions against pre-saved explicit reference data
 (tests/data/explicit_<case>.npz).  Explicit runs are expensive (~minutes each)
 so their results are committed once and re-used by CI.
 
@@ -67,7 +67,7 @@ def compare_solutions(sol1, sol2, bc_type="periodic", rtol=0.05, field_name="fie
 
 
 # =============================================================================
-# Solver comparison: fem_2d vs saved explicit reference
+# Solver comparison: solver_fem vs saved explicit reference
 # =============================================================================
 
 FEM2D_DEFAULTS = {

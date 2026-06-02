@@ -36,7 +36,7 @@ import numpy as np
 import pytest
 
 from GaPFlow.problem import Problem
-from GaPFlow.solver_fem_2d import FEMSolver2d
+from GaPFlow.solver_fem import FEMSolver
 
 # =============================================================================
 # Configuration
@@ -148,7 +148,7 @@ def make_problem(Nx: int, Ny: int, bc: str = 'periodic',
     return problem, solver
 
 
-def compute_fd_jacobian(solver: FEMSolver2d, eps: float = 1e-6) -> np.ndarray:
+def compute_fd_jacobian(solver: FEMSolver, eps: float = 1e-6) -> np.ndarray:
     """Central finite difference Jacobian of get_R w.r.t. nodal DOFs.
 
     Uses relative perturbation for robustness across variable scales.

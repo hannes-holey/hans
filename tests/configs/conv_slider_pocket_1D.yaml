@@ -18,7 +18,7 @@
 
 options:
     output: /tmp/conv_slider_pocket_1D
-    write_freq: 50
+    write_freq: 10
     save_output: False
     output_plots: False
     residual_analysis: False
@@ -26,7 +26,7 @@ options:
 grid:
     Lx: 0.020
     Ly: 0.004
-    Nx: 128
+    Nx: 400
     Ny: 4
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
@@ -56,7 +56,7 @@ properties:
         aB: 1.2e-8
     rho0: 850.
     P0: 1e5
-    C1: 6.22e9
+    C1: 10.62e9
     C2: 1.66
     p_cav: 0.0
     shear: 0.01
@@ -72,9 +72,7 @@ fem_solver:
         gap_shear: true
         inertia: false
         oss_theta: true
-        theta_stab: false
     oss_theta_alpha: 1.0
-    theta_stab_alpha: 0.0001
     oss_correction_alpha: 1.0
     max_iter: 5
     R_norm_tol: 1e-9

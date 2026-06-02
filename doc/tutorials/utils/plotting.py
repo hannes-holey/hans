@@ -122,7 +122,7 @@ def plot_solver_comparison_rho_jx(results, title):
     results : dict
         Dictionary with solver names as keys and result dicts as values.
         Each result dict must contain 'rho' and 'jx' arrays.
-        Expected keys: 'explicit', 'fem_1d', 'fem_2d'
+        Expected keys: 'explicit', 'fem_1d', 'solver_fem'
     title : str
         Title for the figure
 
@@ -131,13 +131,13 @@ def plot_solver_comparison_rho_jx(results, title):
     >>> results = {
     ...     'explicit': {'rho': rho_exp, 'jx': jx_exp, 'time': t_exp},
     ...     'fem_1d': {'rho': rho_1d, 'jx': jx_1d, 'time': t_1d},
-    ...     'fem_2d': {'rho': rho_2d, 'jx': jx_2d, 'time': t_2d},
+    ...     'solver_fem': {'rho': rho_2d, 'jx': jx_2d, 'time': t_2d},
     ... }
     >>> plot_solver_comparison_rho_jx(results, 'Inclined Slider')
     """
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    colors = {'explicit': 'C0', 'fem_1d': 'C1', 'fem_2d': 'C2'}
-    labels = {'explicit': 'Explicit', 'fem_1d': 'FEM 1D', 'fem_2d': 'FEM 2D'}
+    colors = {'explicit': 'C0', 'fem_1d': 'C1', 'solver_fem': 'C2'}
+    labels = {'explicit': 'Explicit', 'fem_1d': 'FEM 1D', 'solver_fem': 'FEM 2D'}
 
     Nx = len(list(results.values())[0]['rho'])
     x = np.linspace(0, 1, Nx)
@@ -528,12 +528,20 @@ def plot_overview_1d(problem, title, ref_csv=None, ref_label=None,
     x = np.linspace(0, Lx, Nx)
 
     rho = problem.q[0][1:-1, 1:-1]
-    theta = problem.q[3][1:-1, 1:-1]
     p_arr = np.asarray(eos_pressure(rho, problem.prop))
+
+    if problem.prop.get('EOS') == 'Bayada':
+        rho_l = problem.prop['rho_l']
+        rho_v = problem.prop['rho_v']
+        theta = np.clip((rho_l - rho) / (rho_l - rho_v), 0, 1)
+        rho_eff = rho
+    else:
+        theta = problem.q[3][1:-1, 1:-1]
+        rho_eff = rho * (1 - theta)
 
     p_x = p_arr.mean(axis=1)
     theta_x = theta.mean(axis=1)
-    rho_eff_x = (rho * (1 - theta)).mean(axis=1)
+    rho_eff_x = rho_eff.mean(axis=1)
 
     fig, axes = plt.subplots(1, 3, figsize=(12, 3), facecolor='white',
                              constrained_layout=True)
@@ -583,8 +591,14 @@ def plot_overview_2d(problem, title):
     Nx, Ny = problem.grid['Nx'], problem.grid['Ny']
 
     rho = problem.q[0][1:-1, 1:-1]
-    theta = problem.q[3][1:-1, 1:-1]
     p_arr = np.asarray(eos_pressure(rho, problem.prop))
+
+    if problem.prop.get('EOS') == 'Bayada':
+        rho_l = problem.prop['rho_l']
+        rho_v = problem.prop['rho_v']
+        theta = np.clip((rho_l - rho) / (rho_l - rho_v), 0, 1)
+    else:
+        theta = problem.q[3][1:-1, 1:-1]
 
     x = np.linspace(dx / 2, Lx - dx / 2, Nx)
     y = np.linspace(dy / 2, Ly - dy / 2, Ny)
@@ -600,7 +614,7 @@ def plot_overview_2d(problem, title):
     axes[0].set(xlabel='x [mm]', ylabel='y [mm]', title='Pressure')
 
     im1 = axes[1].pcolormesh(X * 1e3, Y * 1e3, theta,
-                             cmap='Reds', shading='auto', vmin=0, vmax=1)
+                             cmap='RdBu_r', shading='auto', vmin=0, vmax=1)
     plt.colorbar(im1, ax=axes[1], label=r'$\theta$ [-]')
     axes[1].set(xlabel='x [mm]', ylabel='y [mm]', title=r'Fill fraction $\theta$')
 

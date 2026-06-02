@@ -30,9 +30,21 @@ any .npy files.
 """
 
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 
 
-def regen_conv_slider_pocket_1d(problem):
+def _geo_grid_1d(L, N):
+    """Cell-centre coordinates for a geometry grid of N points over [0, L]."""
+    d = L / N
+    return np.linspace(d / 2, L - d / 2, N)
+
+
+def _geo_grid_2d(Lx, Ly, Nx, Ny):
+    """Cell-centre coordinate arrays for a geometry grid of Nx×Ny over [0,Lx]×[0,Ly]."""
+    return _geo_grid_1d(Lx, Nx), _geo_grid_1d(Ly, Ny)
+
+
+def regen_conv_slider_pocket_1d(problem, Nx_geo=None):
     """Convergent slider with pocket — 1D (Bertocchi 2013).
 
     Linear convergent wedge (hmax=1.1 µm → hmin=1.0 µm) with a rectangular
@@ -40,18 +52,23 @@ def regen_conv_slider_pocket_1d(problem):
     """
     g = problem.grid
     Nx, Ny, Lx = g['Nx'], g['Ny'], g['Lx']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    if Nx_geo is None:
+        Nx_geo = Nx
 
+    x_geo = _geo_grid_1d(Lx, Nx_geo)
     hmin, hmax, h_pock = 1.0e-6, 1.1e-6, 0.4e-6
     x_p_start, x_p_end = 4.0e-3, 10.0e-3
 
-    h1d = hmax - (hmax - hmin) * x / Lx
-    h1d[(x >= x_p_start) & (x < x_p_end)] += h_pock
+    h_geo = hmax - (hmax - hmin) * x_geo / Lx
+    h_geo[(x_geo >= x_p_start) & (x_geo < x_p_end)] += h_pock
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    h1d = np.interp(x_fem, x_geo, h_geo)
 
     problem.topo.set_global_height(np.tile(h1d[:, np.newaxis], (1, Ny)))
 
 
-def regen_conv_slider_pocket_1d_giacopini(problem):
+def regen_conv_slider_pocket_1d_giacopini(problem, Nx_geo=None):
     """Convergent slider with pocket — 1D, Giacopini (2010) Table 3.
 
     Linear convergent wedge (K=0.01: hmax≈1.0101 µm → hmin=1.0 µm) with a
@@ -60,21 +77,26 @@ def regen_conv_slider_pocket_1d_giacopini(problem):
     """
     g = problem.grid
     Nx, Ny, Lx = g['Nx'], g['Ny'], g['Lx']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    if Nx_geo is None:
+        Nx_geo = Nx
 
+    x_geo = _geo_grid_1d(Lx, Nx_geo)
     hmin = 1.0e-6
     K = 0.01
     hmax = K*hmin + hmin
     h_pock = 1.0 * hmin        # 5 µm
     x_p_start, x_p_end = 2.0e-3, 5.0e-3
 
-    h1d = hmax - (hmax - hmin) * x / Lx
-    h1d[(x >= x_p_start) & (x < x_p_end)] += h_pock
+    h_geo = hmax - (hmax - hmin) * x_geo / Lx
+    h_geo[(x_geo >= x_p_start) & (x_geo < x_p_end)] += h_pock
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    h1d = np.interp(x_fem, x_geo, h_geo)
 
     problem.topo.set_global_height(np.tile(h1d[:, np.newaxis], (1, Ny)))
 
 
-def regen_conv_slider_pocket_1d_hansen(problem):
+def regen_conv_slider_pocket_1d_hansen(problem, Nx_geo=None):
     """Convergent slider with pocket — 1D, Hansen (2022) geometry.
 
     Linear convergent wedge (hmax=1.1 µm → hmin=1.0 µm) with a rectangular
@@ -83,18 +105,23 @@ def regen_conv_slider_pocket_1d_hansen(problem):
     """
     g = problem.grid
     Nx, Ny, Lx = g['Nx'], g['Ny'], g['Lx']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    if Nx_geo is None:
+        Nx_geo = Nx
 
+    x_geo = _geo_grid_1d(Lx, Nx_geo)
     hmin, hmax, h_pock = 1.0e-6, 1.05e-6, 1.0e-6
     x_p_start, x_p_end = 2.0e-3, 5.0e-3
 
-    h1d = hmax - (hmax - hmin) * x / Lx
-    h1d[(x >= x_p_start) & (x < x_p_end)] += h_pock
+    h_geo = hmax - (hmax - hmin) * x_geo / Lx
+    h_geo[(x_geo >= x_p_start) & (x_geo < x_p_end)] += h_pock
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    h1d = np.interp(x_fem, x_geo, h_geo)
 
     problem.topo.set_global_height(np.tile(h1d[:, np.newaxis], (1, Ny)))
 
 
-def regen_conv_slider_pocket_2d(problem):
+def regen_conv_slider_pocket_2d(problem, Nx_geo=None, Ny_geo=None):
     """Convergent slider with pocket — 2D (Bertocchi 2013).
 
     Linear convergent wedge (hmax=1.1 µm → hmin=1.0 µm) with a rectangular
@@ -103,22 +130,32 @@ def regen_conv_slider_pocket_2d(problem):
     """
     g = problem.grid
     Nx, Ny, Lx, Ly = g['Nx'], g['Ny'], g['Lx'], g['Ly']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
-    y = np.linspace(g['dy'] / 2, Ly - g['dy'] / 2, Ny)
+    if Nx_geo is None:
+        Nx_geo = Nx
+    if Ny_geo is None:
+        Ny_geo = Ny
 
+    x_geo, y_geo = _geo_grid_2d(Lx, Ly, Nx_geo, Ny_geo)
     hmin, hmax, h_pock = 1.0e-6, 1.1e-6, 0.4e-6
     x_p_start, x_p_end = 4.0e-3, 10.0e-3
     y_p_start, y_p_end = 1.5e-3, 8.5e-3
 
-    xx, yy = np.meshgrid(x, y, indexing='ij')
-    h2d = hmax - (hmax - hmin) * xx / Lx
-    pocket = (xx >= x_p_start) & (xx < x_p_end) & (yy >= y_p_start) & (yy < y_p_end)
-    h2d[pocket] += h_pock
+    xx_geo, yy_geo = np.meshgrid(x_geo, y_geo, indexing='ij')
+    h_geo = hmax - (hmax - hmin) * xx_geo / Lx
+    pocket = (xx_geo >= x_p_start) & (xx_geo < x_p_end) & (yy_geo >= y_p_start) & (yy_geo < y_p_end)
+    h_geo[pocket] += h_pock
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    y_fem = np.linspace(g['dy'] / 2, Ly - g['dy'] / 2, Ny)
+    interp = RegularGridInterpolator((x_geo, y_geo), h_geo, method='linear',
+                                     bounds_error=False, fill_value=None)
+    xx_fem, yy_fem = np.meshgrid(x_fem, y_fem, indexing='ij')
+    h2d = interp(np.stack([xx_fem.ravel(), yy_fem.ravel()], axis=-1)).reshape(Nx, Ny)
 
     problem.topo.set_global_height(h2d)
 
 
-def regen_twin_parabolic_slider(problem):
+def regen_twin_parabolic_slider(problem, Nx_geo=None):
     """Twin parabolic slider — non-identical (Bayada et al., Fig. 7).
 
     Two asymmetric symmetric parabolas (hmin1=30 µm, hmin2=35 µm, hmax=60 µm)
@@ -130,8 +167,10 @@ def regen_twin_parabolic_slider(problem):
     """
     g = problem.grid
     Nx, Ny, Lx = g['Nx'], g['Ny'], g['Lx']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    if Nx_geo is None:
+        Nx_geo = Nx
 
+    x_geo = _geo_grid_1d(Lx, Nx_geo)
     hmax = 6.0e-5
     hmin1 = 3.0e-5
     hmin2 = 3.5e-5
@@ -139,22 +178,25 @@ def regen_twin_parabolic_slider(problem):
     x_s1_start, x_s1_end = 0.000, 0.036
     x_s2_start, x_s2_end = 0.046, 0.082
 
-    h1d = np.full(Nx, hmax)
+    h_geo = np.full(Nx_geo, hmax)
 
-    mask1 = (x >= x_s1_start) & (x < x_s1_end)
+    mask1 = (x_geo >= x_s1_start) & (x_geo < x_s1_end)
     x1_mid = 0.5 * (x_s1_start + x_s1_end)
     x1_half = 0.5 * (x_s1_end - x_s1_start)
-    h1d[mask1] = hmin1 + (hmax - hmin1) * ((x[mask1] - x1_mid) / x1_half) ** 2
+    h_geo[mask1] = hmin1 + (hmax - hmin1) * ((x_geo[mask1] - x1_mid) / x1_half) ** 2
 
-    mask2 = (x >= x_s2_start) & (x < x_s2_end)
+    mask2 = (x_geo >= x_s2_start) & (x_geo < x_s2_end)
     x2_mid = 0.5 * (x_s2_start + x_s2_end)
     x2_half = 0.5 * (x_s2_end - x_s2_start)
-    h1d[mask2] = hmin2 + (hmax - hmin2) * ((x[mask2] - x2_mid) / x2_half) ** 2
+    h_geo[mask2] = hmin2 + (hmax - hmin2) * ((x_geo[mask2] - x2_mid) / x2_half) ** 2
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    h1d = np.interp(x_fem, x_geo, h_geo)
 
     problem.topo.set_global_height(np.tile(h1d[:, np.newaxis], (1, Ny)))
 
 
-def regen_twin_parabolic_slider_id(problem):
+def regen_twin_parabolic_slider_id(problem, Nx_geo=None):
     """Twin identical parabolic slider (Sahlin / Giacopini 2010).
 
     Two identical symmetric parabolas (hmax=50.2 µm, hmin=25.4 µm), each
@@ -162,26 +204,31 @@ def regen_twin_parabolic_slider_id(problem):
     """
     g = problem.grid
     Nx, Ny, Lx = g['Nx'], g['Ny'], g['Lx']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    if Nx_geo is None:
+        Nx_geo = Nx
 
+    x_geo = _geo_grid_1d(Lx, Nx_geo)
     hmax = 50.2e-6
     hmin = 25.4e-6
     L_slider = Lx / 2.0
 
-    h1d = np.full(Nx, hmax)
+    h_geo = np.full(Nx_geo, hmax)
 
-    mask1 = x < L_slider
+    mask1 = x_geo < L_slider
     x1_mid = L_slider / 2.0
-    h1d[mask1] = hmin + (hmax - hmin) * ((x[mask1] - x1_mid) / (L_slider / 2.0)) ** 2
+    h_geo[mask1] = hmin + (hmax - hmin) * ((x_geo[mask1] - x1_mid) / (L_slider / 2.0)) ** 2
 
-    mask2 = x >= L_slider
+    mask2 = x_geo >= L_slider
     x2_mid = L_slider + L_slider / 2.0
-    h1d[mask2] = hmin + (hmax - hmin) * ((x[mask2] - x2_mid) / (L_slider / 2.0)) ** 2
+    h_geo[mask2] = hmin + (hmax - hmin) * ((x_geo[mask2] - x2_mid) / (L_slider / 2.0)) ** 2
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    h1d = np.interp(x_fem, x_geo, h_geo)
 
     problem.topo.set_global_height(np.tile(h1d[:, np.newaxis], (1, Ny)))
 
 
-def regen_conv_slider_pocket_2d_wide(problem):
+def regen_conv_slider_pocket_2d_wide(problem, Nx_geo=None, Ny_geo=None):
     """Convergent slider with pocket — 2D wide domain (Ly=300 mm).
 
     Same wedge and pocket geometry as the standard 2D case, but the domain
@@ -190,18 +237,28 @@ def regen_conv_slider_pocket_2d_wide(problem):
     """
     g = problem.grid
     Nx, Ny, Lx, Ly = g['Nx'], g['Ny'], g['Lx'], g['Ly']
-    x = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
-    y = np.linspace(g['dy'] / 2, Ly - g['dy'] / 2, Ny)
+    if Nx_geo is None:
+        Nx_geo = Nx
+    if Ny_geo is None:
+        Ny_geo = Ny
 
+    x_geo, y_geo = _geo_grid_2d(Lx, Ly, Nx_geo, Ny_geo)
     hmin, hmax, h_pock = 1.0e-6, 1.1e-6, 0.4e-6
     x_p_start, x_p_end = 4.0e-3, 10.0e-3
     y_p_margin = (Ly - 0.210) / 2
     y_p_start = y_p_margin
     y_p_end = Ly - y_p_margin
 
-    xx, yy = np.meshgrid(x, y, indexing='ij')
-    h2d = hmax - (hmax - hmin) * xx / Lx
-    pocket = (xx >= x_p_start) & (xx < x_p_end) & (yy >= y_p_start) & (yy < y_p_end)
-    h2d[pocket] += h_pock
+    xx_geo, yy_geo = np.meshgrid(x_geo, y_geo, indexing='ij')
+    h_geo = hmax - (hmax - hmin) * xx_geo / Lx
+    pocket = (xx_geo >= x_p_start) & (xx_geo < x_p_end) & (yy_geo >= y_p_start) & (yy_geo < y_p_end)
+    h_geo[pocket] += h_pock
+
+    x_fem = np.linspace(g['dx'] / 2, Lx - g['dx'] / 2, Nx)
+    y_fem = np.linspace(g['dy'] / 2, Ly - g['dy'] / 2, Ny)
+    interp = RegularGridInterpolator((x_geo, y_geo), h_geo, method='linear',
+                                     bounds_error=False, fill_value=None)
+    xx_fem, yy_fem = np.meshgrid(x_fem, y_fem, indexing='ij')
+    h2d = interp(np.stack([xx_fem.ravel(), yy_fem.ravel()], axis=-1)).reshape(Nx, Ny)
 
     problem.topo.set_global_height(h2d)

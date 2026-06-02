@@ -18,8 +18,8 @@ options:
 grid:
     Lx: 0.0762
     Ly: 0.0762
-    Nx: 50
-    Ny: 50
+    Nx: 100
+    Ny: 100
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
     yS: ['D', 'N', 'N']

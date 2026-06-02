@@ -34,7 +34,7 @@ from mpi4py import MPI
 
 from GaPFlow import HAS_PETSC
 from GaPFlow.problem import Problem
-from GaPFlow.solver_fem_2d import FEMSolver2d
+from GaPFlow.solver_fem import FEMSolver
 
 # Skip entire module if running in parallel without PETSc
 # (serial execution has SciPy fallback, but parallel requires PETSc)
@@ -141,7 +141,7 @@ def make_config(Nx: int, Ny: int, bc_config: dict, energy: bool = False) -> str:
     return config
 
 
-def compute_fd_jacobian(solver: FEMSolver2d, problem, eps: float = 1e-6) -> np.ndarray:
+def compute_fd_jacobian(solver: FEMSolver, problem, eps: float = 1e-6) -> np.ndarray:
     """Compute Jacobian using central finite differences.
 
     Uses relative perturbation for better accuracy across different variable scales
@@ -395,7 +395,7 @@ class TestShapeFunctionConsistency:
 
     def test_shape_functions(self):
         """Verify shape functions N = BARY_COORDS.T."""
-        from GaPFlow.fem_2d.elements import TriangleQuadrature
+        from GaPFlow.solver_fem.elements import TriangleQuadrature
 
         quad = TriangleQuadrature()
 
@@ -411,7 +411,7 @@ class TestShapeFunctionConsistency:
 
     def test_shape_functions_partition_of_unity(self):
         """Verify shape functions sum to 1 at each quad point."""
-        from GaPFlow.fem_2d.elements import TriangleQuadrature
+        from GaPFlow.solver_fem.elements import TriangleQuadrature
 
         quad = TriangleQuadrature()
 
@@ -423,7 +423,7 @@ class TestShapeFunctionConsistency:
 
     def test_quadrature_weights(self):
         """Verify quadrature weights sum to 1/2 (area of unit triangle)."""
-        from GaPFlow.fem_2d.elements import TriangleQuadrature
+        from GaPFlow.solver_fem.elements import TriangleQuadrature
 
         quad = TriangleQuadrature()
         weight_sum = quad.weights.sum()

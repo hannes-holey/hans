@@ -23,7 +23,7 @@ options:
 grid:
     Lx: 0.0762
     Ly: 0.004
-    Nx: 200
+    Nx: 400
     Ny: 4
     xW: ['D', 'N', 'N']
     xE: ['N', 'N', 'N']

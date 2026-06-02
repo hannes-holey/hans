@@ -33,7 +33,7 @@ from scipy.ndimage import zoom
 from dataclasses import dataclass
 from functools import cached_property
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Callable, List, Tuple
 if TYPE_CHECKING:
     from .problem import Problem
 
@@ -41,6 +41,7 @@ from muGrid import (
     CartesianDecomposition,
     GlobalFieldCollection,
     Communicator,
+    Field,
 )
 try:
     from muGrid import FFTEngine
@@ -51,6 +52,7 @@ except ImportError:
 
 NDArray = npt.NDArray[np.floating]
 
+BND_IDX = {'N': 0, 'E': 1, 'S': 2, 'W': 3}
 
 @dataclass
 class BCContext:
@@ -119,7 +121,7 @@ class DomainDecomposition:
         nx_splits = int(np.floor(np.sqrt(self._comm.size)))
         ny_splits = self._comm.size // nx_splits
         return (nx_splits, ny_splits)
-    
+
     def init_decomposition(self) -> None:
         """Standard Decomposition for the main grid (ghost depth 1)
         """
@@ -133,7 +135,9 @@ class DomainDecomposition:
         )
 
     def init_decomposition_P2(self) -> None:
-        
+        """Decomposition for the P2 mass flux grid used in Taylor-Hood FEM solver with ghost depth 2.
+        """
+
         nx_splits, ny_splits = self._nb_subdivisions
 
         if self._Nx % nx_splits != 0 or self._Ny % ny_splits != 0:
@@ -143,21 +147,13 @@ class DomainDecomposition:
                 f"Choose Nx divisible by {nx_splits} and Ny divisible by {ny_splits}."
             )
 
-        if self.periodic_x:
-            Nx_v = self._Nx * 2
-        else:
-            Nx_v = self._Nx * 2 - 1
-        
-        if self.periodic_y:
-            Ny_v = self._Ny * 2
-        else:
-            Ny_v = self._Ny * 2 - 1
+        Nx_P2 = self._Nx * 2 if self.periodic_x else self._Nx * 2 - 1
+        Ny_P2 = self._Ny * 2 if self.periodic_y else self._Ny * 2 - 1
+        self._nb_domain_grid_pts_P2 = (Nx_P2, Ny_P2)
 
-        self._nb_domain_grid_pts_v = (Nx_v, Ny_v)
-
-        self._decomp_v = CartesianDecomposition(
+        self._decomp_P2 = CartesianDecomposition(
             self._comm,
-            list(self._nb_domain_grid_pts_v),
+            list(self._nb_domain_grid_pts_P2),
             list(self._nb_subdivisions),
             [2, 2],
             [2, 2],
@@ -169,9 +165,9 @@ class DomainDecomposition:
         return self._decomp.collection
 
     @property
-    def fc_v(self) -> GlobalFieldCollection:
+    def fc_P2(self) -> GlobalFieldCollection:
         """GlobalFieldCollection on the P2 decomposition."""
-        return self._decomp_v.collection
+        return self._decomp_P2.collection
 
     # ---------------------------
     # MPI properties
@@ -193,9 +189,9 @@ class DomainDecomposition:
         return self._nb_domain_grid_pts
 
     @property
-    def nb_domain_grid_pts_v(self) -> tuple:
+    def nb_domain_grid_pts_P2(self) -> tuple:
         """Global mass flux grid size (2*Nx-1, 2*Ny-1)."""
-        return self._nb_domain_grid_pts_v
+        return self._nb_domain_grid_pts_P2
 
     @property
     def nb_subdomain_grid_pts(self) -> tuple:
@@ -203,9 +199,9 @@ class DomainDecomposition:
         return tuple(self._decomp.nb_subdomain_grid_pts)
 
     @property
-    def nb_subdomain_grid_pts_v(self) -> tuple:
+    def nb_subdomain_grid_pts_P2(self) -> tuple:
         """Local mass flux subdomain size (inner points)."""
-        return tuple(self._decomp_v.nb_subdomain_grid_pts)
+        return tuple(self._decomp_P2.nb_subdomain_grid_pts)
 
     @property
     def subdomain_locations(self) -> tuple:
@@ -213,9 +209,9 @@ class DomainDecomposition:
         return tuple(self._decomp.subdomain_locations)
 
     @property
-    def subdomain_locations_v(self) -> tuple:
+    def subdomain_locations_P2(self) -> tuple:
         """Start position of mass flux subdomain (without ghost offset)."""
-        return tuple(self._decomp_v.subdomain_locations)
+        return tuple(self._decomp_P2.subdomain_locations)
 
     @property
     def subdomain_info(self) -> str:
@@ -236,9 +232,9 @@ class DomainDecomposition:
         return self._decomp.icoordsg
 
     @property
-    def icoordsg_v(self):
+    def icoordsg_P2(self):
         """Global coordinate indices for mass flux subdomain (2, Nx_v_local+4, Ny_v_local+4)."""
-        return self._decomp_v.icoordsg
+        return self._decomp_P2.icoordsg
 
     # ---------------------------
     # Local shape utilities
@@ -251,9 +247,9 @@ class DomainDecomposition:
         return (inner[0] + 2, inner[1] + 2)
 
     @property
-    def local_shape_padded_v(self) -> tuple:
+    def local_shape_padded_P2(self) -> tuple:
         """Local mass flux subdomain shape with ghosts: (Nx_v_local+4, Ny_v_local+4)."""
-        inner = self.nb_subdomain_grid_pts_v
+        inner = self.nb_subdomain_grid_pts_P2
         return (inner[0] + 4, inner[1] + 4)
 
     # ---------------------------
@@ -370,10 +366,10 @@ class DomainDecomposition:
         return self.icoordsg[0] + self.icoordsg[1] * self._Nx
 
     @cached_property
-    def index_mask_padded_global_v(self) -> NDArray:
+    def index_mask_padded_global_P2(self) -> NDArray:
         """Global index mask for local mass flux padded subdomain shape."""
-        Nx_v = self._nb_domain_grid_pts_v[0]
-        return self.icoordsg_v[0] + self.icoordsg_v[1] * Nx_v
+        Nx_P2 = self._nb_domain_grid_pts_P2[0]
+        return self.icoordsg_P2[0] + self.icoordsg_P2[1] * Nx_P2
 
     # ---------------------------
     # Global field gathering
@@ -476,7 +472,7 @@ class DomainDecomposition:
             if grid_type == 'P1':
                 self._exchange_ghosts(field)
             else:
-                self._exchange_ghosts_v(field)
+                self._exchange_ghosts_P2(field)
 
         for arr, var_name, disc in bc_specs:
             self._apply_field_bcs(arr, var_name, disc, problem)
@@ -489,9 +485,9 @@ class DomainDecomposition:
         """MPI ghost exchange for a single P1 field."""
         self._decomp.communicate_ghosts(field)
 
-    def _exchange_ghosts_v(self, field) -> None:
+    def _exchange_ghosts_P2(self, field) -> None:
         """MPI ghost exchange for a P2 field (ghost depth 2)."""
-        self._decomp_v.communicate_ghosts(field)
+        self._decomp_P2.communicate_ghosts(field)
 
     def _owns_boundary(self, bnd: str) -> bool:
         """Check if this rank owns the specified boundary."""
@@ -508,7 +504,7 @@ class DomainDecomposition:
         }
         return slices[bnd]
 
-    def _get_bc_slices_v(self, bnd: str):
+    def _get_bc_slices_P2(self, bnd: str):
         """Return ((ghost1_slice, ghost2_slice), interior_slice) for depth-2 ghost layers.
 
         ghost1 is the layer adjacent to the inner domain, ghost2 is the outermost layer.
@@ -565,7 +561,7 @@ class DomainDecomposition:
             callback = bc_callbacks.get(var_name, {}).get(bnd)
 
             if is_P2:
-                (ghost1, ghost2), interior = self._get_bc_slices_v(bnd)
+                (ghost1, ghost2), interior = self._get_bc_slices_P2(bnd)
                 if callback is not None:
                     required_shape = arr[ghost1].shape
                     ctx = BCContext(problem, required_shape, ghost1, interior,
@@ -839,4 +835,257 @@ class FFTDomainTranslation:
         for buf, y_slice in recv_buffers:
             dst[:, y_slice] = buf
 
-        MPI.Request.Waitall(send_reqs)
+
+# =============================================================================
+# WIP: generalized ghost update (placeholder, not yet wired up)
+# =============================================================================
+
+class BCContext_:
+    """Mutable context object passed to BC functions. Updated in-place per boundary.
+
+    Attributes
+    ----------
+    problem : Problem
+        The GaPFlow Problem instance.
+    required_shape : tuple
+        Shape of the P1 ghost layer at the current boundary.
+    slice_ghost : tuple
+        Slice for the P1 ghost layer (offset 0) at the current boundary.
+    slice_interior : tuple
+        Slice for the P1 interior layer (offset 1) at the current boundary.
+    x_norm : NDArray
+        Normalized x-coordinates at the ghost layer (0 to 1).
+    y_norm : NDArray
+        Normalized y-coordinates at the ghost layer (0 to 1).
+    """
+
+    def __init__(self, problem: "Problem"):
+        self.problem = problem
+        self.required_shape = None
+        self.slice_ghost = None
+        self.slice_interior = None
+        self.x_norm = None
+        self.y_norm = None
+
+class BoundarySpec:
+    """Structured BC specification for a single solution field.
+
+    Attributes
+    ----------
+    field : Field
+        The field this BC spec applies to.
+    grid_type : str
+        'P1' or 'P2', determines ghost depth and interpolation needs.
+    bc_type : List[str]
+        List of BC types for each component ['D', 'N', 'F'] .
+    bc_val : List[float | None]
+        List of BC values for each component if not a function, else None.
+    bc_function : List[Callable | None]
+        List of BC functions for each component if bc_type is 'F', else None.
+    decomp : DomainDecomposition
+        Used for P1-P2 interpolation factors.
+    """
+
+    def __init__(self, 
+                 field: Field,
+                 grid_type: str,
+                 bc_type: List[str],
+                 bc_vals: List[float | None],
+                 bc_functions: List[Callable | None],
+                 decomp: "DomainDecomposition"):
+        
+        self.field = field
+        self.grid_type = grid_type
+        self.bc_type = bc_type
+        self.bc_vals = bc_vals
+        self.bc_functions = bc_functions
+        self.decomp = decomp
+
+        if self.grid_type == 'P2':
+            self._compute_zoom_factors()
+        
+        self._make_arrays()
+        self._make_bnds()
+
+    def _compute_zoom_factors(self):
+        """Precompute zoom factors for function-based BCs on P2 grids."""
+
+        Nx_p1, Ny_p1 = self.decomp.nb_subdomain_grid_pts
+        Nx_p2, Ny_p2 = self.decomp.nb_subdomain_grid_pts_P2
+        self.zoom_factors = {
+            'W': (1.0, (Ny_p2 + 4) / (Ny_p1 + 2)),
+            'E': (1.0, (Ny_p2 + 4) / (Ny_p1 + 2)),
+            'S': ((Nx_p2 + 4) / (Nx_p1 + 2), 1.0),
+            'N': ((Nx_p2 + 4) / (Nx_p1 + 2), 1.0),
+        }
+
+    def _make_arrays(self):
+        """Create template arrays for easy uniform value broadcasting."""
+
+        if self.grid_type == 'P2':
+            Nx, Ny = self.decomp.local_shape_padded_P2
+        else:
+            Nx, Ny = self.decomp.local_shape_padded
+        self.arr = {
+            'W': np.zeros((1,  Ny)),
+            'E': np.zeros((1,  Ny)),
+            'S': np.zeros((Nx, 1 )),
+            'N': np.zeros((Nx, 1 )),
+        }
+
+    def _make_bnds(self):
+        """Create List[str] of boundaries this BC spec applies to."""
+        self.bnds = [bnd for bnd, idx in BND_IDX.items() if self.bc_type[idx] != 'P']
+
+    def _idx(self, bnd: str):
+        """Get index for the specified boundary."""
+        return BND_IDX[bnd]
+
+    def get_bc_type(self, bnd: str) -> str:
+        """Get BC type for the specified boundary."""
+        idx = self._idx(bnd)
+        return self.bc_type[idx]
+
+    def is_function(self, bnd: str) -> bool:
+        """Check if BC for the specified boundary is defined by a function."""
+        idx = self._idx(bnd)
+        return self.bc_type[idx] == 'F'
+    
+    def get_bc_val(self, bnd: str) -> float:
+        """Get BC value for the specified boundary, if not a function."""
+        idx = self._idx(bnd)
+        return self.bc_vals[idx]
+    
+    def bc_function(self, bnd: str, ctx: BCContext_):
+        """Evaluate BC function for the specified boundary."""
+        idx = self._idx(bnd)
+        func = self.bc_functions[idx]
+        res = func(ctx)
+        assert res.shape == ctx.required_shape
+        return res
+
+    def get_zoom_factor(self, bnd: str):
+        """Get zoom factors for function-based BCs on P2 grids."""
+        return self.zoom_factors[bnd]
+
+
+class GhostUpdater:
+    """Generalized ghost exchange + BC application.
+
+    Each field is described by a spec tuple:
+        (field, grid_type, arr, bc_spec)
+    """
+
+    def __init__(self, decomp: "DomainDecomposition", problem: "Problem", specs: List[BoundarySpec]):
+        self.decomp = decomp
+        self.problem = problem
+        self.dx = decomp.grid['dx']
+        self.dy = decomp.grid['dy']
+        self.ctx = BCContext_(problem)
+        self.specs = specs
+
+    def _exchange_ghosts(self, field, grid_type):
+
+        if grid_type == 'P1':
+                self.decomp._exchange_ghosts(field)
+        else:
+            self.decomp._exchange_ghosts_P2(field)
+
+    def _interpolate_to_P2(self, arr_, bnd: str, bc_spec: BoundarySpec):
+        """Interpolate function-based BC array from P1 to P2."""
+        zoom_factors = bc_spec.get_zoom_factor(bnd)
+        return zoom(arr_, zoom_factors, order=1)
+
+
+    def _grid_fit(self, arr_, bnd: str, bc_spec: BoundarySpec):
+        """BC function is always evaluated on P1.
+        Check if interpolation to P2 is necessary."""
+
+        if bc_spec.grid_type == 'P2':
+            return self._interpolate_to_P2(arr_, bnd, bc_spec)
+        else:
+            return arr_
+
+    def _get_d_cell(self, bnd):
+        """Get cell size based on NESW direction."""
+
+        if bnd in ['W', 'E']:
+            return self.dx
+        else:
+            return self.dy
+
+    def _update_ctx(self, bnd: str, slice_interior, slice_outer):
+        """Update mutable context object for BC function evaluation."""
+        self.ctx.slice_ghost = slice_outer
+        self.ctx.slice_interior = slice_interior
+        self.ctx.required_shape = self.decomp.xx_norm[slice_outer].shape
+        self.ctx.x_norm = self.decomp.xx_norm[slice_outer]
+        self.ctx.y_norm = self.decomp.yy_norm[slice_outer]
+
+    def _get_BC_array(self, bnd: str, bc_spec: BoundarySpec, slice_interior, slice_outer):
+        """Get BC array for the specified boundary and bc_spec.
+        Transformed to the correct grid type if bc_spec is a function."""
+
+        arr = bc_spec.arr[bnd]
+
+        if bc_spec.is_function(bnd):
+            self._update_ctx(bnd, slice_interior, slice_outer)
+            arr_ = bc_spec.bc_function(bnd, self.ctx)
+            arr = self._grid_fit(arr_, bnd, bc_spec)
+        else:
+            arr[:] = bc_spec.get_bc_val(bnd)
+
+        return arr
+
+    def _offset_to_slice(self, bnd: str, k: int):
+        s = slice
+        sn = slice(None)
+        if bnd == 'W': return (s(k, k+1), sn)
+        if bnd == 'E': return (s(-(k+1), -k or None), sn)
+        if bnd == 'S': return (sn, s(k, k+1))
+        if bnd == 'N': return (sn, s(-(k+1), -k or None))
+
+    def _get_ghost_slices(self, bnd: str, grid_type: str):
+        s_2, s_1, s_0 = [self._offset_to_slice(bnd, k) for k in [2, 1, 0]]
+        if grid_type == 'P1':
+            return s_1, s_1, s_0
+        else:
+            return s_2, s_1, s_0
+
+    def update(self) -> None:
+        """Perform ghost exchange and BC application for all fields described in specs.
+        """
+
+        for bc_spec in self.specs:
+
+            field = bc_spec.field.pg[0]
+            grid_type = bc_spec.grid_type
+
+            # Ghost exchange
+            self._exchange_ghosts(bc_spec.field, grid_type)
+
+            # BC application
+            for bnd in bc_spec.bnds:
+
+                if not self.decomp._owns_boundary(bnd):
+                    continue
+
+                interior, ghost_middle, ghost_outer = self._get_ghost_slices(bnd, grid_type)
+                bc_arr = self._get_BC_array(bnd, bc_spec, ghost_middle, ghost_outer)
+                inner = field[interior]
+                d_cell = self._get_d_cell(bnd)
+                bc_type = bc_spec.get_bc_type(bnd)
+
+                if bc_type == 'D':
+                    if grid_type == 'P1':
+                        field[ghost_outer] = 2 * bc_arr - inner
+                    else:
+                        field[ghost_middle] = bc_arr
+                        field[ghost_outer] = 2 * bc_arr - inner
+
+                if bc_type == 'N':
+                    if grid_type == 'P1':
+                        field[ghost_outer] = inner + d_cell * bc_arr
+                    else:
+                        field[ghost_middle] = inner + d_cell/2 * bc_arr
+                        field[ghost_outer] = inner + d_cell * bc_arr

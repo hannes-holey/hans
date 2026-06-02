@@ -162,7 +162,7 @@ def sanitize_options(d):
 
     out['output_plots'] = bool(d.get('output_plots', False))
 
-    # Residual analysis option (only applies to fem_2d solver)
+    # Residual analysis option (only applies to solver_fem solver)
     out['residual_analysis'] = bool(d.get('residual_analysis', False))
 
     print_dict(out)

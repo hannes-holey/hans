@@ -64,7 +64,7 @@ assembly_layout.py
 └── FEMAssemblyLayout
     └── build_scaling()  # Creates ScalingInfo from char_scales + block indices
 
-solver_fem_2d.py
+solver_fem.py
 ├── _build_matrix_coo_pattern()  # Now stores res_block_idx, var_block_idx
 ├── _build_rhs_pattern()         # Now stores res_block_idx
 ├── _get_characteristic_scales() # New: derives scales from problem spec
