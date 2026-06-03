@@ -1,6 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
-#           2025 Christoph Huber
+# Copyright 2026 Christoph Huber
 #
 # ### MIT License
 #
@@ -33,15 +32,14 @@ from scipy.ndimage import zoom
 from dataclasses import dataclass
 from functools import cached_property
 
-from typing import TYPE_CHECKING, Callable, List, Tuple
+from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from .problem import Problem
 
 from muGrid import (
     CartesianDecomposition,
     GlobalFieldCollection,
-    Communicator,
-    Field,
+    Communicator
 )
 try:
     from muGrid import FFTEngine
@@ -51,8 +49,6 @@ except ImportError:
     HAS_FFT_ENGINE = False
 
 NDArray = npt.NDArray[np.floating]
-
-BND_IDX = {'N': 0, 'E': 1, 'S': 2, 'W': 3}
 
 @dataclass
 class BCContext:
@@ -834,258 +830,3 @@ class FFTDomainTranslation:
         MPI.Request.Waitall(recv_reqs)
         for buf, y_slice in recv_buffers:
             dst[:, y_slice] = buf
-
-
-# =============================================================================
-# WIP: generalized ghost update (placeholder, not yet wired up)
-# =============================================================================
-
-class BCContext_:
-    """Mutable context object passed to BC functions. Updated in-place per boundary.
-
-    Attributes
-    ----------
-    problem : Problem
-        The GaPFlow Problem instance.
-    required_shape : tuple
-        Shape of the P1 ghost layer at the current boundary.
-    slice_ghost : tuple
-        Slice for the P1 ghost layer (offset 0) at the current boundary.
-    slice_interior : tuple
-        Slice for the P1 interior layer (offset 1) at the current boundary.
-    x_norm : NDArray
-        Normalized x-coordinates at the ghost layer (0 to 1).
-    y_norm : NDArray
-        Normalized y-coordinates at the ghost layer (0 to 1).
-    """
-
-    def __init__(self, problem: "Problem"):
-        self.problem = problem
-        self.required_shape = None
-        self.slice_ghost = None
-        self.slice_interior = None
-        self.x_norm = None
-        self.y_norm = None
-
-class BoundarySpec:
-    """Structured BC specification for a single solution field.
-
-    Attributes
-    ----------
-    field : Field
-        The field this BC spec applies to.
-    grid_type : str
-        'P1' or 'P2', determines ghost depth and interpolation needs.
-    bc_type : List[str]
-        List of BC types for each component ['D', 'N', 'F'] .
-    bc_val : List[float | None]
-        List of BC values for each component if not a function, else None.
-    bc_function : List[Callable | None]
-        List of BC functions for each component if bc_type is 'F', else None.
-    decomp : DomainDecomposition
-        Used for P1-P2 interpolation factors.
-    """
-
-    def __init__(self, 
-                 field: Field,
-                 grid_type: str,
-                 bc_type: List[str],
-                 bc_vals: List[float | None],
-                 bc_functions: List[Callable | None],
-                 decomp: "DomainDecomposition"):
-        
-        self.field = field
-        self.grid_type = grid_type
-        self.bc_type = bc_type
-        self.bc_vals = bc_vals
-        self.bc_functions = bc_functions
-        self.decomp = decomp
-
-        if self.grid_type == 'P2':
-            self._compute_zoom_factors()
-        
-        self._make_arrays()
-        self._make_bnds()
-
-    def _compute_zoom_factors(self):
-        """Precompute zoom factors for function-based BCs on P2 grids."""
-
-        Nx_p1, Ny_p1 = self.decomp.nb_subdomain_grid_pts
-        Nx_p2, Ny_p2 = self.decomp.nb_subdomain_grid_pts_P2
-        self.zoom_factors = {
-            'W': (1.0, (Ny_p2 + 4) / (Ny_p1 + 2)),
-            'E': (1.0, (Ny_p2 + 4) / (Ny_p1 + 2)),
-            'S': ((Nx_p2 + 4) / (Nx_p1 + 2), 1.0),
-            'N': ((Nx_p2 + 4) / (Nx_p1 + 2), 1.0),
-        }
-
-    def _make_arrays(self):
-        """Create template arrays for easy uniform value broadcasting."""
-
-        if self.grid_type == 'P2':
-            Nx, Ny = self.decomp.local_shape_padded_P2
-        else:
-            Nx, Ny = self.decomp.local_shape_padded
-        self.arr = {
-            'W': np.zeros((1,  Ny)),
-            'E': np.zeros((1,  Ny)),
-            'S': np.zeros((Nx, 1 )),
-            'N': np.zeros((Nx, 1 )),
-        }
-
-    def _make_bnds(self):
-        """Create List[str] of boundaries this BC spec applies to."""
-        self.bnds = [bnd for bnd, idx in BND_IDX.items() if self.bc_type[idx] != 'P']
-
-    def _idx(self, bnd: str):
-        """Get index for the specified boundary."""
-        return BND_IDX[bnd]
-
-    def get_bc_type(self, bnd: str) -> str:
-        """Get BC type for the specified boundary."""
-        idx = self._idx(bnd)
-        return self.bc_type[idx]
-
-    def is_function(self, bnd: str) -> bool:
-        """Check if BC for the specified boundary is defined by a function."""
-        idx = self._idx(bnd)
-        return self.bc_type[idx] == 'F'
-    
-    def get_bc_val(self, bnd: str) -> float:
-        """Get BC value for the specified boundary, if not a function."""
-        idx = self._idx(bnd)
-        return self.bc_vals[idx]
-    
-    def bc_function(self, bnd: str, ctx: BCContext_):
-        """Evaluate BC function for the specified boundary."""
-        idx = self._idx(bnd)
-        func = self.bc_functions[idx]
-        res = func(ctx)
-        assert res.shape == ctx.required_shape
-        return res
-
-    def get_zoom_factor(self, bnd: str):
-        """Get zoom factors for function-based BCs on P2 grids."""
-        return self.zoom_factors[bnd]
-
-
-class GhostUpdater:
-    """Generalized ghost exchange + BC application.
-
-    Each field is described by a spec tuple:
-        (field, grid_type, arr, bc_spec)
-    """
-
-    def __init__(self, decomp: "DomainDecomposition", problem: "Problem", specs: List[BoundarySpec]):
-        self.decomp = decomp
-        self.problem = problem
-        self.dx = decomp.grid['dx']
-        self.dy = decomp.grid['dy']
-        self.ctx = BCContext_(problem)
-        self.specs = specs
-
-    def _exchange_ghosts(self, field, grid_type):
-
-        if grid_type == 'P1':
-                self.decomp._exchange_ghosts(field)
-        else:
-            self.decomp._exchange_ghosts_P2(field)
-
-    def _interpolate_to_P2(self, arr_, bnd: str, bc_spec: BoundarySpec):
-        """Interpolate function-based BC array from P1 to P2."""
-        zoom_factors = bc_spec.get_zoom_factor(bnd)
-        return zoom(arr_, zoom_factors, order=1)
-
-
-    def _grid_fit(self, arr_, bnd: str, bc_spec: BoundarySpec):
-        """BC function is always evaluated on P1.
-        Check if interpolation to P2 is necessary."""
-
-        if bc_spec.grid_type == 'P2':
-            return self._interpolate_to_P2(arr_, bnd, bc_spec)
-        else:
-            return arr_
-
-    def _get_d_cell(self, bnd):
-        """Get cell size based on NESW direction."""
-
-        if bnd in ['W', 'E']:
-            return self.dx
-        else:
-            return self.dy
-
-    def _update_ctx(self, bnd: str, slice_interior, slice_outer):
-        """Update mutable context object for BC function evaluation."""
-        self.ctx.slice_ghost = slice_outer
-        self.ctx.slice_interior = slice_interior
-        self.ctx.required_shape = self.decomp.xx_norm[slice_outer].shape
-        self.ctx.x_norm = self.decomp.xx_norm[slice_outer]
-        self.ctx.y_norm = self.decomp.yy_norm[slice_outer]
-
-    def _get_BC_array(self, bnd: str, bc_spec: BoundarySpec, slice_interior, slice_outer):
-        """Get BC array for the specified boundary and bc_spec.
-        Transformed to the correct grid type if bc_spec is a function."""
-
-        arr = bc_spec.arr[bnd]
-
-        if bc_spec.is_function(bnd):
-            self._update_ctx(bnd, slice_interior, slice_outer)
-            arr_ = bc_spec.bc_function(bnd, self.ctx)
-            arr = self._grid_fit(arr_, bnd, bc_spec)
-        else:
-            arr[:] = bc_spec.get_bc_val(bnd)
-
-        return arr
-
-    def _offset_to_slice(self, bnd: str, k: int):
-        s = slice
-        sn = slice(None)
-        if bnd == 'W': return (s(k, k+1), sn)
-        if bnd == 'E': return (s(-(k+1), -k or None), sn)
-        if bnd == 'S': return (sn, s(k, k+1))
-        if bnd == 'N': return (sn, s(-(k+1), -k or None))
-
-    def _get_ghost_slices(self, bnd: str, grid_type: str):
-        s_2, s_1, s_0 = [self._offset_to_slice(bnd, k) for k in [2, 1, 0]]
-        if grid_type == 'P1':
-            return s_1, s_1, s_0
-        else:
-            return s_2, s_1, s_0
-
-    def update(self) -> None:
-        """Perform ghost exchange and BC application for all fields described in specs.
-        """
-
-        for bc_spec in self.specs:
-
-            field = bc_spec.field.pg[0]
-            grid_type = bc_spec.grid_type
-
-            # Ghost exchange
-            self._exchange_ghosts(bc_spec.field, grid_type)
-
-            # BC application
-            for bnd in bc_spec.bnds:
-
-                if not self.decomp._owns_boundary(bnd):
-                    continue
-
-                interior, ghost_middle, ghost_outer = self._get_ghost_slices(bnd, grid_type)
-                bc_arr = self._get_BC_array(bnd, bc_spec, ghost_middle, ghost_outer)
-                inner = field[interior]
-                d_cell = self._get_d_cell(bnd)
-                bc_type = bc_spec.get_bc_type(bnd)
-
-                if bc_type == 'D':
-                    if grid_type == 'P1':
-                        field[ghost_outer] = 2 * bc_arr - inner
-                    else:
-                        field[ghost_middle] = bc_arr
-                        field[ghost_outer] = 2 * bc_arr - inner
-
-                if bc_type == 'N':
-                    if grid_type == 'P1':
-                        field[ghost_outer] = inner + d_cell * bc_arr
-                    else:
-                        field[ghost_middle] = inner + d_cell/2 * bc_arr
-                        field[ghost_outer] = inner + d_cell * bc_arr

@@ -58,7 +58,7 @@ class AssemblyTemplate:
     nnz: IntArray
 
 # Residual, Variable
-BLOCK = (('p', 'p'), ('p', 'v'), ('v', 'p'), ('v', 'v'))
+BLOCK = (('P1', 'P1'), ('P1', 'P2'), ('P2', 'P1'), ('P2', 'P2'))
 
 
 class Assembly:
@@ -93,7 +93,7 @@ class Assembly:
         self.res_to_grid = {s.name: s.grid for s in res_specs}
         self.var_spec = {s.name: s for s in var_specs}
         self.res_spec = {s.name: s for s in res_specs}
-        self.p_factor = sum(1 for s in var_specs if s.grid == 'p')
+        self.p_factor = sum(1 for s in var_specs if s.grid == 'P1')
 
         # Ordered list of all (res, var) block combinations
         self.block_order = {
@@ -142,14 +142,14 @@ class Assembly:
 
             for origin in stencil[3].keys():
 
-                if res == 'p' and origin != (0, 0):
+                if res == 'P1' and origin != (0, 0):
                     continue
 
-                if var == 'v':
+                if var == 'P2':
                     stencil[idx][origin] = stencil[3][origin]
                     continue
 
-                # var = 'p'
+                # var = 'P1'
                 points = stencil[3][origin]
                 stencil[idx][origin] = np.empty((0, 2), dtype=np.int32)
                 for point in points:
@@ -199,13 +199,13 @@ class Assembly:
                 nx = pts[:, 0] + dx
                 ny = pts[:, 1] + dy
 
-                if var_grid == 'v':
+                if var_grid == 'P2':
                     contrib = m_padded_P2[nx, ny]
                 else:
                     contrib = m_padded_p[nx // 2, ny // 2]
 
                 valid = contrib >= 0
-                if res_grid == 'v':
+                if res_grid == 'P2':
                     inner_list.append(idx[valid])
                 else:
                     inner_list.append(m_padded_p[pts[valid, 0] // 2, pts[valid, 1] // 2])
@@ -268,7 +268,7 @@ class Assembly:
 
     def apply_l2g(self, grid_type: str, local_indices: IntArray) -> IntArray:
         """Apply local-to-global mapping for the given grid type."""
-        if grid_type == 'v':
+        if grid_type == 'P2':
             return self.grid_idx.l2g_list_P2[local_indices]
         else:
             return self.grid_idx.l2g_list_p[local_indices]
@@ -322,7 +322,7 @@ class Assembly:
         rows = []
         for spec in self.res_specs:
             nb_inner = (self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
-                        if spec.grid == 'v'
+                        if spec.grid == 'P2'
                         else self.grid_idx.Nx_p_inner * self.grid_idx.Ny_p_inner)
 
             global_field_indices = self.apply_l2g(spec.grid, np.arange(nb_inner, dtype=np.int32))
@@ -340,7 +340,7 @@ class Assembly:
         offset = 0
         for res in self.residuals:
             n = (self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
-                 if self.res_to_grid[res] == 'v'
+                 if self.res_to_grid[res] == 'P2'
                  else self.grid_idx.Nx_p_inner * self.grid_idx.Ny_p_inner)
             self._res_slices[res] = slice(offset, offset + n)
             offset += n
@@ -349,7 +349,7 @@ class Assembly:
         offset = 0
         for var in self.variables:
             n = (self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
-                 if self.var_to_grid[var] == 'v'
+                 if self.var_to_grid[var] == 'P2'
                  else self.grid_idx.Nx_p_inner * self.grid_idx.Ny_p_inner)
             self._sol_slices[var] = slice(offset, offset + n)
             offset += n
@@ -479,8 +479,8 @@ class Assembly:
         """
         res_grid, var_grid = self.res_to_grid[res], self.var_to_grid[var]
 
-        res_element = self.element.P1 if res_grid == 'p' else self.element.P2
-        var_element = self.element.P1 if var_grid == 'p' else self.element.P2
+        res_element = self.element.P1 if res_grid == 'P1' else self.element.P2
+        var_element = self.element.P1 if var_grid == 'P1' else self.element.P2
 
         nodes_tri_res = res_element.nodes_per_tri
         nodes_tri_var = var_element.nodes_per_tri
@@ -531,11 +531,11 @@ class Assembly:
         n_sq = self.grid_idx.nb_sq
         assert TO_P2.shape[0] == n_sq and TO_p.shape[0] == n_sq
 
-        res_sq_to_nodes = TO_p if self.res_to_grid[res] == 'p' else TO_P2
-        var_sq_to_nodes = FROM_p if self.var_to_grid[var] == 'p' else FROM_P2
+        res_sq_to_nodes = TO_p if self.res_to_grid[res] == 'P1' else TO_P2
+        var_sq_to_nodes = FROM_p if self.var_to_grid[var] == 'P1' else FROM_P2
 
-        res_element = self.element.P1 if self.res_to_grid[res] == 'p' else self.element.P2
-        var_element = self.element.P1 if self.var_to_grid[var] == 'p' else self.element.P2
+        res_element = self.element.P1 if self.res_to_grid[res] == 'P1' else self.element.P2
+        var_element = self.element.P1 if self.var_to_grid[var] == 'P1' else self.element.P2
 
         nb_nnz = n_sq * 2 * res_element.nodes_per_tri * var_element.nodes_per_tri
         nnz = np.empty((nb_nnz), dtype=np.int32)
@@ -611,7 +611,7 @@ class Assembly:
         """
         res_grid = self.res_to_grid[res]
 
-        res_element = self.element.P1 if res_grid == 'p' else self.element.P2
+        res_element = self.element.P1 if res_grid == 'P1' else self.element.P2
 
         nodes_tri_res = res_element.nodes_per_tri
 
@@ -650,8 +650,8 @@ class Assembly:
         n_sq = self.grid_idx.nb_sq
         assert TO_P2.shape[0] == n_sq and TO_p.shape[0] == n_sq
 
-        res_sq_to_nodes = TO_p if self.res_to_grid[res] == 'p' else TO_P2
-        res_element = self.element.P1 if self.res_to_grid[res] == 'p' else self.element.P2
+        res_sq_to_nodes = TO_p if self.res_to_grid[res] == 'P1' else TO_P2
+        res_element = self.element.P1 if self.res_to_grid[res] == 'P1' else self.element.P2
 
         nb_nnz = n_sq * 2 * res_element.nodes_per_tri
         nnz = np.empty((nb_nnz), dtype=np.int32)

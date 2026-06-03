@@ -102,8 +102,8 @@ if __name__ == '__main__':
     all_ok = True
     for bi, bt in enumerate(BLOCK):
         inner, contrib = apply_stencil(stencil[bi], bt, m_inner_P2, m_padded_P2, m_padded_p)
-        nb_i = nb_P2 if bt[0] == 'v' else nb_p
-        nb_c = nb_P2 if bt[1] == 'v' else nb_p
+        nb_i = nb_P2 if bt[0] == 'P2' else nb_p
+        nb_c = nb_P2 if bt[1] == 'P2' else nb_p
         ok_i = bool(np.all(inner >= 0) and np.all(inner < nb_i))
         ok_c = bool(np.all(contrib >= 0) and np.all(contrib < nb_c))
         no_dups = len(set(zip(inner.tolist(), contrib.tolist()))) == len(inner)
@@ -119,13 +119,13 @@ if __name__ == '__main__':
             if dupes:
                 i0 = dupes[0][0][0]
                 c0 = dupes[0][0][1]
-                if bt[0] == 'p':
+                if bt[0] == 'P1':
                     pos = np.argwhere(m_padded_p == i0)
                     print(f'    inner p-node {i0} at coarse coords: {pos}')
                 else:
                     pos = np.argwhere(m_inner_P2 == i0)
                     print(f'    inner v-node {i0} at fine coords: {pos}')
-                if bt[1] == 'p':
+                if bt[1] == 'P1':
                     pos = np.argwhere(m_padded_p == c0)
                     print(f'    contrib p-node {c0} at coarse coords: {pos}')
                 else:

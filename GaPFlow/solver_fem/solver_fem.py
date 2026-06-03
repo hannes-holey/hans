@@ -47,6 +47,7 @@ from .bayada_stabilization import bayada_linearization_guard
 from ..models.pressure import eos_pressure, eos_rho
 from .terms import get_active_terms
 from .scaling import build_scaling
+from ..bc import BoundarySpec, GhostUpdater, sample_bc_spec, translate_bc_rho_to_p
 
 if TYPE_CHECKING:
     from ..problem import Problem
@@ -66,15 +67,21 @@ class FEMSolver:
     """
 
     def __init__(self, fem_spec: dict, problem: "Problem") -> None:
+
         self.fem_spec = fem_spec
         self.problem  = problem
         self.R_norm_history: List[List[float]] = []
         self.R_scaled_norm_history: List[List[float]] = []
+
         self._build_variable_and_residual_lists()
 
+        self.elements = TaylorHoodP2P1(problem.grid['dx'], problem.grid['dy'])
+        self.grid_idx = GridIndexManager(problem.decomp, self.variables)
+
+        self._get_active_terms()
+
     def _build_variable_and_residual_lists(self) -> None:
-        """Check active equations and build lists.
-        Also collect additional solution fields."""
+        """Check active equations and build lists."""
 
         p = self.problem
         self.energy = p.fem_solver['equations']['energy']
@@ -88,7 +95,7 @@ class FEMSolver:
         if self.energy:
             self.variables.append('E')
             self.residuals.append('energy')
-            # energy fields are handled separately
+            self.add_fields.append('e')
         if self.cavitation:
             self.variables.append('theta')
             self.residuals.append('fb')
@@ -103,46 +110,62 @@ class FEMSolver:
         self.res_specs = [FieldSpec(name=r, grid=RES_GRID[r], idx=i)
                           for i, r in enumerate(self.residuals)]
 
+        nb_inner = {
+            'P1': np.prod(p.decomp.nb_subdomain_grid_pts),
+            'P2': np.prod(p.decomp.nb_subdomain_grid_pts_P2),
+        }
+        self.res_size = sum(nb_inner[spec.grid] for spec in self.res_specs)
+
     # =========================================================================
     # Boundary conditions
     # =========================================================================
 
     def build_boundary_conditions(self):
-        return
+
+        self._init_quad_fields()
+
+        specs = []
+        no_fun = [None]*4
+
+        field = self.quad_mgr.nodal_fields['p']
+        rho_bc_type, rho_bc_vals = sample_bc_spec(self.problem.grid, 0)
+        p_bc_vals = translate_bc_rho_to_p(rho_bc_type, rho_bc_vals, self.problem)
+        specs.append(BoundarySpec(field, 'P1', rho_bc_type,
+                                  p_bc_vals, no_fun, self.problem.decomp))
+
+        field = self.quad_mgr.nodal_fields['jx']
+        jx_bc_type, jx_bc_vals = sample_bc_spec(self.problem.grid, 1)
+        specs.append(BoundarySpec(field, 'P2', jx_bc_type,
+                                  jx_bc_vals, no_fun, self.problem.decomp))
+        
+        field = self.quad_mgr.nodal_fields['jy']
+        jy_bc_type, jy_bc_vals = sample_bc_spec(self.problem.grid, 2)
+        specs.append(BoundarySpec(field, 'P2', jy_bc_type,
+                                  jy_bc_vals, no_fun, self.problem.decomp))
+
+        if self.cavitation:
+            field = self.quad_mgr.nodal_fields['theta']
+            specs.append(BoundarySpec(field, 'P1', rho_bc_type,
+                                      [0, 0, 0, 0], no_fun, self.problem.decomp))
+
+        if self.cavitation and self.oss:
+            field = self.quad_mgr.nodal_fields['xi']
+            specs.append(BoundarySpec(field, 'P1', ['D', 'D', 'D', 'D'],
+                                      [0, 0, 0, 0], no_fun, self.problem.decomp))
+
+        if self.energy:
+            pass
+
+        self.ghost_updater = GhostUpdater(
+            decomp=self.problem.decomp,
+            problem=self.problem,
+            specs=specs
+        )
+
 
     # =========================================================================
     # Initialisation
     # =========================================================================
-
-    def _init_accessors(self) -> None:
-
-        p = self.problem
-
-        self.dx = p.grid['dx']
-        self.dy = p.grid['dy']
-
-        self.res_to_grid = {s.name: s.grid for s in self.res_specs}
-
-        # Elements (carry dx, dy and shape function matrices)
-        self.elements = TaylorHoodP2P1(self.dx, self.dy)
-
-        # Grid index manager
-        self.grid_idx = GridIndexManager(
-            decomp=p.decomp,
-            variables=self.variables,
-        )
-
-        # Per-variable inner sizes
-        self.nb_inner_P2 = (self.grid_idx.Nx_v_inner *
-                           self.grid_idx.Ny_v_inner)
-        self.nb_inner_p = (self.grid_idx.Nx_p_inner *
-                           self.grid_idx.Ny_p_inner)
-
-        # Residual vector size (sum over all residuals)
-        self.res_size = sum(
-            self.nb_inner_P2 if self.res_to_grid[r] == 'v' else self.nb_inner_p
-            for r in self.residuals
-        )
 
     @property
     def _res_slices(self):
@@ -305,68 +328,8 @@ class FEMSolver:
     # =========================================================================
 
     def _exchange_ghosts(self) -> None:
-        """Exchange ghost cells for all grids after Newton update.
-
-        Pressure-based ghost exchange (Approach B):
-          - MPI halo exchange on p, rho (P1), jx, jy (P2). p and rho are
-            both exchanged so rank-boundary ghosts of both are consistent
-            (neighbour set rho = eos_rho(p) before sending).
-          - User BC callback fills rho at physical boundaries (unchanged API).
-          - Post-step: fill p at physical-boundary ghosts from the freshly
-            BC-applied rho via EoS forward.
-        """
-        p = self.problem
-        rho = self.quad_mgr.nodal_fields['rho']
-        p_field = self.quad_mgr.nodal_fields['p']
-        jx  = self.quad_mgr.nodal_fields['jx']
-        jy  = self.quad_mgr.nodal_fields['jy']
-
-        exchange_specs = [(rho, 'P1'), (p_field, 'P1'), (jx, 'P2'), (jy, 'P2')]
-        for name in self.add_fields:
-            exchange_specs.append((self.quad_mgr.nodal_fields[name], 'P1'))
-
-        p.decomp.update_ghosts(
-            exchange_specs=exchange_specs,
-            bc_specs=[
-                (rho.pg[0], 'rho', 'P1_nodal'),
-                (jx.pg[0],  'jx',  'P2_nodal'),
-                (jy.pg[0],  'jy',  'P2_nodal'),
-            ],
-            problem=p,
-        )
-        self._fill_p_at_physical_boundaries()
-        self._fill_add_fields_at_physical_boundaries()
-
-    def _fill_p_at_physical_boundaries(self) -> None:
-        """Fill p at physical-boundary ghost strips from the BC-applied rho.
-
-        Only touches ghosts at physical (non-periodic) boundaries; rank-
-        boundary ghosts already hold correct p from the MPI exchange.
-        Also pushes the updated p to problem.pressure for downstream readers.
-        """
-        p = self.problem
-        decomp = p.decomp
-        rho = self.quad_mgr.nodal_fields['rho'].pg[0]
-        p_ng = self.quad_mgr.nodal_fields['p'].pg[0]
-        if decomp.bc_at_W:
-            p_ng[0, :] = eos_pressure(rho[0, :], p.prop)
-        if decomp.bc_at_E:
-            p_ng[-1, :] = eos_pressure(rho[-1, :], p.prop)
-        if decomp.bc_at_S:
-            p_ng[:, 0] = eos_pressure(rho[:, 0], p.prop)
-        if decomp.bc_at_N:
-            p_ng[:, -1] = eos_pressure(rho[:, -1], p.prop)
-        self.problem.pressure.pressure[:] = self.quad_mgr.nodal_fields['p'].pg[0]
-
-    def _fill_add_fields_at_physical_boundaries(self) -> None:
-        """Set add_fields (theta, xi, ...) to 0 at physical-boundary ghost strips."""
-        decomp = self.problem.decomp
-        for name in self.add_fields:
-            arr = self.quad_mgr.nodal_fields[name].pg[0]
-            if decomp.bc_at_W:  arr[0, :]  = 0.0
-            if decomp.bc_at_E:  arr[-1, :] = 0.0
-            if decomp.bc_at_S:  arr[:, 0]  = 0.0
-            if decomp.bc_at_N:  arr[:, -1] = 0.0
+        """Exchange ghost cells for all grids after Newton update."""
+        self.ghost_updater.update()
 
     # =========================================================================
     # Assembly
@@ -435,37 +398,18 @@ class FEMSolver:
             qf = self._build_all_quad_fields()
         return self.assembly.assemble_rhs(qf, self.terms)
 
-    def exchange_ghosts(self) -> None:
-        """Exchange ghost cells (public wrapper for tests)."""
-        self._exchange_ghosts()
-
-    def _sync_rho_before_exchange(self) -> None:
-        """Re-derive rho from current p before ghost exchange.
-
-        In the pressure-based solver, rho is not a Newton DOF — it is derived
-        from p in update_physics (called after the exchange). If a Neumann rho
-        BC is active, _apply_field_bcs sets rho_ghost = rho_interior. When
-        set_q_nodal has just written a new p but rho hasn't been updated yet,
-        rho_interior is stale (from the previous Newton step), and the Neumann
-        BC propagates that stale value into the p ghost strips via
-        _fill_p_at_physical_boundaries. Updating rho from the current inner p
-        here ensures the BC reads the p-consistent rho.
-        Controlled by fem_solver.sync_rho_before_exchange (default True).
-        """
-        qm = self.quad_mgr
-        qm.nodal_fields['rho'].pg[0] = eos_rho(
-            qm.nodal_fields['p'].pg[0], self.problem.prop)
-        qm.sync_to_problem_q()
-
     # =========================================================================
     # Solver step
     # =========================================================================
 
     def solver_step_fun(self, q_guess: NDArray) -> Tuple[NDArray, NDArray]:
+
         self.set_q_nodal(q_guess)
-        self._sync_rho_before_exchange()
+
         self._exchange_ghosts()
+
         self.update_quad()
+
         qf = self._build_all_quad_fields()
         M = self.get_M(qf)
         R = self.get_R_(qf).copy()
@@ -475,7 +419,6 @@ class FEMSolver:
 
     def get_R(self, q_guess: NDArray) -> float:
         self.set_q_nodal(q_guess)
-        self._sync_rho_before_exchange()
         self._exchange_ghosts()
         self.update_quad()
         qf = self._build_all_quad_fields()
@@ -553,6 +496,12 @@ class FEMSolver:
                 break
 
             dq, M_scaled = solve_linear_system(M, R, self)
+            if np.any(np.isinf(dq)) or np.any(np.isnan(dq)):
+                if p.decomp.rank == 0:
+                    print(f"  WARNING: dq contains inf/nan at iter {it}")
+                    print(f"  dq min/max: {np.nanmin(dq):.3e} / {np.nanmax(dq):.3e}")
+                    print(f"  M has inf: {np.any(np.isinf(M))}, M has nan: {np.any(np.isnan(M))}")
+                    print(f"  R has inf: {np.any(np.isinf(R))}, R has nan: {np.any(np.isnan(R))}")
 
             if self._debug_active:
                 self.debugger.step(
@@ -600,9 +549,6 @@ class FEMSolver:
     # =========================================================================
 
     def pre_run(self, **kwargs) -> None:
-        self._init_accessors()
-        self._init_quad_fields()
-        self._get_active_terms()
         self._build_assembly()
         self._build_jit_functions()
         self._build_terms()
@@ -631,6 +577,12 @@ class FEMSolver:
 
         self.time_inner = 0.0
         self.inner_iterations = 0
+        
+        p_arr = self.quad_mgr.nodal_fields['p'].pg[0]
+        print("p ghost W at end of pre_run:", p_arr[0, :])
+        print("p ghost E at end of pre_run:", p_arr[-1, :])
+        print("p inner W at end of pre_run:", p_arr[1, :])
+        print("p inner E at end of pre_run:", p_arr[-2, :])
 
     # =========================================================================
     # Status / diagnostics

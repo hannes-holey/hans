@@ -38,7 +38,7 @@ def field_to_global(field_idx,
     Nx_global_p = decomp.nb_domain_grid_pts[0]
     Nx_global_P2 = decomp.nb_domain_grid_pts_P2[0]
 
-    if spec.grid == 'p':
+    if spec.grid == 'P1':
         y_p, x_p = np.divmod(field_idx, Nx_global_p)
         y_P2, x_P2 = 2*y_p, 2*x_p
     else:

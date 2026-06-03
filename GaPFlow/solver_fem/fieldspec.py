@@ -10,21 +10,21 @@ class FieldSpec:
 
 
 VAR_GRID = {
-    'jx':    'v',
-    'jy':    'v',
-    'p':     'p',
-    'E':     'p',
-    'theta': 'p',
-    'xi':    'p',
+    'jx':    'P2',
+    'jy':    'P2',
+    'p':     'P1',
+    'E':     'P1',
+    'theta': 'P1',
+    'xi':    'P1',
 }
 
 RES_GRID = {
-    'momentum_x': 'v',
-    'momentum_y': 'v',
-    'mass':       'p',
-    'energy':     'p',
-    'fb':         'p',
-    'R_oss':      'p',
+    'momentum_x': 'P2',
+    'momentum_y': 'P2',
+    'mass':       'P1',
+    'energy':     'P1',
+    'fb':         'P1',
+    'R_oss':      'P1',
 }
 
 # Nodal field name lists (P1 may be extended by theta/xi)

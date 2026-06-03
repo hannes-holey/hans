@@ -137,6 +137,10 @@ class Problem:
         # BC callback functions: {var_name: {boundary: callback}}
         self._bc_callbacks = {}
 
+        # Initialize domain decomposition and field collection
+        self.decomp = DomainDecomposition(grid, numerics)
+        self.fc = self.decomp.fc
+
         # Initialize solver
         if self.numerics['solver'] == 'explicit':
             from .solver_explicit.solver_explicit import ExplicitSolver
@@ -144,10 +148,6 @@ class Problem:
         elif self.numerics['solver'] == 'fem':
             from .solver_fem.solver_fem import FEMSolver
             self.solver = FEMSolver(self.fem_solver, self)
-
-        # Initialize domain decomposition and field collection
-        self.decomp = DomainDecomposition(grid, numerics)
-        self.fc = self.decomp.fc
 
         # Solution field
         self.step = None
@@ -248,6 +248,7 @@ class Problem:
 
         # Boundary conditions
         self.solver.build_boundary_conditions()
+        print("q[0] after build_bc:", self.q[0][1:-1, 1:-1].mean())
 
     # ---------------------------
     # Constructors

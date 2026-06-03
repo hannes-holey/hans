@@ -178,8 +178,8 @@ class NewtonDebugger:
             print(f"    {term_name:12s}  min={block.min():.3e}  max={block.max():.3e}  ||.||={np.linalg.norm(block):.3e}")
             if term_name == 'R24x':
                 grid = _RES_GRID[res_name]
-                Nx = self.Nx_P2 if grid == 'v' else self.Nx_p
-                Ny = self.Ny_P2 if grid == 'v' else self.Ny_p
+                Nx = self.Nx_P2 if grid == 'P2' else self.Nx_p
+                Ny = self.Ny_P2 if grid == 'P2' else self.Ny_p
                 field = block.reshape(Nx, Ny, order='F')
                 print(f"    R24x field[:8, :] (x=0..7, all y):")
                 print(np.array2string(field[:8, :], precision=3, suppress_small=True))
@@ -188,8 +188,8 @@ class NewtonDebugger:
         """Reshape a named block from the flat vector to a 2D (Nx, Ny) array."""
         slices = self.res_slices if is_residual else self.sol_slices
         grid = _RES_GRID[name] if is_residual else _VAR_GRID[name]
-        Nx = self.Nx_P2 if grid == 'v' else self.Nx_p
-        Ny = self.Ny_P2 if grid == 'v' else self.Ny_p
+        Nx = self.Nx_P2 if grid == 'P2' else self.Nx_p
+        Ny = self.Ny_P2 if grid == 'P2' else self.Ny_p
         return vec[slices[name]].reshape(Nx, Ny, order='F')
 
     def _save_plots(self, timestep, it, R, dq):
@@ -234,8 +234,8 @@ class NewtonDebugger:
     def _to_2d_res(self, R_term, res_name):
         """Reshape the slice of a per-term residual vector to 2D (Nx, Ny)."""
         grid = _RES_GRID[res_name]
-        Nx = self.Nx_P2 if grid == 'v' else self.Nx_p
-        Ny = self.Ny_P2 if grid == 'v' else self.Ny_p
+        Nx = self.Nx_P2 if grid == 'P2' else self.Nx_p
+        Ny = self.Ny_P2 if grid == 'P2' else self.Ny_p
         return R_term[self.res_slices[res_name]].reshape(Nx, Ny, order='F')
 
     def _save_term_plots(self, timestep, it, R_per_term):
