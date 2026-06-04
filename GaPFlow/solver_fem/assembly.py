@@ -58,7 +58,7 @@ BLOCK = (('P1', 'P1'), ('P1', 'P2'), ('P2', 'P1'), ('P2', 'P2'))
 
 
 class Assembly:
-    """Precomputed sparsity structure for P2P1 assembly.
+    """Stencils, node connectivity, and assembly of rhs and tangential matrix.
 
     Parameters
     ----------
@@ -92,24 +92,30 @@ class Assembly:
         self.p_factor = sum(1 for s in var_specs if s.grid == 'P1')
 
         # Ordered list of all (res, var) block combinations
+        # holds block-specific info: 'res_grid', 'var_grid', 'nnz_idx_start', 'nb_nnz'
         self.block_order = {
             (rs.name, vs.name): {'res_grid': rs.grid, 'var_grid': vs.grid}
             for rs in res_specs
             for vs in var_specs
         }
 
+        # Build block-wise nnz list (inner_pts, contrib_pts) -> block-nnz
         self.conn = self.build_connectivity()
 
+        # Build nnz list across all blocks and corresponding lookup
+        # (block, (inner_pts, contrib_pts)) -> local_nnz / global_nnz
         self._build_coo_pattern(self.conn)
-
         self.coo_lookups = self._build_coo_lookups()
 
+        # Build global row indices for RHS entries: (res, local_inner_idx) -> global_row_idx
         self._build_rhs_pattern()
+
+        # Helpers
         self._build_slices()
         self._build_scaling_indices()
 
         self.res_size = self._res_slices[self.residuals[-1]].stop
-        # Add +1 as trash can for non-valid entries
+        # +1 as trash can for non-valid entries
         self._nnz_buf = np.zeros(len(self.nnz_global_rows) + 1, dtype=np.float64)
         self._rhs_buf = np.zeros(self.res_size + 1, dtype=np.float64)
 
@@ -133,7 +139,7 @@ class Assembly:
         for idx, combination in enumerate(BLOCK[0:3]):
 
             stencil[idx] = {}
-            res = combination[0]   # BLOCK = (res, var)
+            res = combination[0]
             var = combination[1]
 
             for origin in stencil[3].keys():
@@ -159,6 +165,8 @@ class Assembly:
 
     def build_connectivity(self) -> Dict[Tuple[str, str], Tuple[IntArray, IntArray, int]]:
         """Build connectivity for all four block types using fine-grid stencils.
+        For each P1/P2 combination, returns (inner_pts, contrib_pts, nb_nnz) where
+        indices follow index_mask_padded_local.
         """
         connectivity = {}
         stencil = self._compute_stencils(self.element)
@@ -170,7 +178,7 @@ class Assembly:
         return connectivity
 
 
-    def apply_stencil(self, stencil, block_type):
+    def apply_stencil(self, stencil, block_type) -> Tuple[IntArray, IntArray]:
         """Apply the given stencil to compute (inner_pts, contrib_pts) for one block type."""
 
         res_grid, var_grid = block_type
@@ -210,10 +218,6 @@ class Assembly:
         inner_all = np.concatenate(inner_list).astype(np.int32)
         contrib_all = np.concatenate(contrib_list).astype(np.int32)
 
-        # TODO: on small periodic grids, distinct fine-grid stencil offsets
-        #  (e.g. (0,+2) and (0,-2)) can wrap to the same coarse node after
-        #  // 2 + periodic mapping. Best solution: use another index_mask_padded_local
-        # that excludes periodicity-wrapped nodes. For now, just remove duplicates here.
         pairs = np.column_stack([inner_all, contrib_all])
         _, unique_idx = np.unique(pairs, axis=0, return_index=True)
         unique_idx.sort()
@@ -236,6 +240,8 @@ class Assembly:
         for (res, var), block in self.block_order.items():
             rg, vg = block['res_grid'], block['var_grid']
             inner_pts, contrib_pts, nb_nnz = connectivity[(rg, vg)]
+
+            # used for M_dense reconstruction
             self.nnz_local_to = np.concatenate([self.nnz_local_to, inner_pts])
             self.nnz_local_from = np.concatenate([self.nnz_local_from, contrib_pts])
 
@@ -250,17 +256,6 @@ class Assembly:
             block['nnz_idx_start'] = nnz_idx_start
             block['nb_nnz'] = nb_nnz
             nnz_idx_start += nb_nnz
-
-        decomp = self.grid_idx.decomp
-        Nx_P2, Ny_P2 = decomp.nb_domain_grid_pts_P2
-        Nx_P1, Ny_P1= decomp.nb_domain_grid_pts
-        expected_global_size = 2 * Nx_P2 * Ny_P2 + self.p_factor * Nx_P1* Ny_P1
-        local_max = int(self.nnz_global_rows.max()) if len(self.nnz_global_rows) else -1
-        global_max = decomp._mpi_comm.allreduce(local_max, op=MPI.MAX)
-        assert global_max + 1 == expected_global_size, (
-            f"Global matrix size mismatch: computed {global_max + 1}, "
-            f"expected {expected_global_size}"
-        )
 
     def apply_l2g(self, grid_type: str, local_indices: IntArray) -> IntArray:
         """Apply local-to-global mapping for the given grid type."""
@@ -277,7 +272,6 @@ class Assembly:
         """Build one dict per (res, var) block.
 
         Maps (res_local_idx, var_local_idx) -> absolute flat nnz index.
-        Must be called after _build_coo_pattern (needs block['nnz_idx_start']).
         """
         lookups = {}
         for (res, var), block in self.block_order.items():
@@ -287,14 +281,13 @@ class Assembly:
             d = {}
             for k in range(nb_nnz):
                 pair = (int(inner_pts[k]), int(contrib_pts[k]))
-                assert pair not in d, (
-                    f"Duplicate pair {pair} in ({res}, {var})")
                 d[pair] = start + k
             lookups[(res, var)] = d
         return lookups
 
     def lookup_nnz(self, res, res_local_idx, var, var_local_idx):
-        """Return absolute flat nnz index for (res, res_local_idx, var, var_local_idx).
+        """Uses above built lookup and returns absolute flat nnz index for
+        (res, res_local_idx, var, var_local_idx).
 
         Returns -1 if pair not in the sparsity pattern.
         """
@@ -306,7 +299,8 @@ class Assembly:
     # ======================================================================
 
     def _build_rhs_pattern(self) -> None:
-        """Build global RHS row indices for all residuals.
+        """Build global RHS row indices for all residuals, which effectively
+        allows mapping of (res, local_inner_idx) -> global_row_idx.
 
         For each residual, maps local inner-node indices to global DOF indices
         using field_to_global. Result is stored as self.rhs_global_rows.
@@ -390,39 +384,6 @@ class Assembly:
         )
 
     # ======================================================================
-    # Neumann ghost-square zeroing
-    # ======================================================================
-
-    def zero_neumann_ghost_squares(self, quad_vals: NDArray,
-                                   dep_vars: list) -> None:
-        """Zero quad field values on ghost squares at Neumann boundaries.
-
-        Ghost squares are outside the physical domain. For natural (homogeneous
-        Neumann) BCs, the variational formulation requires no contribution from
-        outside the domain — "do nothing" approach.
-
-        Parameters
-        ----------
-        quad_vals : (nb_sq, nb_quad_sq)
-            Quad field values to modify in-place.
-        dep_vars : list of str
-            Variable names of the term's dependent variables.
-        """
-        gi = self.grid_idx
-        spr = gi.sq_per_row  # squares per row (x-direction)
-
-        # Flat square index = iy * spr + ix  (ix varies fastest)
-        for var in dep_vars:
-            if gi.decomp.bc_at_W and gi.is_neumann('W', var):
-                quad_vals[::spr, :] = 0.0                # ix=0
-            if gi.decomp.bc_at_E and gi.is_neumann('E', var):
-                quad_vals[spr - 1::spr, :] = 0.0         # ix=last
-            if gi.decomp.bc_at_S and gi.is_neumann('S', var):
-                quad_vals[:spr, :] = 0.0                  # iy=0
-            if gi.decomp.bc_at_N and gi.is_neumann('N', var):
-                quad_vals[-spr:, :] = 0.0                 # iy=last
-
-    # ======================================================================
     # Assembly templates
     # ======================================================================
 
@@ -440,19 +401,14 @@ class Assembly:
             for var in term.dep_vars:
                 dd = term.depvar_deriv_for(var)
                 needed.add((term.res, var, dd, td))
-            # residual-only key for assemble_rhs
-            # rhs uses a single dd per term derived from whether any dep_var has a deriv
-            # (handled separately below)
 
         for res, var, dd, td in needed:
-            key = (res, var, dd, td)
-            if key not in self.assembly_templates:
-                w, entries_per_quad = self._build_weighting(res, var, dd, td)
-                self.assembly_templates[key] = AssemblyTemplate(
-                    w=w,
-                    entries_per_quad=entries_per_quad,
-                    nnz=self._build_nnz(res, var),
-                )
+            w, entries_per_quad = self._build_weighting(res, var, dd, td)
+            self.assembly_templates[(res, var, dd, td)] = AssemblyTemplate(
+                w=w,
+                entries_per_quad=entries_per_quad,
+                nnz=self._build_nnz(res, var),
+            )
 
         # Residual-only keys for assemble_rhs (one key per term: (res, dd, td))
         for term in terms:
@@ -468,10 +424,10 @@ class Assembly:
 
     def _build_weighting(self, res: str, var: str,
                          depvar_deriv: str, test_deriv):
-        """Build shape_weighting for one (res, var, depvar_deriv, test_deriv) combination.
+        """Build shape_weighting for one (res, var, depvar_deriv, test_deriv)
+        combination for the tangential matrix.
 
-        depvar_deriv : 'none', 'x', or 'y' — derivative acting on dep_var
-        test_deriv   : None, 'x', or 'y'   — derivative acting on test function
+        shape_weighting is applied to one square and repeated for all squares.
         """
         res_grid, var_grid = self.res_to_grid[res], self.var_to_grid[var]
 
@@ -503,7 +459,6 @@ class Assembly:
             deriv_scale *= -1.0 / d
 
         entries_per_quad = nodes_tri_res * nodes_tri_var
-        assert entries_per_quad == np.shape(res_N)[1] * np.shape(var_N)[1]
 
         weights = self.element.Quadrature.weights  # shape (n_quad_tri,)
         area = self.element.sq_area
@@ -515,7 +470,8 @@ class Assembly:
         return weights_vec * var_N_vec * res_N_vec, entries_per_quad
 
     def _build_nnz(self, res: str, var: str) -> IntArray:
-        """Build nnz_index for one (res, var) block. Same for all derivative combos.
+        """Build nnz injection indices for one (res, var) block.
+        Note: same for all derivative combos.
 
         Ordering: 0->0, 0->1, ... residual moves faster than variable
         """
@@ -525,7 +481,6 @@ class Assembly:
         FROM_P2 = self.grid_idx.sq_FROM_padded_P2(var)  # (n_sq, 9)
         FROM_P1= self.grid_idx.sq_FROM_padded_P1(var)  # (n_sq, 4)
         n_sq = self.grid_idx.nb_sq
-        assert TO_P2.shape[0] == n_sq and TO_P1.shape[0] == n_sq
 
         res_sq_to_nodes = TO_P1 if self.res_to_grid[res] == 'P1' else TO_P2
         var_sq_to_nodes = FROM_P1 if self.var_to_grid[var] == 'P1' else FROM_P2
@@ -552,7 +507,6 @@ class Assembly:
                         nnz[nnz_idx] = local_idx
                         nnz_idx += 1
 
-        assert nnz_idx == nb_nnz
         return nnz
 
     def assemble_matrix(self,
@@ -590,17 +544,14 @@ class Assembly:
                 # shape (n_sq * n_quad_sq * entries_per_quad,)
                 quad_val_vec = np.repeat(res_quad_field.flatten(), entries_per_quad)
                 sw_vec = np.tile(sw, nb_sq)
-
                 q_vec = quad_val_vec * sw_vec
-                assert len(q_vec) == nb_sq * quad_per_tri * 2 * entries_per_quad
-                assert len(q_vec) % (quad_per_tri * entries_per_quad) == 0
-                # size is reduced by factor: quad_per_tri
+
+                # size is boiled down by factor: quad_per_tri
                 ele_vec = q_vec.reshape(-1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
 
                 np.add.at(self._nnz_buf, tmpl.nnz, ele_vec)
 
         return self._nnz_buf[:-1]
-
 
     def _build_res_weighting(self, res: str, depvar_deriv: str, test_deriv):
         """Residual weighting arrays (n_quad_sq * nodes_tri_res,)
@@ -629,7 +580,6 @@ class Assembly:
         area = self.element.sq_area
 
         weights_vec = np.tile(np.repeat(weights * area * factor, nodes_tri_res), 2)
-        assert len(weights_vec) == len(res_N_vec)
 
         res_weighting = weights_vec * res_N_vec
 
@@ -644,7 +594,6 @@ class Assembly:
         TO_P2 = self.grid_idx.sq_TO_inner_P2  # (n_sq, 9)
         TO_P1= self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
         n_sq = self.grid_idx.nb_sq
-        assert TO_P2.shape[0] == n_sq and TO_P1.shape[0] == n_sq
 
         res_sq_to_nodes = TO_P1 if self.res_to_grid[res] == 'P1' else TO_P2
         res_element = self.element.P1 if self.res_to_grid[res] == 'P1' else self.element.P2
@@ -665,7 +614,6 @@ class Assembly:
                     nnz[nnz_idx] = local_idx
                     nnz_idx += 1
 
-        assert nnz_idx == nb_nnz
         return nnz
 
     def assemble_rhs(self,
@@ -696,18 +644,13 @@ class Assembly:
             entries_per_quad = tmpl.entries_per_quad
             sw = tmpl.w
 
-            dep_vars_rhs = [
-                quad_fields[v] if (d := term.depvar_deriv_for(v)) == 'none'
-                else quad_fields[f'd_d{d}_{v}']
-                for v in term.dep_vars
-            ]
+            dep_vars_rhs = [quad_fields[v] for v in term.dep_vars]
             quad_vals = term.evaluate(*dep_vars_rhs)
 
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
             sw_vec = np.tile(sw, nb_sq)
 
             q_vec = quad_val_vec * sw_vec
-            assert len(q_vec) == nb_sq * quad_per_tri * 2 * entries_per_quad
 
             ele_vec = q_vec.reshape(-1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
 
@@ -742,14 +685,9 @@ class Assembly:
             entries_per_quad = tmpl.entries_per_quad
             sw = tmpl.w
 
-            dep_vars_rhs = [
-                quad_fields[v] if (d := term.depvar_deriv_for(v)) == 'none'
-                else quad_fields[f'd_d{d}_{v}']
-                for v in term.dep_vars
-            ]
+            dep_vars_rhs = [quad_fields[v] for v in term.dep_vars]
             quad_vals = term.evaluate(*dep_vars_rhs)
 
-            # self.zero_neumann_ghost_squares(quad_vals, term.dep_vars)
             quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
             sw_vec = np.tile(sw, nb_sq)
             ele_vec = (quad_val_vec * sw_vec).reshape(

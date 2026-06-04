@@ -23,7 +23,7 @@ options:
 grid:
     Lx: 0.0762
     Ly: 0.004
-    Nx: 400
+    Nx: 200
     Ny: 4
     xW: ['D', 'N', 'N']
     xE: ['N', 'N', 'N']
@@ -33,7 +33,7 @@ grid:
     xE_P: 1e3
 
 geometry:
-    type: inclined      # placeholder — overwritten by regen_twin_parabolic_slider_id in notebook
+    type: inclined
     hmax: 50.2e-6
     hmin: 25.4e-6
     U: 4.57
@@ -44,7 +44,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 250
+    max_it: 300
 
 properties:
     EOS: DH
@@ -59,7 +59,7 @@ properties:
 fem_solver:
     type: newton_alpha
     linear_solver: direct
-    newton_relax: 0.02
+    newton_relax: 0.04
     equations:
         cavitation: True
     physics:

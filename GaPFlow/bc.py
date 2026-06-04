@@ -28,6 +28,7 @@ import numpy.typing as npt
 from scipy.ndimage import zoom
 
 from .models.stress import eos_pressure
+from .models.pressure import eos_rho
 
 from typing import TYPE_CHECKING, Callable, List
 
@@ -71,6 +72,14 @@ def sample_bc_spec(grid: dict, var_idx: int):
         else:
             bc_vals.append(0.0)
     return bc_type, bc_vals
+
+
+def resolve_pressure_bcs(grid: dict, prop: dict) -> None:
+    """Convert pressure Dirichlet BCs (bc_*_P_val) to density (bc_*_D_val) in-place."""
+    for side in ('xW', 'xE', 'yS', 'yN'):
+        p_val = grid.get(f'bc_{side}_P_val')
+        if p_val is not None:
+            grid[f'bc_{side}_D_val'] = float(eos_rho(float(p_val), prop))
 
 
 def translate_bc_rho_to_p(bc_type: List[str], bc_vals: List[float | None],

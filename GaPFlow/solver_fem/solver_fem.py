@@ -305,38 +305,10 @@ class FEMSolver:
     def update_quad(self) -> dict:
         self.quad_mgr.update_physics()
         self.quad_mgr.update_quad_fields()
-        return self.collect_all_quad_fields()
+        return self.quad_mgr.collect_quad_fields()
 
     def update_prev_quad(self) -> None:
         self.quad_mgr.store_prev_values()
-
-    def collect_all_quad_fields(self) -> dict:
-        """Collect all needed quadrature fields once.
-        Derivative fields are built on the fly here."""
-        qf: dict = {}
-        need_dx: set = set()
-        need_dy: set = set()
-
-        for term in self.terms:
-            for v in term.dep_vars:
-                if v not in qf:
-                    qf[v] = self.quad_mgr.get_quad_sq(v)
-                d = term.depvar_deriv_for(v)
-                if d == 'x':
-                    need_dx.add(v)
-                elif d == 'y':
-                    need_dy.add(v)
-
-        for v in need_dx:
-            key = f'd_dx_{v}'
-            if key not in qf:
-                qf[key] = self.quad_mgr.get_quad_dx_sq(v)
-        for v in need_dy:
-            key = f'd_dy_{v}'
-            if key not in qf:
-                qf[key] = self.quad_mgr.get_quad_dy_sq(v)
-
-        return qf
 
     # =========================================================================
     # Newton scatter / gather
@@ -362,7 +334,7 @@ class FEMSolver:
     def get_M(self, qf: dict = None) -> NDArray:
         """Assemble Jacobian COO values."""
         if qf is None:
-            qf = self._build_all_quad_fields()
+            qf = self.quad_mgr.collect_quad_fields()
         return self.assembly.assemble_matrix(qf, self.terms)
 
     def get_M_dense(self) -> NDArray:
@@ -387,7 +359,7 @@ class FEMSolver:
     def get_R_(self, qf: dict = None) -> NDArray:
         """Assemble residual vector."""
         if qf is None:
-            qf = self._build_all_quad_fields()
+            qf = self.quad_mgr.collect_quad_fields()
         return self.assembly.assemble_rhs(qf, self.terms)
 
     # =========================================================================
@@ -408,8 +380,7 @@ class FEMSolver:
 
     def get_R(self, q_guess: NDArray) -> float:
         self.update_q_nodal(q_guess)
-        self.update_quad()
-        qf = self._build_all_quad_fields()
+        qf = self.update_quad()
         R = self.get_R_(qf).copy()
         return R
 
@@ -440,6 +411,8 @@ class FEMSolver:
     # =========================================================================
 
     def update_output_fields(self) -> None:
+        """Update stress models to ensure output fields are up to date before writing."""
+
         p = self.problem
         self.quad_mgr.sync_to_problem_q()
         p.wall_stress_xz.update()

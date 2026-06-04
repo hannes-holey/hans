@@ -130,5 +130,4 @@ QUAD_FIELD_REGISTRY = {
     'a_vec_y':         {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jy']},
     'tau_a_x':         {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
     'tau_a_y':         {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
-    'one_minus_theta': {'type': 'computed', 'source': None, 'args': ['theta']},
 }

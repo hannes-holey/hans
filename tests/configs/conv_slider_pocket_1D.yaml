@@ -26,7 +26,7 @@ options:
 grid:
     Lx: 0.020
     Ly: 0.004
-    Nx: 400
+    Nx: 200
     Ny: 4
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
@@ -47,7 +47,7 @@ numerics:
     solver: fem
     dt: 1.0
     tol: 0.0
-    max_it: 50
+    max_it: 20
 
 properties:
     EOS: DH

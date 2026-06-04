@@ -164,7 +164,7 @@ R1STx = Term(
     dep_vars=['theta'],
     dep_vals=['dp_drho', 'jx', 'jy', 'd_dx_theta'],
     fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
-                                    * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * theta),
+                                    * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * ctx['d_dx_theta']()),
     der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
                                           * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30))],
     trial_deriv='x',
@@ -177,7 +177,7 @@ R1STy = Term(
     dep_vars=['theta'],
     dep_vals=['dp_drho', 'jx', 'jy', 'd_dy_theta'],
     fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
-                                    * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * theta),
+                                    * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * ctx['d_dy_theta']()),
     der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
                                           * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30))],
     trial_deriv='y',

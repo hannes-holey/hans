@@ -78,6 +78,7 @@ class TaylorHoodP2P1:
     # ===============================================================
 
     # All u-u combinations. p-* combinations are derived by checking even points.
+    # even/odd refer to the target node's indices (even-even coincides with P1 node).
     stencil_even_even = [
         (0, 0),
         (-2, 0), (-1, 0), (1, 0), (2, 0),

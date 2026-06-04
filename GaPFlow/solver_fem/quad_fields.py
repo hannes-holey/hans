@@ -329,7 +329,9 @@ class QuadFieldManager:
         alpha = self.problem.fem_solver.get('oss_theta_alpha', 0.0)
         q('tau_a_x')[:] = alpha * tau * a_vec_x
         q('tau_a_y')[:] = alpha * tau * a_vec_y
-        q('one_minus_theta')[:] = 1.0 - q('theta')
+
+    def collect_quad_fields(self) -> dict:
+        return {name: self.get_quad_sq(name) for name in self.quad_fields}
 
     def store_prev_values(self) -> None:
         """Store current quad values for time derivatives."""

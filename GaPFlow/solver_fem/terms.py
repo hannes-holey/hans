@@ -105,8 +105,8 @@ R11x = Term(
     description='flux divergence x',
     res='mass',
     dep_vars=['jx'],
-    dep_vals=['dp_drho', 'dx_jx'],
-    fun=lambda ctx: lambda jx: -ctx['dp_drho']() * jx,
+    dep_vals=['dp_drho', 'd_dx_jx'],
+    fun=lambda ctx: lambda jx: -ctx['dp_drho']() * ctx['d_dx_jx'](),
     der_funs=[lambda ctx: lambda jx: -ctx['dp_drho']()],
     trial_deriv='x')
 
@@ -116,7 +116,7 @@ R11y = Term(
     res='mass',
     dep_vars=['jy'],
     dep_vals=['dp_drho', 'd_dy_jy'],
-    fun=lambda ctx: lambda jy: -ctx['dp_drho']() * jy,
+    fun=lambda ctx: lambda jy: -ctx['dp_drho']() * ctx['d_dy_jy'](),
     der_funs=[lambda ctx: lambda jy: -ctx['dp_drho']()],
     trial_deriv='y')
 
@@ -299,7 +299,7 @@ R23xy = Term(
     res='momentum_x',
     dep_vars=['p', 'jx'],
     dep_vals=['rho', 'drho_dp', 'eta', 'd_dy_jx'],
-    fun=lambda ctx: lambda p, jx: ctx['eta']() * jx / ctx['rho'](),
+    fun=lambda ctx: lambda p, jx: ctx['eta']() * ctx['d_dy_jx']() / ctx['rho'](),
     der_funs=[
         lambda ctx: lambda p, jx: -ctx['eta']() * jx / ctx['rho']()**2 * ctx['drho_dp'](),
         lambda ctx: lambda p, jx: ctx['eta']() / ctx['rho']()
@@ -313,7 +313,7 @@ R23yx = Term(
     res='momentum_y',
     dep_vars=['p', 'jy'],
     dep_vals=['rho', 'drho_dp', 'eta', 'd_dx_jy'],
-    fun=lambda ctx: lambda p, jy: ctx['eta']() * jy / ctx['rho'](),
+    fun=lambda ctx: lambda p, jy: ctx['eta']() * ctx['d_dx_jy']() / ctx['rho'](),
     der_funs=[
         lambda ctx: lambda p, jy: -ctx['eta']() * jy / ctx['rho']()**2 * ctx['drho_dp'](),
         lambda ctx: lambda p, jy: ctx['eta']() / ctx['rho']()
@@ -327,7 +327,7 @@ R23xx = Term(
     res='momentum_x',
     dep_vars=['p', 'jx'],
     dep_vals=['rho', 'drho_dp', 'eta', 'd_dx_jx'],
-    fun=lambda ctx: lambda p, jx: ctx['eta']() * jx / ctx['rho'](),
+    fun=lambda ctx: lambda p, jx: ctx['eta']() * ctx['d_dx_jx']() / ctx['rho'](),
     der_funs=[
         lambda ctx: lambda p, jx: -ctx['eta']() * jx / ctx['rho']()**2 * ctx['drho_dp'](),
         lambda ctx: lambda p, jx: ctx['eta']() / ctx['rho']()
@@ -341,7 +341,7 @@ R23yy = Term(
     res='momentum_y',
     dep_vars=['p', 'jy'],
     dep_vals=['rho', 'drho_dp', 'eta', 'd_dy_jy'],
-    fun=lambda ctx: lambda p, jy: ctx['eta']() * jy / ctx['rho'](),
+    fun=lambda ctx: lambda p, jy: ctx['eta']() * ctx['d_dy_jy']() / ctx['rho'](),
     der_funs=[
         lambda ctx: lambda p, jy: -ctx['eta']() * jy / ctx['rho']()**2 * ctx['drho_dp'](),
         lambda ctx: lambda p, jy: ctx['eta']() / ctx['rho']()
@@ -621,7 +621,7 @@ def collect_required_fields(terms: List[Term]):
     der = set()
     for term in terms:
         for key in term.dep_vals:
-            if key.startswith('d_dx_') or key.startswith('d_dy_'):
+            if key.startswith('d_d'):
                 der.add(key)
             else:
                 plain.add(key)
