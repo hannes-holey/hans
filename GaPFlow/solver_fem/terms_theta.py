@@ -26,7 +26,7 @@
 
 import numpy as np
 
-from .terms import NonLinearTerm
+from .terms import Term
 
 
 def _fb_denom(a, b):
@@ -39,7 +39,7 @@ def _fb_denom(a, b):
 # Elrod-Adams flux divergence (replaces R11x/y/Sx/Sy when cavitation: true)
 # -----------------------------------------------------------------------------
 
-R11x_fb = NonLinearTerm(
+R11x_fb = Term(
     name='R11x_fb',
     description='flux divergence x Elrod-Adams (IBP)',
     res='mass',
@@ -52,7 +52,7 @@ R11x_fb = NonLinearTerm(
     ],
     test_deriv='x')
 
-R11y_fb = NonLinearTerm(
+R11y_fb = Term(
     name='R11y_fb',
     description='flux divergence y Elrod-Adams (IBP)',
     res='mass',
@@ -65,7 +65,7 @@ R11y_fb = NonLinearTerm(
     ],
     test_deriv='y')
 
-R11Sx_fb = NonLinearTerm(
+R11Sx_fb = Term(
     name='R11Sx_fb',
     description='flux divergence height source x Elrod-Adams',
     res='mass',
@@ -77,7 +77,7 @@ R11Sx_fb = NonLinearTerm(
         lambda ctx: lambda jx, theta:  ctx['dp_drho']() / ctx['h']() * ctx['dh_dx']() * jx,
     ])
 
-R11Sy_fb = NonLinearTerm(
+R11Sy_fb = Term(
     name='R11Sy_fb',
     description='flux divergence height source y Elrod-Adams',
     res='mass',
@@ -91,7 +91,7 @@ R11Sy_fb = NonLinearTerm(
 
 # Jacobian correction for the implicit p-dependence of dp_drho in R11*_fb.
 # Zero residual contribution — Jacobian-only.
-R11x_fb_corr = NonLinearTerm(
+R11x_fb_corr = Term(
     name='R11x_fb_corr',
     description='flux divergence x FB Jacobian correction (d(dp_drho)/dp, theta-weighted)',
     res='mass',
@@ -101,7 +101,7 @@ R11x_fb_corr = NonLinearTerm(
     der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) * ctx['jx']()],
     test_deriv='x')
 
-R11y_fb_corr = NonLinearTerm(
+R11y_fb_corr = Term(
     name='R11y_fb_corr',
     description='flux divergence y FB Jacobian correction (d(dp_drho)/dp, theta-weighted)',
     res='mass',
@@ -111,7 +111,7 @@ R11y_fb_corr = NonLinearTerm(
     der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) * ctx['jy']()],
     test_deriv='y')
 
-R11Sx_fb_corr = NonLinearTerm(
+R11Sx_fb_corr = Term(
     name='R11Sx_fb_corr',
     description='flux divergence height source x FB Jacobian correction',
     res='mass',
@@ -120,7 +120,7 @@ R11Sx_fb_corr = NonLinearTerm(
     fun=lambda ctx: lambda p: np.zeros_like(p),
     der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) / ctx['h']() * ctx['dh_dx']() * ctx['jx']()])
 
-R11Sy_fb_corr = NonLinearTerm(
+R11Sy_fb_corr = Term(
     name='R11Sy_fb_corr',
     description='flux divergence height source y FB Jacobian correction',
     res='mass',
@@ -134,12 +134,12 @@ R11Sy_fb_corr = NonLinearTerm(
 # Fischer-Burmeister complementarity condition
 # -----------------------------------------------------------------------------
 
-R_FB = NonLinearTerm(
+R_fb = Term(
     name='R_FB',
     description='Fischer-Burmeister complementarity condition (p normalized by P0)',
     res='fb',
     dep_vars=['p', 'theta'],
-    dep_vals=['p_cav', 'fb_p_ref'],
+    dep_vals=[],
     fun=lambda ctx: lambda p, theta: (
         lambda a_nd: np.sqrt(a_nd**2 + theta**2) - a_nd - theta
     )((p - ctx['p_cav']()) / ctx['fb_p_ref']()),
@@ -157,12 +157,12 @@ R_FB = NonLinearTerm(
 # Theta-diffusion stabilization (theta_stab: true)
 # -----------------------------------------------------------------------------
 
-R1STx = NonLinearTerm(
+R1STx = Term(
     name='R1STx',
     description='theta diffusion stabilization in mass equation x',
     res='mass',
     dep_vars=['theta'],
-    dep_vals=['dp_drho', 'jx', 'jy', 'theta_stab_alpha'],
+    dep_vals=['dp_drho', 'jx', 'jy', 'd_dx_theta'],
     fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
                                     * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * theta),
     der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
@@ -170,12 +170,12 @@ R1STx = NonLinearTerm(
     trial_deriv='x',
     test_deriv='x')
 
-R1STy = NonLinearTerm(
+R1STy = Term(
     name='R1STy',
     description='theta diffusion stabilization in mass equation y',
     res='mass',
     dep_vars=['theta'],
-    dep_vals=['dp_drho', 'jx', 'jy', 'theta_stab_alpha'],
+    dep_vals=['dp_drho', 'jx', 'jy', 'd_dy_theta'],
     fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
                                     * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * theta),
     der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
@@ -188,7 +188,7 @@ R1STy = NonLinearTerm(
 # Wall stress with theta-dependent effective density (replaces R24x/y when cavitation: true)
 # -----------------------------------------------------------------------------
 
-R24x_fb = NonLinearTerm(
+R24x_fb = Term(
     name='R24x_fb',
     description='wall stress x with theta-dependent effective density',
     res='momentum_x',
@@ -201,7 +201,7 @@ R24x_fb = NonLinearTerm(
         lambda ctx: lambda *args: 1 / ctx['h']() * ctx['dtau_xz_dtheta'](),
     ])
 
-R24y_fb = NonLinearTerm(
+R24y_fb = Term(
     name='R24y_fb',
     description='wall stress y with theta-dependent effective density',
     res='momentum_y',
@@ -215,10 +215,12 @@ R24y_fb = NonLinearTerm(
     ])
 
 
-THETA_TERM_NAMES = [
-    'R11x_fb', 'R11y_fb', 'R11Sx_fb', 'R11Sy_fb',
-    'R11x_fb_corr', 'R11y_fb_corr', 'R11Sx_fb_corr', 'R11Sy_fb_corr',
-    'R_FB',
-    'R1STx', 'R1STy',
-    'R24x_fb', 'R24y_fb',
+THETA_TERMS_MASS = [
+    R11x_fb, R11y_fb, R11Sx_fb, R11Sy_fb,
+    R11x_fb_corr, R11y_fb_corr, R11Sx_fb_corr, R11Sy_fb_corr,
+    R1STx, R1STy,
 ]
+
+R_fb = [R_fb]
+
+THETA_TERMS_WALL_STRESS = [R24x_fb, R24y_fb]

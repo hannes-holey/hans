@@ -30,10 +30,8 @@ from muGrid import Field
 from scipy.ndimage import zoom
 
 from .elements import TaylorHoodP2P1
-from .fieldspec import (
-    NODAL_P1, NODAL_P2, BASE_FIELDS, STRESS_FIELDS,
-    ENERGY_FIELDS, CAVITATION_FIELDS, OSS_FIELDS,
-)
+from .fieldspec import NODAL_P1, NODAL_P2, QUAD_FIELD_REGISTRY, resolve_source, categorize_registry_fields
+from .terms import collect_required_fields
 
 from ..models.pressure import eos_pressure, eos_rho, eos_drho_dp
 
@@ -67,7 +65,8 @@ class QuadFieldManager:
                  variables: List[str],
                  add_fields: List[str],
                  elements: TaylorHoodP2P1,
-                 decomp: "DomainDecomposition") -> None:
+                 decomp: "DomainDecomposition",
+                 terms: list) -> None:
 
         self.problem = problem
         self.energy = energy
@@ -76,6 +75,7 @@ class QuadFieldManager:
         self.add_fields = add_fields
         self.elements = elements
         self.decomp = decomp
+        self.terms = terms
 
         self.dx = problem.grid['dx']
         self.dy = problem.grid['dy']
@@ -93,29 +93,17 @@ class QuadFieldManager:
     # =========================================================================
 
     def _init_fields(self) -> None:
-        """Register all nodal and quadrature fields in the muGrid FieldCollections.
+        """Initialize nodal and quadrature fields based on active terms."""
 
-        - create new nodal fields for coarse-grid variables rho and h (to have individual fields)
-        - get reference to p, eta fields from problem
-        - create nodal fields for fine-grid variables jx, jy
-        - create placeholder field for on-the-fly derivative computation
-        - create quadrature fields for all nodal and intermediate quantities
-        """
         fc = self.decomp.fc
+        self._reg_nodal, self._reg_scalar, self._reg_computed = categorize_registry_fields()
+        self.nodal_field_keys, self.quad_field_keys, self.der_field_keys = self._needed_fields()
 
-        # ---- P1 fields ----
-        p1_nodal = NODAL_P1 + self.add_fields
-        for name in p1_nodal:
+        # ---- P1 nodal fields ----
+        for name in NODAL_P1 + self.add_fields + list(self.nodal_field_keys):
             self.nodal_fields[name] = fc.real_field(f'{name}_nodal', 1, 'pixel')
 
-        # plug in existing fields that we access directly
-        self.nodal_fields['eta'] = Field(fc.get_real_field('shear_viscosity'))
-        if self.energy:
-            self.nodal_fields['E'] = Field(fc.get_real_field('total_energy'))
-            self.nodal_fields['Tb_top'] = Field(fc.get_real_field('Tb_top'))
-            self.nodal_fields['Tb_bot'] = Field(fc.get_real_field('Tb_bot'))
-
-        # ---- P2 fields ----
+        # ---- P2 nodal fields ----
         fc_P2 = self.decomp.fc_P2
         for name in NODAL_P2:
             self.nodal_fields[name] = fc_P2.real_field(f'{name}_nodal', 1, 'pixel')
@@ -124,21 +112,40 @@ class QuadFieldManager:
         nb_quad_sq = self.elements.n_tri * self.elements.Quadrature.nb_points
         fc.set_nb_sub_pts('quad', nb_quad_sq)
 
-        for name in self._needed_quad_fields():
+        for name in self.quad_field_keys | set(self.variables):
             self.quad_fields[name] = fc.real_field(f'{name}_q', 1, 'quad')
 
-        # placeholder for on-the-fly derivative computation
         self._deriv_placeholder = fc.real_field('deriv_placeholder', 1, 'quad')
 
-    def _needed_quad_fields(self) -> Set[str]:
-        needed = BASE_FIELDS | STRESS_FIELDS
-        if self.energy:
-            needed |= ENERGY_FIELDS
-        if self.cavitation:
-            needed |= CAVITATION_FIELDS
-        if 'xi' in self.variables:
-            needed |= OSS_FIELDS
-        return needed
+
+    def _add_dependent_fields(self, keys: Set[str]) -> Set[str]:
+        """Recursively add dependent fields for computed fields in keys.
+        E.g. U_bot is not directly needed by any term, but is an argument for tau_xz."""
+
+        result = set(keys)
+        frontier = set(keys)
+        while frontier:
+            new = set()
+            for name in frontier:
+                entry = QUAD_FIELD_REGISTRY.get(name)
+                if entry and entry['type'] == 'computed' and entry['source'] is not None:
+                    new |= {a for a in entry.get('args', []) if a not in result}
+            result |= new
+            frontier = new
+        return result
+
+    def _needed_fields(self) -> tuple[Set[str], Set[str], Set[str]]:
+        """Collect all keys of fields to initialize.
+        Nodal fields are always in the registry while the derivatives,
+        which are part of the overall quad fields, are not."""
+
+        plain, der = collect_required_fields(self.terms)
+        plain = self._add_dependent_fields(plain)
+
+        nodal_fields = {name for name in plain if name in self._reg_nodal}
+        quad_fields = plain | der
+
+        return nodal_fields, quad_fields, der
 
     # =========================================================================
     # Field access  (assembly calls these)
@@ -253,100 +260,56 @@ class QuadFieldManager:
         if self.energy:
             p.energy.update_temperature()
 
-    def update_nodal_to_quad(self) -> None:
-        """Interpolate nodal fields to quad fields."""
-        p = self.problem
-
-        # rho, jx, jy, p, eta, E, Tb_top, Tb_bot are always in sync
-        self.nf('h')[:]      = p.topo.h
-        self.nf('dh_dx')[:] = p.topo.dh_dx
-        self.nf('dh_dy')[:] = p.topo.dh_dy
-
-        for name in self.nodal_fields:
-            self.interpolate_nodal_to_quad(name)
-
-        # broadcast scalar constants
-        self.qf('U_bot')[:] = p.geo['U_bot']
-        self.qf('V_bot')[:] = p.geo['V_bot']
-        self.qf('U_top')[:] = p.geo['U_top']
-        self.qf('V_top')[:] = p.geo['V_top']
-        self.qf('Ls')[:]    = p.prop.get('slip_length', 0.0)
-
     def _apply_2d_vmap(self, func, *args):
         shape = args[0].shape
         args_2d = [a.reshape(shape[0], -1) for a in args]
         return func(*args_2d).reshape(shape)
 
-    def update_quad_computed(self) -> None:
-        """Compute derived quantities at quad points (wall stress, drho_dp, etc.).
-        Note: s to neglect periodic wrap-around strip in quad fields
+    def update_quad_fields(self) -> None:
+        """Update all quad fields from nodal fields and physics methods.
+        - nodal fields: copy and interpolate
+        - scalar fields: broadcast from source
+        - derivative fields: compute from nodal values
+        - computed fields: call physics method with quad field arguments
         """
+
         p = self.problem
         s = np.s_[..., :-1, :-1]
         q = lambda name: self.quad_fields[name].pg[s]
         apply = self._apply_2d_vmap
 
-        drho_dp_q = eos_drho_dp(q('p'), p.prop)
-        q('drho_dp')[:] = drho_dp_q
-        q('dp_drho')[:] = 1.0 / drho_dp_q
+        # Nodal fields - update
+        for name in self.nodal_field_keys:
+            self.nf(name)[:] = resolve_source(p, QUAD_FIELD_REGISTRY[name]['source'])
+        
+        # Nodal fields - interpolate to quad
+        for name in self.nodal_field_keys | set(self.variables):
+            self.interpolate_nodal_to_quad(name)
+        q('rho')[:] = eos_rho(q('p'), p.prop)  # special case
 
-        rho_q = eos_rho(q('p'), p.prop)
-        q('rho')[:] = rho_q
-        q('d2p_drho2')[:] = apply(p.pressure.d2p_drho2, rho_q)
+        # Scalar Broadcast
+        for name in self.quad_field_keys:
+            if name in self._reg_scalar:
+                self.qf(name)[:] = resolve_source(p, QUAD_FIELD_REGISTRY[name]['source'])
 
-        # for R11 correction term
-        q('d_dx_jx')[:] = self._deriv_pg('jx', 'x')
-        q('d_dy_jy')[:] = self._deriv_pg('jy', 'y')
+        # Derivative fields
+        for name in self.der_field_keys:
+            if name.startswith('d_dx_'):
+                q(name)[:] = self._deriv_pg(name[5:], 'x')
+            elif name.startswith('d_dy_'):
+                q(name)[:] = self._deriv_pg(name[5:], 'y')
 
+        # computed: call physics method with quad field arguments
+        for name in self.quad_field_keys:
+            if name in self._reg_computed:
+                entry = QUAD_FIELD_REGISTRY[name]
+                func = resolve_source(p, entry['source'])
+                args = tuple(q(a) for a in entry['args'])
+                q(name)[:] = apply(func, *args)
+
+        # OSS still hardcoded right now
         if 'xi' in self.variables:
             self._update_oss_quad_fields(q)
-
-        # wall stress preparation
-        dp_dx_q = self._deriv_pg('p', 'x')
-        dp_dy_q = self._deriv_pg('p', 'y')
-        theta_q = q('theta') if self.cavitation else np.zeros_like(q('rho'))
-
-        # wall stress xz
-        args_xz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dx'),
-                   q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q,
-                   dp_dx_q, dp_dy_q)
-        for name in ['tau_xz', 'dtau_xz_drho', 'dtau_xz_djx',
-                     'tau_xz_bot', 'dtau_xz_bot_drho', 'dtau_xz_bot_djx']:
-            q(name)[:] = apply(getattr(p.wall_stress_xz, name), *args_xz)
-        if self.cavitation:
-            for name in ['dtau_xz_dtheta', 'dtau_xz_bot_dtheta']:
-                q(name)[:] = apply(getattr(p.wall_stress_xz, name), *args_xz)
-
-        # wall stress yz
-        args_yz = (q('rho'), q('jx'), q('jy'), q('h'), q('dh_dy'),
-                   q('U_bot'), q('V_bot'), q('U_top'), q('V_top'), q('Ls'), theta_q,
-                   dp_dx_q, dp_dy_q)
-        for name in ['tau_yz', 'dtau_yz_drho', 'dtau_yz_djy',
-                     'tau_yz_bot', 'dtau_yz_bot_drho', 'dtau_yz_bot_djy']:
-            q(name)[:] = apply(getattr(p.wall_stress_yz, name), *args_yz)
-        if self.cavitation:
-            for name in ['dtau_yz_dtheta', 'dtau_yz_bot_dtheta']:
-                q(name)[:] = apply(getattr(p.wall_stress_yz, name), *args_yz)
-
-        # energy
-        if self.energy:
-            args_T = (q('rho'), q('jx'), q('jy'), q('E'))
-            for name, func in [('T', 'T_func'), ('dT_drho', 'T_grad_rho'),
-                                ('dT_djx', 'T_grad_jx'), ('dT_djy', 'T_grad_jy'),
-                                ('dT_dE', 'T_grad_E')]:
-                q(name)[:] = getattr(p.energy, func)(*args_T)
-
-            args_S = (q('h'), q('eta'), q('rho'), q('E'), q('jx'), q('jy'),
-                      q('U_bot'), q('V_bot'), q('Tb_top'), q('Tb_bot'))
-            for name, func in [('S', 'q_wall_sum'), ('dS_drho', 'q_wall_grad_rho'),
-                                ('dS_djx', 'q_wall_grad_jx'),
-                                ('dS_djy', 'q_wall_grad_jy'),
-                                ('dS_dE', 'q_wall_grad_E')]:
-                q(name)[:] = apply(getattr(p.energy, func), *args_S)
-
-        # body force
-        q('force_x')[:] = p.prop['force_x']
-        q('force_y')[:] = p.prop['force_y']
 
     def _update_oss_quad_fields(self, q) -> None:
         """Compute OSS stabilisation fields (a_vec, tau, one_minus_theta) at quad points."""

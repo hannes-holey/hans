@@ -353,8 +353,9 @@ def linearization_guard_p(q: np.ndarray, dq: np.ndarray,
 
 
 def solve_linear_system(M: np.ndarray, R: np.ndarray,
-                        solver: "FEMSolver") -> tuple:
+                        solver: "FEMSolver", it: int = 0) -> tuple:
     """Scale the system, solve for dq, and unscale.
+    Returns M_scaled for debugging purposes.
 
     Returns
     -------
@@ -369,7 +370,7 @@ def solve_linear_system(M: np.ndarray, R: np.ndarray,
     if fem_solver['scaling']:
         scale_interval = fem_solver['scaling_update_interval']
         step = solver.problem.step
-        if (solver._current_it == 0
+        if (it == 0
                 and (step == 0 or step % scale_interval == 0)):
             solver.scaling = build_scaling_from_blocks(
                 M, solver.variables, solver.residuals, solver.assembly,
@@ -381,7 +382,6 @@ def solve_linear_system(M: np.ndarray, R: np.ndarray,
         R_scaled_norm = solver.get_R_norm_global(R_scaled)
         if rank == 0:
             print(f'  R_scaled={R_scaled_norm:.6e}')
-            solver.R_scaled_norm_history[-1].append(R_scaled_norm)
         solver.linear_solver.assemble(M_scaled, R_scaled)
         dq = solver.scaling.unscale_solution(solver.linear_solver.solve())
     else:

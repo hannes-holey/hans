@@ -4,7 +4,7 @@ and verify that get_quad produces the correct square ordering.
 
 Key questions answered:
   1. Does field.pg have shape (sub_pt, y, x) or (sub_pt, x, y)?
-  2. Does get_quad produce x-fast square ordering consistent with sq_x_arr_p / sq_y_arr_p?
+  2. Does get_quad produce x-fast square ordering consistent with sq_x_arr_P1 / sq_y_arr_P1?
 """
 import numpy as np
 from GaPFlow.problem import Problem
@@ -141,11 +141,11 @@ print(f"  {inner_B}")
 print(f"\n.p[0] shape = {rho_nodal.p[0].shape}")
 
 print("\n" + "=" * 70)
-print("PART 3: Verify via index_mask_inner_local_p")
+print("PART 3: Verify via index_mask_inner_local_P1")
 print("=" * 70)
-mask = gi.index_mask_inner_local_p
-print(f"index_mask_inner_local_p shape = {mask.shape}")
-print(f"index_mask_inner_local_p =\n{mask}")
+mask = gi.index_mask_inner_local_P1
+print(f"index_mask_inner_local_P1 shape = {mask.shape}")
+print(f"index_mask_inner_local_P1 =\n{mask}")
 print(f"\nThis mask is indexed as [x, y] by construction (see grid_index.py).")
 print(f"The inner node at padded (2,1) = inner (1,0) has mask value = {mask[target_ix_padded, target_iy_padded]}")
 
@@ -179,7 +179,7 @@ perturbed_sqs = np.where(sq_has_perturb)[0]
 print(f"\nWith pg[0, {target_ix_padded}, {target_iy_padded}] = 99 (Hyp A: pg[sub, x, y]):")
 print(f"  Perturbed squares: {perturbed_sqs}")
 for sq in perturbed_sqs:
-    print(f"    sq {sq}: sq_x={gi.sq_x_arr_p[sq]}, sq_y={gi.sq_y_arr_p[sq]}, "
+    print(f"    sq {sq}: sq_x={gi.sq_x_arr_P1[sq]}, sq_y={gi.sq_y_arr_P1[sq]}, "
           f"quad values={gq[sq]}")
 
 # Which squares SHOULD contain the node at padded (ix=2, iy=1)?
@@ -211,12 +211,12 @@ for dsx, dsy in [(-1, -1), (0, -1), (-1, 0), (0, 0)]:
 expected_sqs_A = sorted(expected_sqs_A)
 print(f"  Expected squares (if pg is [sub, x, y]): {expected_sqs_A}")
 
-# Now check via sq_TO_inner_p
+# Now check via sq_TO_inner_P1
 target_inner_idx = mask[target_ix_padded, target_iy_padded]
 print(f"\n  Target inner index (from mask[{target_ix_padded},{target_iy_padded}]) = {target_inner_idx}")
-sq_corners = gi.sq_TO_inner_p  # (nb_sq, 4)
+sq_corners = gi.sq_TO_inner_P1  # (nb_sq, 4)
 sqs_from_connectivity = np.where(np.any(sq_corners == target_inner_idx, axis=1))[0]
-print(f"  Squares containing inner node {target_inner_idx} (from sq_TO_inner_p): {sqs_from_connectivity}")
+print(f"  Squares containing inner node {target_inner_idx} (from sq_TO_inner_P1): {sqs_from_connectivity}")
 
 match_A = set(perturbed_sqs) == set(sqs_from_connectivity)
 print(f"\n  Hypothesis A match: {match_A}")
@@ -232,7 +232,7 @@ perturbed_sqs_B = np.where(sq_has_perturb_B)[0]
 print(f"\nWith pg[0, {target_iy_padded}, {target_ix_padded}] = 99 (Hyp B: pg[sub, y, x]):")
 print(f"  Perturbed squares: {perturbed_sqs_B}")
 for sq in perturbed_sqs_B:
-    print(f"    sq {sq}: sq_x={gi.sq_x_arr_p[sq]}, sq_y={gi.sq_y_arr_p[sq]}, "
+    print(f"    sq {sq}: sq_x={gi.sq_x_arr_P1[sq]}, sq_y={gi.sq_y_arr_P1[sq]}, "
           f"quad values={gq_B[sq]}")
 
 match_B = set(perturbed_sqs_B) == set(sqs_from_connectivity)
@@ -248,7 +248,7 @@ probe2_iy = 1
 target_inner_idx2 = mask[probe2_ix, probe2_iy]
 sqs_from_conn2 = np.where(np.any(sq_corners == target_inner_idx2, axis=1))[0]
 print(f"Probe at padded ({probe2_ix}, {probe2_iy}), inner idx = {target_inner_idx2}")
-print(f"Expected squares from sq_TO_inner_p: {sqs_from_conn2}")
+print(f"Expected squares from sq_TO_inner_P1: {sqs_from_conn2}")
 
 # Hypothesis A
 rho_nodal.pg[:] = 1.0
@@ -279,7 +279,7 @@ if probe3_ix < gi.Nx_p_padded and probe3_iy < gi.Ny_p_padded:
     target_inner_idx3 = mask[probe3_ix, probe3_iy]
     sqs_from_conn3 = np.where(np.any(sq_corners == target_inner_idx3, axis=1))[0]
     print(f"Probe at padded ({probe3_ix}, {probe3_iy}), inner idx = {target_inner_idx3}")
-    print(f"Expected squares from sq_TO_inner_p: {sqs_from_conn3}")
+    print(f"Expected squares from sq_TO_inner_P1: {sqs_from_conn3}")
 
     # Hypothesis A
     rho_nodal.pg[:] = 1.0

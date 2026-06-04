@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     m_inner_P2  = grid_idx.index_mask_inner_local_P2
     m_padded_P2 = grid_idx.index_mask_padded_local_P2()
-    m_padded_p = grid_idx.index_mask_padded_local_p()
+    m_padded_p = grid_idx.index_mask_padded_local_P1()
 
     stencil = _compute_stencils(element)
 

@@ -1,8 +1,8 @@
 """Standalone test: sq_TO_inner and sq_FROM_padded node mapping.
 
 Verifies that for every square and triangle:
-  - sq_TO_inner_p/v returns the correct inner-node indices
-  - sq_FROM_padded_p/v returns the correct contributor indices
+  - sq_TO_inner_P1/v returns the correct inner-node indices
+  - sq_FROM_padded_P1/v returns the correct contributor indices
   - idx_to_std selects the right triangle corners
 
 Run:
@@ -63,7 +63,7 @@ class StubDecomp:
 
 
 # =============================================================================
-# Analytic reference: build expected sq_TO_inner_p from scratch
+# Analytic reference: build expected sq_TO_inner_P1 from scratch
 # =============================================================================
 
 def expected_sq_to_inner_p(gi):
@@ -74,11 +74,11 @@ def expected_sq_to_inner_p(gi):
       bl=(sx, sy  )  br=(sx+1, sy  )
     Returns shape (nb_sq, 4) with order [bl, br, tl, tr].
     """
-    m = gi.index_mask_inner_local_p
+    m = gi.index_mask_inner_local_P1
     result = np.empty((gi.nb_sq, 4), dtype=np.int32)
     for sq_idx in range(gi.nb_sq):
-        sx = gi.sq_x_arr_p[sq_idx]
-        sy = gi.sq_y_arr_p[sq_idx]
+        sx = gi.sq_x_arr_P1[sq_idx]
+        sy = gi.sq_y_arr_P1[sq_idx]
         result[sq_idx] = [
             m[sx,     sy    ],   # bl
             m[sx + 1, sy    ],   # br
@@ -90,11 +90,11 @@ def expected_sq_to_inner_p(gi):
 
 def expected_sq_from_padded_p(gi, var='rho'):
     """Ground truth: for each square, look up the 4 P1 corner contributor indices."""
-    m = gi.index_mask_padded_local_p(var)
+    m = gi.index_mask_padded_local_P1(var)
     result = np.empty((gi.nb_sq, 4), dtype=np.int32)
     for sq_idx in range(gi.nb_sq):
-        sx = gi.sq_x_arr_p[sq_idx]
-        sy = gi.sq_y_arr_p[sq_idx]
+        sx = gi.sq_x_arr_P1[sq_idx]
+        sy = gi.sq_y_arr_P1[sq_idx]
         result[sq_idx] = [
             m[sx,     sy    ],
             m[sx + 1, sy    ],
@@ -165,21 +165,21 @@ def extract_tri_nodes(sq_to_nodes, idx_to_std, sq_idx, tri_idx):
 # =============================================================================
 
 def verify_p1(gi, element):
-    print('\n--- P1 sq_TO_inner_p ---')
+    print('\n--- P1 sq_TO_inner_P1 ---')
     ref = expected_sq_to_inner_p(gi)
-    actual = gi.sq_TO_inner_p
+    actual = gi.sq_TO_inner_P1
     match = np.array_equal(ref, actual)
-    print(f'  sq_TO_inner_p matches reference: {match}')
+    print(f'  sq_TO_inner_P1 matches reference: {match}')
     if not match:
         for sq_idx in range(gi.nb_sq):
             if not np.array_equal(ref[sq_idx], actual[sq_idx]):
                 print(f'  sq {sq_idx}: ref={ref[sq_idx]}  actual={actual[sq_idx]}')
 
-    print('\n--- P1 sq_FROM_padded_p (rho, Dirichlet) ---')
+    print('\n--- P1 sq_FROM_padded_P1 (rho, Dirichlet) ---')
     ref_f = expected_sq_from_padded_p(gi, 'rho')
-    actual_f = gi.sq_FROM_padded_p('rho')
+    actual_f = gi.sq_FROM_padded_P1('rho')
     match_f = np.array_equal(ref_f, actual_f)
-    print(f'  sq_FROM_padded_p matches reference: {match_f}')
+    print(f'  sq_FROM_padded_P1 matches reference: {match_f}')
     if not match_f:
         for sq_idx in range(gi.nb_sq):
             if not np.array_equal(ref_f[sq_idx], actual_f[sq_idx]):
@@ -202,16 +202,16 @@ def verify_p1(gi, element):
     print('\n--- P1 triangle: inner nodes are a subset of sq corners ---')
     ok2 = True
     for sq_idx in range(gi.nb_sq):
-        sq_x, sq_y = gi.sq_x_arr_p[sq_idx], gi.sq_y_arr_p[sq_idx]
+        sq_x, sq_y = gi.sq_x_arr_P1[sq_idx], gi.sq_y_arr_P1[sq_idx]
         for tri_idx in range(2):
-            inner_tri = extract_tri_nodes(gi.sq_TO_inner_p, idx_to_std, sq_idx, tri_idx)
-            from_tri  = extract_tri_nodes(gi.sq_FROM_padded_p('rho'), idx_to_std, sq_idx, tri_idx)
+            inner_tri = extract_tri_nodes(gi.sq_TO_inner_P1, idx_to_std, sq_idx, tri_idx)
+            from_tri  = extract_tri_nodes(gi.sq_FROM_padded_P1('rho'), idx_to_std, sq_idx, tri_idx)
             # inner nodes with index >= 0 must correspond to FROM nodes at same position
             for k in range(3):
                 if inner_tri[k] >= 0 and from_tri[k] >= 0:
                     # inner and from at same position should agree for non-ghost nodes
-                    inner_pos = np.argwhere(gi.index_mask_inner_local_p == inner_tri[k])
-                    from_pos  = np.argwhere(gi.index_mask_padded_local_p('rho') == from_tri[k])
+                    inner_pos = np.argwhere(gi.index_mask_inner_local_P1 == inner_tri[k])
+                    from_pos  = np.argwhere(gi.index_mask_padded_local_P1('rho') == from_tri[k])
                     if inner_pos.size > 0 and from_pos.size > 0:
                         if not np.any(np.all(inner_pos == from_pos, axis=1)):
                             print(f'  MISMATCH sq={sq_idx} tri={tri_idx} k={k}: '
@@ -268,7 +268,7 @@ def verify_p2(gi, element):
 
 def _p1_node_phys_pos(gi, node_idx):
     """Physical (x, y) position of P1 inner node node_idx (using unit cell)."""
-    pos = np.argwhere(gi.index_mask_inner_local_p == node_idx)
+    pos = np.argwhere(gi.index_mask_inner_local_P1 == node_idx)
     if len(pos) == 0:
         return None
     ix, iy = pos[0]
@@ -296,7 +296,7 @@ def _draw_p1_panel(ax, gi, element, Nx_p, Ny_p, highlight_sq, tri_idx):
 
     # All squares
     for sq_i in range(gi.nb_sq):
-        sx, sy = gi.sq_x_arr_p[sq_i], gi.sq_y_arr_p[sq_i]
+        sx, sy = gi.sq_x_arr_P1[sq_i], gi.sq_y_arr_P1[sq_i]
         x0, y0 = (sx - 1) * dx_p, (sy - 1) * dy_p
         color = '#d0e8ff' if sq_i == highlight_sq else 'white'
         ax.add_patch(plt.Rectangle((x0, y0), dx_p, dy_p,
@@ -305,7 +305,7 @@ def _draw_p1_panel(ax, gi, element, Nx_p, Ny_p, highlight_sq, tri_idx):
                 ha='center', va='center', fontsize=7, color='gray')
 
     # Highlighted triangle
-    sx, sy = gi.sq_x_arr_p[highlight_sq], gi.sq_y_arr_p[highlight_sq]
+    sx, sy = gi.sq_x_arr_P1[highlight_sq], gi.sq_y_arr_P1[highlight_sq]
     sq_corners = np.array([
         [(sx - 1)*dx_p, (sy - 1)*dy_p],   # bl
         [(sx    )*dx_p, (sy - 1)*dy_p],   # br
@@ -319,8 +319,8 @@ def _draw_p1_panel(ax, gi, element, Nx_p, Ny_p, highlight_sq, tri_idx):
             ha='center', va='center', fontsize=8, color='darkgreen', fontweight='bold')
 
     # All P1 nodes
-    m_inner = gi.index_mask_inner_local_p
-    m_pad   = gi.index_mask_padded_local_p('rho')
+    m_inner = gi.index_mask_inner_local_P1
+    m_pad   = gi.index_mask_padded_local_P1('rho')
     for ix in range(m_inner.shape[0]):
         for iy in range(m_inner.shape[1]):
             xp, yp = (ix - 1)*dx_p, (iy - 1)*dy_p
@@ -336,8 +336,8 @@ def _draw_p1_panel(ax, gi, element, Nx_p, Ny_p, highlight_sq, tri_idx):
                 ax.plot(xp, yp, 'rx', ms=5, zorder=3)
 
     # Node labels on triangle corners
-    inner_tri = gi.sq_TO_inner_p[highlight_sq][idx_to_std_p1[tri_idx]]
-    from_tri  = gi.sq_FROM_padded_p('rho')[highlight_sq][idx_to_std_p1[tri_idx]]
+    inner_tri = gi.sq_TO_inner_P1[highlight_sq][idx_to_std_p1[tri_idx]]
+    from_tri  = gi.sq_FROM_padded_P1('rho')[highlight_sq][idx_to_std_p1[tri_idx]]
     for k, (xc, yc) in enumerate(tri_xy):
         ax.annotate(f'N{k}\nin={inner_tri[k]}\nfr={from_tri[k]}',
                     xy=(xc, yc), xytext=(xc + 0.15, yc + 0.18),
@@ -377,7 +377,7 @@ def _draw_p2_panel(ax, gi, element, Nx_p, Ny_p, highlight_sq, tri_idx):
 
     # Coarse square outlines
     for sq_i in range(gi.nb_sq):
-        sx, sy = gi.sq_x_arr_p[sq_i], gi.sq_y_arr_p[sq_i]
+        sx, sy = gi.sq_x_arr_P1[sq_i], gi.sq_y_arr_P1[sq_i]
         ax.add_patch(plt.Rectangle(((sx-1)*dx_p, (sy-1)*dy_p), dx_p, dy_p,
                                    facecolor='none', edgecolor='lightgray',
                                    lw=0.5, ls='--'))
@@ -487,29 +487,29 @@ if __name__ == '__main__':
     print(f'  sq_per_row={gi.sq_per_row}, sq_per_col={gi.sq_per_col}, nb_sq={gi.nb_sq}')
     print(f'  Nx_v_padded={gi.Nx_v_padded}, Ny_v_padded={gi.Ny_v_padded}')
     print()
-    print('P1 inner mask (index_mask_inner_local_p):')
-    print(gi.index_mask_inner_local_p)
+    print('P1 inner mask (index_mask_inner_local_P1):')
+    print(gi.index_mask_inner_local_P1)
     print()
-    print('P1 padded mask (index_mask_padded_local_p, rho/Dirichlet):')
-    print(gi.index_mask_padded_local_p('rho'))
+    print('P1 padded mask (index_mask_padded_local_P1, rho/Dirichlet):')
+    print(gi.index_mask_padded_local_P1('rho'))
     print()
     print('Square ordering:')
     for sq_idx in range(gi.nb_sq):
-        sx, sy = gi.sq_x_arr_p[sq_idx], gi.sq_y_arr_p[sq_idx]
+        sx, sy = gi.sq_x_arr_P1[sq_idx], gi.sq_y_arr_P1[sq_idx]
         print(f'  sq{sq_idx}: (x={sx}, y={sy})  '
-              f'TO_inner={gi.sq_TO_inner_p[sq_idx]}  '
-              f'FROM_pad={gi.sq_FROM_padded_p("rho")[sq_idx]}')
+              f'TO_inner={gi.sq_TO_inner_P1[sq_idx]}  '
+              f'FROM_pad={gi.sq_FROM_padded_P1("rho")[sq_idx]}')
     print()
     print('P1 idx_to_std:', element.P1.idx_to_std)
     print('P2 idx_to_std:', element.P2.idx_to_std)
     print()
 
     print('Highlighted square+triangle:')
-    sx, sy = gi.sq_x_arr_p[highlight_sq], gi.sq_y_arr_p[highlight_sq]
+    sx, sy = gi.sq_x_arr_P1[highlight_sq], gi.sq_y_arr_P1[highlight_sq]
     print(f'  sq{highlight_sq}: x={sx}, y={sy}')
     for tri_idx in range(2):
-        inner_tri = gi.sq_TO_inner_p[highlight_sq][element.P1.idx_to_std[tri_idx]]
-        from_tri  = gi.sq_FROM_padded_p('rho')[highlight_sq][element.P1.idx_to_std[tri_idx]]
+        inner_tri = gi.sq_TO_inner_P1[highlight_sq][element.P1.idx_to_std[tri_idx]]
+        from_tri  = gi.sq_FROM_padded_P1('rho')[highlight_sq][element.P1.idx_to_std[tri_idx]]
         print(f'  P1 tri{tri_idx}: inner_nodes={inner_tri}  from_nodes={from_tri}')
     for tri_idx in range(2):
         inner_tri = gi.sq_TO_inner_P2[highlight_sq][element.P2.idx_to_std[tri_idx]]

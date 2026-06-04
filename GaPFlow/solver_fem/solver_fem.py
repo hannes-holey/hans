@@ -42,12 +42,11 @@ from .assembly import Assembly
 from .fieldspec import FieldSpec, VAR_GRID, RES_GRID
 from .scipy_system import ScipySystem
 
+from ..bc import GhostUpdater, BoundarySpec, sample_bc_spec, translate_bc_rho_to_p
 from .solution_guards import solve_linear_system, line_search
 from .bayada_stabilization import bayada_linearization_guard
-from ..models.pressure import eos_pressure, eos_rho
 from .terms import get_active_terms
 from .scaling import build_scaling
-from ..bc import BoundarySpec, GhostUpdater, sample_bc_spec, translate_bc_rho_to_p
 
 if TYPE_CHECKING:
     from ..problem import Problem
@@ -71,12 +70,12 @@ class FEMSolver:
         self.fem_spec = fem_spec
         self.problem  = problem
         self.R_norm_history: List[List[float]] = []
-        self.R_scaled_norm_history: List[List[float]] = []
+        self.rank = problem.decomp.rank
 
         self._build_variable_and_residual_lists()
 
         self.elements = TaylorHoodP2P1(problem.grid['dx'], problem.grid['dy'])
-        self.grid_idx = GridIndexManager(problem.decomp, self.variables)
+        self.grid_idx = GridIndexManager(problem.decomp, self)
 
         self._get_active_terms()
 
@@ -121,17 +120,13 @@ class FEMSolver:
     # =========================================================================
 
     def build_boundary_conditions(self):
+        """Build the list of BoundarySpec objects for BC application.
+        Note: bc_spec needs to be sampled in the same order as variables."""
 
         self._init_quad_fields()
 
         specs = []
         no_fun = [None]*4
-
-        field = self.quad_mgr.nodal_fields['p']
-        rho_bc_type, rho_bc_vals = sample_bc_spec(self.problem.grid, 0)
-        p_bc_vals = translate_bc_rho_to_p(rho_bc_type, rho_bc_vals, self.problem)
-        specs.append(BoundarySpec(field, 'P1', rho_bc_type,
-                                  p_bc_vals, no_fun, self.problem.decomp))
 
         field = self.quad_mgr.nodal_fields['jx']
         jx_bc_type, jx_bc_vals = sample_bc_spec(self.problem.grid, 1)
@@ -142,6 +137,12 @@ class FEMSolver:
         jy_bc_type, jy_bc_vals = sample_bc_spec(self.problem.grid, 2)
         specs.append(BoundarySpec(field, 'P2', jy_bc_type,
                                   jy_bc_vals, no_fun, self.problem.decomp))
+
+        field = self.quad_mgr.nodal_fields['p']
+        rho_bc_type, rho_bc_vals = sample_bc_spec(self.problem.grid, 0)
+        p_bc_vals = translate_bc_rho_to_p(rho_bc_type, rho_bc_vals, self.problem)
+        specs.append(BoundarySpec(field, 'P1', rho_bc_type,
+                                  p_bc_vals, no_fun, self.problem.decomp))
 
         if self.cavitation:
             field = self.quad_mgr.nodal_fields['theta']
@@ -162,6 +163,7 @@ class FEMSolver:
             specs=specs
         )
 
+        self.bc_specs = specs
 
     # =========================================================================
     # Initialisation
@@ -191,6 +193,7 @@ class FEMSolver:
             add_fields=self.add_fields,
             elements=self.elements,
             decomp=self.problem.decomp,
+            terms=self.terms,
         )
 
     def _build_assembly(self) -> None:
@@ -215,11 +218,11 @@ class FEMSolver:
         def make_getter(name):
             return lambda: self.quad_mgr.get_quad_sq(name)
 
-        all_field_names = self.quad_mgr._needed_quad_fields()
+        _, quad_fields, _ = self.quad_mgr._needed_fields()
         for term in self.terms:
 
             # fields
-            ctx = {name: make_getter(name) for name in all_field_names}
+            ctx = {name: make_getter(name) for name in quad_fields}
 
             # scalars
             ctx['dt'] = lambda: p.numerics['dt']
@@ -271,10 +274,10 @@ class FEMSolver:
                 residuals=self.residuals,
                 res_slices=self.assembly._res_slices,
                 sol_slices=self.assembly._sol_slices,
-                Nx_p=self.grid_idx.Nx_p_inner,
-                Ny_p=self.grid_idx.Ny_p_inner,
-                Nx_P2=self.grid_idx.Nx_v_inner,
-                Ny_P2=self.grid_idx.Ny_v_inner,
+                Nx_p=self.grid_idx.Nx_P1_inner,
+                Ny_p=self.grid_idx.Ny_P1_inner,
+                Nx_P2=self.grid_idx.Nx_P2_inner,
+                Ny_P2=self.grid_idx.Ny_P2_inner,
                 terms=self.terms,
                 problem=self.problem,
                 quad_mgr=self.quad_mgr,
@@ -299,49 +302,17 @@ class FEMSolver:
     # Quadrature field update
     # =========================================================================
 
-    def update_quad(self) -> None:
+    def update_quad(self) -> dict:
         self.quad_mgr.update_physics()
-        self.quad_mgr.update_nodal_to_quad()
-        self.quad_mgr.update_quad_computed()
+        self.quad_mgr.update_quad_fields()
+        return self.collect_all_quad_fields()
 
     def update_prev_quad(self) -> None:
         self.quad_mgr.store_prev_values()
 
-    # =========================================================================
-    # Newton scatter / gather
-    # =========================================================================
-
-    def get_q_nodal(self) -> NDArray:
-        """Gather inner nodal values into a flat solution vector."""
-        q = np.zeros(self.res_size)
-        for var in self.variables:
-            q[self._sol_slices[var]] = self.quad_mgr.get_nodal_sol_val(var)
-        return q
-
-    def set_q_nodal(self, q: NDArray) -> None:
-        """Scatter flat solution vector back to nodal fields."""
-        for var in self.variables:
-            self.quad_mgr.set_nodal_sol_val(var, q[self._sol_slices[var]])
-
-    # =========================================================================
-    # Ghost exchange
-    # =========================================================================
-
-    def _exchange_ghosts(self) -> None:
-        """Exchange ghost cells for all grids after Newton update."""
-        self.ghost_updater.update()
-
-    # =========================================================================
-    # Assembly
-    # =========================================================================
-
-    def _build_all_quad_fields(self) -> dict:
-        """Build the full quad_fields dict for all active terms.
-
-        Includes plain values for all dep_vars and gradient fields
-        ('d_dx_<var>', 'd_dy_<var>') for any variable that needs a spatial
-        derivative (trial_deriv set on that variable's slot).
-        """
+    def collect_all_quad_fields(self) -> dict:
+        """Collect all needed quadrature fields once.
+        Derivative fields are built on the fly here."""
         qf: dict = {}
         need_dx: set = set()
         need_dy: set = set()
@@ -366,6 +337,27 @@ class FEMSolver:
                 qf[key] = self.quad_mgr.get_quad_dy_sq(v)
 
         return qf
+
+    # =========================================================================
+    # Newton scatter / gather
+    # =========================================================================
+
+    def get_q_nodal(self) -> NDArray:
+        """Gather inner nodal values into a flat solution vector."""
+        q = np.zeros(self.res_size)
+        for var in self.variables:
+            q[self._sol_slices[var]] = self.quad_mgr.get_nodal_sol_val(var)
+        return q
+
+    def update_q_nodal(self, q: NDArray) -> None:
+        """Scatter flat solution vector back to nodal fields and update ghosts."""
+        for var in self.variables:
+            self.quad_mgr.set_nodal_sol_val(var, q[self._sol_slices[var]])
+        self.ghost_updater.update()
+
+    # =========================================================================
+    # Assembly
+    # =========================================================================
 
     def get_M(self, qf: dict = None) -> NDArray:
         """Assemble Jacobian COO values."""
@@ -402,24 +394,20 @@ class FEMSolver:
     # Solver step
     # =========================================================================
 
-    def solver_step_fun(self, q_guess: NDArray) -> Tuple[NDArray, NDArray]:
+    def update_quad_and_assemble(self) -> Tuple[NDArray, NDArray]:
+        """Update models, quadrature fields, and assemble M and R."""
 
-        self.set_q_nodal(q_guess)
+        qf = self.update_quad()
 
-        self._exchange_ghosts()
-
-        self.update_quad()
-
-        qf = self._build_all_quad_fields()
         M = self.get_M(qf)
         R = self.get_R_(qf).copy()
+
         if self._debug_active:
             self._last_R_per_term = self.assembly.assemble_rhs_per_term(qf, self.terms)
         return M, R
 
     def get_R(self, q_guess: NDArray) -> float:
-        self.set_q_nodal(q_guess)
-        self._exchange_ghosts()
+        self.update_q_nodal(q_guess)
         self.update_quad()
         qf = self._build_all_quad_fields()
         R = self.get_R_(qf).copy()
@@ -463,126 +451,104 @@ class FEMSolver:
     # Time step
     # =========================================================================
 
-    def update_dynamic(self) -> None:
+    def check_residual(self, R: NDArray, it: int) -> float:
+        """Check residual norm and return True if converged."""
+
+        R_norm = self.get_R_norm_global(R)
+        if self.rank == 0:
+            self.R_norm_history[-1].append(R_norm)
+            print(f'{R_norm}')
+        if R_norm < self.tol and it > 0:
+            return True
+        return False
+
+    def post_solve(self, q: NDArray, dq: NDArray, R: NDArray, it: int, M_scaled: NDArray) -> None:
+        """Post-process obtained solution update: debug output, line search, and cavitation clamping."""
         
-        tic = time.time()
-        
-        p = self.problem
-        fem_solver = p.fem_solver
-        self.update_prev_quad()
-        q = self.get_q_nodal().copy()
+        if self._debug_active:
+            self.debugger.step(
+                timestep=self.problem.step, it=it, R=R, dq=dq, q=q,
+                R_per_term=self._last_R_per_term, M_scaled=M_scaled)
+            self._debug_steps_done += 1
 
-        max_iter = 1 if self._debug_active else fem_solver['max_iter']
-        tol = fem_solver['R_norm_tol']
-        alpha = fem_solver['newton_relax']
-        dt_init = p.numerics['dt']
-        rank = p.decomp.rank
-
-        if rank == 0:
-            self.R_norm_history.append([])
-            self.R_scaled_norm_history.append([])
-
-        n_iter = 0
-        for it in range(max_iter):
-            self._current_it = it
-            M, R = self.solver_step_fun(q)
-            R_norm = self.get_R_norm_global(R)
-
-            if rank == 0:
-                self.R_norm_history[-1].append(R_norm)
-                print(f'{R_norm}')
-
-            if R_norm < tol and it > 0:
-                break
-
-            dq, M_scaled = solve_linear_system(M, R, self)
-            if np.any(np.isinf(dq)) or np.any(np.isnan(dq)):
-                if p.decomp.rank == 0:
-                    print(f"  WARNING: dq contains inf/nan at iter {it}")
-                    print(f"  dq min/max: {np.nanmin(dq):.3e} / {np.nanmax(dq):.3e}")
-                    print(f"  M has inf: {np.any(np.isinf(M))}, M has nan: {np.any(np.isnan(M))}")
-                    print(f"  R has inf: {np.any(np.isinf(R))}, R has nan: {np.any(np.isnan(R))}")
-
-            if self._debug_active:
-                self.debugger.step(
-                    timestep=p.step, it=it, R=R, dq=dq, q=q,
-                    R_per_term=self._last_R_per_term, M_scaled=M_scaled)
-                self._debug_steps_done += 1
-
-            if fem_solver['line_search']:
-                q = line_search(q, alpha * dq, R_norm, self)
+        if self.problem.fem_solver['line_search']:
+            q = line_search(q, self.alpha * dq, self.R_norm, self)
+        else:
+            if self.problem.prop.get('EOS') == 'Bayada':
+                q, _ = bayada_linearization_guard(q, self.alpha * dq, self)
             else:
-                if p.prop.get('EOS') == 'Bayada':
-                    q, _ = bayada_linearization_guard(q, alpha * dq, self)
-                else:
-                    q = q + alpha * dq
-
-            if self.cavitation:
-                q = self._clamp_cavitation(q)
-
-            self.set_q_nodal(q)
-            self._exchange_ghosts()
-            n_iter += 1
+                q = q + self.alpha * dq
 
         if self.cavitation:
             q = self._clamp_cavitation(q)
-            self.set_q_nodal(q)
-            self._exchange_ghosts()
+        
+        return q
 
-        p.numerics['dt'] = dt_init
+    def wrap_up_timestep(self, it: int, tic: float) -> None:
+        """Wrap up the finished timstep."""
 
         toc = time.time()
         self.time_inner = toc - tic
-        self.inner_iterations = n_iter
+        self.inner_iterations = it + 1
 
         if self.debugger is not None and self._debug_steps_done >= 5:
-            p._stop = True
-
-        self.update_output_fields()
-        p._post_update()
+            self.problem._stop = True
+        
+        self.print_status()
 
     def update(self) -> None:
-        self.update_dynamic()
+        """Perform one time step with Newton iteration."""
+        
+        p = self.problem
+        tic = time.time()
+        max_iter = 1 if self._debug_active else self.max_iter
+
+        self.update_prev_quad()
+        q = self.get_q_nodal().copy()
+
+        if self.rank == 0:
+            self.R_norm_history.append([])
+
+        # Inner Newton loop
+        for it in range(max_iter):
+
+            M, R = self.update_quad_and_assemble()
+            if self.check_residual(R, it): break
+            dq, M_scaled = solve_linear_system(M, R, self, it)
+            q = self.post_solve(q, dq, R, it, M_scaled)
+            self.update_q_nodal(q)
+
+        self.wrap_up_timestep(it, tic)
+        self.update_output_fields()
+        p._post_update()
 
     # =========================================================================
     # Pre-run setup
     # =========================================================================
 
     def pre_run(self, **kwargs) -> None:
+        """Initialize assembly, jit functions, and solver. Load initial state and
+        update quadrature fields. Fetch solver parameters."""
+
         self._build_assembly()
         self._build_jit_functions()
         self._build_terms()
         self.assembly.build_assembly_templates(self.terms)
         self._init_linear_solver()
 
-        # Populate fine-grid corners from problem.q initial state
         self.quad_mgr.sync_from_problem_q()
 
-        # Optionally shift initial pressure uniformly (useful when p_init > p_cav
-        # is needed to start in a stable full-film regime before Newton iterates).
-        p_init = self.fem_spec.get('p_init', None)
-        if p_init is not None:
-            p0 = float(p_init)
-            rho_init = eos_rho(np.full_like(
-                self.quad_mgr.nodal_fields['p'].pg[0], p0), self.problem.prop)
-            self.quad_mgr.nodal_fields['p'].pg[0] = p0
-            self.quad_mgr.nodal_fields['rho'].pg[0] = rho_init
-            self.problem.q[0] = rho_init
-            self.quad_mgr.sync_to_problem_q()
-
-        self._exchange_ghosts()
         self.update_quad()
         self.update_prev_quad()
         self.update_output_fields()
 
         self.time_inner = 0.0
         self.inner_iterations = 0
-        
-        p_arr = self.quad_mgr.nodal_fields['p'].pg[0]
-        print("p ghost W at end of pre_run:", p_arr[0, :])
-        print("p ghost E at end of pre_run:", p_arr[-1, :])
-        print("p inner W at end of pre_run:", p_arr[1, :])
-        print("p inner E at end of pre_run:", p_arr[-2, :])
+
+        p = self.problem
+        self.tol = p.fem_solver['R_norm_tol']
+        self.alpha = p.fem_solver['newton_relax']
+        self.max_iter = p.fem_solver['max_iter']
 
     # =========================================================================
     # Status / diagnostics

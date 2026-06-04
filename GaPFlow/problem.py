@@ -248,7 +248,6 @@ class Problem:
 
         # Boundary conditions
         self.solver.build_boundary_conditions()
-        print("q[0] after build_bc:", self.q[0][1:-1, 1:-1].mean())
 
     # ---------------------------
     # Constructors
@@ -676,11 +675,9 @@ class Problem:
 
     def _post_update(self) -> None:
         """
-        Operations executed after each timestep: ghost cell comms, residual
+        Operations executed after each timestep: residual
         update, time advance, and adaptive dt update if enabled.
         """
-        self._update_ghosts()
-
         E_kin_old = self.kinetic_energy_old
         self.residual = abs(self.kinetic_energy - E_kin_old) / (E_kin_old + 1e-12) / self.cfl
         self.residual_buffer.append(self.residual)
@@ -770,23 +767,6 @@ class Problem:
         self.__field.pg[2] = rho0 * (V_bot + V_top) / 2.1
 
         self.kinetic_energy_old = self.kinetic_energy
-
-    # ---------------------------
-    # Ghost cell handling
-    # ---------------------------
-
-    def _update_ghosts(self) -> None:
-        """Update ghost-cell values via MPI communication and boundary conditions."""
-        sol = self.fc.get_real_field('solution')
-        self.decomp.update_ghosts(
-            exchange_specs=[(sol, 'P1')],
-            bc_specs=[
-                (self.q[0], 'rho', 'P1_cell'),
-                (self.q[1], 'jx',  'P1_cell'),
-                (self.q[2], 'jy',  'P1_cell'),
-            ],
-            problem=self,
-        )
 
     # ---------------------------
     # Plotting and animations

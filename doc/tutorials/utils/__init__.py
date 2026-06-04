@@ -27,6 +27,14 @@ from .plotting import (
     plot_midsection_2d,
 )
 
+from .solver_comparison import (
+    load_template,
+    build_config,
+    run_solver,
+    run_all_solvers,
+    print_timing,
+)
+
 __all__ = [
     'regen_conv_slider_pocket_1d',
     'regen_conv_slider_pocket_1d_giacopini',

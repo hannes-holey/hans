@@ -129,12 +129,13 @@ class BoundarySpec:
     """
 
     def __init__(self,
-                 field: Field,
+                 field,
                  grid_type: str,
                  bc_type: List[str],
                  bc_vals: List[float | None],
                  bc_functions: List[Callable | None],
-                 decomp: "DomainDecomposition"):
+                 decomp: "DomainDecomposition",
+                 do_exchange: bool = True):
 
         self.field = field
         self.grid_type = grid_type
@@ -142,6 +143,7 @@ class BoundarySpec:
         self.bc_vals = bc_vals
         self.bc_functions = bc_functions
         self.decomp = decomp
+        self.do_exchange = do_exchange
 
         if self.grid_type == 'P2':
             self._compute_zoom_factors()
@@ -221,9 +223,9 @@ class GhostUpdater:
 
     def _exchange_ghosts(self, field, grid_type):
         if grid_type == 'P1':
-            self.decomp._exchange_ghosts(field)
+            self.decomp.exchange_ghosts(field)
         else:
-            self.decomp._exchange_ghosts_P2(field)
+            self.decomp.exchange_ghosts_P2(field)
 
     def _interpolate_to_P2(self, arr_, bnd: str, bc_spec: BoundarySpec):
         """Interpolate function-based BC array from P1 to P2."""
@@ -278,13 +280,14 @@ class GhostUpdater:
     def update(self) -> None:
         """Perform ghost exchange and BC application for all specs."""
         for bc_spec in self.specs:
-            field = bc_spec.field.pg[0]
+            field = bc_spec.field.pg[0] if hasattr(bc_spec.field, 'pg') else bc_spec.field
             grid_type = bc_spec.grid_type
 
-            self._exchange_ghosts(bc_spec.field, grid_type)
+            if bc_spec.do_exchange:
+                self._exchange_ghosts(bc_spec.field, grid_type)
 
             for bnd in bc_spec.bnds:
-                if not self.decomp._owns_boundary(bnd):
+                if not self.decomp.owns_boundary(bnd):
                     continue
 
                 interior, ghost_middle, ghost_outer = self._get_ghost_slices(bnd, grid_type)

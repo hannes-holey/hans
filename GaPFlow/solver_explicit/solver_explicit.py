@@ -23,6 +23,7 @@
 #
 from .integrate import predictor_corrector, source
 from typing import TYPE_CHECKING
+from ..bc import BoundarySpec, GhostUpdater, sample_bc_spec
 if TYPE_CHECKING:
     from ..problem import Problem
 
@@ -31,10 +32,37 @@ class ExplicitSolver:
 
     def __init__(self, problem: "Problem") -> None:
         self.problem = problem
+        self.decomp = problem.decomp
         self.nb_sol = 3
 
     def build_boundary_conditions(self) -> None:
-        return
+
+        specs = []
+        no_fun = [None] * 4
+        p = self.problem
+
+        self._sol_field = p.fc.get_real_field('solution')
+
+        rho_bc_type, rho_bc_vals = sample_bc_spec(p.grid, 0)
+        specs.append(BoundarySpec(p.q[0], 'P1', rho_bc_type,
+                                  rho_bc_vals, no_fun, p.decomp,
+                                  do_exchange=False))
+
+        jx_bc_type, jx_bc_vals = sample_bc_spec(p.grid, 1)
+        specs.append(BoundarySpec(p.q[1], 'P1', jx_bc_type,
+                                  jx_bc_vals, no_fun, p.decomp,
+                                  do_exchange=False))
+
+        jy_bc_type, jy_bc_vals = sample_bc_spec(p.grid, 2)
+        specs.append(BoundarySpec(p.q[2], 'P1', jy_bc_type,
+                                  jy_bc_vals, no_fun, p.decomp,
+                                  do_exchange=False))
+
+        self.ghost_updater = GhostUpdater(
+            decomp=p.decomp,
+            problem=p,
+            specs=specs,
+        )
 
     def pre_run(self) -> None:
         p = self.problem
@@ -93,10 +121,13 @@ class ExplicitSolver:
 
             p.q = p.q - dt * (fX / dx + fY / dy - src)
 
-            p._update_ghosts()
+            self.decomp.exchange_ghosts(self._sol_field)
+            self.ghost_updater.update()
 
         # second-order temporal averaging (Crank-Nicolson-like)
         p.q = (p.q + q0) / 2.0
+        self.decomp.exchange_ghosts(self._sol_field)
+        self.ghost_updater.update()
 
         if p.q_is_valid:
             p.topo.update()

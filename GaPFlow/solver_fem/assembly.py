@@ -22,10 +22,6 @@
 # SOFTWARE.
 #
 
-"""
-FEM Assembly — Taylor-Hood P2P1, sparsity structure.
-"""
-
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, TYPE_CHECKING
 
@@ -36,7 +32,7 @@ from mpi4py import MPI
 from .elements import TaylorHoodP2P1
 from .grid_index import GridIndexManager
 from .global_matrix import field_to_global
-from .terms import NonLinearTerm
+from .terms import Term
 from .fieldspec import FieldSpec
 
 NDArray = npt.NDArray[np.floating]
@@ -182,7 +178,7 @@ class Assembly:
 
         m_inner_P2  = grid_idx.index_mask_inner_local_P2
         m_padded_P2 = grid_idx.index_mask_padded_local_P2()
-        m_padded_p = grid_idx.index_mask_padded_local_p()
+        m_padded_P1= grid_idx.index_mask_padded_local_P1()
 
         inner_pts_2d = np.argwhere(m_inner_P2 >= 0)          # (N, 2)
         inner_idx    = m_inner_P2[inner_pts_2d[:, 0], inner_pts_2d[:, 1]]
@@ -202,13 +198,13 @@ class Assembly:
                 if var_grid == 'P2':
                     contrib = m_padded_P2[nx, ny]
                 else:
-                    contrib = m_padded_p[nx // 2, ny // 2]
+                    contrib = m_padded_P1[nx // 2, ny // 2]
 
                 valid = contrib >= 0
                 if res_grid == 'P2':
                     inner_list.append(idx[valid])
                 else:
-                    inner_list.append(m_padded_p[pts[valid, 0] // 2, pts[valid, 1] // 2])
+                    inner_list.append(m_padded_P1[pts[valid, 0] // 2, pts[valid, 1] // 2])
                 contrib_list.append(contrib[valid])
 
         inner_all = np.concatenate(inner_list).astype(np.int32)
@@ -255,10 +251,10 @@ class Assembly:
             block['nb_nnz'] = nb_nnz
             nnz_idx_start += nb_nnz
 
-        decomp = self.grid_idx._decomp
+        decomp = self.grid_idx.decomp
         Nx_P2, Ny_P2 = decomp.nb_domain_grid_pts_P2
-        Nx_p, Ny_p = decomp.nb_domain_grid_pts
-        expected_global_size = 2 * Nx_P2 * Ny_P2 + self.p_factor * Nx_p * Ny_p
+        Nx_P1, Ny_P1= decomp.nb_domain_grid_pts
+        expected_global_size = 2 * Nx_P2 * Ny_P2 + self.p_factor * Nx_P1* Ny_P1
         local_max = int(self.nnz_global_rows.max()) if len(self.nnz_global_rows) else -1
         global_max = decomp._mpi_comm.allreduce(local_max, op=MPI.MAX)
         assert global_max + 1 == expected_global_size, (
@@ -271,7 +267,7 @@ class Assembly:
         if grid_type == 'P2':
             return self.grid_idx.l2g_list_P2[local_indices]
         else:
-            return self.grid_idx.l2g_list_p[local_indices]
+            return self.grid_idx.l2g_list_P1[local_indices]
 
     # ======================================================================
     # COO lookup
@@ -321,9 +317,9 @@ class Assembly:
         """
         rows = []
         for spec in self.res_specs:
-            nb_inner = (self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
+            nb_inner = (self.grid_idx.Nx_P2_inner * self.grid_idx.Ny_P2_inner
                         if spec.grid == 'P2'
-                        else self.grid_idx.Nx_p_inner * self.grid_idx.Ny_p_inner)
+                        else self.grid_idx.Nx_P1_inner * self.grid_idx.Ny_P1_inner)
 
             global_field_indices = self.apply_l2g(spec.grid, np.arange(nb_inner, dtype=np.int32))
             rows.append(field_to_global(global_field_indices, spec, self.grid_idx, self.p_factor))
@@ -339,18 +335,18 @@ class Assembly:
         self._res_slices: Dict[str, slice] = {}
         offset = 0
         for res in self.residuals:
-            n = (self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
+            n = (self.grid_idx.Nx_P2_inner * self.grid_idx.Ny_P2_inner
                  if self.res_to_grid[res] == 'P2'
-                 else self.grid_idx.Nx_p_inner * self.grid_idx.Ny_p_inner)
+                 else self.grid_idx.Nx_P1_inner * self.grid_idx.Ny_P1_inner)
             self._res_slices[res] = slice(offset, offset + n)
             offset += n
 
         self._sol_slices: Dict[str, slice] = {}
         offset = 0
         for var in self.variables:
-            n = (self.grid_idx.Nx_v_inner * self.grid_idx.Ny_v_inner
+            n = (self.grid_idx.Nx_P2_inner * self.grid_idx.Ny_P2_inner
                  if self.var_to_grid[var] == 'P2'
-                 else self.grid_idx.Nx_p_inner * self.grid_idx.Ny_p_inner)
+                 else self.grid_idx.Nx_P1_inner * self.grid_idx.Ny_P1_inner)
             self._sol_slices[var] = slice(offset, offset + n)
             offset += n
 
@@ -417,13 +413,13 @@ class Assembly:
 
         # Flat square index = iy * spr + ix  (ix varies fastest)
         for var in dep_vars:
-            if gi.bc_at_W and gi._bc_neumann['xW'].get(var, False):
+            if gi.decomp.bc_at_W and gi.is_neumann('W', var):
                 quad_vals[::spr, :] = 0.0                # ix=0
-            if gi.bc_at_E and gi._bc_neumann['xE'].get(var, False):
+            if gi.decomp.bc_at_E and gi.is_neumann('E', var):
                 quad_vals[spr - 1::spr, :] = 0.0         # ix=last
-            if gi.bc_at_S and gi._bc_neumann['yS'].get(var, False):
+            if gi.decomp.bc_at_S and gi.is_neumann('S', var):
                 quad_vals[:spr, :] = 0.0                  # iy=0
-            if gi.bc_at_N and gi._bc_neumann['yN'].get(var, False):
+            if gi.decomp.bc_at_N and gi.is_neumann('N', var):
                 quad_vals[-spr:, :] = 0.0                 # iy=last
 
     # ======================================================================
@@ -525,14 +521,14 @@ class Assembly:
         """
 
         TO_P2 = self.grid_idx.sq_TO_inner_P2  # (n_sq, 9)
-        TO_p = self.grid_idx.sq_TO_inner_p  # (n_sq, 4)
+        TO_P1= self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
         FROM_P2 = self.grid_idx.sq_FROM_padded_P2(var)  # (n_sq, 9)
-        FROM_p = self.grid_idx.sq_FROM_padded_p(var)  # (n_sq, 4)
+        FROM_P1= self.grid_idx.sq_FROM_padded_P1(var)  # (n_sq, 4)
         n_sq = self.grid_idx.nb_sq
-        assert TO_P2.shape[0] == n_sq and TO_p.shape[0] == n_sq
+        assert TO_P2.shape[0] == n_sq and TO_P1.shape[0] == n_sq
 
-        res_sq_to_nodes = TO_p if self.res_to_grid[res] == 'P1' else TO_P2
-        var_sq_to_nodes = FROM_p if self.var_to_grid[var] == 'P1' else FROM_P2
+        res_sq_to_nodes = TO_P1 if self.res_to_grid[res] == 'P1' else TO_P2
+        var_sq_to_nodes = FROM_P1 if self.var_to_grid[var] == 'P1' else FROM_P2
 
         res_element = self.element.P1 if self.res_to_grid[res] == 'P1' else self.element.P2
         var_element = self.element.P1 if self.var_to_grid[var] == 'P1' else self.element.P2
@@ -646,11 +642,11 @@ class Assembly:
         """
 
         TO_P2 = self.grid_idx.sq_TO_inner_P2  # (n_sq, 9)
-        TO_p = self.grid_idx.sq_TO_inner_p  # (n_sq, 4)
+        TO_P1= self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
         n_sq = self.grid_idx.nb_sq
-        assert TO_P2.shape[0] == n_sq and TO_p.shape[0] == n_sq
+        assert TO_P2.shape[0] == n_sq and TO_P1.shape[0] == n_sq
 
-        res_sq_to_nodes = TO_p if self.res_to_grid[res] == 'P1' else TO_P2
+        res_sq_to_nodes = TO_P1 if self.res_to_grid[res] == 'P1' else TO_P2
         res_element = self.element.P1 if self.res_to_grid[res] == 'P1' else self.element.P2
 
         nb_nnz = n_sq * 2 * res_element.nodes_per_tri
@@ -674,7 +670,7 @@ class Assembly:
 
     def assemble_rhs(self,
                      quad_fields: Dict[str, NDArray],
-                     terms: List[NonLinearTerm],
+                     terms: List[Term],
                      ) -> NDArray:
         """Accumulate residual term contributions and return a view on the result.
 
@@ -721,7 +717,7 @@ class Assembly:
 
     def assemble_rhs_per_term(self,
                               quad_fields: Dict[str, NDArray],
-                              terms: List[NonLinearTerm],
+                              terms: List[Term],
                               ) -> Dict[str, NDArray]:
         """Assemble residual contribution of each term individually.
 

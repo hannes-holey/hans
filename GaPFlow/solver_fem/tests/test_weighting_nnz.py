@@ -210,8 +210,8 @@ print("=" * 80)
 nnz_3d = nnz.reshape(nb_sq, n_tri, entries_per_quad)
 
 # P1 square node connectivity
-TO_p = grid_idx.sq_TO_inner_p   # (nb_sq, 4) — inner indices
-FROM_p = grid_idx.sq_FROM_padded_p('rho')  # (nb_sq, 4) — padded indices
+TO_p = grid_idx.sq_TO_inner_P1   # (nb_sq, 4) — inner indices
+FROM_p = grid_idx.sq_FROM_padded_P1('rho')  # (nb_sq, 4) — padded indices
 
 # P1 idx_to_std: which square nodes form each triangle
 #   tri0: [0, 1, 2] -> bl, br, tl

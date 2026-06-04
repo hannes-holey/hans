@@ -88,7 +88,7 @@ class DomainDecomposition:
         boundary conditions.
     numerics : dict, optional
         Numerics configuration. When using FEM solver, the
-        Taylor-Hood P2 mass flux grid (ghost depth 2) is also initialised.
+        P2 mass flux grid (ghost depth 2) is also initialised.
     """
 
     _BND_TO_KEY = {'W': 'xW', 'E': 'xE', 'S': 'yS', 'N': 'yN'}
@@ -449,196 +449,18 @@ class DomainDecomposition:
     # Ghost cell handling
     # ---------------------------
 
-    def update_ghosts(self, exchange_specs, bc_specs, problem: "Problem") -> None:
-        """MPI ghost exchange + physical BC application.
-
-        Parameters
-        ----------
-        exchange_specs : list of (muGrid field, 'P1'|'P2')
-            Fields to exchange. 'P1' uses ghost depth 1, 'P2' uses ghost depth 2.
-        bc_specs : list of (numpy array, var_name, 'P1_cell'|'P1_nodal'|'P2_nodal')
-            Per-variable BC application. var_name is 'rho', 'jx', or 'jy'.
-            'P1_cell': depth-1 ghosts, cell-centered Dirichlet (mirror formula).
-            'P1_nodal': depth-1 ghosts, nodal Dirichlet (direct assignment).
-            'P2_nodal': depth-2 ghosts, nodal Dirichlet (both layers set).
-        problem : Problem
-            Used for BC callbacks and energy BC application.
-        """
-        for field, grid_type in exchange_specs:
-            if grid_type == 'P1':
-                self._exchange_ghosts(field)
-            else:
-                self._exchange_ghosts_P2(field)
-
-        for arr, var_name, disc in bc_specs:
-            self._apply_field_bcs(arr, var_name, disc, problem)
-
-        if problem.bEnergy:
-            self._exchange_ghosts(problem.fc.get_real_field('total_energy'))
-            self._apply_energy_bcs(problem)
-
-    def _exchange_ghosts(self, field) -> None:
+    def exchange_ghosts(self, field) -> None:
         """MPI ghost exchange for a single P1 field."""
         self._decomp.communicate_ghosts(field)
 
-    def _exchange_ghosts_P2(self, field) -> None:
+    def exchange_ghosts_P2(self, field) -> None:
         """MPI ghost exchange for a P2 field (ghost depth 2)."""
         self._decomp_P2.communicate_ghosts(field)
 
-    def _owns_boundary(self, bnd: str) -> bool:
+    def owns_boundary(self, bnd: str) -> bool:
         """Check if this rank owns the specified boundary."""
         return {'W': self.is_at_xW, 'E': self.is_at_xE,
                 'S': self.is_at_yS, 'N': self.is_at_yN}[bnd]
-
-    def _get_bc_slices(self, bnd: str):
-        """Return (ghost_slice, interior_slice) for the specified boundary (depth-1 ghosts)."""
-        slices = {
-            'W': ((slice(0, 1), slice(None)), (slice(1, 2), slice(None))),
-            'E': ((slice(-1, None), slice(None)), (slice(-2, -1), slice(None))),
-            'S': ((slice(None), slice(0, 1)), (slice(None), slice(1, 2))),
-            'N': ((slice(None), slice(-1, None)), (slice(None), slice(-2, -1))),
-        }
-        return slices[bnd]
-
-    def _get_bc_slices_P2(self, bnd: str):
-        """Return ((ghost1_slice, ghost2_slice), interior_slice) for depth-2 ghost layers.
-
-        ghost1 is the layer adjacent to the inner domain, ghost2 is the outermost layer.
-        interior is the innermost node (used for Neumann forwarding).
-        Both ghost layers are set for Dirichlet and Neumann BCs.
-        """
-        slices = {
-            'W': ((slice(1, 2), slice(None)), (slice(0, 1), slice(None)), (slice(2, 3), slice(None))),
-            'E': ((slice(-2, -1), slice(None)), (slice(-1, None), slice(None)), (slice(-3, -2), slice(None))),
-            'S': ((slice(None), slice(1, 2)), (slice(None), slice(0, 1)), (slice(None), slice(2, 3))),
-            'N': ((slice(None), slice(-2, -1)), (slice(None), slice(-1, None)), (slice(None), slice(-3, -2))),
-        }
-        ghost1, ghost2, interior = slices[bnd]
-        return (ghost1, ghost2), interior
-
-    def _apply_field_bcs(self, arr, var_name: str, disc: str, problem: "Problem") -> None:
-        """Apply BCs to a single field array.
-
-        Parameters
-        ----------
-        arr : numpy array
-            Field data including ghost layers. Shape (Nx_padded, Ny_padded) for
-            P1 fields, or (Nx_v_padded, Ny_v_padded) for P2 fields.
-        var_name : str
-            Variable name ('rho', 'jx', 'jy') for BC type lookup and callbacks.
-        disc : str
-            Discretization type:
-            'P1_cell'  — depth-1 ghosts, cell-centered Dirichlet (mirror formula).
-            'P1_nodal' — depth-1 ghosts, nodal Dirichlet (direct assignment).
-            'P2_nodal' — depth-2 ghosts, nodal Dirichlet (both layers set directly).
-        problem : Problem
-            Used for BC callbacks.
-        """
-        grid = self.grid
-        _VAR_IDX = {'rho': 0, 'jx': 1, 'jy': 2}
-        var_idx = _VAR_IDX[var_name]
-        bc_callbacks = getattr(problem, '_bc_callbacks', {})
-        is_P2 = (disc == 'P2_nodal')
-
-        for bnd in ['N', 'S', 'W', 'E']:
-            if not self._owns_boundary(bnd):
-                continue
-
-            key = self._BND_TO_KEY[bnd]
-            bc_types = grid[f'bc_{key}']
-
-            if all(b == 'P' for b in bc_types):
-                continue
-
-            bc_type = bc_types[var_idx]
-            if bc_type == 'P':
-                continue
-
-            callback = bc_callbacks.get(var_name, {}).get(bnd)
-
-            if is_P2:
-                (ghost1, ghost2), interior = self._get_bc_slices_P2(bnd)
-                if callback is not None:
-                    required_shape = arr[ghost1].shape
-                    ctx = BCContext(problem, required_shape, ghost1, interior,
-                                    self.xx_norm[ghost1], self.yy_norm[ghost1])
-                    bc_values = callback(ctx)
-                    if bc_values.shape != required_shape:
-                        if bc_values.shape[1] == required_shape[1]:
-                            zoom_factors = (required_shape[0] / bc_values.shape[0],
-                                            required_shape[1] / bc_values.shape[1])
-                            bc_values = zoom(bc_values, zoom_factors, order=1)
-                        else:
-                            raise ValueError(f"BC callback for {var_name}@{bnd}: "
-                                            f"got {bc_values.shape}, expected {required_shape}")
-                    arr[ghost1] = bc_values
-                    arr[ghost2] = bc_values
-                elif bc_type == 'D':
-                    bc_vals = grid.get(f'bc_{key}_D_val')
-                    target = bc_vals[var_idx] if isinstance(bc_vals, list) else bc_vals
-                    arr[ghost1] = target
-                    arr[ghost2] = target
-                elif bc_type == 'N':
-                    arr[ghost1] = arr[interior]
-                    arr[ghost2] = arr[interior]
-            else:
-                ghost, interior = self._get_bc_slices(bnd)
-                if callback is not None:
-                    required_shape = arr[ghost].shape
-                    ctx = BCContext(problem, required_shape, ghost, interior,
-                                    self.xx_norm[ghost], self.yy_norm[ghost])
-                    bc_values = callback(ctx)
-                    if bc_values.shape != required_shape:
-                        raise ValueError(f"BC callback for {var_name}@{bnd}: "
-                                         f"got {bc_values.shape}, expected {required_shape}")
-                    arr[ghost] = bc_values
-                elif bc_type == 'D':
-                    bc_vals = grid.get(f'bc_{key}_D_val')
-                    target = bc_vals[var_idx] if isinstance(bc_vals, list) else bc_vals
-                    if disc == 'P1_nodal':
-                        arr[ghost] = target
-                    else:
-                        arr[ghost] = 2.0 * target - arr[interior]
-                elif bc_type == 'N':
-                    arr[ghost] = arr[interior]
-
-    def _apply_energy_bcs(self, problem: "Problem") -> None:
-        """
-        Apply boundary conditions to energy field ghost cells.
-
-        Only applies BCs if this rank owns the corresponding boundary.
-        If the grid uses periodic BCs (all components), the energy field
-        uses the periodic ghost values from _exchange_ghosts() instead.
-        """
-        grid = self.grid
-        energy = problem.energy
-        rho = problem.q[0]
-        jx = problem.q[1]
-        jy = problem.q[2]
-
-        for bnd in ['W', 'E', 'S', 'N']:
-            if not self._owns_boundary(bnd):
-                continue
-
-            key = self._BND_TO_KEY[bnd]
-            bc_types = grid[f'bc_{key}']
-
-            # Skip if all periodic
-            if all(b == 'P' for b in bc_types):
-                continue
-
-            ghost, interior = self._get_bc_slices(bnd)
-            bc_type = getattr(energy, f'bc_{key}')
-            T_bc = getattr(energy, f'T_bc_{key}')
-
-            if bc_type == 'D':
-                ux = jx[ghost] / rho[ghost]
-                uy = jy[ghost] / rho[ghost]
-                kinetic = 0.5 * (ux**2 + uy**2)
-                energy.energy[ghost] = rho[ghost] * (energy.cv * T_bc + kinetic)
-            elif bc_type == 'N':
-                energy.energy[ghost] = energy.energy[interior].copy()
-
 
 
 class FFTDomainTranslation:

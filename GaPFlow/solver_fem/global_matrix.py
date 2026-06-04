@@ -34,7 +34,7 @@ def field_to_global(field_idx,
                     ):
     """Computes the unique global node index."""
 
-    decomp = grid_index._decomp
+    decomp = grid_index.decomp
     Nx_global_p = decomp.nb_domain_grid_pts[0]
     Nx_global_P2 = decomp.nb_domain_grid_pts_P2[0]
 

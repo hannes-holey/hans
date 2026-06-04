@@ -553,7 +553,7 @@ class Topography:
         d = self._decomp
 
         # 1. Sync h ghost cells from MPI neighbors
-        d._exchange_ghosts(self._topo_field)
+        d.exchange_ghosts(self._topo_field)
 
         # 2. At domain boundaries: linear extrapolation of h (overrides periodic wrap)
         if d.is_at_xW and not d.periodic_x:
@@ -570,7 +570,7 @@ class Topography:
         self.dh_dy[1:-1, 1:-1] = (self.h[1:-1, 2:] - self.h[1:-1, :-2]) / (2 * self.dy)
 
         # 4. Sync gradient ghost cells from MPI neighbors
-        d._exchange_ghosts(self._topo_field)
+        d.exchange_ghosts(self._topo_field)
 
         # 5. At domain boundaries: copy gradient from first inner line (overrides periodic wrap)
         if d.is_at_xW and not d.periodic_x:

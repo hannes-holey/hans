@@ -354,6 +354,7 @@ def sanitize_properties(d):
     # Body force (for periodic BC simulations)
     out['force_x'] = float(d.get('force_x', 0.0))
     out['force_y'] = float(d.get('force_y', 0.0))
+    out['slip_length'] = float(d.get('slip_length', 0.0))
 
     # EOS
     available_eos = ['DH', 'PL', 'vdW', 'MT', 'cubic', 'BWR', 'Bayada', 'MD']

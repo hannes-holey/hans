@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
     # Index masks
     print(f'\nP1 inner mask (rows=x, cols=y):')
-    print(gi.index_mask_inner_local_p)
+    print(gi.index_mask_inner_local_P1)
     print(f'\nP2 inner mask:')
     print(gi.index_mask_inner_local_P2)
 
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     print(f'# v->p block: jx -> mass')
     print(f'{"#"*60}')
 
-    TO_p = gi.sq_TO_inner_p
+    TO_p = gi.sq_TO_inner_P1
     FROM_P2 = gi.sq_FROM_padded_P2('jx')
     vp_pairs = collect_pairs(gi, P1, P2, TO_p, FROM_P2)
     print_connectivity(vp_pairs, 'mass', 'jx', Nx_p, Nx_P2)
@@ -181,6 +181,6 @@ if __name__ == '__main__':
     print(f'{"#"*60}')
 
     TO_P2 = gi.sq_TO_inner_P2
-    FROM_p = gi.sq_FROM_padded_p('rho')
+    FROM_p = gi.sq_FROM_padded_P1('rho')
     pv_pairs = collect_pairs(gi, P2, P1, TO_P2, FROM_p)
     print_connectivity(pv_pairs, 'mom_x', 'rho', Nx_P2, Nx_p)

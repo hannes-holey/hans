@@ -35,7 +35,7 @@ geometry:
 numerics:
     solver: {solver}
     dt: {dt}
-    tol: 1e-12
+    tol: 1e-13
     max_it: {max_it}
     adaptive: {adaptive}
     CFL: {CFL}

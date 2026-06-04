@@ -32,7 +32,7 @@ from muGrid import Field
 
 from .gp import GaussianProcessSurrogate
 from .gp import multi_in_single_out, multi_in_multi_out
-from .pressure import eos_pressure
+from .pressure import eos_pressure, eos_rho
 from .viscous import (stress_bottom, stress_top, stress_avg,
                       stress_top_xz, stress_bottom_xz,
                       stress_top_yz, stress_bottom_yz,
@@ -784,6 +784,7 @@ class Pressure(GaussianProcessSurrogate):
                     in_axes=0
                 )
             )
+            self.drho_dp = lambda p: 1.0 / self.dp_drho(eos_rho(p, self.prop))
 
 
 class Viscosity():
