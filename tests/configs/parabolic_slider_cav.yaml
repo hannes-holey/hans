@@ -51,7 +51,6 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.1
     p_init: 103338.25
@@ -59,11 +58,11 @@ fem_solver:
         cavitation: True
     physics:
         gap_shear: true
-        oss_theta: true
-        theta_stab: false
-    theta_stab_alpha: 0.001
-    oss_theta_alpha: 1.0
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        ad: false
+        oss_alpha: 1.0
+        ad_alpha: 0.001
     max_iter: 1
     R_norm_tol: 1e-9
     scaling: True

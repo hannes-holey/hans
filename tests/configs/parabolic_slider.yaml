@@ -50,12 +50,10 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.1
     max_iter: 5
     R_norm_tol: 1e-9
     scaling: False
-    dynamic: True
     physics:
         gap_shear: true

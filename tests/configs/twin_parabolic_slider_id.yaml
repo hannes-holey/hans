@@ -1,18 +1,3 @@
-# Twin identical parabolic slider — Fischer-Burmeister cavitation
-#
-# Reference: Giacopini et al. (2010), J. Tribology 132(4), 041702.
-#            Sahlin et al. (digitised data in tests/data/ref_twin_parabolic_slider_id.csv)
-#
-# Geometry: two identical symmetric parabolic sliders (hmax=50.2 µm, hmin=25.4 µm),
-#   each occupying half the domain. Lx = 0.1524 m, Ly = 0.004 m.
-#
-# Fluid: Dowson-Higginson EOS
-#   rho0 = 400 kg/m³  at  P0 = 1e5 Pa
-#   p_cav = 0 Pa  (vacuum cavitation, matching Giacopini)
-#   shear = 0.039 Pa·s
-#
-# BCs: p_in = 3.36414e5 Pa (west), p_out = 1e3 Pa (east), periodic in y
-
 options:
     output: /tmp/twin_parabolic_slider_id
     write_freq: 50
@@ -57,16 +42,15 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.04
     equations:
         cavitation: True
     physics:
         gap_shear: true
-        oss_theta: true
-    oss_theta_alpha: 2.0
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        oss_alpha: 2.0
     max_iter: 1
     R_norm_tol: 1e-9
     scaling: False

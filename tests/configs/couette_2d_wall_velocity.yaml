@@ -5,8 +5,8 @@
 grid:
     Lx: 0.5
     Ly: 0.25
-    Nx: 20
-    Ny: 50
+    Nx: 10
+    Ny: 200
     xW: ['P', 'P', 'P']
     xE: ['P', 'P', 'P']
     yS: ['N', 'D', 'D']
@@ -23,7 +23,7 @@ geometry:
 
 numerics:
     solver: fem
-    dt: 0.01
+    dt: 1.
     tol: 1e-10
     max_it: 1000
 
@@ -38,8 +38,6 @@ properties:
     force_y: 0.0
 
 fem_solver:
-    type: newton_alpha
-    dynamic: True
     alpha: 1.0
     R_norm_tol: 1e-8
     linear_solver: direct
@@ -52,5 +50,5 @@ fem_solver:
 
 options:
     output: /tmp/couette_2d_test
-    write_freq: 100
+    write_freq: 1
     save_output: False

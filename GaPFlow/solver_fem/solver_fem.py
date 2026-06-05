@@ -85,7 +85,7 @@ class FEMSolver:
         p = self.problem
         self.energy = p.fem_solver['equations']['energy']
         self.cavitation = p.fem_solver['equations']['cavitation']
-        self.oss = p.fem_solver['physics']['oss_theta']
+        self.oss = p.fem_solver['stabilization']['oss']
 
         self.variables = ['jx', 'jy', 'p']
         self.residuals = ['momentum_x', 'momentum_y', 'mass']
@@ -226,7 +226,7 @@ class FEMSolver:
 
             # scalars
             ctx['dt'] = lambda: p.numerics['dt']
-            ctx['theta_stab_alpha'] = lambda: p.fem_solver['theta_stab_alpha']
+            ctx['ad_alpha'] = lambda: p.fem_solver['stabilization']['ad_alpha']
             ctx['p_cav'] = lambda: p.prop['p_cav']
             ctx['fb_p_ref'] = lambda: p.prop['P0']
             ctx['dx'] = lambda: p.grid['dx']
@@ -262,8 +262,6 @@ class FEMSolver:
 
         if self.problem.decomp.rank == 0:
             p_ref = self.scaling.char_scales['p']
-            print(f"[FEMSolver] Using reference pressure p_ref = "
-                  f"{p_ref:.3e} Pa for scaling")
 
         debug_from = self.problem.fem_solver['newton_debug']
         if debug_from is not None:
@@ -430,7 +428,6 @@ class FEMSolver:
         R_norm = self.get_R_norm_global(R)
         if self.rank == 0:
             self.R_norm_history[-1].append(R_norm)
-            print(f'{R_norm}')
         if R_norm < self.tol and it > 0:
             return True
         return False
@@ -530,16 +527,17 @@ class FEMSolver:
     def print_status_header(self) -> None:
         p = self.problem
         if p.options.get('print_progress') and p.decomp.rank == 0:
-            print(75 * '-')
+            print(78 * '-')
             print(f"{'Step':<6s} {'Timestep':<12s} {'Time':<12s} "
-                  f"{'Iter':<6s} {'Conv. Time':<12s} {'Residual':<12s}")
-            print(75 * '-')
+                  f"{'Iter':<6s} {'Conv. Time':<12s} {'Residual':<12s} {'|R| Newton':<14s}")
+            print(78 * '-')
         if p.options.get('save_output'):
             p.write(params=False)
 
     def print_status(self, scalars=None) -> None:
         p = self.problem
         if scalars and p.options.get('print_progress') and p.decomp.rank == 0:
+            R_newton = self.R_norm_history[-1][-1]
             print(f"{p.step:<6d} {p.dt:<12.4e} {p.simtime:<12.4e} "
                   f"{self.inner_iterations:<6d} "
-                  f"{self.time_inner:<12.4e} {p.residual:<12.4e}")
+                  f"{self.time_inner:<12.4e} {p.residual:<12.4e} {R_newton:<14.4e}")

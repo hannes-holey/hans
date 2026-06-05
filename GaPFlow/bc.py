@@ -1,6 +1,6 @@
 #
 # Copyright 2025 Hannes Holey
-#           2025 Christoph Huber
+#           2026 Christoph Huber
 #
 # ### MIT License
 #
@@ -213,11 +213,6 @@ class BoundarySpec:
 
 class GhostUpdater:
     """Generalized ghost exchange + BC application.
-
-    Parameters
-    ----------
-    decomp : DomainDecomposition
-    problem : Problem
     """
 
     def __init__(self, decomp: "DomainDecomposition",

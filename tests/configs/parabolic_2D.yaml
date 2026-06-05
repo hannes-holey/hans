@@ -1,13 +1,3 @@
-# 2D Parabolic slider bearing — Fischer-Burmeister cavitation
-#
-# Geometry: parabolic gap (hmin=2.54e-5 m, hmax=5.08e-5 m), U=0.7 m/s
-# Square domain, Dirichlet p=101325 Pa on all four boundaries.
-#
-# Fluid: Dowson-Higginson EOS
-#   rho0 = 877.7007 kg/m³  at  P0 = 101325 Pa
-#   p_cav = 0 Pa
-#   shear = 0.039 Pa·s
-
 options:
     output: /tmp/parabolic_2D
     write_freq: 10
@@ -53,16 +43,15 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.2
     equations:
         cavitation: True
     physics:
         gap_shear: true
-        oss_theta: true
-    oss_theta_alpha: 2.0
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        oss_alpha: 2.0
     max_iter: 1
     R_norm_tol: 1e-9
     scaling: False

@@ -27,5 +27,7 @@ and the final tutorial introduces elastic deformation of the solid surfaces.
 	12_fem_2d_examples.ipynb
 	13_solver_comparison.ipynb
 	14_fem_2d_analytic.ipynb
+	15_fem_cavitation_examples.ipynb
 	A_config.ipynb
 	B_scripting.ipynb
+	C_P2P1_assembly_doc.md

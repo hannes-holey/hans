@@ -39,7 +39,6 @@ properties:
     alpha: 0.
 
 fem_solver:
-    type: newton_alpha
     R_norm_tol: 1e-10
     physics:
         pspg: false

@@ -34,4 +34,3 @@ properties:
     rho0: 1.1853
     alpha: 0.
 fem_solver:
-    type: newton_alpha

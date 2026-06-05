@@ -784,3 +784,198 @@ def plot_lid_driven_cavity(problem, title=None):
     fig.suptitle(title, fontsize=14, fontweight='bold')
 
     return fig
+
+
+def plot_poiseuille_validation(problem):
+    """Compare Poiseuille simulation against the analytical parabolic profile.
+
+    Analytical solution: u(y) = (rho * f_x) / (2*mu) * y * (Ly - y),
+    with Dirichlet BCs enforced at cell faces via the ghost-cell mirror formula.
+
+    Prints the L2 relative error and shows a 3-panel figure:
+    velocity profile, error profile, and 2D velocity field.
+    """
+    rho = problem.q[0][1:-1, 1:-1]
+    jx = problem.q[1][1:-1, 1:-1]
+    vx = (jx / rho).mean(axis=0)
+
+    Lx = problem.grid['Lx']
+    Ly, Ny = problem.grid['Ly'], problem.grid['Ny']
+    Nx = problem.grid['Nx']
+    dy = Ly / Ny
+    mu = problem.prop['shear']
+    f_x = problem.prop['force_x']
+    rho_m = float(rho.mean())
+
+    y = np.linspace(dy / 2, Ly - dy / 2, Ny)
+    u_analytical = (rho_m * f_x) / (2 * mu) * y * (Ly - y)
+
+    l2_error = np.sqrt(((vx - u_analytical) ** 2).mean()) / u_analytical.max()
+    print(f"L2 relative error: {l2_error:.2e}")
+
+    x = np.linspace(dy / 2, Lx - dy / 2, Nx)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4), constrained_layout=True)
+
+    me = max(1, len(vx) // 80)
+
+    axes[0].plot(u_analytical, y, color='#2F83B4', lw=2, label='Analytical')
+    axes[0].plot(vx, y, color='#B5121B', ls='none', marker='x', ms=5, markevery=me, label='Simulated')
+    axes[0].set(xlabel='Velocity u [m/s]', ylabel='y [m]', title='Velocity Profile')
+    axes[0].legend()
+
+    rel_error = np.abs(vx - u_analytical) / u_analytical.max() * 100
+    axes[1].plot(rel_error, y, color='#B5121B', lw=2)
+    axes[1].set(xlabel='Relative Error [%]', ylabel='y [m]', title='Error Profile')
+    axes[1].ticklabel_format(axis='x', style='scientific', scilimits=(-2, 2))
+
+    im = axes[2].pcolormesh(X, Y, jx / rho, cmap='viridis', shading='auto')
+    axes[2].set(xlabel='x [m]', ylabel='y [m]', title='$v_x$ field')
+    plt.colorbar(im, ax=axes[2], label='[m/s]')
+
+    fig.suptitle('2D Poiseuille Flow Validation', fontweight='bold')
+    plt.show()
+
+
+def plot_couette_validation(problem):
+    """Compare Couette simulation against the analytical linear profile.
+
+    Analytical solution: u(y) = U_wall * y / Ly, where U_wall is inferred
+    from the north Dirichlet BC value divided by mean density.
+
+    Prints the L2 relative error and shows a 3-panel figure:
+    velocity profile, error profile, and 2D velocity field.
+    """
+    rho = problem.q[0][1:-1, 1:-1]
+    jx = problem.q[1][1:-1, 1:-1]
+    vx = (jx / rho).mean(axis=0)
+
+    Lx = problem.grid['Lx']
+    Ly, Ny = problem.grid['Ly'], problem.grid['Ny']
+    Nx = problem.grid['Nx']
+    dy = Ly / Ny
+
+    jx_bc_N = problem.grid['bc_yN_D_val'][1]
+    U_wall = jx_bc_N / float(rho.mean())
+
+    y = np.linspace(dy / 2, Ly - dy / 2, Ny)
+    u_analytical = U_wall * y / Ly
+
+    l2_error = np.sqrt(((vx - u_analytical) ** 2).mean()) / u_analytical.max()
+    print(f"L2 relative error: {l2_error:.2e}")
+
+    x = np.linspace(dy / 2, Lx - dy / 2, Nx)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4), constrained_layout=True)
+
+    me = max(1, len(vx) // 80)
+
+    axes[0].plot(u_analytical, y, color='#2F83B4', lw=2, label='Analytical')
+    axes[0].plot(vx, y, color='#B5121B', ls='none', marker='x', ms=5, markevery=me, label='Simulated')
+    axes[0].set(xlabel='Velocity u [m/s]', ylabel='y [m]', title='Velocity Profile')
+    axes[0].legend()
+
+    rel_error = np.abs(vx - u_analytical) / u_analytical.max() * 100
+    axes[1].plot(rel_error, y, color='#B5121B', lw=2)
+    axes[1].set(xlabel='Relative Error [%]', ylabel='y [m]', title='Error Profile')
+    axes[1].ticklabel_format(axis='x', style='scientific', scilimits=(-2, 2))
+
+    im = axes[2].pcolormesh(X, Y, jx / rho, cmap='viridis', shading='auto')
+    axes[2].set(xlabel='x [m]', ylabel='y [m]', title='$v_x$ field')
+    plt.colorbar(im, ax=axes[2], label='[m/s]')
+
+    fig.suptitle('2D Couette Flow Validation', fontweight='bold')
+    plt.show()
+
+
+def plot_bernoulli_validation(problem,
+                              x_ramp_start=0.03, x_ramp_end=0.07,
+                              h_inlet=1.0e-3, h_throat=0.5e-3):
+    """Compare Bernoulli venturi simulation against mass-conservation velocity
+    and Bernoulli pressure predictions.
+
+    Parameters
+    ----------
+    problem : Problem
+        GaPFlow Problem instance after simulation.
+    x_ramp_start, x_ramp_end : float
+        x-coordinates [m] of the start and end of the venturi contraction.
+    h_inlet, h_throat : float
+        Gap heights [m] at inlet and throat.
+
+    Prints velocity ratio and pressure drop errors, shows a 2×2 figure:
+    gap height, velocity, pressure, and momentum flux.
+    """
+    from GaPFlow.models.pressure import eos_pressure
+
+    rho_b = problem.q[0][1:-1, 1:-1]
+    jx_b = problem.q[1][1:-1, 1:-1]
+    h_b = problem.topo.h[1:-1, 1:-1]
+    j_center = rho_b.shape[1] // 2
+
+    dx = problem.grid['dx']
+    x_b = np.arange(rho_b.shape[0]) * dx + dx / 2
+    vx_b = jx_b[:, j_center] / rho_b[:, j_center]
+    p_b = np.asarray(eos_pressure(rho_b[:, j_center], problem.prop))
+    rho0 = problem.prop['rho0']
+
+    v_inlet = float(vx_b[x_b < x_ramp_start].mean())
+
+    # Theory: mass conservation + Bernoulli
+    v_theory = v_inlet * h_inlet / h_b[:, j_center]
+    p_ref = float(p_b[-1])
+    v_ref = v_inlet * h_inlet / float(h_b[-1, j_center])
+    p_theory = p_ref + 0.5 * rho0 * (v_ref ** 2 - v_theory ** 2)
+
+    # Error metrics over flat inlet and throat regions
+    x_throat = (x_ramp_start + x_ramp_end) / 2
+    inlet_mask = x_b < x_ramp_start
+    throat_mask = np.abs(x_b - x_throat) < (x_ramp_end - x_ramp_start) * 0.1
+
+    v_in_sim = float(vx_b[inlet_mask].mean())
+    v_throat_sim = float(vx_b[throat_mask].mean())
+    p_in_sim = float(p_b[inlet_mask].mean())
+    p_throat_sim = float(p_b[throat_mask].mean())
+
+    v_throat_theory = v_inlet * h_inlet / h_throat
+    dp_theory = 0.5 * rho0 * (v_throat_theory ** 2 - v_inlet ** 2)
+    dp_sim = p_in_sim - p_throat_sim
+
+    print(f"Velocity at throat: {v_throat_sim:.2f} m/s (theory: {v_throat_theory:.2f} m/s)")
+    print(f"Velocity ratio: {v_throat_sim / v_in_sim:.3f} (theory: {v_throat_theory / v_inlet:.3f})")
+    print(f"Pressure drop: {dp_sim:.1f} Pa (theory: {dp_theory:.1f} Pa)")
+    print(f"Pressure drop error: {abs(dp_sim - dp_theory) / dp_theory * 100:.2f}%")
+
+    x_mm = x_b * 1000
+    x_rs, x_re = x_ramp_start * 1000, x_ramp_end * 1000
+
+    def _vlines(ax):
+        ax.axvline(x_rs, color='gray', ls='--', alpha=0.5)
+        ax.axvline(x_re, color='gray', ls='--', alpha=0.5)
+
+    fig, axes = plt.subplots(2, 2, figsize=(7, 5), facecolor='white', constrained_layout=True)
+
+    axes[0, 0].plot(x_mm, h_b[:, j_center] * 1000, 'b-', lw=2)
+    _vlines(axes[0, 0])
+    axes[0, 0].set(xlabel='x [mm]', ylabel='h [mm]', title='Gap Height')
+
+    axes[0, 1].plot(x_mm, vx_b, 'b-', lw=2, label='Simulation')
+    axes[0, 1].plot(x_mm, v_theory, 'r--', lw=1.5, label='Theory')
+    _vlines(axes[0, 1])
+    axes[0, 1].set(xlabel='x [mm]', ylabel='v [m/s]', title='Velocity')
+    axes[0, 1].legend()
+
+    axes[1, 0].plot(x_mm, p_b / 1000, 'b-', lw=2, label='Simulation')
+    axes[1, 0].plot(x_mm, p_theory / 1000, 'r--', lw=1.5, label='Theory')
+    _vlines(axes[1, 0])
+    axes[1, 0].set(xlabel='x [mm]', ylabel='p [kPa]', title='Pressure')
+    axes[1, 0].legend()
+
+    axes[1, 1].plot(x_mm, jx_b[:, j_center], 'b-', lw=2)
+    _vlines(axes[1, 1])
+    axes[1, 1].set(xlabel='x [mm]', ylabel='$j_x$ [kg/(m$^2$s)]', title='Momentum Flux')
+
+    fig.suptitle('Bernoulli Venturi Validation', fontweight='bold')
+    plt.show()

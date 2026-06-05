@@ -21,7 +21,7 @@ For the mass flux mesh, we have, as stated in the beginning, $n_j = 2*n_\rho - 1
 
 For our example, this means that our `SW` subdomain holds 10 x 10 mass flux nodes (14 x 14 on padded subdomain), `SE` subdomain holds 9 x 10 mass flux nodes (13 x 14 on padded subdomain), `NW` subdomain holds 10 x 9 mass flux nodes, and `NE` subdomain holds 9 x 9 mass flux nodes. Very important: this is non-periodic. In the fully periodic case, each subdomain would hold 10 x 10 mass flux nodes (all extended on the `E` and `N` side).
 
-As already hinted at, the mass flux domain must possess a ghost cell depth of two in order to capture all contributions from nodes living on other processes. This has implications on the boundary condition (BC) treatment. But as far as I can see, we can apply the same methodology as in the earlier approach. Note here - since this often was a source of confusion: The ghost nodes implicitly enforce the boundary conditions. Residuals are **not** evaluated on the ghost nodes, they just **contribute** to the `inner` node residuals. This has the advantage, that we do not need to delete and overwrite rows in our equations system. This has a special implication for the Neumann boundary condition, because the ghost node values `orient` themselves at the last inner node. Therefore, we need to catch in the tangential matrix the fact that with variation of the inner node, also the Neumann ghost nodes vary (Neumann index forwarding).
+As already hinted at, the mass flux domain must possess a ghost cell depth of two in order to capture all contributions from nodes living on other processes. This has implications on the boundary condition (BC) treatment. But as far as I can see, we can apply the same methodology as in the earlier approach. Note: The ghost nodes implicitly enforce the boundary conditions. Residuals are **not** evaluated on the ghost nodes, they just **contribute** to the `inner` node residuals. This has the advantage, that we do not need to delete and overwrite rows in our equations system. And this has a special implication for the Neumann boundary condition, because the ghost node values `orient` themselves (value-wise) at the last inner node. Therefore, we need to catch in the tangential matrix the fact that with variation of the inner node, also the Neumann ghost nodes vary (Neumann index forwarding).
 
 - Dirichlet: set all nodes with the distance $h_j$ and $2*h_j$ to the Dirichlet value. Both ghost layers are set to the Dirichlet value in `_apply_mass_flux_bcs`. This does not impose an additional Neumann condition — confirmed in Phase 1 testing.
 - Neumann: Nothing changes, just that we need to calculate the Neumann values for both $h_j, 2*h_j$ ghost nodes. Also, both nodes need to be reference by the adjacent inner node in the tangential matrix (Neumann index forwarding).
@@ -100,7 +100,7 @@ The count formula: for mass flux index k with r = k // cols_v, c = k % cols_v, t
 
 # Assembly
 
-The assembly is restructured to be more memory-efficient, while - hopefully - keeping performance on a similar level.
+The assembly is restructured to be more memory-efficient, while keeping performance on a similar level.
 
 First of all, I want to keep the term-based definition of the residuals. In the original approach, we looped through all terms and for each term, looped through its dependent field variables. So we did the assembly for individual term-dependent variable combination.
 

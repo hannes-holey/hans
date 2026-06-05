@@ -41,7 +41,6 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.01
     physics:

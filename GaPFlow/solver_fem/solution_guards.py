@@ -29,7 +29,6 @@ from mpi4py import MPI
 from typing import TYPE_CHECKING
 
 from ..models.pressure import eos_drho_dp
-from .newton_debug import log_jacobian_block_norms
 from .scaling import build_scaling_from_blocks
 
 if TYPE_CHECKING:
@@ -375,13 +374,7 @@ def solve_linear_system(M: np.ndarray, R: np.ndarray,
             solver.scaling = build_scaling_from_blocks(
                 M, solver.variables, solver.residuals, solver.assembly,
                 n_iter=fem_solver['scaling_ruiz_iter'])
-            if rank == 0:
-                log_jacobian_block_norms(solver.assembly, solver.scaling,
-                                         M_coo=M, scaled=True)
         M_scaled, R_scaled = solver.scaling.scale_system(M, R)
-        R_scaled_norm = solver.get_R_norm_global(R_scaled)
-        if rank == 0:
-            print(f'  R_scaled={R_scaled_norm:.6e}')
         solver.linear_solver.assemble(M_scaled, R_scaled)
         dq = solver.scaling.unscale_solution(solver.linear_solver.solve())
     else:

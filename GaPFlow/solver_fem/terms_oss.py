@@ -29,7 +29,7 @@ from .terms import Term
 
 
 # ---------------------------------------------------------------------------
-# R_oss residual — projection equation: (η_h, a_vec·∇θ_h) − (η_h, ξ_h) = 0
+# R_oss residual — projection equation
 # ---------------------------------------------------------------------------
 
 R_OSS_advx = Term(
@@ -62,7 +62,7 @@ R_OSS_proj = Term(
     der_funs=[lambda ctx: lambda xi: np.full_like(xi, -1.0)])
 
 # ---------------------------------------------------------------------------
-# mass residual — Laplacian-type terms: +(a_vec·∇q_h, τ·a_vec·∇θ_h)
+# mass conservation residual
 # ---------------------------------------------------------------------------
 
 R_OSS_mass_xx = Term(
@@ -108,11 +108,6 @@ R_OSS_mass_yx = Term(
     der_funs=[lambda ctx: lambda theta: -ctx['tau_a_x']() * ctx['a_vec_y']()],
     trial_deriv='y',
     test_deriv='x')
-
-
-# ---------------------------------------------------------------------------
-# mass residual — correction terms: −(a_vec·∇q_h, τ·ξ_h)
-# ---------------------------------------------------------------------------
 
 R_OSS_corrx = Term(
     name='R_OSS_corrx',

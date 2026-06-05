@@ -37,7 +37,6 @@ properties:
     rho0: 1.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     R_norm_tol: 1e-8
     equations:

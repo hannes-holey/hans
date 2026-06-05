@@ -46,8 +46,7 @@ properties:
     C2: 1.23
 
 fem_solver:
-    type: newton_alpha
-    alpha: 0.05
+    alpha: 0.1
     R_norm_tol: 1.0e-10
     linear_solver: direct
     max_iter: 10

@@ -154,7 +154,7 @@ R_fb = Term(
 
 
 # -----------------------------------------------------------------------------
-# Theta-diffusion stabilization (theta_stab: true)
+# Artificial diffusion stabilization (stabilization.ad: true)
 # -----------------------------------------------------------------------------
 
 R1STx = Term(
@@ -163,9 +163,9 @@ R1STx = Term(
     res='mass',
     dep_vars=['theta'],
     dep_vals=['dp_drho', 'jx', 'jy', 'd_dx_theta'],
-    fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+    fun=lambda ctx: lambda theta: -(ctx['ad_alpha']() * ctx['dp_drho']()
                                     * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * ctx['d_dx_theta']()),
-    der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+    der_funs=[lambda ctx: lambda theta: -(ctx['ad_alpha']() * ctx['dp_drho']()
                                           * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30))],
     trial_deriv='x',
     test_deriv='x')
@@ -176,9 +176,9 @@ R1STy = Term(
     res='mass',
     dep_vars=['theta'],
     dep_vals=['dp_drho', 'jx', 'jy', 'd_dy_theta'],
-    fun=lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+    fun=lambda ctx: lambda theta: -(ctx['ad_alpha']() * ctx['dp_drho']()
                                     * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30) * ctx['d_dy_theta']()),
-    der_funs=[lambda ctx: lambda theta: -(ctx['theta_stab_alpha']() * ctx['dp_drho']()
+    der_funs=[lambda ctx: lambda theta: -(ctx['ad_alpha']() * ctx['dp_drho']()
                                           * np.sqrt(ctx['jx']()**2 + ctx['jy']()**2 + 1e-30))],
     trial_deriv='y',
     test_deriv='y')

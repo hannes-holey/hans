@@ -44,6 +44,34 @@ def _geo_grid_2d(Lx, Ly, Nx, Ny):
     return _geo_grid_1d(Lx, Nx), _geo_grid_1d(Ly, Ny)
 
 
+def regen_bernoulli_venturi(problem):
+    """Symmetric venturi topography for the Bernoulli validation case.
+
+    Cosine-blended contraction from h_inlet=1 mm to h_throat=0.5 mm over
+    x ∈ [30 mm, 70 mm], with a flat throat half-width of 5 mm centred at
+    x=50 mm. Constant in y.
+    """
+    H_INLET, H_THROAT = 1.0e-3, 0.5e-3
+    X_RAMP_START, X_RAMP_END = 0.03, 0.07
+    THROAT_HALF_WIDTH = 0.005
+
+    g = problem.grid
+    xx = problem.topo.xx
+
+    x_mid = (X_RAMP_START + X_RAMP_END) / 2
+    ramp_len = x_mid - THROAT_HALF_WIDTH - X_RAMP_START
+
+    dist = np.clip(np.abs(xx - x_mid) - THROAT_HALF_WIDTH, 0, ramp_len)
+    xi = dist / ramp_len
+
+    h = np.where(
+        (xx >= X_RAMP_START) & (xx <= X_RAMP_END),
+        (H_INLET + H_THROAT) / 2 - (H_INLET - H_THROAT) / 2 * np.cos(np.pi * xi),
+        H_INLET,
+    )
+    problem.topo.set_mapped_height(h)
+
+
 def regen_conv_slider_pocket_1d(problem, Nx_geo=None):
     """Convergent slider with pocket — 1D (Bertocchi 2013).
 
@@ -84,7 +112,7 @@ def regen_conv_slider_pocket_1d_giacopini(problem, Nx_geo=None):
     hmin = 1.0e-6
     K = 0.01
     hmax = K*hmin + hmin
-    h_pock = 1.0 * hmin        # 5 µm
+    h_pock = 5.0 * hmin        # 5 µm
     x_p_start, x_p_end = 2.0e-3, 5.0e-3
 
     h_geo = hmax - (hmax - hmin) * x_geo / Lx

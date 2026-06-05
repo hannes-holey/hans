@@ -539,9 +539,6 @@ def sanitize_md(d):
 def sanitize_fem_solver(d):
 
     out = {}
-    out['dynamic'] = bool(d.get('dynamic', True))
-    out['type'] = str(d.get('type', 'newton_alpha'))
-
     out['max_iter'] = int(d.get('max_iter', 100))
     out['R_norm_tol'] = float(d.get('R_norm_tol', 1e-6))
     # newton_relax: support both new name and legacy 'alpha'
@@ -570,13 +567,15 @@ def sanitize_fem_solver(d):
         'thermal_diffusion': bool(physics.get('thermal_diffusion', True)),
         'wall_heat_balance': bool(physics.get('wall_heat_balance', True)),
         'wall_shear_work': bool(physics.get('wall_shear_work', True)),
-        # Numerical
-        'theta_stab': bool(physics.get('theta_stab', False)),
-        'oss_theta': bool(physics.get('oss_theta', False)),
     }
 
-    out['theta_stab_alpha'] = float(d.get('theta_stab_alpha', 0.0))
-    out['oss_theta_alpha'] = float(d.get('oss_theta_alpha', 0.0))
+    stab = d.get('stabilization', {})
+    out['stabilization'] = {
+        'ad': bool(stab.get('ad', False)),
+        'oss': bool(stab.get('oss', False)),
+        'ad_alpha': float(stab.get('ad_alpha', 0.0)),
+        'oss_alpha': float(stab.get('oss_alpha', 1.0)),
+    }
     out['oss_correction_alpha'] = float(d.get('oss_correction_alpha', 1.0))
 
     if 'p_init' in d:
@@ -591,10 +590,8 @@ def sanitize_fem_solver(d):
     out['equations']['term_list'] = d.get('equations', {}).get('term_list', None)
     out['equations']['cavitation'] = bool(d.get('equations', {}).get('cavitation', False))
 
-    out['log_jacobian_block_norms'] = bool(d.get('log_jacobian_block_norms', False))
     out['scaling_update_interval'] = int(d.get('scaling_update_interval', 100))
     out['scaling_ruiz_iter'] = int(d.get('scaling_ruiz_iter', 10))
-    out['nodal_diagnostics'] = bool(d.get('nodal_diagnostics', False))
     out['line_search'] = bool(d.get('line_search', False))
     out['line_search_alpha_min'] = float(d.get('line_search_alpha_min', 1e-12))
     out['theta_min'] = float(d.get('theta_min', 2.220446049250313e-16))

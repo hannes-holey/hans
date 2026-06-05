@@ -37,9 +37,7 @@ properties:
     alpha: 0.
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
-    dynamic: True
     R_norm_tol: 1e-11
     physics:
         pspg: true

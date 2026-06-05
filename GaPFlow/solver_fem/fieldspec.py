@@ -1,7 +1,32 @@
+#
+# Copyright 2026 Christoph Huber
+#
+# ### MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
 from dataclasses import dataclass
 
 
 def resolve_source(problem, source: str):
+    """Given a source string like 'topo.h' or 'geo["U_bot"]',
+    resolve it to the actual object."""
     obj = problem
     for part in source.split('.'):
         if '[' in part:
@@ -55,7 +80,6 @@ RES_GRID = {
 NODAL_P1 = ['rho', 'p']
 NODAL_P2 = ['jx', 'jy']
 
-
 # Shared arg lists for groups of computed fields with identical inputs
 _ARGS_XZ  = ['rho', 'jx', 'jy', 'h', 'dh_dx', 'U_bot', 'V_bot', 'U_top', 'V_top', 'Ls', 'theta', 'd_dx_p', 'd_dy_p']
 _ARGS_YZ  = ['rho', 'jx', 'jy', 'h', 'dh_dy', 'U_bot', 'V_bot', 'U_top', 'V_top', 'Ls', 'theta', 'd_dx_p', 'd_dy_p']
@@ -87,29 +111,29 @@ QUAD_FIELD_REGISTRY = {
     # ------------------------------------------------------------------
     # computed: physics method called with quad field arguments
     # ------------------------------------------------------------------
-    'drho_dp':   {'type': 'computed', 'source': 'pressure.drho_dp',   'args': ['p']},
+    'drho_dp':   {'type': 'computed', 'source': 'pressure.drho_dp',   'args': ['rho']},
     'dp_drho':   {'type': 'computed', 'source': 'pressure.dp_drho',   'args': ['rho']},
     'd2p_drho2': {'type': 'computed', 'source': 'pressure.d2p_drho2', 'args': ['rho']},
 
     # wall stress xz
-    'tau_xz':             {'type': 'computed', 'source': 'wall_stress_xz.tau_xz',             'args': _ARGS_XZ},
-    'dtau_xz_drho':       {'type': 'computed', 'source': 'wall_stress_xz.dtau_xz_drho',       'args': _ARGS_XZ},
-    'dtau_xz_djx':        {'type': 'computed', 'source': 'wall_stress_xz.dtau_xz_djx',        'args': _ARGS_XZ},
-    'dtau_xz_dtheta':     {'type': 'computed', 'source': 'wall_stress_xz.dtau_xz_dtheta',     'args': _ARGS_XZ},
-    'tau_xz_bot':         {'type': 'computed', 'source': 'wall_stress_xz.tau_xz_bot',         'args': _ARGS_XZ},
-    'dtau_xz_bot_drho':   {'type': 'computed', 'source': 'wall_stress_xz.dtau_xz_bot_drho',   'args': _ARGS_XZ},
-    'dtau_xz_bot_djx':    {'type': 'computed', 'source': 'wall_stress_xz.dtau_xz_bot_djx',    'args': _ARGS_XZ},
-    'dtau_xz_bot_dtheta': {'type': 'computed', 'source': 'wall_stress_xz.dtau_xz_bot_dtheta', 'args': _ARGS_XZ},
+    'tau_xz':             {'type': 'computed', 'source': 'wall_stress_xz.tau',             'args': _ARGS_XZ},
+    'dtau_xz_drho':       {'type': 'computed', 'source': 'wall_stress_xz.dtau_drho',       'args': _ARGS_XZ},
+    'dtau_xz_djx':        {'type': 'computed', 'source': 'wall_stress_xz.dtau_djx',        'args': _ARGS_XZ},
+    'dtau_xz_dtheta':     {'type': 'computed', 'source': 'wall_stress_xz.dtau_dtheta',     'args': _ARGS_XZ},
+    'tau_xz_bot':         {'type': 'computed', 'source': 'wall_stress_xz.tau_bot',         'args': _ARGS_XZ},
+    'dtau_xz_bot_drho':   {'type': 'computed', 'source': 'wall_stress_xz.dtau_bot_drho',   'args': _ARGS_XZ},
+    'dtau_xz_bot_djx':    {'type': 'computed', 'source': 'wall_stress_xz.dtau_bot_djx',    'args': _ARGS_XZ},
+    'dtau_xz_bot_dtheta': {'type': 'computed', 'source': 'wall_stress_xz.dtau_bot_dtheta', 'args': _ARGS_XZ},
 
     # wall stress yz
-    'tau_yz':             {'type': 'computed', 'source': 'wall_stress_yz.tau_yz',             'args': _ARGS_YZ},
-    'dtau_yz_drho':       {'type': 'computed', 'source': 'wall_stress_yz.dtau_yz_drho',       'args': _ARGS_YZ},
-    'dtau_yz_djy':        {'type': 'computed', 'source': 'wall_stress_yz.dtau_yz_djy',        'args': _ARGS_YZ},
-    'dtau_yz_dtheta':     {'type': 'computed', 'source': 'wall_stress_yz.dtau_yz_dtheta',     'args': _ARGS_YZ},
-    'tau_yz_bot':         {'type': 'computed', 'source': 'wall_stress_yz.tau_yz_bot',         'args': _ARGS_YZ},
-    'dtau_yz_bot_drho':   {'type': 'computed', 'source': 'wall_stress_yz.dtau_yz_bot_drho',   'args': _ARGS_YZ},
-    'dtau_yz_bot_djy':    {'type': 'computed', 'source': 'wall_stress_yz.dtau_yz_bot_djy',    'args': _ARGS_YZ},
-    'dtau_yz_bot_dtheta': {'type': 'computed', 'source': 'wall_stress_yz.dtau_yz_bot_dtheta', 'args': _ARGS_YZ},
+    'tau_yz':             {'type': 'computed', 'source': 'wall_stress_yz.tau',             'args': _ARGS_YZ},
+    'dtau_yz_drho':       {'type': 'computed', 'source': 'wall_stress_yz.dtau_drho',       'args': _ARGS_YZ},
+    'dtau_yz_djy':        {'type': 'computed', 'source': 'wall_stress_yz.dtau_djy',        'args': _ARGS_YZ},
+    'dtau_yz_dtheta':     {'type': 'computed', 'source': 'wall_stress_yz.dtau_dtheta',     'args': _ARGS_YZ},
+    'tau_yz_bot':         {'type': 'computed', 'source': 'wall_stress_yz.tau_bot',         'args': _ARGS_YZ},
+    'dtau_yz_bot_drho':   {'type': 'computed', 'source': 'wall_stress_yz.dtau_bot_drho',   'args': _ARGS_YZ},
+    'dtau_yz_bot_djy':    {'type': 'computed', 'source': 'wall_stress_yz.dtau_bot_djy',    'args': _ARGS_YZ},
+    'dtau_yz_bot_dtheta': {'type': 'computed', 'source': 'wall_stress_yz.dtau_bot_dtheta', 'args': _ARGS_YZ},
 
     # temperature and derivatives
     'T':       {'type': 'computed', 'source': 'energy.T_func',    'args': _ARGS_T},

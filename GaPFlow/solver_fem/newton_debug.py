@@ -176,14 +176,7 @@ class NewtonDebugger:
             res_name = self.term_res[term_name]
             block = R_term[self.res_slices[res_name]]
             print(f"    {term_name:12s}  min={block.min():.3e}  max={block.max():.3e}  ||.||={np.linalg.norm(block):.3e}")
-            if term_name == 'R24x':
-                grid = _RES_GRID[res_name]
-                Nx = self.Nx_P2 if grid == 'P2' else self.Nx_p
-                Ny = self.Ny_P2 if grid == 'P2' else self.Ny_p
-                field = block.reshape(Nx, Ny, order='F')
-                print(f"    R24x field[:8, :] (x=0..7, all y):")
-                print(np.array2string(field[:8, :], precision=3, suppress_small=True))
-
+    
     def _to_2d(self, vec, name, is_residual):
         """Reshape a named block from the flat vector to a 2D (Nx, Ny) array."""
         slices = self.res_slices if is_residual else self.sol_slices
@@ -317,7 +310,7 @@ class NewtonDebugger:
         All residual contributions are taken directly from R_per_term (the exact
         assembled values) rather than recomputed from quad fields.
         """
-        alpha = self.problem.fem_solver.get('oss_theta_alpha', 1.0)
+        alpha = self.problem.fem_solver['stabilization']['oss_alpha']
 
         # Solution fields
         theta = self._to_2d(q, 'theta', is_residual=False)
@@ -398,59 +391,3 @@ class NewtonDebugger:
                              f'ts{timestep:04d}_it{it:02d}_oss.png')
         fig.savefig(fname, dpi=120, bbox_inches='tight', facecolor='white')
         plt.close(fig)
-
-
-def log_jacobian_block_norms(assembly, scaling, M_coo, scaled=True):
-    """Print Frobenius norm of each (residual, variable) block of the Jacobian."""
-    import numpy as np
-
-    res_names = list(assembly._res_slices.keys())
-    var_names = list(assembly._sol_slices.keys())
-    res_idx = {r: i for i, r in enumerate(res_names)}
-    var_idx = {v: i for i, v in enumerate(var_names)}
-
-    r_blk = np.empty(len(M_coo), dtype=np.int32)
-    v_blk = np.empty(len(M_coo), dtype=np.int32)
-    for (res, var), block in assembly.block_order.items():
-        s = block['nnz_idx_start']
-        n = block['nb_nnz']
-        r_blk[s:s + n] = res_idx[res]
-        v_blk[s:s + n] = var_idx[var]
-
-    def _print_table(vals, title):
-        col_w = 11
-        hdr = f"  {'res \\ var':<14s}" + ''.join(f"{v:>{col_w}s}" for v in var_names)
-        print(f"\n{title}")
-        print(hdr)
-        print('  ' + '-' * (len(hdr) - 2))
-        for ri, res in enumerate(res_names):
-            row = f"  {res:<14s}"
-            for vi in range(len(var_names)):
-                mask = (r_blk == ri) & (v_blk == vi)
-                norm = np.linalg.norm(vals[mask]) if mask.any() else 0.0
-                row += f"{norm:>{col_w}.2e}"
-            print(row)
-
-    _print_table(M_coo, 'Jacobian block norms (unscaled)')
-
-    if scaled and scaling is not None:
-        _print_table(M_coo * scaling.display_scale, 'Jacobian block norms (scaled)')
-        cs = scaling.char_scales
-        print(f"\n  Characteristic scales: "
-              + '  '.join(f"{k}={v:.2e}" for k, v in cs.items()))
-
-
-def print_nodal_diagnostics(quad_mgr, cavitation, label=''):
-    """Print min/max of inner nodal fields and quad arrays for diagnostics."""
-    prefix = f'  [nodal {label}]' if label else '  [nodal]'
-    nodal_names = ['p', 'rho'] + (['theta'] if cavitation else [])
-    for name in nodal_names:
-        inner = quad_mgr.nodal_fields[name].p[0]
-        print(f'{prefix}  {name}: [{inner.min():.4e}, {inner.max():.4e}]')
-    prefix_q = f'  [quad  {label}]' if label else '  [quad]'
-    quad_names = ['p', 'rho'] + (['theta'] if cavitation else [])
-    for name in quad_names:
-        if name in quad_mgr.quad_fields:
-            quad_mgr.interpolate_nodal_to_quad(name)
-            q_arr = quad_mgr.get_quad_sq(name)
-            print(f'{prefix_q}  {name}: [{q_arr.min():.4e}, {q_arr.max():.4e}]')

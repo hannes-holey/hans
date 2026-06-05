@@ -326,7 +326,7 @@ class QuadFieldManager:
         else:
             tau = 1.0 / (2.0 / h_elem * max(float(norm_a.mean()), 0.1))
 
-        alpha = self.problem.fem_solver.get('oss_theta_alpha', 0.0)
+        alpha = self.problem.fem_solver['stabilization']['oss_alpha']
         q('tau_a_x')[:] = alpha * tau * a_vec_x
         q('tau_a_y')[:] = alpha * tau * a_vec_y
 

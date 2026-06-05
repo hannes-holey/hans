@@ -19,7 +19,7 @@
 
 options:
     output: /tmp/conv_slider_pocket_2D
-    write_freq: 10
+    write_freq: 1
     save_output: False
     output_plots: False
     residual_analysis: False
@@ -27,7 +27,7 @@ options:
 grid:
     Lx: 0.020
     Ly: 0.010
-    Nx: 180
+    Nx: 120
     Ny: 60
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
@@ -69,7 +69,6 @@ properties:
         tauE: 5.0e6
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.15
     equations:
@@ -77,9 +76,9 @@ fem_solver:
     physics:
         gap_shear: true
         inertia: false
-        oss_theta: true
-    oss_theta_alpha: 1.0
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        oss_alpha: 1.0
     max_iter: 5
     R_norm_tol: 1e-9
     scaling: False

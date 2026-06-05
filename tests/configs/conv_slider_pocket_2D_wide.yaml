@@ -64,7 +64,6 @@ properties:
         aB: 1.2e-8
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.15
     equations:
@@ -72,11 +71,11 @@ fem_solver:
     physics:
         gap_shear: true
         inertia: false
-        oss_theta: true
-        theta_stab: false
-    theta_stab_alpha: 0.00002
-    oss_theta_alpha: 1.
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        ad: false
+        oss_alpha: 1.
+        ad_alpha: 0.00002
     max_iter: 5
     R_norm_tol: 1e-9
     scaling: False

@@ -5,8 +5,8 @@
 grid:
     Lx: 0.5
     Ly: 0.25
-    Nx: 20
-    Ny: 50
+    Nx: 10
+    Ny: 200
     xW: ['P', 'P', 'P']
     xE: ['P', 'P', 'P']
     yS: ['N', 'D', 'D']
@@ -38,8 +38,6 @@ properties:
     force_y: 0.0
 
 fem_solver:
-    type: newton_alpha
-    dynamic: True
     alpha: 0.8
     R_norm_tol: 1e-8
     max_iter: 1

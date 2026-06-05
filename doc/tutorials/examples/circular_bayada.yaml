@@ -67,7 +67,6 @@ force_balance:
         Kd: 1.0e-7
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.2
     physics:

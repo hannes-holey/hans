@@ -1,21 +1,6 @@
-# Twin parabolic slider — Fischer-Burmeister cavitation
-#
-# Reference: Bayada et al. (Fig. 7)
-#
-# Geometry: two asymmetric parabolic sliders (hmin1=30 µm, hmin2=35 µm)
-#   separated by a flat region, plus a flat outlet. Profile constant in y.
-#   Domain: Lx = 0.09 m, Ly = 0.004 m
-#
-# Fluid: Dowson-Higginson EOS
-#   rho0 = 877.7008 kg/m³  at  P0 = 101325 Pa
-#   p_cav = 0 Pa  (vacuum cavitation)
-#   shear = 0.039 Pa·s
-#
-# BCs: Dirichlet rho at ambient on both ends, periodic in y
-
 options:
     output: /tmp/twin_parabolic_slider
-    write_freq: 100
+    write_freq: 10
     save_output: False
     output_plots: False
     residual_analysis: False
@@ -57,16 +42,15 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.1
     equations:
         cavitation: True
     physics:
         gap_shear: true
-        oss_theta: true
-    oss_theta_alpha: 2.0
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        oss_alpha: 2.0
     max_iter: 1
     R_norm_tol: 1e-9
     scaling: False

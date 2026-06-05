@@ -72,7 +72,7 @@ R_FB = R_fb[0]  # R_fb is [Term] list; unpack the single Term instance
 
 _BASE = """
 options:
-    output: /tmp/fem2d_fd_{label}
+    output: /tmp/fem_{label}
     write_freq: 1000
     silent: True
 

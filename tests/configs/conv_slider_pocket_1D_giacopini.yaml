@@ -18,7 +18,7 @@
 
 options:
     output: /tmp/conv_slider_pocket_1D_giacopini
-    write_freq: 100
+    write_freq: 10
     save_output: False
     output_plots: False
     residual_analysis: False
@@ -26,7 +26,7 @@ options:
 grid:
     Lx: 0.010
     Ly: 0.004
-    Nx: 60
+    Nx: 100
     Ny: 4
     xW: ['D', 'N', 'N']
     xE: ['D', 'N', 'N']
@@ -60,7 +60,6 @@ properties:
     bulk: 0.0
 
 fem_solver:
-    type: newton_alpha
     linear_solver: direct
     newton_relax: 0.004
     equations:
@@ -68,11 +67,11 @@ fem_solver:
     physics:
         gap_shear: true
         inertia: true
-        oss_theta: true
-        theta_stab: false
-    oss_theta_alpha: 2.0
-    theta_stab_alpha: 0.0001
-    oss_correction_alpha: 1.0
+    stabilization:
+        oss: true
+        ad: false
+        oss_alpha: 2.0
+        ad_alpha: 0.0001
     max_iter: 5
     R_norm_tol: 1e-9
     scaling: False

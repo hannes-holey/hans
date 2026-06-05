@@ -200,7 +200,7 @@ class Energy():
             k = self.k
             cv = self.cv
 
-            # All args are now arrays that get mapped
+            # All args are arrays that get mapped
             map_list = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
             def q_wall_sum(h, eta, rho, E, jx, jy, U, V, Tb_top, Tb_bot):
