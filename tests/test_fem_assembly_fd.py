@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+# flake8: noqa: W503
 """
 Finite difference verification of assemble_matrix against assemble_rhs.
 
@@ -53,7 +55,7 @@ import pytest
 from GaPFlow.problem import Problem
 from GaPFlow.solver_fem.solver_fem import FEMSolver
 from GaPFlow.solver_fem.terms import (
-    R11x, R11y, R11Sx, R11Sy, R11x_corr, R11y_corr,
+    R11x, R11y, R11x_corr, R11y_corr,
     R1T, R21x, R21y, R2Tx, R2Ty,
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
     R23xy, R23yx, R23xx, R23yy,
@@ -153,7 +155,7 @@ NON_CAV_TERM_GROUPS = [
     ([R11y, R11y_corr], 1e-4),
     # R11Sx, R11Sy: need correction terms (R11Sx_corr, R11Sy_corr) — not yet implemented;
     # without them the Bayada dp_drho(p) chain causes a large FD mismatch
-    ([R1T],  1e-6),
+    ([R1T], 1e-6),
     ([R21x], 1e-6),
     ([R21y], 1e-6),
     ([R2Tx], 1e-6),
@@ -161,14 +163,14 @@ NON_CAV_TERM_GROUPS = [
 ]
 
 NON_CAV_INERTIA_GROUPS = [
-    ([R22xx],   1e-4),
-    ([R22xxS],  1e-4),
-    ([R22yx],   1e-4),
-    ([R22yxS],  1e-4),
-    ([R22xy],   1e-4),
-    ([R22xyS],  1e-4),
-    ([R22yy],   1e-4),
-    ([R22yyS],  1e-4),
+    ([R22xx], 1e-4),
+    ([R22xxS], 1e-4),
+    ([R22yx], 1e-4),
+    ([R22yxS], 1e-4),
+    ([R22xy], 1e-4),
+    ([R22xyS], 1e-4),
+    ([R22yy], 1e-4),
+    ([R22yyS], 1e-4),
 ]
 
 NON_CAV_VISCOUS_GROUPS = [
@@ -180,21 +182,22 @@ NON_CAV_VISCOUS_GROUPS = [
 
 
 CAV_TERM_GROUPS = [
-    ([R11x_fb, R11x_fb_corr],   1e-4),
-    ([R11y_fb, R11y_fb_corr],   1e-4),
+    ([R11x_fb, R11x_fb_corr], 1e-4),
+    ([R11y_fb, R11y_fb_corr], 1e-4),
     ([R11Sx_fb, R11Sx_fb_corr], 1e-4),
     ([R11Sy_fb, R11Sy_fb_corr], 1e-4),
-    ([R_FB],  1e-4),
-    ([R1T],   1e-6),
-    ([R21x],  1e-6),
-    ([R21y],  1e-6),
-    ([R2Tx],  1e-6),
-    ([R2Ty],  1e-6),
+    ([R_FB], 1e-4),
+    ([R1T], 1e-6),
+    ([R21x], 1e-6),
+    ([R21y], 1e-6),
+    ([R2Tx], 1e-6),
+    ([R2Ty], 1e-6),
 ]
 
 # =============================================================================
 # Helpers
 # =============================================================================
+
 
 def _make_problem(props: str, Nx: int, Ny: int, cavitation: bool = False,
                   plane_shear: bool = False, inertia: bool = False,
@@ -334,7 +337,6 @@ def solver_viscous():
     return solver
 
 
-
 @pytest.fixture(scope='module')
 def solver_cav():
     _, solver = _make_problem(_PROPS_DH_CAV, Nx=4, Ny=3, cavitation=True, label='cav')
@@ -377,7 +379,6 @@ def test_jacobian_inertia(solver_inertia, group, tol):
 @pytest.mark.parametrize('group,tol', NON_CAV_VISCOUS_GROUPS, ids=_ids(NON_CAV_VISCOUS_GROUPS))
 def test_jacobian_viscous(solver_viscous, group, tol):
     _check_group(solver_viscous, group, tol)
-
 
 
 @pytest.mark.parametrize('group,tol', CAV_TERM_GROUPS, ids=_ids(CAV_TERM_GROUPS))

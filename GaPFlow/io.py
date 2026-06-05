@@ -576,7 +576,7 @@ def sanitize_fem_solver(d):
         'ad_alpha': float(stab.get('ad_alpha', 0.0)),
         'oss_alpha': float(stab.get('oss_alpha', 1.0)),
     }
-    out['oss_correction_alpha'] = float(d.get('oss_correction_alpha', 1.0))
+
 
     if 'p_init' in d:
         out['p_init'] = float(d['p_init'])
@@ -594,7 +594,7 @@ def sanitize_fem_solver(d):
     out['scaling_ruiz_iter'] = int(d.get('scaling_ruiz_iter', 10))
     out['line_search'] = bool(d.get('line_search', False))
     out['line_search_alpha_min'] = float(d.get('line_search_alpha_min', 1e-12))
-    out['theta_min'] = float(d.get('theta_min', 2.220446049250313e-16))
+
 
     print_dict(out)
 

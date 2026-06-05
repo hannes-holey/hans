@@ -22,27 +22,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-import os
-
-import numpy as np
 import copy
-from muGrid import Field
-from mpi4py import MPI
-
-import numpy.typing as npt
+import os
+import warnings
 from typing import Tuple, Any
 
-import warnings
-
-from .parallel import DomainDecomposition, FFTDomainTranslation
-
-_MPI_MIN = MPI.MIN
+import numpy as np
+import numpy.typing as npt
+from muGrid import Field
+from mpi4py import MPI
 
 from ContactMechanics.FFTElasticHalfSpace import (
     PeriodicFFTElasticHalfSpace,
     FreeFFTElasticHalfSpace,
     SemiPeriodicFFTElasticHalfSpace,
 )
+
+from .parallel import DomainDecomposition, FFTDomainTranslation
+
+_MPI_MIN = MPI.MIN
+
 
 NDArray = npt.NDArray[np.floating]
 
@@ -420,7 +419,7 @@ class Topography:
                 print(f"  [ForceBalance] PID on hold: defo_disc={defo_disc:.3e} > tol={pid_hold_tol:.3e}")
                 self.rhv_history.append(self.h0)
             elif guard_hold:
-                print(f"  [ForceBalance] PID on hold: solution guard fired in previous Newton step")
+                print("  [ForceBalance] PID on hold: solution guard fired in previous Newton step")
                 self.rhv_history.append(self.h0)
             else:
                 self.h0 = self._fb_controller.update(self)

@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from .problem import Problem
     from .parallel import DomainDecomposition
 
-from muGrid import Field
 
 NDArray = npt.NDArray[np.floating]
 
@@ -178,10 +177,10 @@ class BoundarySpec:
         else:
             Nx, Ny = self.decomp.local_shape_padded
         self.arr = {
-            'W': np.zeros((1,  Ny)),
-            'E': np.zeros((1,  Ny)),
-            'S': np.zeros((Nx, 1 )),
-            'N': np.zeros((Nx, 1 )),
+            'W': np.zeros((1, Ny)),
+            'E': np.zeros((1, Ny)),
+            'S': np.zeros((Nx, 1)),
+            'N': np.zeros((Nx, 1)),
         }
 
     def _make_bnds(self):
@@ -269,10 +268,14 @@ class GhostUpdater:
     def _offset_to_slice(self, bnd: str, k: int):
         s = slice
         sn = slice(None)
-        if bnd == 'W': return (s(k, k+1), sn)
-        if bnd == 'E': return (s(-(k+1), -k or None), sn)
-        if bnd == 'S': return (sn, s(k, k+1))
-        if bnd == 'N': return (sn, s(-(k+1), -k or None))
+        if bnd == 'W':
+            return (s(k, k + 1), sn)
+        if bnd == 'E':
+            return (s(-(k + 1), -k or None), sn)
+        if bnd == 'S':
+            return (sn, s(k, k + 1))
+        if bnd == 'N':
+            return (sn, s(-(k + 1), -k or None))
 
     def _get_ghost_slices(self, bnd: str, grid_type: str):
         s_2, s_1, s_0 = [self._offset_to_slice(bnd, k) for k in [2, 1, 0]]

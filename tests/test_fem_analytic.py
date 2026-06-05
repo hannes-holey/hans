@@ -179,7 +179,7 @@ COMPARISON_CASES = {
 }
 
 
-def _run_fem2d(case_name: str):
+def _run_fem(case_name: str):
     case = COMPARISON_CASES[case_name]
     template = load_template(case["template"])
     params = {**FEM2D_DEFAULTS, "rho_bc": case["rho_bc"]}
@@ -202,23 +202,22 @@ def _load_explicit_reference(case_name: str):
 def comparison(request):
     case_name = request.param
     rho_ref, jx_ref = _load_explicit_reference(case_name)
-    rho_fem, jx_fem = _run_fem2d(case_name)
+    rho_fem, jx_fem = _run_fem(case_name)
     bc_type = COMPARISON_CASES[case_name]["bc_type"]
     return dict(rho_ref=rho_ref, jx_ref=jx_ref, rho_fem=rho_fem, jx_fem=jx_fem,
                 bc_type=bc_type, case=case_name)
 
 
-def test_fem2d_vs_explicit_rho(comparison):
+def test_fem_vs_explicit_rho(comparison):
     r = comparison
     compare_solutions(r["rho_ref"], r["rho_fem"], bc_type=r["bc_type"],
                       field_name=f"rho ({r['case']})")
 
 
-def test_fem2d_vs_explicit_jx(comparison):
+def test_fem_vs_explicit_jx(comparison):
     r = comparison
     compare_solutions(r["jx_ref"], r["jx_fem"], bc_type=r["bc_type"],
                       field_name=f"jx ({r['case']})")
-
 
 
 # =============================================================================
@@ -352,7 +351,6 @@ def test_bernoulli_pressure_drop(bernoulli_problem):
     """Pressure drop at throat matches Bernoulli prediction within 1%."""
     p = bernoulli_problem
     rho_b = p.q[0][1:-1, 1:-1]
-    jx_b = p.q[1][1:-1, 1:-1]
     dx = p.grid["dx"]
     x_b = np.arange(rho_b.shape[0]) * dx + dx / 2
     j_center = rho_b.shape[1] // 2
@@ -367,7 +365,7 @@ def test_bernoulli_pressure_drop(bernoulli_problem):
 
     rel_err = abs(dp_sim - dp_theory) / dp_theory
     assert rel_err < 0.01, \
-        f"Bernoulli Δp error = {rel_err*100:.2f}%, sim={dp_sim:.1f} Pa, theory={dp_theory:.1f} Pa"
+        f"Bernoulli Δp error = {rel_err * 100:.2f}%, sim={dp_sim:.1f} Pa, theory={dp_theory:.1f} Pa"
 
 
 # =============================================================================

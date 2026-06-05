@@ -111,22 +111,22 @@ R_OSS_mass_yx = Term(
 
 R_OSS_corrx = Term(
     name='R_OSS_corrx',
-    description='OSS mass correction x: −(∂q/∂x, oss_correction_alpha · tau_a_x · ξ)',
+    description='OSS mass correction x: −(∂q/∂x, tau_a_x · ξ)',
     res='mass',
     dep_vars=['xi'],
     dep_vals=['tau_a_x'],
-    fun=lambda ctx: lambda xi: ctx['oss_correction_alpha']() * ctx['tau_a_x']() * xi,
-    der_funs=[lambda ctx: lambda xi: ctx['oss_correction_alpha']() * ctx['tau_a_x']()],
+    fun=lambda ctx: lambda xi: ctx['tau_a_x']() * xi,
+    der_funs=[lambda ctx: lambda xi: ctx['tau_a_x']()],
     test_deriv='x')
 
 R_OSS_corry = Term(
     name='R_OSS_corry',
-    description='OSS mass correction y: −(∂q/∂y, oss_correction_alpha · tau_a_y · ξ)',
+    description='OSS mass correction y: −(∂q/∂y, tau_a_y · ξ)',
     res='mass',
     dep_vars=['xi'],
     dep_vals=['tau_a_y'],
-    fun=lambda ctx: lambda xi: ctx['oss_correction_alpha']() * ctx['tau_a_y']() * xi,
-    der_funs=[lambda ctx: lambda xi: ctx['oss_correction_alpha']() * ctx['tau_a_y']()],
+    fun=lambda ctx: lambda xi: ctx['tau_a_y']() * xi,
+    der_funs=[lambda ctx: lambda xi: ctx['tau_a_y']()],
     test_deriv='y')
 
 

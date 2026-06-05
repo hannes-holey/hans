@@ -22,6 +22,7 @@
 # SOFTWARE.
 #
 
+# flake8: noqa: W503
 """Taylor-Hood P2P1 FEM Solver.
 
 Wires GridIndexManager, QuadFieldManager, Assembly, and linear solver into a
@@ -68,7 +69,7 @@ class FEMSolver:
     def __init__(self, fem_spec: dict, problem: "Problem") -> None:
 
         self.fem_spec = fem_spec
-        self.problem  = problem
+        self.problem = problem
         self.R_norm_history: List[List[float]] = []
         self.rank = problem.decomp.rank
 
@@ -126,13 +127,13 @@ class FEMSolver:
         self._init_quad_fields()
 
         specs = []
-        no_fun = [None]*4
+        no_fun = [None] * 4
 
         field = self.quad_mgr.nodal_fields['jx']
         jx_bc_type, jx_bc_vals = sample_bc_spec(self.problem.grid, 1)
         specs.append(BoundarySpec(field, 'P2', jx_bc_type,
                                   jx_bc_vals, no_fun, self.problem.decomp))
-        
+
         field = self.quad_mgr.nodal_fields['jy']
         jy_bc_type, jy_bc_vals = sample_bc_spec(self.problem.grid, 2)
         specs.append(BoundarySpec(field, 'P2', jy_bc_type,
@@ -231,7 +232,7 @@ class FEMSolver:
             ctx['fb_p_ref'] = lambda: p.prop['P0']
             ctx['dx'] = lambda: p.grid['dx']
             ctx['dy'] = lambda: p.grid['dy']
-            ctx['oss_correction_alpha'] = lambda: p.fem_solver['oss_correction_alpha']
+
             if self.energy:
                 ctx['k'] = lambda: p.energy.k
             term.build(ctx)
@@ -259,9 +260,6 @@ class FEMSolver:
         self.scaling = build_scaling(
             self.problem, self.energy, self.variables, self.assembly,
             cavitation=self.cavitation)
-
-        if self.problem.decomp.rank == 0:
-            p_ref = self.scaling.char_scales['p']
 
         debug_from = self.problem.fem_solver['newton_debug']
         if debug_from is not None:
@@ -395,7 +393,7 @@ class FEMSolver:
         p_sl = self._sol_slices['p']
         theta_sl = self._sol_slices['theta']
         p_cav = float(self.problem.prop['p_cav'])
-        theta_min = self.problem.fem_solver['theta_min']
+        theta_min = np.finfo(float).eps
         q[p_sl] = np.maximum(q[p_sl], p_cav)
         th = np.maximum(q[theta_sl], 0.0)
         a = q[p_sl] - p_cav
@@ -434,7 +432,7 @@ class FEMSolver:
 
     def post_solve(self, q: NDArray, dq: NDArray, R: NDArray, it: int, M_scaled: NDArray) -> None:
         """Post-process obtained solution update: debug output, line search, and cavitation clamping."""
-        
+
         if self._debug_active:
             self.debugger.step(
                 timestep=self.problem.step, it=it, R=R, dq=dq, q=q,
@@ -451,7 +449,7 @@ class FEMSolver:
 
         if self.cavitation:
             q = self._clamp_cavitation(q)
-        
+
         return q
 
     def wrap_up_timestep(self, it: int, tic: float) -> None:
@@ -463,12 +461,12 @@ class FEMSolver:
 
         if self.debugger is not None and self._debug_steps_done >= 5:
             self.problem._stop = True
-        
+
         self.print_status()
 
     def update(self) -> None:
         """Perform one time step with Newton iteration."""
-        
+
         p = self.problem
         tic = time.time()
         max_iter = 1 if self._debug_active else self.max_iter
@@ -483,7 +481,8 @@ class FEMSolver:
         for it in range(max_iter):
 
             M, R = self.update_quad_and_assemble()
-            if self.check_residual(R, it): break
+            if self.check_residual(R, it):
+                break
             dq, M_scaled = solve_linear_system(M, R, self, it)
             q = self.post_solve(q, dq, R, it, M_scaled)
             self.update_q_nodal(q)

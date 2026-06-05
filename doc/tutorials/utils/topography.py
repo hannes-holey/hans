@@ -55,7 +55,6 @@ def regen_bernoulli_venturi(problem):
     X_RAMP_START, X_RAMP_END = 0.03, 0.07
     THROAT_HALF_WIDTH = 0.005
 
-    g = problem.grid
     xx = problem.topo.xx
 
     x_mid = (X_RAMP_START + X_RAMP_END) / 2
@@ -111,7 +110,7 @@ def regen_conv_slider_pocket_1d_giacopini(problem, Nx_geo=None):
     x_geo = _geo_grid_1d(Lx, Nx_geo)
     hmin = 1.0e-6
     K = 0.01
-    hmax = K*hmin + hmin
+    hmax = K * hmin + hmin
     h_pock = 5.0 * hmin        # 5 µm
     x_p_start, x_p_end = 2.0e-3, 5.0e-3
 

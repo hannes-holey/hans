@@ -57,19 +57,19 @@ class GridIndexManager:
 
         # node counts
         Nx_P1, Ny_P1 = decomp.nb_subdomain_grid_pts
-        self.Nx_P1_inner  = Nx_P1
-        self.Ny_P1_inner  = Ny_P1
+        self.Nx_P1_inner = Nx_P1
+        self.Ny_P1_inner = Ny_P1
         self.Nx_P1_padded = Nx_P1 + 2
         self.Ny_P1_padded = Ny_P1 + 2
 
         Nx_P2, Ny_P2 = decomp.nb_subdomain_grid_pts_P2
-        self.Nx_P2_inner  = Nx_P2
-        self.Ny_P2_inner  = Ny_P2
+        self.Nx_P2_inner = Nx_P2
+        self.Ny_P2_inner = Ny_P2
         self.Nx_P2_padded = Nx_P2 + 4
         self.Ny_P2_padded = Ny_P2 + 4
 
         # square counts
-        self.sq_per_row = self.Nx_P1_padded -1
+        self.sq_per_row = self.Nx_P1_padded - 1
         self.sq_per_col = self.Ny_P1_padded - 1
         self.nb_sq = self.sq_per_row * self.sq_per_col
         sq_idx = np.arange(self.nb_sq)
@@ -114,7 +114,7 @@ class GridIndexManager:
         - serial + periodic: wrap around (both ghost layers)
         - inter-subdomain ghost nodes: new sequential indices
         - Neumann ghost nodes: forward both layers to adjacent inner node
-        
+
         Effectively, only Dirichlet ghost nodes remain -1.
 
         Parameters
@@ -135,10 +135,14 @@ class GridIndexManager:
 
         # fill inter-subdomain ghost nodes with new indices (non-boundary)
         boundary_P1 = np.zeros((self.Nx_P1_padded, self.Ny_P1_padded), dtype=bool)
-        if decomp.bc_at_W: boundary_P1[0,  :] = True
-        if decomp.bc_at_E: boundary_P1[-1, :] = True
-        if decomp.bc_at_S: boundary_P1[:,  0] = True
-        if decomp.bc_at_N: boundary_P1[:, -1] = True
+        if decomp.bc_at_W:
+            boundary_P1[0, :] = True
+        if decomp.bc_at_E:
+            boundary_P1[-1, :] = True
+        if decomp.bc_at_S:
+            boundary_P1[:, 0] = True
+        if decomp.bc_at_N:
+            boundary_P1[:, -1] = True
         ghost_coords = np.argwhere((mask == -1) & ~boundary_P1)
         nb_inner_P1 = self.Nx_P1_inner * self.Ny_P1_inner
         mask[ghost_coords[:, 0], ghost_coords[:, 1]] = np.arange(
@@ -198,7 +202,7 @@ class GridIndexManager:
         - serial + periodic: wrap around (both ghost layers)
         - inter-subdomain ghost nodes: new sequential indices
         - Neumann ghost nodes: forward both layers to adjacent inner node
-        
+
         Effectively, only Dirichlet ghost nodes remain -1.
 
         Parameters
@@ -223,10 +227,14 @@ class GridIndexManager:
 
         # fill inter-subdomain ghost nodes with new indices (non-boundary)
         boundary_P2 = np.zeros((self.Nx_P2_padded, self.Ny_P2_padded), dtype=bool)
-        if decomp.bc_at_W: boundary_P2[:2,  :] = True
-        if decomp.bc_at_E: boundary_P2[-2:, :] = True
-        if decomp.bc_at_S: boundary_P2[:,  :2] = True
-        if decomp.bc_at_N: boundary_P2[:, -2:] = True
+        if decomp.bc_at_W:
+            boundary_P2[:2, :] = True
+        if decomp.bc_at_E:
+            boundary_P2[-2:, :] = True
+        if decomp.bc_at_S:
+            boundary_P2[:, :2] = True
+        if decomp.bc_at_N:
+            boundary_P2[:, -2:] = True
         ghost_coords = np.argwhere((mask == -1) & ~boundary_P2)
         nb_inner_P2 = self.Nx_P2_inner * self.Ny_P2_inner
         mask[ghost_coords[:, 0], ghost_coords[:, 1]] = np.arange(
@@ -259,7 +267,7 @@ class GridIndexManager:
     @cached_property
     def l2g_list_P2(self) -> IntArray:
         """Local-to-global mapping for mass flux contributors, shape (nb_contributors_P2,)."""
-        mask_local  = self.index_mask_padded_local_P2()
+        mask_local = self.index_mask_padded_local_P2()
         mask_global = self.decomp.index_mask_padded_global_P2
         l2g = np.zeros(self.nb_contributors_P2, dtype=np.int32)
         valid = mask_local >= 0
@@ -276,13 +284,13 @@ class GridIndexManager:
 
         Corner order: [bl, br, tl, tr]
         """
-        m  = self.index_mask_inner_local_P1
+        m = self.index_mask_inner_local_P1
         sx = self.sq_x_arr_P1
         sy = self.sq_y_arr_P1
         return np.column_stack([
-            m[sx,     sy    ],   # bl
-            m[sx + 1, sy    ],   # br
-            m[sx,     sy + 1],   # tl
+            m[sx, sy],   # bl
+            m[sx + 1, sy],   # br
+            m[sx, sy + 1],   # tl
             m[sx + 1, sy + 1],   # tr
         ])
 
@@ -295,13 +303,13 @@ class GridIndexManager:
         var : str
             Variable name for Neumann BC handling.
         """
-        m  = self.index_mask_padded_local_P1(var)
+        m = self.index_mask_padded_local_P1(var)
         sx = self.sq_x_arr_P1
         sy = self.sq_y_arr_P1
         return np.column_stack([
-            m[sx,     sy    ],
-            m[sx + 1, sy    ],
-            m[sx,     sy + 1],
+            m[sx, sy],
+            m[sx + 1, sy],
+            m[sx, sy + 1],
             m[sx + 1, sy + 1],
         ])
 
@@ -311,16 +319,16 @@ class GridIndexManager:
 
         Corner order: [bl, br, tl, tr, ml, bm, mm, tm, mr]
         """
-        m  = self.index_mask_inner_local_P2
+        m = self.index_mask_inner_local_P2
         sx = self.sq_x_arr_P2
         sy = self.sq_y_arr_P2
         return np.column_stack([
-            m[sx,     sy    ],   # bl  (0,0)
-            m[sx + 2, sy    ],   # br  (2,0)
-            m[sx,     sy + 2],   # tl  (0,2)
+            m[sx, sy],   # bl  (0,0)
+            m[sx + 2, sy],   # br  (2,0)
+            m[sx, sy + 2],   # tl  (0,2)
             m[sx + 2, sy + 2],   # tr  (2,2)
-            m[sx,     sy + 1],   # ml  (0,1)
-            m[sx + 1, sy    ],   # bm  (1,0)
+            m[sx, sy + 1],   # ml  (0,1)
+            m[sx + 1, sy],   # bm  (1,0)
             m[sx + 1, sy + 1],   # mm  (1,1)
             m[sx + 1, sy + 2],   # tm  (1,2)
             m[sx + 2, sy + 1],   # mr  (2,1)
@@ -335,16 +343,16 @@ class GridIndexManager:
         var : str
             Variable name for Neumann BC handling.
         """
-        m  = self.index_mask_padded_local_P2(var)
+        m = self.index_mask_padded_local_P2(var)
         sx = self.sq_x_arr_P2
         sy = self.sq_y_arr_P2
         return np.column_stack([
-            m[sx,     sy    ],
-            m[sx + 2, sy    ],
-            m[sx,     sy + 2],
+            m[sx, sy],
+            m[sx + 2, sy],
+            m[sx, sy + 2],
             m[sx + 2, sy + 2],
-            m[sx,     sy + 1],
-            m[sx + 1, sy    ],
+            m[sx, sy + 1],
+            m[sx + 1, sy],
             m[sx + 1, sy + 1],
             m[sx + 1, sy + 2],
             m[sx + 2, sy + 1],

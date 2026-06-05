@@ -100,7 +100,7 @@ class PETScSystem:
             if self.comm.getSize() > 1:
                 pc.setType('bjacobi')
             else:
-                fill_level = 2# if local_size > self._ILU2_THRESHOLD else 1
+                fill_level = 2  # if local_size > self._ILU2_THRESHOLD else 1
                 pc.setType('ilu')
                 pc.setFactorLevels(fill_level)
         else:

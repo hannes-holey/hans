@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+# flake8: noqa: W503
 import warnings
 
 import numpy as np
@@ -128,9 +130,6 @@ def linearization_guard(q: np.ndarray, dq: np.ndarray,
         q_new[rho_sl] = np.maximum(q_new[rho_sl], RHO_MIN)
         return q_new, False
 
-    # Identify the worst node from the full-step evaluation (for reporting)
-    worst_idx = np.argmax(rel_full)
-
     # --- Bisect to find the largest safe scaling factor ---
     f_lo = 0.0
     f_hi = 1.0
@@ -169,7 +168,6 @@ def linearization_guard(q: np.ndarray, dq: np.ndarray,
         dpdrho_accepted_2d = dpdrho_accepted.reshape((Nx, Ny), order='F')
         achieved_rel = float(rel_accepted_2d[imax])
         satisfied = f_lo > 0.0
-        status = "achieved" if satisfied else "best effort"
         print(f"  [LinGuard] f={f:.4e}, node ({imax[0]},{imax[1]}):"
               f" dp/drho {dpdrho_old_2d[imax]:.4e} -> {dpdrho_accepted_2d[imax]:.4e}"
               f" ({achieved_rel:.3f}/{max_rel_change})")
@@ -190,7 +188,7 @@ def linearization_guard(q: np.ndarray, dq: np.ndarray,
 
 
 def report_jacobian_block_changes(M_old: np.ndarray, M_new: np.ndarray,
-                                   block_order: dict, comm) -> None:
+                                  block_order: dict, comm) -> None:
     """Print a table of per-block Frobenius relative changes in the Jacobian.
 
     For each (res, var) block in the assembled COO Jacobian, computes
@@ -250,9 +248,9 @@ def _eval_dpdrho_from_p(p_flat: np.ndarray, Nx: int, Ny: int,
 
 
 def linearization_guard_p(q: np.ndarray, dq: np.ndarray,
-                           solver: "FEMSolver",
-                           max_rel_change: float = DPDRHO_MAX_REL_CHANGE,
-                           ) -> tuple:
+                          solver: "FEMSolver",
+                          max_rel_change: float = DPDRHO_MAX_REL_CHANGE,
+                          ) -> tuple:
     """Limit the Newton update so that dp/drho does not change too much.
 
     Pressure-based analogue of linearization_guard. The Jacobian is built
@@ -364,8 +362,6 @@ def solve_linear_system(M: np.ndarray, R: np.ndarray,
         The matrix passed to the linear solver (M itself if scaling is off).
     """
     fem_solver = solver.problem.fem_solver
-    rank = solver.problem.decomp.rank
-
     if fem_solver['scaling']:
         scale_interval = fem_solver['scaling_update_interval']
         step = solver.problem.step

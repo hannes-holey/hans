@@ -33,7 +33,7 @@ from .elements import TaylorHoodP2P1
 from .fieldspec import NODAL_P1, NODAL_P2, QUAD_FIELD_REGISTRY, resolve_source, categorize_registry_fields
 from .terms import collect_required_fields
 
-from ..models.pressure import eos_pressure, eos_rho, eos_drho_dp
+from ..models.pressure import eos_pressure, eos_rho
 
 if TYPE_CHECKING:
     from ..problem import Problem
@@ -116,7 +116,6 @@ class QuadFieldManager:
             self.quad_fields[name] = fc.real_field(f'{name}_q', 1, 'quad')
 
         self._deriv_placeholder = fc.real_field('deriv_placeholder', 1, 'quad')
-
 
     def _add_dependent_fields(self, keys: Set[str]) -> Set[str]:
         """Recursively add dependent fields for computed fields in keys.
@@ -216,7 +215,7 @@ class QuadFieldManager:
 
         # P1 fields
         self.nf('rho')[:] = p.q[0]
-        self.nf('p')[:]   = eos_pressure(p.q[0], p.prop)
+        self.nf('p')[:] = eos_pressure(p.q[0], p.prop)
         self.problem.pressure.pressure[:] = self.nf('p')
 
         for i, name in enumerate(self.add_fields):
@@ -281,7 +280,7 @@ class QuadFieldManager:
         # Nodal fields - update
         for name in self.nodal_field_keys:
             self.nf(name)[:] = resolve_source(p, QUAD_FIELD_REGISTRY[name]['source'])
-        
+
         # Nodal fields - interpolate to quad
         for name in self.nodal_field_keys | set(self.variables):
             self.interpolate_nodal_to_quad(name)

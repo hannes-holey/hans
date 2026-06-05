@@ -21,6 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+# flake8: noqa: W503
 import os
 import numpy as np
 import jax.numpy as jnp
@@ -383,22 +385,22 @@ def rho_of_p_bayada(pressure, rho_l, rho_v, c_l, c_v):
     for liquid-region p, and jax.grad through jnp.where is poisoned by NaN
     intermediates on the inactive branch unless the input is clamped.
     """
-    N    = (rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l)
-            / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2))
+    N = (rho_v * c_v**2 * rho_l * c_l**2 * (rho_v - rho_l)
+         / (rho_v**2 * c_v**2 - rho_l**2 * c_l**2))
     Pcav = rho_v * c_v**2 - N * jnp.log(rho_v**2 * c_v**2 / (rho_l**2 * c_l**2))
     P_vt = rho_v * c_v**2
-    A    = rho_l * (rho_v**2 * c_v**2 - rho_l**2 * c_l**2) / (rho_v - rho_l)
-    B    = rho_l * (rho_l * c_l**2 - rho_v * c_v**2)       / (rho_v - rho_l)
+    A = rho_l * (rho_v**2 * c_v**2 - rho_l**2 * c_l**2) / (rho_v - rho_l)
+    B = rho_l * (rho_l * c_l**2 - rho_v * c_v**2) / (rho_v - rho_l)
 
     p_mix_safe = jnp.clip(pressure, P_vt, Pcav)
 
     rho_liq = rho_l + (pressure - Pcav) / c_l**2
     rho_vap = pressure / c_v**2
-    q       = jnp.exp((p_mix_safe - Pcav) / N) / (rho_v * c_v**2)
+    q = jnp.exp((p_mix_safe - Pcav) / N) / (rho_v * c_v**2)
     rho_mix = q * A / (1.0 - q * B)
 
     return jnp.where(pressure >= Pcav, rho_liq,
-           jnp.where(pressure >= P_vt, rho_mix, rho_vap))
+                     jnp.where(pressure >= P_vt, rho_mix, rho_vap))
 
 
 def eos_rho(pressure, prop):

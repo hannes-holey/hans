@@ -117,9 +117,8 @@ class TaylorHoodP2P1:
         self.P1 = self.P1(self.Quadrature)
         self.P2 = self.P2(self.Quadrature)
 
-
     class P1:
-        
+
         # ================================================================
         # Sources of truth
         # ================================================================
@@ -128,9 +127,9 @@ class TaylorHoodP2P1:
 
         idx_to_std = np.array([[0, 1, 2],
                                [3, 2, 1]])
-        
+
         square_node_offsets = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        
+
         der_factor = [1, -1]
 
         _N_funcs = [None] * 3
@@ -199,7 +198,7 @@ class TaylorHoodP2P1:
                 for t in range(nb_tri):
                     for k in range(nodes_per_tri):
                         ox, oy = offsets[self.idx_to_std[t, k]]
-                        node_vals[t, k] = nodal[ox:nx+ox, oy:ny+oy]
+                        node_vals[t, k] = nodal[ox:nx + ox, oy:ny + oy]
 
                 result = np.einsum('qk, tkrc -> tqrc', dN, node_vals)
                 if apply_der_factor:
@@ -224,7 +223,6 @@ class TaylorHoodP2P1:
         def dy_operator(self) -> "QuadOperator":
             return self._make_operator(self.dN_dy, apply_der_factor=True)
 
-
     class P2:
 
         # ================================================================
@@ -235,7 +233,7 @@ class TaylorHoodP2P1:
 
         idx_to_std = np.array([[0, 1, 2, 4, 5, 6],
                                [3, 2, 1, 8, 7, 6]])
-        
+
         square_node_offsets = np.array([[0, 0], [2, 0], [0, 2], [2, 2],
                                         [0, 1], [1, 0], [1, 1],
                                         [1, 2], [2, 1]])
@@ -243,26 +241,26 @@ class TaylorHoodP2P1:
         der_factor = [1, -1]
 
         _N_funcs = [None] * 6
-        _N_funcs[0] = lambda x, y: (1 - x - y) * (1 - 2*x - 2*y)
-        _N_funcs[1] = lambda x, y: x * (2*x - 1)
-        _N_funcs[2] = lambda x, y: y * (2*y - 1)
+        _N_funcs[0] = lambda x, y: (1 - x - y) * (1 - 2 * x - 2 * y)
+        _N_funcs[1] = lambda x, y: x * (2 * x - 1)
+        _N_funcs[2] = lambda x, y: y * (2 * y - 1)
         _N_funcs[3] = lambda x, y: 4 * y * (1 - x - y)
         _N_funcs[4] = lambda x, y: 4 * x * (1 - x - y)
         _N_funcs[5] = lambda x, y: 4 * x * y
 
         _N_x_funcs = [None] * 6
-        _N_x_funcs[0] = lambda x, y: -3 + 4*x + 4*y
-        _N_x_funcs[1] = lambda x, y: 4*x - 1
+        _N_x_funcs[0] = lambda x, y: -3 + 4 * x + 4 * y
+        _N_x_funcs[1] = lambda x, y: 4 * x - 1
         _N_x_funcs[2] = lambda x, y: 0
         _N_x_funcs[3] = lambda x, y: -4 * y
-        _N_x_funcs[4] = lambda x, y: 4 - 8*x - 4*y
+        _N_x_funcs[4] = lambda x, y: 4 - 8 * x - 4 * y
         _N_x_funcs[5] = lambda x, y: 4 * y
 
         _N_y_funcs = [None] * 6
-        _N_y_funcs[0] = lambda x, y: -3 + 4*x + 4*y
+        _N_y_funcs[0] = lambda x, y: -3 + 4 * x + 4 * y
         _N_y_funcs[1] = lambda x, y: 0
-        _N_y_funcs[2] = lambda x, y: 4*y - 1
-        _N_y_funcs[3] = lambda x, y: 4 - 4*x - 8*y
+        _N_y_funcs[2] = lambda x, y: 4 * y - 1
+        _N_y_funcs[3] = lambda x, y: 4 - 4 * x - 8 * y
         _N_y_funcs[4] = lambda x, y: -4 * x
         _N_y_funcs[5] = lambda x, y: 4 * x
 
@@ -320,7 +318,7 @@ class TaylorHoodP2P1:
                 for t in range(nb_tri):
                     for k in range(nodes_per_tri):
                         ox, oy = offsets[self.idx_to_std[t, k]]
-                        node_vals[t, k] = nodal[ox:2*nx+ox:2, oy:2*ny+oy:2]
+                        node_vals[t, k] = nodal[ox:2 * nx + ox:2, oy:2 * ny + oy:2]
 
                 result = np.einsum('qk, tkrc -> tqrc', dN, node_vals)
                 if apply_der_factor:
@@ -349,20 +347,20 @@ class TaylorHoodP2P1:
 class Quadrature3Points:
 
     nb_points = 3
-    coordinates = np.array([[1/6, 1/6],
-                            [2/3, 1/6],
-                            [1/6, 2/3]])
-    weights = np.array([1/6, 1/6, 1/6])
+    coordinates = np.array([[1 / 6, 1 / 6],
+                            [2 / 3, 1 / 6],
+                            [1 / 6, 2 / 3]])
+    weights = np.array([1 / 6, 1 / 6, 1 / 6])
 
 
 class Quadrature4Points:
 
     nb_points = 4
-    coordinates = np.array([[1/3, 1/3],
-                            [1/5, 1/5],
-                            [3/5, 1/5],
-                            [1/5, 3/5]])
-    weights = np.array([-27/96, 25/96, 25/96, 25/96])
+    coordinates = np.array([[1 / 3, 1 / 3],
+                            [1 / 5, 1 / 5],
+                            [3 / 5, 1 / 5],
+                            [1 / 5, 3 / 5]])
+    weights = np.array([-27 / 96, 25 / 96, 25 / 96, 25 / 96])
 
 
 class Quadrature6Points:
@@ -391,10 +389,10 @@ class Quadrature7Points:
     _b1 = 0.470142064105115
     _a2 = 0.797426985353087
     _b2 = 0.101286507323456
-    _w0 = 9.0/80.0
+    _w0 = 9.0 / 80.0
     _w1 = 0.066197076394253
     _w2 = 0.062969590272414
-    coordinates = np.array([[1/3, 1/3],
+    coordinates = np.array([[1 / 3, 1 / 3],
                             [_a1, _b1],
                             [_b1, _a1],
                             [_b1, _b1],
@@ -414,8 +412,8 @@ class QuadOperator:
     def __init__(self, mugrid_op: GenericLinearOperator, numpy_fn=None,
                  backend: str = 'mugrid'):
         self._mugrid_op = mugrid_op
-        self._numpy_fn  = numpy_fn
-        self.backend    = backend
+        self._numpy_fn = numpy_fn
+        self.backend = backend
 
     def apply(self, input_field, output_field) -> None:
         if self.backend == 'numpy' and self._numpy_fn is not None:

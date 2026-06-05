@@ -148,13 +148,13 @@ def test_fft_grid_size_periodicity():
 # Grid sizes that are divisible by the expected splits for common rank counts.
 # 16x16 works for 1, 2, 4 ranks; 8x8 for 1, 2, 4.
 BLOCK_GRID_CASES = [
-    (16, 16, True,  True),
-    (16, 16, True,  False),
+    (16, 16, True, True),
+    (16, 16, True, False),
     (16, 16, False, True),
     (16, 16, False, False),
-    (8,  8,  False, False),
+    (8, 8, False, False),
     # Divisible by 3 in both axes — exercises 3-rank (1x3) and 6-rank (2x3) splits
-    (12, 12, True,  True),
+    (12, 12, True, True),
     (12, 12, False, False),
     (18, 12, False, False),
 ]
@@ -209,9 +209,9 @@ def test_embed_global_content(Nx, Ny, px, py):
 
     # Gather FFT buffers to rank 0 and reconstruct global FFT field
     fft_y0 = fft_trans.fft_engine.subdomain_locations[1]
-    all_bufs  = comm.gather(fft_buf,  root=0)
-    all_y0    = comm.gather(fft_y0,   root=0)
-    all_ny    = comm.gather(fft_Ny_loc, root=0)
+    all_bufs = comm.gather(fft_buf, root=0)
+    all_y0 = comm.gather(fft_y0, root=0)
+    all_ny = comm.gather(fft_Ny_loc, root=0)
 
     if rank == 0:
         global_fft = np.zeros((fft_trans.Nx_fft, fft_trans.Ny_fft), dtype=float)
@@ -224,7 +224,7 @@ def test_embed_global_content(Nx, Ny, px, py):
             for j in range(Ny):
                 expected = i * Ny + j
                 assert global_fft[i, j] == expected, \
-                    f"global_fft[{i},{j}] = {global_fft[i,j]}, expected {expected}"
+                    f"global_fft[{i},{j}] = {global_fft[i, j]}, expected {expected}"
 
         # Padding rows/cols must be zero
         if not px:

@@ -37,8 +37,8 @@ from ..models.pressure import eos_pressure, eos_rho
 
 
 # Grid type for each variable / residual name
-_VAR_GRID = {'jx': 'v', 'jy': 'v', 'rho': 'p', 'p': 'p', 'E': 'p', 'theta': 'p', 'xi': 'p'}
-_RES_GRID = {'momentum_x': 'v', 'momentum_y': 'v', 'mass': 'p', 'energy': 'p', 'fb': 'p', 'R_oss': 'p'}
+_VAR_GRID = {'jx': 'P2', 'jy': 'P2', 'rho': 'P1', 'p': 'P1', 'E': 'P1', 'theta': 'P1', 'xi': 'P1'}
+_RES_GRID = {'momentum_x': 'P2', 'momentum_y': 'P2', 'mass': 'P1', 'energy': 'P1', 'fb': 'P1', 'R_oss': 'P1'}
 
 # Display labels
 _VAR_LABEL = {'jx': 'dq jx', 'jy': 'dq jy', 'rho': 'dq rho', 'p': 'dq p', 'E': 'dq E',
@@ -175,8 +175,9 @@ class NewtonDebugger:
         for term_name, R_term in R_per_term.items():
             res_name = self.term_res[term_name]
             block = R_term[self.res_slices[res_name]]
-            print(f"    {term_name:12s}  min={block.min():.3e}  max={block.max():.3e}  ||.||={np.linalg.norm(block):.3e}")
-    
+            norm = np.linalg.norm(block)
+            print(f"    {term_name:12s}  min={block.min():.3e}  max={block.max():.3e}  ||.||={norm:.3e}")
+
     def _to_2d(self, vec, name, is_residual):
         """Reshape a named block from the flat vector to a 2D (Nx, Ny) array."""
         slices = self.res_slices if is_residual else self.sol_slices
@@ -279,9 +280,9 @@ class NewtonDebugger:
 
         fields = [
             (rho_2d, r'$\rho$ [kg/m³]', 'viridis'),
-            (p_2d,   r'$p$ [Pa]',        'coolwarm'),
-            (jx_2d,  r'$j_x$ [kg/m²s]', 'RdBu_r'),
-            (jy_2d,  r'$j_y$ [kg/m²s]', 'RdBu_r'),
+            (p_2d, r'$p$ [Pa]', 'coolwarm'),
+            (jx_2d, r'$j_x$ [kg/m²s]', 'RdBu_r'),
+            (jy_2d, r'$j_y$ [kg/m²s]', 'RdBu_r'),
         ]
 
         fig, axes = plt.subplots(1, 4, figsize=(16, 3), facecolor='white')
@@ -317,8 +318,17 @@ class NewtonDebugger:
         xi = self._to_2d(q, 'xi', is_residual=False)
 
         # Context quad fields (averaged to P1 inner grid for display)
-        norm_a = np.sqrt(self._quad_p1('a_vec_x')**2 + self._quad_p1('a_vec_y')**2)
-        div_j = self._quad_p1('d_dx_jx') + self._quad_p1('d_dy_jy')
+        def _quad_p1_safe(name):
+            if name not in self.quad_mgr.quad_fields:
+                return None
+            return self._quad_p1(name)
+
+        ax = _quad_p1_safe('a_vec_x')
+        ay = _quad_p1_safe('a_vec_y')
+        norm_a = np.sqrt(ax**2 + ay**2) if ax is not None and ay is not None else None
+        dx_jx = _quad_p1_safe('d_dx_jx')
+        dy_jy = _quad_p1_safe('d_dy_jy')
+        div_j = (dx_jx + dy_jy) if dx_jx is not None and dy_jy is not None else None
 
         def _rterm(name):
             """Extract the residual block for a term as a 2D array, or zeros."""
@@ -335,14 +345,13 @@ class NewtonDebugger:
             return arrays[0] if len(arrays) == 1 else sum(arrays[1:], arrays[0])
 
         # R_oss equation contributions (projection equation)
-        R_adv  = _sum_terms('R_OSS_advx', 'R_OSS_advy')
-        R_div  = _rterm('R_OSS_div')
+        R_adv = _sum_terms('R_OSS_advx', 'R_OSS_advy')
         R_proj = _rterm('R_OSS_proj')
-        R_oss_net = _sum_terms('R_OSS_advx', 'R_OSS_advy', 'R_OSS_div', 'R_OSS_proj')
+        R_oss_net = _sum_terms('R_OSS_advx', 'R_OSS_advy', 'R_OSS_proj')
 
         # mass equation OSS contributions
-        R_lap  = _sum_terms('R_OSS_mass_xx', 'R_OSS_mass_yy',
-                            'R_OSS_mass_xy', 'R_OSS_mass_yx')
+        R_lap = _sum_terms('R_OSS_mass_xx', 'R_OSS_mass_yy',
+                           'R_OSS_mass_xy', 'R_OSS_mass_yx')
         R_corr = _sum_terms('R_OSS_corrx', 'R_OSS_corry')
         R_mass_oss_net = _sum_terms('R_OSS_mass_xx', 'R_OSS_mass_yy',
                                     'R_OSS_mass_xy', 'R_OSS_mass_yx',
@@ -354,19 +363,18 @@ class NewtonDebugger:
 
         panels = [
             # Row 1: solution context
-            (theta,       r'$\theta$',                       'viridis', {}),
-            (xi,          r'$\xi_h$',                        'RdBu_r',  {}),
-            (norm_a,      r'$|\mathbf{a}|$',                 'viridis', {}),
-            (div_j,       r'$\nabla\cdot j$ (context)',      'RdBu_r',  {}),
+            (theta, r'$\theta$', 'viridis', {}),
+            (xi, r'$\xi_h$', 'RdBu_r', {}),
+            (norm_a, r'$|\mathbf{a}|$', 'viridis', {}),
+            (div_j, r'$\nabla\cdot j$ (context)', 'RdBu_r', {}),
             # Row 2: assembled R_oss contributions
-            (R_adv,       r'$R_{oss}$: adv ($a\cdot\nabla\theta$)',  'RdBu_r', _symvlim(R_adv, R_div, R_proj)),
-            (R_div,       r'$R_{oss}$: div ($(1-\theta)\nabla\cdot j$)', 'RdBu_r', _symvlim(R_adv, R_div, R_proj)),
-            (R_proj,      r'$R_{oss}$: proj ($-\xi$)',       'RdBu_r',  _symvlim(R_adv, R_div, R_proj)),
-            (R_oss_net,   r'$R_{oss}$ net',                  'RdBu_r',  _symvlim(R_adv, R_div, R_proj)),
+            (R_adv, r'$R_{oss}$: adv ($a\cdot\nabla\theta$)', 'RdBu_r', _symvlim(R_adv, R_proj)),
+            (R_proj, r'$R_{oss}$: proj ($-\xi$)', 'RdBu_r', _symvlim(R_adv, R_proj)),
+            (R_oss_net, r'$R_{oss}$ net', 'RdBu_r', _symvlim(R_adv, R_proj)),
             # Row 3: assembled mass equation OSS contributions
-            (R_lap,       r'$R_{mass}$: OSS Laplacian',      'RdBu_r',  _symvlim(R_lap, R_corr, R_mass_oss_net)),
-            (R_corr,      r'$R_{mass}$: OSS correction',     'RdBu_r',  _symvlim(R_lap, R_corr, R_mass_oss_net)),
-            (R_mass_oss_net, r'$R_{mass}$: OSS net',         'RdBu_r',  _symvlim(R_lap, R_corr, R_mass_oss_net)),
+            (R_lap, r'$R_{mass}$: OSS Laplacian', 'RdBu_r', _symvlim(R_lap, R_corr, R_mass_oss_net)),
+            (R_corr, r'$R_{mass}$: OSS correction', 'RdBu_r', _symvlim(R_lap, R_corr, R_mass_oss_net)),
+            (R_mass_oss_net, r'$R_{mass}$: OSS net', 'RdBu_r', _symvlim(R_lap, R_corr, R_mass_oss_net)),
         ]
         panels = [(f, l, c, kw) for f, l, c, kw in panels if f is not None]
 

@@ -22,12 +22,12 @@
 # SOFTWARE.
 #
 
+# flake8: noqa: W503
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, TYPE_CHECKING
+from typing import Dict, List, Tuple
 
 import numpy as np
 import numpy.typing as npt
-from mpi4py import MPI
 
 from .elements import TaylorHoodP2P1
 from .grid_index import GridIndexManager
@@ -38,6 +38,7 @@ from .fieldspec import FieldSpec
 NDArray = npt.NDArray[np.floating]
 IntArray = npt.NDArray[np.signedinteger]
 
+
 @dataclass
 class GlobalIndexPattern:
     """Global indices for nnz values -> global matrix entries."""
@@ -46,12 +47,14 @@ class GlobalIndexPattern:
     mat_global_cols: "IntArray"
     rhs_global_rows: "IntArray"
 
+
 @dataclass
 class AssemblyTemplate:
     """Precomputed injection template for one (res, [var,] deriv_key) combination."""
     w: NDArray
     entries_per_quad: int
     nnz: IntArray
+
 
 # Residual, Variable
 BLOCK = (('P1', 'P1'), ('P1', 'P2'), ('P2', 'P1'), ('P2', 'P2'))
@@ -131,9 +134,9 @@ class Assembly:
         stencil = {}
         stencil[3] = {
             (0, 0): np.array(element.stencil_even_even, dtype=np.int32),
-            (1, 1): np.array(element.stencil_odd_odd,   dtype=np.int32),
-            (0, 1): np.array(element.stencil_even_odd,  dtype=np.int32),
-            (1, 0): np.array(element.stencil_odd_even,  dtype=np.int32),
+            (1, 1): np.array(element.stencil_odd_odd, dtype=np.int32),
+            (0, 1): np.array(element.stencil_even_odd, dtype=np.int32),
+            (1, 0): np.array(element.stencil_odd_even, dtype=np.int32),
         }
 
         for idx, combination in enumerate(BLOCK[0:3]):
@@ -174,9 +177,8 @@ class Assembly:
         for block_index, block_type in enumerate(BLOCK):
             inner_pts, contrib_pts = self.apply_stencil(stencil[block_index], block_type)
             connectivity[block_type] = (inner_pts, contrib_pts, len(inner_pts))
-        
-        return connectivity
 
+        return connectivity
 
     def apply_stencil(self, stencil, block_type) -> Tuple[IntArray, IntArray]:
         """Apply the given stencil to compute (inner_pts, contrib_pts) for one block type."""
@@ -184,12 +186,12 @@ class Assembly:
         res_grid, var_grid = block_type
         grid_idx = self.grid_idx
 
-        m_inner_P2  = grid_idx.index_mask_inner_local_P2
+        m_inner_P2 = grid_idx.index_mask_inner_local_P2
         m_padded_P2 = grid_idx.index_mask_padded_local_P2()
-        m_padded_P1= grid_idx.index_mask_padded_local_P1()
+        m_padded_P1 = grid_idx.index_mask_padded_local_P1()
 
         inner_pts_2d = np.argwhere(m_inner_P2 >= 0)          # (N, 2)
-        inner_idx    = m_inner_P2[inner_pts_2d[:, 0], inner_pts_2d[:, 1]]
+        inner_idx = m_inner_P2[inner_pts_2d[:, 0], inner_pts_2d[:, 1]]
 
         inner_list, contrib_list = [], []
 
@@ -306,7 +308,7 @@ class Assembly:
         using field_to_global. Result is stored as self.rhs_global_rows.
 
         Implicitly assumes that local residual vector is ordered in the
-        self.residuals order, and for each residual, the local entries are 
+        self.residuals order, and for each residual, the local entries are
         ordered by the inner node indices.
         """
         rows = []
@@ -477,9 +479,9 @@ class Assembly:
         """
 
         TO_P2 = self.grid_idx.sq_TO_inner_P2  # (n_sq, 9)
-        TO_P1= self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
+        TO_P1 = self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
         FROM_P2 = self.grid_idx.sq_FROM_padded_P2(var)  # (n_sq, 9)
-        FROM_P1= self.grid_idx.sq_FROM_padded_P1(var)  # (n_sq, 4)
+        FROM_P1 = self.grid_idx.sq_FROM_padded_P1(var)  # (n_sq, 4)
         n_sq = self.grid_idx.nb_sq
 
         res_sq_to_nodes = TO_P1 if self.res_to_grid[res] == 'P1' else TO_P2
@@ -540,7 +542,7 @@ class Assembly:
                 entries_per_quad = tmpl.entries_per_quad
 
                 res_quad_field = term.evaluate_deriv(var, *dep_vars)  # shape (n_sq, n_quad_sq)
-    
+
                 # shape (n_sq * n_quad_sq * entries_per_quad,)
                 quad_val_vec = np.repeat(res_quad_field.flatten(), entries_per_quad)
                 sw_vec = np.tile(sw, nb_sq)
@@ -592,7 +594,7 @@ class Assembly:
         """
 
         TO_P2 = self.grid_idx.sq_TO_inner_P2  # (n_sq, 9)
-        TO_P1= self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
+        TO_P1 = self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
         n_sq = self.grid_idx.nb_sq
 
         res_sq_to_nodes = TO_P1 if self.res_to_grid[res] == 'P1' else TO_P2

@@ -31,7 +31,7 @@ overshoot badly.
 The guard works in pressure space (p is the Newton DOF). Before applying
 the update dq, it checks how much dp/drho changes along the step. If the
 relative change exceeds `max_rel_change`, bisection finds the largest safe
-scaling factor f so the kink is approached but not crossed in one step.
+scaling factor.
 """
 
 import warnings

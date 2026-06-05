@@ -32,8 +32,8 @@ from muGrid import Field
 
 from .gp import GaussianProcessSurrogate
 from .gp import multi_in_single_out, multi_in_multi_out
-from .pressure import eos_pressure, eos_rho
-from .viscous import (stress_bottom, stress_top, stress_avg,
+from .pressure import eos_pressure, eos_rho  # noqa: F401
+from .viscous import (stress_bottom, stress_top, stress_avg,  # noqa: F401
                       stress_top_xz, stress_bottom_xz,
                       stress_top_yz, stress_bottom_yz,
                       get_shear_viscosity)
@@ -712,9 +712,9 @@ class Pressure(GaussianProcessSurrogate):
             f2 = grad(f1)
 
             self.p_from_rho = vmap2(f0)
-            self.dp_drho    = vmap2(f1)
-            self.d2p_drho2  = vmap2(f2)
-            self.drho_dp    = vmap2(lambda rho: 1.0 / f1(rho))
+            self.dp_drho = vmap2(f1)
+            self.d2p_drho2 = vmap2(f2)
+            self.drho_dp = vmap2(lambda rho: 1.0 / f1(rho))
 
 
 class Viscosity():

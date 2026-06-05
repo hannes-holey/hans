@@ -27,13 +27,15 @@ from .plotting import (
     plot_midsection_2d,
 )
 
-from .solver_comparison import (
+from .solver_comparison import (  # noqa: F401
     load_template,
     build_config,
     run_solver,
     run_all_solvers,
     print_timing,
 )
+
+from .analytics import heat_equation_1d
 
 __all__ = [
     'regen_conv_slider_pocket_1d',
@@ -53,4 +55,5 @@ __all__ = [
     'plot_overview_1d',
     'plot_overview_2d',
     'plot_midsection_2d',
+    'heat_equation_1d',
 ]

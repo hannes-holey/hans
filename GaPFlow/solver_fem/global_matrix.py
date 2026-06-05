@@ -40,7 +40,7 @@ def field_to_global(field_idx,
 
     if spec.grid == 'P1':
         y_p, x_p = np.divmod(field_idx, Nx_global_p)
-        y_P2, x_P2 = 2*y_p, 2*x_p
+        y_P2, x_P2 = 2 * y_p, 2 * x_p
     else:
         y_P2, x_P2 = np.divmod(field_idx, Nx_global_P2)
 
@@ -49,13 +49,15 @@ def field_to_global(field_idx,
 
     return nb_nodes_block_below + nb_nodes_cur_row + spec.idx
 
+
 def _get_nb_nodes_cur_row(x_P2, y_P2, p_factor):
     """Number of nodes in the current row BEFORE x_P2.
     If y_P2 is even: x_P2//2 additional nodes in the current row
     """
     nb_p = np.where(y_P2 % 2 == 0, (x_P2 + 1) // 2, 0)
     nb_P2 = x_P2
-    return 2*nb_P2 + p_factor*nb_p
+    return 2 * nb_P2 + p_factor * nb_p
+
 
 def _get_nb_nodes_block_below(y_P2, Nx_global_P2, Nx_global_p, p_factor):
     """Number of nodes in all rows BELOW y_P2.
@@ -66,4 +68,4 @@ def _get_nb_nodes_block_below(y_P2, Nx_global_P2, Nx_global_p, p_factor):
     nb_P2 = y_P2 * Nx_global_P2
     rows_p_below = (y_P2 + 1) // 2
     nb_p = rows_p_below * Nx_global_p
-    return 2*nb_P2 + p_factor*nb_p
+    return 2 * nb_P2 + p_factor * nb_p

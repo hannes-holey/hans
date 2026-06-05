@@ -180,7 +180,7 @@ class Problem:
         self.wall_stress_yz = WallStress(self.fc, prop, geo, direction='y', data=database, gp=gpy)
         self.viscosity = Viscosity(self.fc, prop)
         self.topo = Topography(self.fc, self.grid, geo, prop, decomp=self.decomp,
-                              force_balance=force_balance)
+                               force_balance=force_balance)
         if self.topo._force_balance:
             self.topo._fb_controller.set_problem(self)
 
