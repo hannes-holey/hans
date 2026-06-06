@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #
 # ### MIT License
 #
@@ -21,13 +21,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+"""Moltemplate helper functions.
+
+This module contains functions that help setting up the gold/alkane system.
+"""
+
 import os
 import numpy as np
 import subprocess
 import scipy.constants as sci
 from ase.lattice.cubic import FaceCenteredCubic
+from random import randint
 
-from .utils import _get_MPI_grid
+from .utils import sanitize_num_cpus
 
 
 def write_init(preset="TraPPE", **kwargs):
@@ -172,7 +179,7 @@ def _create_fcc_wall_ase(symbol='Au',
     az : list, optional
         Lattice vector pointing in z direction (the default is [1, -1, 1])
     rotation : float, optional
-        Rotation angle around the y axis in degreees (the default is 0.)
+        Rotation angle around the y axis in degrees (the default is 0.)
     nx : int, optional
         Number of repetitions in x direction (the default is 30)
     ny : int or None, optional
@@ -204,7 +211,7 @@ def _create_fcc_wall_ase(symbol='Au',
     lz0 = np.sqrt(3) * a
 
     if rotation is not None:
-        nx = abs(int(np.floor(lz0 / lx0 / np.tan(rotation / 180. * np.pi))))
+        nx = int(np.floor(lz0 / lx0 / np.tan(abs(rotation) / 180. * np.pi)))
 
     if ny is None:
         ny = int((lx0 * nx) / ly0)
@@ -294,7 +301,7 @@ def _get_num_fluid_molecules(name, volume, density):
     return Nf, Nf * nC_per_mol
 
 
-def config_fluid(file, Lx, Ly, H, density, buffer=25.):
+def config_fluid(file, Lx, Ly, H, density, buffer=25., flat=True):
     """Calculate an initial molecule grid given the box dimensions and
     adjust the gap height for the initial setup to fit all molecules
     without overlap.
@@ -310,10 +317,12 @@ def config_fluid(file, Lx, Ly, H, density, buffer=25.):
         Box dimension y
     H : float
         Target gap height
-    density: float
+    density : float
         Target fluid density
-    buffer: float
+    buffer : float
         "Safety distance" between the outermost fluid layer and the wall
+    flat : bool
+        Flags flat systems in which a slight density correction is applied.
 
     Returns
     -------
@@ -336,6 +345,16 @@ def config_fluid(file, Lx, Ly, H, density, buffer=25.):
 
     volume = Lx * Ly * H
     num_fluid_mol, num_fluid_atoms = _get_num_fluid_molecules(name, volume, density)
+
+    # In flat sections the achieved density is usually too high
+    # We reduce by removing molecules that would "fit" into the depletion zone
+    if flat:
+        sig = (3.92 + 2.63) / 2.
+        dH = sig / 2.
+        excess_vol = Lx * Ly * dH
+        excess_mol, excess_atoms = _get_num_fluid_molecules(name, excess_vol, density)
+        num_fluid_mol -= excess_mol
+        num_fluid_atoms -= excess_atoms
 
     coords = _read_coords_from_lt(file)
     lx, ly, lz = coords.max(0) - coords.min(0)
@@ -390,6 +409,28 @@ def _get_mass_alkane(name):
     mCH4 = 16.3307
 
     return nCH2 * mCH2 + nCH3 * mCH3 + nCH4 * mCH4, np.sum(molecules[name])
+
+
+def _get_effective_params_alkane(name):
+
+    molecules = {'pentane': [3, 2, 0],
+                 'decane': [8, 2, 0],
+                 'hexadecane': [14, 2, 0], }
+
+    assert name in molecules.keys()
+
+    nCH2, nCH3, nCH4 = molecules[name]
+
+    n = nCH2 + nCH3 + nCH4
+
+    # United Atom pseudo particles
+    sigCH2 = 3.95
+    sigCH3 = 3.75
+    sigCH4 = 3.72
+
+    sig = (nCH2 * sigCH2 + nCH3 * sigCH3 + nCH4 * sigCH4) / n
+
+    return sig
 
 
 def write_fluid(name, Nf, mol_grid, slab_size, gap, buffer=25.):
@@ -475,10 +516,11 @@ def write_mixing():
 
 def write_settings(args):
 
-    # FIXME: not hardcoded
-    # effective wall fluid distance / hardcoded for TraPPE / gold
-    # (You slightly miss the target gap height without it)
-    offset = (3.75 + 2.63) / 2.
+    # effective wall fluid distance, hardcoded for TraPPE / gold
+    name = args.get('molecule')
+    sigM = _get_effective_params_alkane(name)
+    sigAu = 2.63
+    offset = (sigM + sigAu) / 2.
 
     density_real = args.get("density")  # g / mol / A^3
     density_SI = density_real / (sci.N_A * 1e-24)
@@ -488,7 +530,8 @@ def write_settings(args):
 
     h = args.get("gap_height")
 
-    nlayers = 9  # 3 * unit cell size (default)
+    nwall = args.get('nz', 7)
+    nlayers = 3 * nwall
     nthermal = (nlayers - 1) // 2 + (nlayers - 1) % 2
 
     # Couette flow
@@ -507,12 +550,19 @@ def write_settings(args):
     Nsteady = args.get("Nsteady", 100_000)  # should depend on sliding velocity and size
     Nsample = args.get("Nsample", 300_000)
     temperature = args.get("temperature", 300.)
+    thermostat_fluid = int(args.get('thermostat_fluid', False))
 
-    nbinz = args.get("nbinz", 200)
-    Nevery = args.get("Nevery", 10)
-    Nrepeat = args.get("Nrepeat", 100)
-    Nfreq = args.get("Nfreq", 1000)
-    dumpfreq = args.get("Nfreq", 10_000)
+    Nevery_z = args.get("Nevery_zprof", 100)
+    Nrepeat_z = args.get("Nrepeat_zprof", 10)
+    Nfreq_z = args.get("Nfreq_zprof", 1000)
+
+    Nevery = args.get("Nevery", 500)
+    Nrepeat = args.get("Nrepeat", 1)
+    Nfreq = args.get("Nfreq", 500)
+
+    dumpfreq = args.get("Nfreq_dump", 10_000)
+
+    dz = args.get("dz", 0.1)  # sampling of z profiles
 
     rotation = args.get("rotation", 0.)
     if abs(rotation) > 4.:
@@ -533,24 +583,33 @@ def write_settings(args):
     variable        input_fluxX equal {jx_real}
     variable        input_fluxY equal {jy_real}
     variable        input_temp equal {temperature} # K
+    variable        thermostat_fluid equal {thermostat_fluid} # 1: True
     variable        vWall equal {U_real} # A/fs
     variable        hmin equal {h}
 
     # Wall sections
-    variable        nwall equal 3
+    variable        nwall equal {nwall}
     variable        ntherm equal {nthermal}
     variable        angle_sf equal {angle_sf}
 
-    # sampling // spatial
-    variable        nbinz index {nbinz}
-
-    # sampling // temporal
+    # sampling // temporal (stress)
     variable        Nevery equal {Nevery}
     variable        Nrepeat equal {Nrepeat}
     variable        Nfreq equal {Nfreq}
 
+    # sampling // temporal (profiles)
+    variable        Nevery_z equal {Nevery_z}
+    variable        Nrepeat_z equal {Nrepeat_z}
+    variable        Nfreq_z equal {Nfreq_z}
+
+    # sampling // spatial (profiles)
+    variable        dz equal {dz}
+
+    # Dump trajectory
     variable        dumpfreq equal {dumpfreq}
 
+    # Random seed
+    variable        random_seed equal {randint(0, 1_000_000)}
 
     include         static/in.settings.lmp
 
@@ -630,21 +689,20 @@ def write_template(args, template_dir='moltemplate_files', output_dir="moltempla
     # general
     shift = args.get("shift", False)
     max_cpu = args.get("ncpu")
+    atoms_per_core = args.get("atoms_per_core", 1000)
+    mpi_grid = args.get("mpiGrid", None)
     wall_potential = args.get("wall", "eam/alloy")
 
     # input variables
-    target_density = args.get("density")  # g/mol/ A^3
-    # target_density *= sci.N_A * 1e-24    # g / cm^3 to g/mol/A^3
+    target_density = args.get("density")  # g/mol/A^3
     target_gap = args.get("gap_height")  # Angstrom
-    target_rotation = args.get("rotation", 0.)
-
-    mpi_grid = args.get("mpiGrid", None)
+    target_rotation = args.get("rotation", 0.)  # degrees
+    is_flat = abs(target_rotation) < .1
 
     # solid, create ASE Atoms object
     nx = args.get("nx", 21)
     ny = args.get("ny", None)
     nz = args.get("nz", None)
-    # solid = args.get("solid", "Au")
 
     # top wall possibly rotated
     slab_top, nx = _create_fcc_wall_ase(nx=nx,
@@ -666,7 +724,7 @@ def write_template(args, template_dir='moltemplate_files', output_dir="moltempla
     name = args.get("molecule", "pentane")
     molecule_file = os.path.join(template_dir, f"{name}.lt")
     fluid_grid, num_fluid_mol, num_fluid_atoms, initial_gap = config_fluid(
-        molecule_file, lx, ly, target_gap, target_density, buffer=buffer)
+        molecule_file, lx, ly, target_gap, target_density, buffer=buffer, flat=is_flat)
 
     # move top wall up
     slab_top.positions += np.array([0., 0., lz + initial_gap])
@@ -675,7 +733,13 @@ def write_template(args, template_dir='moltemplate_files', output_dir="moltempla
     Natoms = num_fluid_atoms + num_solid_atoms
 
     if mpi_grid is None:
-        mpi_grid = _get_MPI_grid(Natoms, nx // 7, max_cpu)
+        # Let LAMMPS decide MPI grid
+        mpi_grid = ['*', '*', '*']
+        # but use reasonable number of cores
+        num_cpu = sanitize_num_cpus(Natoms // atoms_per_core, max_cpu)
+    else:
+        num_cpu = np.prod(mpi_grid)
+        assert num_cpu <= max_cpu
 
     outfile = os.path.join(output_dir, 'system.lt')
     with open(outfile, 'w') as f:
@@ -701,7 +765,7 @@ def write_template(args, template_dir='moltemplate_files', output_dir="moltempla
         # Write run
         f.write(write_run())
 
-    return np.prod(mpi_grid)
+    return num_cpu
 
 
 def build_template(args):

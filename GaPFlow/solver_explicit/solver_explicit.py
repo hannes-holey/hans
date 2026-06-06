@@ -24,6 +24,9 @@
 from .integrate import predictor_corrector, source
 from typing import TYPE_CHECKING
 from ..bc import BoundarySpec, GhostUpdater, sample_bc_spec
+from ..logging import get_logger
+
+logger = get_logger("gapflow.problem")
 if TYPE_CHECKING:
     from ..problem import Problem
 
@@ -72,13 +75,17 @@ class ExplicitSolver:
         else:
             p.dt = p.numerics['dt']
 
-        p.tol = p.numerics['tol']
-        p.max_it = p.numerics['max_it']
 
     def update(self) -> None:
         """
-        Single update iteration performing predictor-corrector for each sweep
-        direction and updating constitutive models (pressure, wall/bulk stress).
+        Performs a single time step using the MacCormack [1]_ predictor corrector scheme.
+
+        References
+        ----------
+        .. [1] MacCormack, R. W. (2003).
+               The effect of viscosity in hypervelocity impact cratering
+               Journal of Spacecraft and Rockets (reprint)
+               https://doi.org/10.2514/2.6901
         """
         p = self.problem
 
@@ -91,16 +98,23 @@ class ExplicitSolver:
 
         q0 = p.q.copy()
 
+        # Without active learning, compute variance only before writing
         one_step_before_output = (p.step + 1) % p.options['write_freq'] == 0
+        # Suppress active learning for rapidly changing fields
+        cooldown = p._residuals_above_tolerance(1e-3)
 
         for i, d in enumerate(directions):
+
             # update surrogates / constitutive models (predictor on first pass)
             p.pressure.update(predictor=i == 0,
-                              compute_var=one_step_before_output)
+                              compute_var=one_step_before_output,
+                              cooldown=cooldown)
             p.wall_stress_xz.update(predictor=i == 0,
-                                    compute_var=one_step_before_output)
+                                    compute_var=one_step_before_output,
+                                    cooldown=cooldown)
             p.wall_stress_yz.update(predictor=i == 0,
-                                    compute_var=one_step_before_output)
+                                    compute_var=one_step_before_output,
+                                    cooldown=cooldown)
             p.bulk_stress.update()
 
             # fluxes and source terms
@@ -119,13 +133,13 @@ class ExplicitSolver:
                 p.wall_stress_xz.upper + p.wall_stress_yz.upper,
             )
 
-            p.q = p.q - dt * (fX / dx + fY / dy - src)
+            p.q[...] = p.q - dt * (fX / dx + fY / dy - src)
 
             self.decomp.exchange_ghosts(self._sol_field)
             self.ghost_updater.update()
 
         # second-order temporal averaging (Crank-Nicolson-like)
-        p.q = (p.q + q0) / 2.0
+        p.q[...] = (p.q + q0) / 2.0
         self.decomp.exchange_ghosts(self._sol_field)
         self.ghost_updater.update()
 
@@ -139,9 +153,9 @@ class ExplicitSolver:
         p = self.problem
 
         if p.options['print_progress']:
-            print(61 * '-')
-            print(f"{'Step':6s} {'Timestep':10s} {'Time':10s} {'CFL':10s} {'Residual':10s}")
-            print(61 * '-')
+            logger.info(61 * '-')
+            logger.info(f"{'Step':6s} {'Timestep':10s} {'Time':10s} {'CFL':10s} {'Residual':10s}")
+            logger.info(61 * '-')
         if p.options['save_output']:
             p.write(params=False)
 

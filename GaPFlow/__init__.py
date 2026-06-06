@@ -1,5 +1,6 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
+#           2026 Christoph Huber
 #
 # ### MIT License
 #
@@ -23,7 +24,7 @@
 #
 import os
 
-from DiscoverVersion import get_version
+from importlib.metadata import version, PackageNotFoundError
 
 os.environ['JAX_PLATFORMS'] = 'cpu'  # Suppress CUDA warning, use CPU only
 
@@ -31,7 +32,11 @@ from jax import config  # noqa: E402
 
 config.update("jax_enable_x64", True)
 
-__version__ = get_version("GaPFlow", __file__)
+try:
+    __version__ = version("GaPFlow")
+except PackageNotFoundError:
+    # package is not installed
+    pass
 
 # Optional dependency flags
 try:

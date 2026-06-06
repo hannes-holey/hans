@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #
 # ### MIT License
 #
@@ -22,6 +22,7 @@
 # SOFTWARE.
 #
 import sys
+import signal
 import numpy as np
 import jax.numpy as jnp
 from jax import jit, vmap
@@ -38,16 +39,6 @@ def progressbar(it, prefix="", size=40, out=sys.stdout):  # Python3.6+
         yield item
         show(i + 1)
     print("\n", flush=True, file=out)
-
-
-def bordered_text(text):
-    lines = text.splitlines()
-    width = max(len(s) for s in lines)
-    res = ['┌' + '─' * width + '┐']
-    for s in lines:
-        res.append('│' + (s + ' ' * width)[:width] + '│')
-    res.append('└' + '─' * width + '┘')
-    return '\n'.join(res)
 
 
 def make_dumpable(obj):
@@ -87,3 +78,27 @@ def vvmap(fn, map_list):
             in_axes=map_list
         )
     )
+
+
+def get_termination_signals():
+
+    signals = [signal.SIGINT]
+
+    if hasattr(signal, "SIGTERM"):
+        signals.append(signal.SIGTERM)
+    if hasattr(signal, "SIGHUP"):
+        signals.append(signal.SIGHUP)
+    if hasattr(signal, "SIGUSR1"):
+        signals.append(signal.SIGUSR1)
+    if hasattr(signal, "SIGBREAK"):  # Windows Ctrl+Break
+        signals.append(signal.SIGBREAK)
+
+    return signals
+
+
+def handle_signals(func) -> None:
+    """
+    Register a function as the handler for common termination signals.
+    """
+    for s in get_termination_signals():
+        signal.signal(s, func)

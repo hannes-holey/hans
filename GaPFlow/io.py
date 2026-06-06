@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #           2025 Christoph Huber
 #
 # ### MIT License
@@ -22,6 +22,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
+"""Helper functions for input and output operations.
+
+Mainly functions that sanitize the user input from YAML configuration files.
+"""
+
+
 import os
 import warnings
 from datetime import datetime
@@ -491,13 +498,20 @@ def sanitize_gp(d):
         if active:
             out[sk] = {}
             ds = d[sk]
+            out[sk]['tol'] = ds.get('tol', 'delta')
             out[sk]['atol'] = float(ds.get('atol', 1.))
-            out[sk]['rtol'] = float(ds.get('rtol', 0.5))
+            out[sk]['rtol'] = float(ds.get('rtol', 0.))
             out[sk]['obs_stddev'] = float(ds.get('obs_stddev', 0.))
             out[sk]['fix_noise'] = bool(ds.get('fix_noise', True))
             out[sk]['max_steps'] = int(ds.get('max_steps', 5))
             out[sk]['pause_steps'] = int(ds.get('pause_steps', 100))
             out[sk]['active_learning'] = bool(ds.get('active_learning', True))
+            out[sk]['similarity_check'] = bool(ds.get('similarity_check', True))
+            out[sk]['allowed_skips'] = int(ds.get('allowed_skips', 0))
+            out[sk]['perturb_target'] = bool(ds.get('perturb_target', False))
+            out[sk]['pause_on_high_residual'] = bool(ds.get('pause_on_high_residual', False))
+
+            assert out[sk]['tol'] in ['absmax', 'delta', 'snr']
 
             # For shear/2D: need to distinguish (x and y)
             if sk == 'press':
@@ -522,7 +536,12 @@ def sanitize_db(d):
     out['init_width'] = float(d.get('init_width', 1e-2))
     out['init_seed'] = int(d.get('init_width', 123))
 
+    out['normalizer_X'] = d.get('normalizer_X', 'minmax')
+    out['normalizer_Y'] = d.get('normalizer_Y', 'standard')
+
     assert out['init_method'] in ['rand', 'lhc', 'sobol']
+    assert out['normalizer_X'] in ['max', 'minmax', 'standard', 'none']
+    assert out['normalizer_Y'] in ['max', 'minmax', 'standard', 'none']
 
     print_dict(out)
 

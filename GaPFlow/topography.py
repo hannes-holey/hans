@@ -1,6 +1,6 @@
 #
-# Copyright 2025 Hannes Holey
-#           2025 Christoph Huber
+# Copyright 2025-2026 Christoph Huber
+#           2025 Hannes Holey
 #
 # ### MIT License
 #
@@ -26,6 +26,7 @@ import copy
 import os
 import warnings
 from typing import Tuple, Any
+from muGrid.Field import wrap_field
 
 import numpy as np
 import numpy.typing as npt

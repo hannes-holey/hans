@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #           2026 Christoph Huber
 #
 # ### MIT License
@@ -24,6 +24,13 @@
 #
 
 # flake8: noqa: W503
+
+
+"""Viscous stress tensor components.
+
+This module contains functions that calculate the (generalized) Newtonian stress tensor
+components at the walls of the bottom and top surface, and averaged across the gap.
+"""
 
 import numpy as np
 import jax.numpy as jnp

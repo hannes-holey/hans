@@ -115,7 +115,7 @@ velocity        surfU set 0.0 0.0 0.0
 velocity        surfL set 0.0 0.0 0.0
 
 # initialize with random velocities
-velocity        fluid create ${temp} 726403 dist gaussian mom yes
+velocity        fluid create ${temp} ${random_seed} dist gaussian mom yes
 
 ###############
 

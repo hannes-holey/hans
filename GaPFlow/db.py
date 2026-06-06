@@ -1,5 +1,6 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2026 Dan Waxman
+#           2025 Hannes Holey
 #
 # ### MIT License
 #
@@ -33,6 +34,9 @@ from jax import Array
 from scipy.stats import qmc
 
 from .utils import progressbar
+from .logging import get_logger
+
+logger = get_logger("gapflow.md")
 
 ArrayX = Float[Array, "Ntrain Nfeat"]   # Input features
 ArrayY = Float[Array, "Ntrain 13"]  # Output features
@@ -55,6 +59,7 @@ class Database:
         An instance of the MD runner object. Adding a data point will lead to calling its `run` method.
     db : dict
         Configuration dictionary with keys:
+
         - ``'dtool_path'`` : str, path where training data is stored and loaded from.
         - ``'init_size'`` : int, minimum dataset size.
         - ``'init_width'`` : float, relative sampling width.
@@ -106,15 +111,19 @@ class Database:
             Yerr = jnp.empty((0, 13))
 
         self._Xtrain = Xtrain
+        self._Xtrain_target = Xtrain
         self._Ytrain = Ytrain
         self._Ytrain_err = Yerr
 
         if self.size == 0:
-            self._X_scale = jnp.ones((self.num_features,))
-            self._Y_scale = jnp.ones((13,))
+            input_norm = 'none'
+            output_norm = 'none'
         else:
-            self._X_scale = self._normalizer(self._Xtrain)
-            self._Y_scale = self._normalizer(self._Ytrain)
+            input_norm = self._db['normalizer_X']
+            output_norm = self._db['normalizer_Y']
+
+        self._X_shift, self._X_scale = self._normalizer(self._Xtrain, mode=input_norm)
+        self._Y_shift, self._Y_scale = self._normalizer(self._Ytrain, mode=output_norm)
 
     # ------------------------------------------------------------------
     # Properties
@@ -132,12 +141,17 @@ class Database:
     @property
     def Xtrain(self) -> ArrayX:
         """Normalized input features of shape (Ntrain, Nfeat)."""
-        return self._Xtrain / self.X_scale
+        return (self._Xtrain - self._X_shift) / self.X_scale
+
+    @property
+    def Xtrain_target(self) -> ArrayX:
+        """Normalized input features of shape (Ntrain, Nfeat)."""
+        return (self._Xtrain_target - self._X_shift) / self.X_scale
 
     @property
     def Ytrain(self) -> ArrayY:
         """Normalized observations of shape (Ntrain, 13)."""
-        return self._Ytrain / self.Y_scale
+        return (self._Ytrain - self._Y_shift) / self.Y_scale
 
     @property
     def Ytrain_err(self) -> ArrayY:
@@ -158,6 +172,16 @@ class Database:
     def Y_scale(self) -> ArrayY:
         """Normalization constants for observations"""
         return self._Y_scale
+
+    @property
+    def X_shift(self) -> ArrayX:
+        """Normalization constants for input features."""
+        return self._X_shift
+
+    @property
+    def Y_shift(self) -> ArrayY:
+        """Normalization constants for observations"""
+        return self._Y_shift
 
     @property
     def num_features(self) -> int:
@@ -201,9 +225,9 @@ class Database:
         readme_list = [yaml.load(ds.get_readme_content())
                        for ds in dtoolcore.iter_datasets_in_base_uri(self.training_path)]
 
-        print(f"Loading {len(readme_list)} local datasets in '{self.training_path}'.")
+        logger.info("Loading %d local datasets in '%s'.", len(readme_list), self.training_path)
         for ds in dtoolcore.iter_datasets_in_base_uri(self.training_path):
-            print(f'- {ds.uuid} ({ds.name})')
+            logger.info('- %s (%s)', ds.uuid, ds.name)
 
         return readme_list
 
@@ -259,9 +283,22 @@ class Database:
             self._md._dtool_basepath = new_path
             self._db['dtool_path'] = new_path
 
-    def _normalizer(self, x: ArrayX) -> ArrayX:
+    def _normalizer(self, x: ArrayX, mode) -> ArrayX:
         """Compute feature-wise normalization factors."""
-        return jnp.maximum(jnp.max(jnp.abs(x), axis=0), 1e-12)
+
+        shift = jnp.zeros(x.shape[1])
+        scale = jnp.ones(x.shape[1])
+
+        if mode == 'max':
+            scale = jnp.maximum(jnp.max(jnp.abs(x - shift), axis=0), 1e-12)
+        elif mode == 'minmax':
+            shift = jnp.min(x, axis=0)
+            scale = jnp.maximum(jnp.max(x - shift, axis=0), 1e-12)
+        elif mode == 'standard':
+            shift = jnp.mean(x, axis=0)
+            scale = jnp.maximum(jnp.std(x, axis=0), 1e-12)
+
+        return shift, scale
 
     def write(self) -> None:
         """Write the dataset arrays to disk (if the simulation output path is specified)."""
@@ -297,8 +334,8 @@ class Database:
         Nsample = init_size - self.size
 
         if Nsample > 0:
-            print(f"Database contains less than {init_size} MD runs.")
-            print(f"Generate new training data in {self.training_path}")
+            logger.info("Database contains less than %d MD runs.", init_size)
+            logger.info("Generate new training data in %s", self.training_path)
 
             if dim == 1:
                 flux = jnp.mean(Xtest[:, 1])
@@ -337,6 +374,9 @@ class Database:
             ])
 
             self.add_data(Xnew)
+        else:
+            # Also write training data to file when no new data is added
+            self.write()
 
     def add_data(
         self,
@@ -352,17 +392,19 @@ class Database:
         """
         size_before = self.size
 
-        for X in Xnew:
+        for Xi in Xnew:
             size_before += 1
 
-            Y, Ye = self._md.run(X, size_before)
+            self._Xtrain_target = jnp.vstack([self._Xtrain_target, Xi])
+
+            X, Y, Ye = self._md.run(Xi, size_before)
 
             self._Xtrain = jnp.vstack([self._Xtrain, X])
             self._Ytrain = jnp.vstack([self._Ytrain, Y])
             self._Ytrain_err = jnp.vstack([self._Ytrain_err, Ye])
 
-            self._X_scale = self._normalizer(self._Xtrain)
-            self._Y_scale = self._normalizer(self._Ytrain)
+            self._X_shift, self._X_scale = self._normalizer(self._Xtrain, mode=self._db['normalizer_X'])
+            self._Y_shift, self._Y_scale = self._normalizer(self._Ytrain, mode=self._db['normalizer_Y'])
 
         self.write()
 
@@ -446,7 +488,7 @@ def _get_sobol_samples(N, lo, hi):
     m = int(jnp.log2(N))
     if int(2**m) != N:
         m = int(jnp.ceil(jnp.log2(N)))
-        print(f'Sample size should be a power of 2 for Sobol sampling. Use Ninit={2**m}.')
+        logger.info("Sample size should be a power of 2 for Sobol sampling. Use Ninit=%d.", 2**m)
     sample = sampler.random_base2(m=m)
     scaled_samples = qmc.scale(sample, lo, hi)
 

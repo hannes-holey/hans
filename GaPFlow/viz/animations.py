@@ -1,5 +1,6 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
+#           2026 Dan Waxman
 #           2025 Christoph Huber
 #
 # ### MIT License
@@ -96,14 +97,12 @@ def animate_2d(filename_sol: str,
                seconds: float = 10.,
                save: bool = False):
     """
-    Create animation for 1D simulations.
+    Create animation for 2D simulations.
 
     Parameters
     ----------
     filename_sol : str
         Relative path to the solution NetCDF file.
-    filename_topo : str
-        Relative path to the topography NetCDF file.
     seconds : float
         Length of the saved video in seconds, i.e. determines the frame rate.
     save : bool
@@ -286,19 +285,19 @@ def _create_animation_1d(filename_sol: str,
     return ani
 
 
-def _create_animation_1d_gp(filename, tol_p=None, tol_s=None):
+def _create_animation_1d_gp(filename, tol_p=None, tol_t=None):
 
     if tol_p is not None:
         tol_p = np.sqrt(tol_p)
         tol_p_max = tol_p.max()
     else:
-        tol_p_max = 0.
+        tol_p_max = None
 
-    if tol_s is not None:
-        tol_t = np.sqrt(tol_s)
+    if tol_t is not None:
+        tol_t = np.sqrt(tol_t)
         tol_t_max = tol_t.max()
     else:
-        tol_t_max = 0.
+        tol_t_max = None
 
     def update_lines(i, q, p, vp, tau, vt):
 
@@ -309,6 +308,11 @@ def _create_animation_1d_gp(filename, tol_p=None, tol_s=None):
         ax[1, 0].cla()
         ax[1, 1].cla()
         ax[1, 2].cla()
+
+        _tol_t = tol_t[i] if tol_t is not None else None
+        _tol_p = tol_p[i] if tol_p is not None else None
+        _tol_t_max = tol_t_max if tol_t_max is not None else np.sqrt(vt[i, 1:-1, ny // 2]).max()
+        _tol_p_max = tol_p_max if tol_p_max is not None else np.sqrt(vp[i, 1:-1, ny // 2]).max()
 
         # Pressure
         _plot_gp(ax[1, 0], x, p[i, :, ci], vp[i, :, ci], tol=tol_p[i], color=color_p)

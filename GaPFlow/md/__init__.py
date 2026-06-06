@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #
 # ### MIT License
 #
@@ -21,4 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-from .runner import MolecularDynamics, Mock, LennardJones, GoldAlkane  # noqa: F401
+from .base import MolecularDynamics  # noqa: F401
+from .mock import Mock  # noqa: F401
+from .lj import LennardJones  # noqa: F401
+from .mol import GoldAlkane  # noqa: F401

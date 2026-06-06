@@ -1,6 +1,7 @@
 #
-# Copyright 2025 Hannes Holey
-#           2025 Christoph Huber
+# Copyright 2026 Dan Waxman
+#           2025-2026 Hannes Holey
+#           2025-2026 Christoph Huber
 #
 # ### MIT License
 #
@@ -31,7 +32,7 @@ from typing import Optional, Tuple, Any
 from muGrid import Field
 
 from .gp import GaussianProcessSurrogate
-from .gp import multi_in_single_out, multi_in_multi_out
+from .gp import multi_in_single_out
 from .pressure import eos_pressure, eos_rho  # noqa: F401
 from .viscous import (stress_bottom, stress_top, stress_avg,  # noqa: F401
                       stress_top_xz, stress_bottom_xz,
@@ -49,6 +50,7 @@ class WallStress(GaussianProcessSurrogate):
     Wall stress model (wall shear/stress in xz or yz direction).
 
     This class can operate in two modes:
+
     - Deterministic: compute wall/boundary stresses from viscous models.
     - GP-based surrogate: train/predict wall stress using GaussianProcessSurrogate.
 
@@ -93,18 +95,24 @@ class WallStress(GaussianProcessSurrogate):
         self._out_index = {'x': 4, 'y': 3}[direction]
 
         if gp is not None:
+            self.is_gp_model = True
             self.active_dims = {'x': gp.get('active_dims_x', [0, 1, 3]),
                                 'y': gp.get('active_dims_y', [0, 2, 3])}[direction]
 
             self.__field_variance = fc.real_field(f'wall_stress_{direction}z_var')
 
+            # Active learning parameters
+            self.tol = gp['tol']
             self.atol = gp['atol']
             self.rtol = gp['rtol']
             self.max_steps = gp['max_steps']
             self.pause_steps = gp['pause_steps']
-            self.is_gp_model = True
             self.use_active_learning = gp['active_learning']
-            self.build_gp = multi_in_multi_out
+            self.similarity_check = gp['similarity_check']
+            self.allowed_skips = gp['allowed_skips']
+            self.perturb_target = gp['perturb_target']
+            self.fix_noise = gp['fix_noise']
+            self.pause_on_high_residual = gp['pause_on_high_residual']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
@@ -195,41 +203,9 @@ class WallStress(GaussianProcessSurrogate):
         return np.gradient(self.pressure, self.__y.pg[0, :], axis=1)
 
     @property
-    def Xtest(self) -> Tuple[JAXArray, JAXArray]:
-        """
-        Test inputs for GP prediction.
-
-        Returns
-        -------
-        tuple of jax.Array
-            (X, flag) where X contains duplicated and scaled features and flag
-            indicates which output (lower/upper) the sample corresponds to.
-        """
-        X = jnp.concatenate([(self._Xtest / self.database.X_scale)[:, self.active_dims],
-                             (self._Xtest / self.database.X_scale)[:, self.active_dims]])
-
-        flag = jnp.concatenate([jnp.zeros(X.shape[0] // 2, dtype=int),
-                                jnp.ones(X.shape[0] // 2, dtype=int)])
-
-        return X, flag
-
-    @property
-    def Xtrain(self) -> Tuple[JAXArray, JAXArray]:
-        """
-        Training inputs for GP (duplicated to account for two outputs).
-
-        Returns
-        -------
-        tuple of jax.Array
-            (X, flag) where X contains duplicated input rows and flag labels.
-        """
-        X = jnp.concatenate([self.database.Xtrain[:, self.active_dims],
-                             self.database.Xtrain[:, self.active_dims]])
-
-        flag = jnp.concatenate([jnp.zeros(X.shape[0] // 2, dtype=int),
-                                jnp.ones(X.shape[0] // 2, dtype=int)])
-
-        return X, flag
+    def Xtest(self) -> JAXArray:
+        """Test inputs for shear stress GP (normalized)."""
+        return ((self._Xtest - self.database.X_shift) / self.database.X_scale)[:, self.active_dims]
 
     @property
     def _Ytrain(self) -> JAXArray:
@@ -241,8 +217,8 @@ class WallStress(GaussianProcessSurrogate):
         jax.Array
             Concatenated array of training outputs (lower then upper).
         """
-        return jnp.concatenate([self.database._Ytrain[:self.last_fit_train_size, self._out_index + 1],
-                                self.database._Ytrain[:self.last_fit_train_size, self._out_index + 7]])
+        return jnp.vstack([self.database._Ytrain[:self.last_fit_train_size, self._out_index + 1],
+                           self.database._Ytrain[:self.last_fit_train_size, self._out_index + 7]]).T
 
     @property
     def Ytrain(self) -> JAXArray:
@@ -254,7 +230,7 @@ class WallStress(GaussianProcessSurrogate):
         jax.Array
             Concatenated array of training outputs (lower then upper).
         """
-        return self._Ytrain / self.Yscale
+        return (self._Ytrain - self.Yshift) / self.Yscale
 
     @property
     def Yscale(self) -> JAXArray:
@@ -272,6 +248,21 @@ class WallStress(GaussianProcessSurrogate):
         return jnp.max(self.database.Y_scale[indices])
 
     @property
+    def Yshift(self) -> JAXArray:
+        """
+        Output scaling factor used for normalization.
+
+        Returns
+        -------
+        jax.Array
+            Scalar-like array representing the maximum of selected Y scales.
+        """
+        indices = jnp.array([self._out_index + 1,
+                             self._out_index + 7], dtype=int)
+
+        return jnp.max(self.database.Y_shift[indices])
+
+    @property
     def Yerr(self) -> JAXArray:
         """
         Observational error (normalized by Yscale).
@@ -282,20 +273,20 @@ class WallStress(GaussianProcessSurrogate):
             Observation noise standard deviation normalized by Yscale.
         """
 
-        Yerr_all = jnp.concatenate([self.database._Ytrain_err[:self.last_fit_train_size, self._out_index + 1],
-                                    self.database._Ytrain_err[:self.last_fit_train_size, self._out_index + 7]])
+        Yerr_all = jnp.vstack([self.database._Ytrain_err[:self.last_fit_train_size, self._out_index + 1],
+                               self.database._Ytrain_err[:self.last_fit_train_size, self._out_index + 7]]).T
 
         return jnp.mean(Yerr_all / self.Yscale)
 
     @property
     def kernel_variance(self) -> JAXArray:
         """Return kernel variance (JAX scalar or array)."""
-        return self.gp.kernel.kernels[0].kernel1.value
+        return self.gp.kernel.kernel1.value
 
     @property
     def kernel_lengthscale(self) -> JAXArray:
         """Return kernel lengthscale(s)."""
-        return self.gp.kernel.kernels[0].kernel2.scale
+        return self.gp.kernel.kernel2.scale
 
     @property
     def obs_stddev(self) -> JAXArray:
@@ -310,7 +301,8 @@ class WallStress(GaussianProcessSurrogate):
         if self.is_gp_model:
             self.params_init = {
                 "log_amp": jnp.log(1.),
-                "log_scale": jnp.log(jnp.std(self.Xtrain[0], axis=0))
+                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5),
+                "log_jitter": jnp.log(1e-3)
             }
 
             self._train()
@@ -318,7 +310,8 @@ class WallStress(GaussianProcessSurrogate):
 
     def update(self,
                predictor: bool = False,
-               compute_var: bool = False) -> None:
+               compute_var: bool = False,
+               cooldown: bool = False) -> None:
         """
         Update wall stress: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -331,6 +324,8 @@ class WallStress(GaussianProcessSurrogate):
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
+        cooldown : bool, optional
+            If true, active learning is blocked to let the system cool down (default is False).
         """
 
         # piezoviscosity
@@ -385,11 +380,13 @@ class WallStress(GaussianProcessSurrogate):
 
         if self.is_gp_model:
             mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var)
+                                     compute_var=self.use_active_learning or compute_var,
+                                     cooldown=cooldown)
 
             self.__field.pg[self._out_index] = mean[0, :, :]
             self.__field.pg[self._out_index + 6] = mean[1, :, :]
-            self.__field_variance.pg[:] = var[0, :, :]
+            self.__field_variance.pg[:] = var
+
         else:
             self.__field.pg[self._out_index] = s_bot[self._out_index]
             self.__field.pg[self._out_index + 6] = s_top[self._out_index]
@@ -574,15 +571,22 @@ class Pressure(GaussianProcessSurrogate):
         self.prop = prop
 
         if gp is not None:
+            self.is_gp_model = True
             self.active_dims = gp.get('active_dims', [0, 3])
             self.__field_variance = fc.real_field('pressure_var')
+
+            # Active learning parameters
+            self.tol = gp['tol']
             self.atol = gp['atol']
             self.rtol = gp['rtol']
             self.max_steps = gp['max_steps']
             self.pause_steps = gp['pause_steps']
-            self.is_gp_model = True
             self.use_active_learning = gp['active_learning']
-            self.build_gp = multi_in_single_out
+            self.similarity_check = gp['similarity_check']
+            self.allowed_skips = gp['allowed_skips']
+            self.perturb_target = gp['perturb_target']
+            self.fix_noise = gp['fix_noise']
+            self.pause_on_high_residual = gp['pause_on_high_residual']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
@@ -620,23 +624,23 @@ class Pressure(GaussianProcessSurrogate):
 
     @property
     def Xtest(self) -> JAXArray:
-        """Test inputs for pressure GP (not normalized)."""
-        return (self._Xtest / self.database.X_scale)[:, self.active_dims]
-
-    @property
-    def Xtrain(self) -> JAXArray:
-        """Training inputs for pressure GP (normalized)."""
-        return self.database.Xtrain[:, self.active_dims]
+        """Test inputs for pressure GP (normalized)."""
+        return ((self._Xtest - self.database.X_shift) / self.database.X_scale)[:, self.active_dims]
 
     @property
     def _Ytrain(self) -> JAXArray:
-        """Training outputs for pressure GP (normalized)."""
+        """Training outputs for pressure GP (not normalized)."""
         return self.database._Ytrain[:self.last_fit_train_size, 0]
 
     @property
     def Ytrain(self) -> JAXArray:
         """Training outputs for pressure GP (normalized)."""
-        return self._Ytrain / self.Yscale
+        return (self._Ytrain - self.Yshift) / self.Yscale
+
+    @property
+    def Yshift(self) -> JAXArray:
+        """Training outputs for pressure GP (not normalized)."""
+        return self.database.Y_shift[0]
 
     @property
     def Yscale(self) -> JAXArray:
@@ -671,7 +675,8 @@ class Pressure(GaussianProcessSurrogate):
 
             self.params_init = {
                 "log_amp": jnp.log(1.),
-                "log_scale": jnp.log(jnp.std(self.Xtrain, axis=0))
+                "log_scale": jnp.log(jnp.ones(len(self.active_dims)) * 0.5),
+                "log_jitter": jnp.log(1e-3)
             }
 
             self._train()
@@ -679,7 +684,8 @@ class Pressure(GaussianProcessSurrogate):
 
     def update(self,
                predictor: bool = False,
-               compute_var: bool = False) -> None:
+               compute_var: bool = False,
+               cooldown: bool = False) -> None:
         """
         Update pressure: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -692,10 +698,13 @@ class Pressure(GaussianProcessSurrogate):
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
+        cooldown : bool, optional
+            If true, active learning is blocked to let the system cool down (default is False).
         """
         if self.is_gp_model:
             mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var)
+                                     compute_var=self.use_active_learning or compute_var,
+                                     cooldown=cooldown)
             self.__field.pg[:] = mean
             self.__field_variance.pg[:] = var
         else:
@@ -762,11 +771,8 @@ class Viscosity():
         else:
             shear_viscosity = mu0
 
-        # Handle scalar case (constant viscosity)
-        if np.isscalar(shear_viscosity):
-            self.__field.pg[:] = shear_viscosity
-        else:
-            self.__field.pg[:] = shear_viscosity
+
+        self.__field.pg[:] = shear_viscosity
 
     @property
     def eta(self) -> NDArray:

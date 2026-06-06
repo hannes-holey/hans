@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #
 # ### MIT License
 #
@@ -23,14 +23,13 @@
 #
 import abc
 import warnings
-import numpy as np
 from copy import deepcopy
 from datetime import datetime
-from typing import Tuple, List
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-from muGrid import Field
+from muGrid.Field import wrap_field
 
 # jaxopt is deprecated, may switch to optax or similar
 with warnings.catch_warnings():
@@ -39,56 +38,11 @@ with warnings.catch_warnings():
 
 from tinygp import GaussianProcess, kernels, transforms
 
+from ..logging import get_logger
+
+logger = get_logger("gapflow.gp")
+
 JAXArray = jax.Array
-
-
-class MultiOutputKernel(kernels.Kernel):
-    """
-    Multi-output Gaussian process kernel.
-
-    Combines multiple latent kernels and a projection matrix to handle
-    vector-valued (multi-output) functions.
-
-    Parameters
-    ----------
-    kernels : list of tinygp.kernels.Kernel or tinygp.transforms.Linear
-        List of kernels corresponding to latent GPs.
-    projection : jax.Array, shape (num_outputs, num_latents)
-        Projection matrix mapping latent processes to outputs.
-
-    Methods
-    -------
-    evaluate(X1, X2)
-        Evaluate the kernel covariance between input sets `X1` and `X2`.
-    """
-
-    kernels: List[kernels.Kernel | transforms.Linear]
-    projection: JAXArray  # shape = (num_outputs, num_latents)
-
-    def evaluate(self,
-                 X1: Tuple[JAXArray, JAXArray],
-                 X2: Tuple[JAXArray, JAXArray],
-                 ) -> JAXArray:
-        """
-        Compute the covariance matrix between two sets of inputs.
-
-        Parameters
-        ----------
-        X1 : tuple
-            Tuple `(t1, idx1)` where `t1` is input array and `idx1`
-            indexes the corresponding outputs.
-        X2 : tuple
-            Tuple `(t2, idx2)` analogous to `X1`.
-
-        Returns
-        -------
-        jax.Array
-            Covariance matrix computed via the kernel projections.
-        """
-        t1, idx1 = X1
-        t2, idx2 = X2
-        latents = jnp.stack([k.evaluate(t1, t2) for k in self.kernels])
-        return (self.projection[idx1] * self.projection[idx2]) @ latents
 
 
 class GaussianProcessSurrogate:
@@ -108,11 +62,16 @@ class GaussianProcessSurrogate:
     is_gp_model: bool
     active_dims: list[int]
     use_active_learning: bool
-    build_gp: callable
+    fix_noise: bool
     rtol: float
     atol: float
+    tol: str
     max_steps: int
     pause_steps: int
+    similarity_check: bool
+    allowed_skips: int
+    perturb_target: bool
+    pause_on_high_residual: bool
     params_init: dict
     noise: Tuple[float, float]
     prop: dict
@@ -130,20 +89,25 @@ class GaussianProcessSurrogate:
         """
 
         self._step = 0
-        self.__solution = Field(fc.get_real_field('solution'))
-        self.__topo = Field(fc.get_real_field('topography'))
-        self.__extra = Field(fc.get_real_field('extra'))
+        self.__solution = wrap_field(fc.get_real_field('solution'))
+        self.__topo = wrap_field(fc.get_real_field('topography'))
+        self.__extra = wrap_field(fc.get_real_field('extra'))
 
         if self.is_gp_model:
             self._cache = None
             self._database = database
             self._last_fit_train_size = 0
             self._pause = 0
+            self._tol_ratio = 0.
+            self._objective = jnp.inf
 
             # Initialize timers
             ref = datetime.now()
             self._cumtime_train = datetime.now() - ref
             self._cumtime_infer = datetime.now() - ref
+
+            # Initialize PRNG key
+            self._key = jax.random.key(0)
 
             # History of hyperparameters
             self.history = {
@@ -152,11 +116,17 @@ class GaussianProcessSurrogate:
                 'variance': [],
                 'obs_stddev': [],
                 'maximum_variance': [],
-                'variance_tol': []
+                'variance_tol': [],
+                'objective': []
             }
 
             for li in self.active_dims:
                 self.history[f'lengthscale_{li}'] = []
+
+            if self.fix_noise:
+                self.func = multi_in_single_out
+            else:
+                self.func = multi_in_single_out_jitter
 
     def init_database(self, dim: int) -> None:
         """Triggers the first database initialization.
@@ -193,12 +163,6 @@ class GaussianProcessSurrogate:
 
     @property
     @abc.abstractmethod
-    def Xtrain(self):
-        """Training inputs (only active dimensions."""
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
     def Ytrain(self):
         """Training observations (only active dimensions, scaled)."""
         raise NotImplementedError
@@ -213,6 +177,12 @@ class GaussianProcessSurrogate:
     @abc.abstractmethod
     def Yscale(self):
         """Observations scaling factor."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def Yshift(self):
+        """Observations shift."""
         raise NotImplementedError
 
     @property
@@ -270,6 +240,11 @@ class GaussianProcessSurrogate:
         return self._cumtime_infer
 
     @property
+    def objective(self):
+        """Optimization objective (negative marginal log likelihood)"""
+        return self._objective
+
+    @property
     def _Xtest(self) -> JAXArray:
         """
         Flattened test input array from physical fields.
@@ -280,10 +255,25 @@ class GaussianProcessSurrogate:
             self.extra
         ]).reshape(self._database.num_features, -1).T
 
+    @property
+    def Xtrain(self) -> JAXArray:
+        """Training inputs (normalized)."""
+        return self._database.Xtrain[:, self.active_dims]
+
+    @property
+    def Xtrain_target(self) -> JAXArray:
+        """Training inputs (normalized)."""
+        return self._database.Xtrain_target[:, self.active_dims]
+
+    @property
+    def has_multi_output(self):
+        return self.Ytrain.ndim > 1
+
     # ------------------------------------------------------------------
     # Logging and summary
     # ------------------------------------------------------------------
-    def write(self) -> None:
+
+    def save_state(self) -> None:
         """Log current GP hyperparameters and diagnostics."""
         if self.is_gp_model:
             self.history['step'].append(self._step)
@@ -292,23 +282,52 @@ class GaussianProcessSurrogate:
             self.history['obs_stddev'].append(self.obs_stddev)
             self.history['maximum_variance'].append(self.maximum_variance)
             self.history['variance_tol'].append(self.variance_tol)
+            self.history['objective'].append(self.objective)
 
             for i, l in enumerate(self.active_dims):
                 self.history[f'lengthscale_{l}'].append(self.kernel_lengthscale[i])
 
-    def _print_opt_summary(self, obj: float) -> None:
+    def _print_opt_summary(self, params) -> None:
         """Print summary of optimization results."""
-        print(f'# Objective    : {obj:.5g}')
-        print("# Hyperparam   :", end=' ')
-        print(f"{self.kernel_variance:.5e}", end=' ')
-        print(f"{self.obs_stddev:.5e}", end=' ')
-        for li in self.kernel_lengthscale:
-            print(f"{li:.5e}", end=' ')
-        print()
+
+        msg = f"# Objective    : {self.objective:.5g}\n"
+
+        msg += "# Hyperparam   : \n"
+        scale = [f'{s:.5f}' for s in params['log_scale']]
+        msg += f"# - Log scale  : {' '.join(scale)}\n"
+        msg += f"# - Log amp    : {params['log_amp']:.5f}\n"
+        msg += f"# - Log noise  : {jnp.log(self.obs_stddev**2):.5f}"
+
+        if not self.fix_noise:
+            msg += f"\n# - Log jitter : {params['log_jitter']:.5f}"
+
+        logger.info(msg)
 
     # ------------------------------------------------------------------
     # Training and Inference
     # ------------------------------------------------------------------
+    def build_gp(self,
+                 params: dict,
+                 X: JAXArray,
+                 yerr: float | JAXArray) -> GaussianProcess:
+        """Default GP build method.
+
+        Parameters
+        ----------
+        params : dict
+            Dictionary with hyperparameters
+        X : jax.Array
+            Input data.
+        yerr : jax.Array
+            Observation noise (standard deviation).
+
+        Returns
+        -------
+        tinygp.GaussianProcess
+            Single-output GP model.
+        """
+        return self.func(params, X, yerr)
+
     def _train(self, reason: int = 0) -> None:
         """
         Train the Gaussian process model via marginal likelihood maximization.
@@ -321,31 +340,46 @@ class GaussianProcessSurrogate:
         self._last_fit_train_size = deepcopy(self._database.size)
         reasons = ['DB', "AL"]
 
-        print('#' + 17 * '-' + f"GP TRAINING ({self.name.upper()})" + 17 * '-')
-        print('# Timestep     :', self._step)
-        print('# Reason       :', reasons[reason])
-        print('# Database size:', self._database.size)
+        logger.info('#' + 17 * '-' + f"GP TRAINING ({self.name.upper()})" + 17 * '-')
+        logger.info(f'# Timestep     : {self._step}')
+        logger.info(f'# Reason       : {reasons[reason]}')
+        logger.info(f'# Database size: {self._database.size}')
 
         @jax.jit
-        def loss(params, X, yerr):
-            return -self.build_gp(params, X, yerr).log_probability(self.Ytrain)
+        def loss_so(params, X, Y, yerr):
+            gp = self.build_gp(params, X, yerr)
+            return -gp.log_probability(Y)
 
-        solver = jaxopt.ScipyMinimize(fun=loss)
-        soln = solver.run(self.params_init, X=self.Xtrain, yerr=self.Yerr)
-        self.params = soln.params
-        self.gp = self.build_gp(self.params, self.Xtrain, self.Yerr)
+        @jax.jit
+        def loss_mo(params, X, Y, yerr):
+            gp = self.build_gp(params, X, yerr)
+            obj = 0.
+            for Yi in Y.T:
+                obj -= gp.log_probability(Yi)
+            return obj
 
-        obj = -self.gp.log_probability(self.Ytrain)
-        self._print_opt_summary(obj)
+        solver = jaxopt.ScipyMinimize(fun=loss_mo if self.has_multi_output else loss_so)
+        soln = solver.run(self.params_init, X=self.Xtrain, Y=self.Ytrain, yerr=self.Yerr)
+
+        self.gp = self.build_gp(soln.params, self.Xtrain, self.Yerr)
+
+        self._objective = soln.state.fun_val
+        self._print_opt_summary(soln.params)
 
         if self._step > 0:
-            self.write()
+            self.save_state()
 
         if reason == 0:
-            print('#' + 50 * '-')
+            logger.info('#' + 50 * '-')
 
         # Delete cache to force inference step with new training data
         self._cache = None
+
+    def _predict(self):
+        if self.has_multi_output:
+            return _predict_multi_output(self.gp, self.Ytrain, self.Xtest)
+        else:
+            return _predict_single_output(self.gp, self.Ytrain, self.Xtest)
 
     def _infer_mean(self) -> JAXArray:
         """Infer mean for new test inputs.
@@ -359,12 +393,12 @@ class GaussianProcessSurrogate:
         """
 
         if self._cache is None:
-            m, _, alpha, noise = _predict(self.gp, self.Ytrain, self.Xtest)
+            m, _, alpha, noise = self._predict()
             self._cache = (alpha, noise)
         else:
             m = _repredict_mean(self.gp, self._cache, self.Xtest)
 
-        predictive_mean = m.reshape(-1, *self.solution.shape[-2:]).squeeze() * self.Yscale
+        predictive_mean = m.reshape(-1, *self.solution.shape[-2:]).squeeze() * self.Yscale + self.Yshift
 
         return predictive_mean
 
@@ -382,12 +416,12 @@ class GaussianProcessSurrogate:
         """
 
         if self._cache is None:
-            m, v, alpha, noise = _predict(self.gp, self.Ytrain, self.Xtest)
+            m, v, alpha, noise = self._predict()
             self._cache = (alpha, noise)
         else:
             m, v = _repredict_mean_var(self.gp, self._cache, self.Xtest)
 
-        predictive_mean = m.reshape(-1, *self.solution.shape[-2:]).squeeze() * self.Yscale
+        predictive_mean = m.reshape(-1, *self.solution.shape[-2:]).squeeze() * self.Yscale + self.Yshift
         predictive_var = v.reshape(-1, *self.solution.shape[-2:]).squeeze() * self.Yscale**2
 
         return predictive_mean, predictive_var
@@ -413,8 +447,7 @@ class GaussianProcessSurrogate:
         if compute_var:
             predictive_mean, self._predictive_var = self._infer_mean_var()
             self.maximum_variance = jnp.max(self._predictive_var)
-            self.variance_tol = jnp.maximum(self.atol * self.Yerr * self.Yscale,
-                                            self.rtol * self.Yscale)**2
+            self.variance_tol = self._get_tolerance(predictive_mean)
         else:
             predictive_mean = self._infer_mean()
 
@@ -423,36 +456,186 @@ class GaussianProcessSurrogate:
     # ------------------------------------------------------------------
     # Active Learning
     # ------------------------------------------------------------------
+    def _get_tolerance(self, Y):
+        """Compute the variance tolerance based on the current prediction.
+
+        Parameters
+        ----------
+        Y : jax.Array
+            Predictive mean
+
+        Returns
+        -------
+        float
+            Maximum allowed tolerance
+        """
+
+        noise = self.Yerr * self.Yscale
+
+        if self.tol == 'delta':
+            Ys = jnp.max(Y) - jnp.min(Y)
+        elif self.tol == 'absmax':
+            Ys = jnp.max(jnp.abs(Y))
+        elif self.tol == 'snr':
+            Ys = jnp.mean(Y) / noise
+        else:
+            raise RuntimeError('No tolerance calculation configured.')
+
+        atol = self.atol * noise  # "lower bound", multiple of observation noise
+        rtol = self.rtol * Ys  # grows with Ys,
+        self._tol_ratio = rtol / atol
+
+        std_tol = jnp.maximum(atol, rtol)
+
+        variance_tol = std_tol**2
+
+        return variance_tol
+
     def _active_learning(self, var: JAXArray) -> None:
         """
-        Select new training point using maximum variance criterion.
+        Apply active learning by adding new point to the training database.
 
         Parameters
         ----------
         var : jax.Array
             Predictive variance field.
         """
-        imax = np.argmax(var)
-        Xnew = self._Xtest[imax, :][None, :]
+
+        Xnew = self._select_next_point(var, similarity_check=self.similarity_check)
         self._database.add_data(Xnew)
+
+    def _select_next_point(self,
+                           var: JAXArray,
+                           similarity_check: bool = True) -> int:
+        """
+        Select new training point using maximum variance criterion.
+        If `similarity_check=True`, we try to avoid points that are
+        too similar to the existing database. If all candidate points
+        are too close, we select the one with largest variance and perturb
+        it slightly with random noise.
+
+
+        Parameters
+        ----------
+        var : jax.Array
+            Predictive variance field.
+        similarity_check : bool, optional
+            If true, check similarity between existing and new training points
+            (and avoid too similar points). The default is True.
+
+        Returns
+        -------
+        jax.Array
+            Selected point
+        """
+
+        # Consicer only interior cells (no ghosts)
+        nx, ny = var.shape
+        n_inner = (nx - 2) * (ny - 2)
+
+        # normalized
+        Xtest = self.Xtest.reshape(nx, ny, -1)[1:-1, 1:-1].reshape(n_inner, -1)
+        # not normalized
+        _Xtest = self._Xtest.reshape(nx, ny, -1)[1:-1, 1:-1].reshape(n_inner, -1)
+
+        # from large to small
+        sorted_indices = jnp.argsort(var[1:-1, 1:-1], axis=None)[::-1]
+
+        # start with largest variance (currently only implemented strategy)
+        selected = sorted_indices[0]
+        perturb = self.perturb_target  # default False
+
+        if similarity_check:
+            skipped = 0
+
+            # Loop over candidate points
+            for i in sorted_indices:
+                Xnew = Xtest[i][None, :]
+
+                # Similarity between selected point and all requested training points
+                similarity_score = self.gp.kernel(Xnew, self.Xtrain_target) / self.kernel_variance
+                smax = similarity_score.max()
+                smin = similarity_score.min()
+
+                if jnp.isclose(smax, 1., rtol=0., atol=1e-6):
+                    # Too similar point exists already
+                    skipped += 1
+                    continue
+                else:
+                    # Found suitable test point
+                    logger.info(f'New input selected (skipped {skipped}): {smax:.3e}, {smin:.3e} (max, min)')
+                    selected = i
+                    break
+
+            # Apply perturbation only if similarity check fails
+            if skipped <= self.allowed_skips:
+                perturb = False
+            else:
+                logger.info('No suitable test point found. Apply random perturbation to max. variance point.')
+                perturb = True
+
+        # Test point from index
+        _Xnew = _Xtest[selected, :][None, :]
+
+        if perturb:
+            _Xnew = self._perturb_training_point(_Xnew)
+
+        return _Xnew
+
+    def _perturb_training_point(self, X, scale=0.05):
+        """Apply random additive perturbation to a training point.
+
+        Parameters
+        ----------
+        X : jax.Array
+            Training point, not normalized, shape (1, Nfeat)
+        scale: float
+            Scaling parameter, controls the magnitude of the parturbation.
+            Default 0.05
+
+
+        Returns
+        -------
+        jax.Array
+            The perturbed training point.
+        """
+
+        # normalize
+        _X = (X - self._database.X_shift) / self._database.X_scale
+
+        # perturb
+        Xrange = (self._Xtest.max(axis=0) - self._Xtest.min(axis=0)) / self._database.X_scale
+        for d in self.active_dims:
+            if d not in [4, 5]:
+                new_key, subkey = jax.random.split(self._key)
+                _X = _X.at[d].add(scale * Xrange[d] * jax.random.normal(subkey))
+                self._key = new_key  # overwrite PRNG key
+
+        # scale back
+        X = _X * self._database.X_scale + self._database.X_shift
+
+        return X
 
     # ------------------------------------------------------------------
     # Main Predict/Active Loop
     # ------------------------------------------------------------------
+
     def predict(self,
                 predictor: bool = True,
-                compute_var: bool = True) -> Tuple[JAXArray, JAXArray]:
+                compute_var: bool = True,
+                cooldown: bool = False) -> Tuple[JAXArray, JAXArray]:
         """
         Perform GP prediction, optionally updating the model via active learning
         (only in predictor step of the predictor-corrector time integration scheme)
 
         Parameters
         ----------
-        predictor : bool
+        predictor : bool, optional
             Whether to perform active learning updates (only in predictor step, default is True).
-        compute_var : bool
+        compute_var : bool, optional
             If true (default), preditive variance is re-computed.
-
+        cooldown : bool, optional
+            If true, active learning is blocked to let the system cool down (default is False).
         Returns
         -------
         m : jax.Array
@@ -476,9 +659,13 @@ class GaussianProcessSurrogate:
         toc = datetime.now()
         self._cumtime_infer += toc - tic
 
+        after_failed_attempt = self._pause >= 0
+        in_cooldown = cooldown and self.pause_on_high_residual
+        pause_acquisition = after_failed_attempt or in_cooldown
+
         if self.use_active_learning \
                 and predictor \
-                and self._pause < 0:
+                and not pause_acquisition:
 
             counter = 0
             before = deepcopy(self.maximum_variance / self.variance_tol)
@@ -500,14 +687,18 @@ class GaussianProcessSurrogate:
                 toc = datetime.now()
                 self._cumtime_infer += tic - toc
 
+                # AL step output summary
                 after = self.maximum_variance / self.variance_tol
-                print(f"# AL {counter:2d}/{self.max_steps:2d}     : {before:.3f} --> {after:.3f}")
-                print('#' + 50 * '-')
+                key = 'R' if self._tol_ratio > 1. else 'A'
+                msg = f"# AL {counter:2d}/{self.max_steps:2d}     : {before:.3f} --> {after:.3f}"
+                msg += f" | {key} ({self._tol_ratio:.3f})"
+                logger.info(msg)
+                logger.info('#' + 50 * '-')
 
-            if counter == self.max_steps:
-                print("# Active learning loop missed uncertainty threshold")
-                print(f"# Pause for {self.pause_steps} steps...")
-                print('#' + 50 * '-')
+            if not self.trusted:  # AL loop failed
+                logger.warning("# Active learning loop missed uncertainty threshold")
+                logger.info(f"# Pause for {self.pause_steps} steps...")
+                logger.info('#' + 50 * '-')
                 self._pause = self.pause_steps
 
         return m, v
@@ -526,7 +717,7 @@ def _repredict_mean_var(gp: GaussianProcess,
     Kss = gp.kernel(Xtest) + noise
     var = Kss - jnp.sum(v**2, axis=0)
 
-    return mean, var
+    return mean.T, var
 
 
 @jax.jit
@@ -539,17 +730,42 @@ def _repredict_mean(gp: GaussianProcess,
     Ks = gp.kernel(gp.X, Xtest)
     mean = Ks.T @ alpha
 
-    return mean
+    return mean.T
 
 
 @jax.jit
-def _predict(gp: GaussianProcess,
-             Ytrain: JAXArray,
-             Xtest: JAXArray) -> Tuple[JAXArray, JAXArray, GaussianProcess]:
+def _predict_multi_output(gp: GaussianProcess,
+                          Ytrain: JAXArray,
+                          Xtest: JAXArray) -> Tuple[JAXArray, JAXArray, GaussianProcess]:
+
+    Ytest = []
+    alpha = []
+
+    for Yi in Ytrain.T:
+        cond_gp = gp.condition(Yi, Xtest).gp
+        Ytest.append(cond_gp.loc)
+        alpha.append(cond_gp.mean_function.alpha)
+
+    Ytest = jnp.array(Ytest)
+    alpha = jnp.array(alpha).T
+    noise = cond_gp.noise.diag
+    Yvar = cond_gp.variance
+
+    return Ytest, Yvar, alpha, noise
+
+
+@jax.jit
+def _predict_single_output(gp: GaussianProcess,
+                           Ytrain: JAXArray,
+                           Xtest: JAXArray) -> Tuple[JAXArray, JAXArray, GaussianProcess]:
 
     cond_gp = gp.condition(Ytrain, Xtest).gp
+    alpha = cond_gp.mean_function.alpha
+    noise = cond_gp.noise.diag
+    Ytest = cond_gp.loc
+    Yvar = cond_gp.variance
 
-    return cond_gp.loc, cond_gp.variance, cond_gp.mean_function.alpha, cond_gp.noise.diag
+    return Ytest, Yvar, alpha, noise
 
 
 # ----------------------------------------------------------------------
@@ -581,19 +797,22 @@ def multi_in_single_out(params: dict,
         jnp.exp(-params["log_scale"]),
         kernels.stationary.Matern32(distance=kernels.distance.L2Distance()),
     )
+
     return GaussianProcess(kernel, X, diag=yerr**2)
 
 
-def multi_in_multi_out(params: dict,
-                       X: JAXArray,
-                       yerr: float | JAXArray) -> GaussianProcess:
+def multi_in_single_out_jitter(params: dict,
+                               X: JAXArray,
+                               yerr: float | JAXArray) -> GaussianProcess:
     """
-    Build a multi-output GP with anisotropic Matérn kernel.
+    Build a single-output GP with anisotropic Matérn kernel.
 
     Parameters
     ----------
     params : dict
-        Dictionary with kernel hyperparameters (same as for single-output).
+        Dictionary with kernel hyperparameters. Must contain:
+        - ``log_amp`` : logarithm of amplitude.
+        - ``log_scale`` : logarithm of length scale.
     X : jax.Array
         Input data.
     yerr : float or jax.Array
@@ -602,15 +821,13 @@ def multi_in_multi_out(params: dict,
     Returns
     -------
     tinygp.GaussianProcess
-        Multi-output Gaussian process using `MultiOutputKernel`.
+        Configured single-output GP model.
     """
-    k = [
-        jnp.exp(params["log_amp"]) * transforms.Linear(
-            jnp.exp(-params["log_scale"]),
-            kernels.stationary.Matern32(distance=kernels.distance.L2Distance()),
-        )
-        for _ in range(2)
-    ]
+    kernel = jnp.exp(params["log_amp"]) * transforms.Linear(
+        jnp.exp(-params["log_scale"]),
+        kernels.stationary.Matern32(distance=kernels.distance.L2Distance()),
+    )
 
-    kernel = MultiOutputKernel(kernels=k, projection=jnp.eye(2))
-    return GaussianProcess(kernel, X, diag=yerr**2)
+    diag = yerr**2 + jnp.exp(params['log_jitter'])
+
+    return GaussianProcess(kernel, X, diag=diag)

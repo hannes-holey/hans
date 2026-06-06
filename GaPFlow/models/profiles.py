@@ -1,5 +1,5 @@
 #
-# Copyright 2025 Hannes Holey
+# Copyright 2025-2026 Hannes Holey
 #           2026 Christoph Huber
 #
 # ### MIT License
@@ -23,9 +23,12 @@
 # SOFTWARE.
 #
 
-# flake8: noqa: W503
+"""Gap profiles.
 
-import numpy as np
+Analytical expressions for velocity and stress profiles as a function of the gap coordinate.
+"""
+
+# flake8: noqa: W503
 
 
 def get_velocity_profiles(z, q, U_bot=0.0, V_bot=0.0, U_top=0.0, V_top=0.0,
