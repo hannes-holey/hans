@@ -27,8 +27,8 @@ import numpy as np
 import numpy.typing as npt
 from typing import TYPE_CHECKING
 
-from scipy.sparse import csr_matrix, coo_matrix
-from scipy.sparse.linalg import spsolve, gmres
+from scipy.sparse import csc_matrix, coo_matrix
+from scipy.sparse.linalg import splu, gmres
 
 if TYPE_CHECKING:
     from .assembly import P2P1AssemblyInfo
@@ -62,12 +62,13 @@ class ScipySystem:
         self._iterations = 0
         self._converged = True
 
-        # Build CSR structure once from the fixed sparsity pattern.
-        # COO (rows, cols) have no duplicates (asserted in _build_coo_lookups),
-        # so csr_matrix merely sorts entries — no summation. We capture the
-        # permutation from COO order to CSR data order so future assemble()
-        # calls only update mat.data in-place without any allocation.
-        dummy = csr_matrix(
+        print('using scipy')
+
+        # Build CSC structure once from the fixed sparsity pattern.
+        # COO (rows, cols) have no duplicates, so tocsc() merely sorts entries —
+        # no summation. We capture the permutation from COO order to CSC data
+        # order so future assemble() calls only update mat.data in-place.
+        dummy = csc_matrix(
             (np.ones(len(info.mat_global_rows), dtype=np.float64),
              (info.mat_global_rows, info.mat_global_cols)),
             shape=(self._size, self._size),
@@ -76,16 +77,16 @@ class ScipySystem:
         dummy.sort_indices()
         self._mat = dummy
 
-        # Permutation: coo_values[i] lands at _mat.data[_coo_to_csr[i]]
+        # Permutation: _mat.data[i] holds coo_values[_coo_to_csc[i]]
         coo = coo_matrix(
             (np.arange(len(info.mat_global_rows), dtype=np.int32),
              (info.mat_global_rows, info.mat_global_cols)),
             shape=(self._size, self._size),
         )
-        csr_perm = coo.tocsr()
-        csr_perm.sum_duplicates()
-        csr_perm.sort_indices()
-        self._coo_to_csr = csr_perm.data.copy()
+        csc_perm = coo.tocsc()
+        csc_perm.sum_duplicates()
+        csc_perm.sort_indices()
+        self._coo_to_csc = csc_perm.data.copy()
 
     def assemble(self, coo_values: NDArray, R_local: NDArray) -> None:
         """Assemble sparse matrix and RHS vector.
@@ -97,7 +98,7 @@ class ScipySystem:
         R_local : NDArray, shape (local_size,)
             Local residual vector (will be negated for Newton RHS).
         """
-        self._mat.data[self._coo_to_csr] = coo_values
+        self._mat.data[:] = coo_values[self._coo_to_csc]
         self._rhs[:] = 0.0
         np.add.at(self._rhs, self._rhs_rows, -R_local)
 
@@ -117,7 +118,8 @@ class ScipySystem:
             if not self._converged:
                 print(f"WARNING: GMRES did not converge (stagnated at iteration {info})")
         else:
-            sol = spsolve(self._mat, self._rhs)
+            lu = splu(self._mat, permc_spec='COLAMD', diag_pivot_thresh=0.1)
+            sol = lu.solve(self._rhs)
             self._converged = True
             self._iterations = 0
 
