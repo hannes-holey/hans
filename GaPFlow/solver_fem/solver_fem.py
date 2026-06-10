@@ -536,7 +536,8 @@ class FEMSolver:
     def print_status(self, scalars=None) -> None:
         p = self.problem
         if scalars and p.options.get('print_progress') and p.decomp.rank == 0:
-            R_newton = self.R_norm_history[-1][-1]
+            history = self.R_norm_history
+            R_newton = history[-1][-1] if history and history[-1] else float('nan')
             print(f"{p.step:<6d} {p.dt:<12.4e} {p.simtime:<12.4e} "
                   f"{self.inner_iterations:<6d} "
                   f"{self.time_inner:<12.4e} {p.residual:<12.4e} {R_newton:<14.4e}")

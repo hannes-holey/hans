@@ -22,7 +22,6 @@ license = "GPL-2.0"
 license-files = [
 	"COPYING",
 	"LICENSES/*.txt",
-	"lammps/LICENSE",
 	"GaPFlow/_vendor/lammps/LICENSE",
 ]
 
