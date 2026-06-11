@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          submodules: 'true'
+          submodules: recursive
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          submodules: 'true'
+          submodules: recursive
 
       - name: Build sdist
         run: |
