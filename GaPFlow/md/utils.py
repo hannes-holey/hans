@@ -220,8 +220,8 @@ def read_output_files_X(X):
     density = np.mean(dens_f[mask]) * N_A * 1e-24  # from g/cm^3 to g/mol/A^3
 
     # Actual flux
-    vx_integral = np.trapezoid(vx[mask], zvx[mask])
-    vy_integral = np.trapezoid(vy[mask], zvy[mask])
+    vx_integral = np.trapezoid(vx, zvx)
+    vy_integral = np.trapezoid(vy, zvy)
     flux_x = vx_integral * density / gap_height
     flux_y = vy_integral * density / gap_height
 
@@ -263,16 +263,12 @@ def _limits_from_nonzero(z_fluid, dens_fluid, z_solid, dens_solid):
     dsl = dens_solid[:nz // 2]
     zsu = z_solid[nz // 2:]
     dsu = dens_solid[nz // 2:]
-    zmin_s = zsl[dsl > 0].max()
-    zmax_s = zsu[dsu > 0].min()
+    zmin_s = zsl[dsl / dsl.max() > 0.01].max()
+    zmax_s = zsu[dsu / dsu.max() > 0.01].min()
 
     # fluid
-    zfl = z_fluid[:nz // 2]
-    dfl = dens_fluid[:nz // 2]
-    zfu = z_fluid[nz // 2:]
-    dfu = dens_fluid[nz // 2:]
-    zmin_f = zfl[dfl > 0].min()
-    zmax_f = zfu[dfu > 0].max()
+    zmin_f = z_fluid[dens_fluid / dens_fluid.max() > 0.01].min()
+    zmax_f = z_fluid[dens_fluid / dens_fluid.max() > 0.01].max()
 
     # Combined
     zmin = (zmin_s + zmin_f) / 2.
