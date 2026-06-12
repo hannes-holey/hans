@@ -348,13 +348,13 @@ def config_fluid(file, Lx, Ly, H, density, buffer=25., flat=True):
 
     # In flat sections the achieved density is usually too high
     # We reduce by removing molecules that would "fit" into the depletion zone
-    if flat:
-        sig = (3.92 + 2.63) / 2.
-        dH = sig / 2.
-        excess_vol = Lx * Ly * dH
-        excess_mol, excess_atoms = _get_num_fluid_molecules(name, excess_vol, density)
-        num_fluid_mol -= excess_mol
-        num_fluid_atoms -= excess_atoms
+    # if flat:
+    #     sig = (3.92 + 2.63) / 2.
+    #     dH = sig / 2.
+    #     excess_vol = Lx * Ly * dH
+    #     excess_mol, excess_atoms = _get_num_fluid_molecules(name, excess_vol, density)
+    #     num_fluid_mol -= excess_mol
+    #     num_fluid_atoms -= excess_atoms
 
     coords = _read_coords_from_lt(file)
     lx, ly, lz = coords.max(0) - coords.min(0)
