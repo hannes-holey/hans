@@ -210,7 +210,6 @@ def read_output_files_X(X):
     _, zvy, _, vy = np.loadtxt(vy_fluid_file, unpack=True, skiprows=4)
 
     # Actual gap height (from density profile)
-    # zmin, zmax = _limits_from_peaks(zdf, dens_f, zds, dens_s)
     zmin, zmax = _limits_from_nonzero(zdf, dens_f, zds, dens_s)
 
     gap_height = zmax - zmin
@@ -219,16 +218,13 @@ def read_output_files_X(X):
     mask = np.logical_and(zdf > zmin, zdf < zmax)
     density = np.mean(dens_f[mask]) * N_A * 1e-24  # from g/cm^3 to g/mol/A^3
 
-    # Actual flux
-    vx_integral = np.trapezoid(vx, zvx)
-    vy_integral = np.trapezoid(vy, zvy)
-    flux_x = vx_integral * density / gap_height
-    flux_y = vy_integral * density / gap_height
+    # Flux correction (from density and gap)
+    j_fac = (density / X[0]) / (gap_height / X[3])
 
     # overwrite input data
     X = X.at[0].set(density)
-    X = X.at[1].set(flux_x)
-    X = X.at[2].set(flux_y)
+    X = X.at[1].multiply(j_fac)
+    X = X.at[2].multiply(j_fac)
     X = X.at[3].set(gap_height)
 
     return X
