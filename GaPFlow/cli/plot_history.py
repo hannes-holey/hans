@@ -42,9 +42,6 @@ def main():
 
     files = get_pipeline(name='history.csv')
 
-    files_gp_press = []
-    files_gp_shear = []
-
     gp_files = {'zz': [], 'xz': [], 'yz': []}
 
     if args.gp:

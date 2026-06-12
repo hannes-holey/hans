@@ -111,6 +111,8 @@ QUAD_FIELD_REGISTRY = {
     # ------------------------------------------------------------------
     # computed: physics method called with quad field arguments
     # ------------------------------------------------------------------
+    'p_from_rho': {'type': 'computed', 'source': 'pressure.p_from_rho', 'args': ['rho']},
+    'rho_from_p': {'type': 'computed', 'source': 'pressure.rho_from_p', 'args': ['p']},
     'drho_dp': {'type': 'computed', 'source': 'pressure.drho_dp', 'args': ['rho']},
     'dp_drho': {'type': 'computed', 'source': 'pressure.dp_drho', 'args': ['rho']},
     'd2p_drho2': {'type': 'computed', 'source': 'pressure.d2p_drho2', 'args': ['rho']},
@@ -135,14 +137,14 @@ QUAD_FIELD_REGISTRY = {
     'dtau_yz_bot_djy': {'type': 'computed', 'source': 'wall_stress_yz.dtau_bot_djy', 'args': _ARGS_YZ},
     'dtau_yz_bot_dtheta': {'type': 'computed', 'source': 'wall_stress_yz.dtau_bot_dtheta', 'args': _ARGS_YZ},
 
-    # temperature and derivatives
+    # temperature
     'T': {'type': 'computed', 'source': 'energy.T_func', 'args': _ARGS_T},
     'dT_drho': {'type': 'computed', 'source': 'energy.T_grad_rho', 'args': _ARGS_T},
     'dT_djx': {'type': 'computed', 'source': 'energy.T_grad_jx', 'args': _ARGS_T},
     'dT_djy': {'type': 'computed', 'source': 'energy.T_grad_jy', 'args': _ARGS_T},
     'dT_dE': {'type': 'computed', 'source': 'energy.T_grad_E', 'args': _ARGS_T},
 
-    # wall heat flux and derivatives
+    # wall heat flux
     'S': {'type': 'computed', 'source': 'energy.q_wall_sum', 'args': _ARGS_S},
     'dS_drho': {'type': 'computed', 'source': 'energy.q_wall_grad_rho', 'args': _ARGS_S},
     'dS_djx': {'type': 'computed', 'source': 'energy.q_wall_grad_jx', 'args': _ARGS_S},
@@ -155,3 +157,46 @@ QUAD_FIELD_REGISTRY = {
     'tau_a_x': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
     'tau_a_y': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
 }
+
+_GP_ARGS_PRESSURE = {
+    'p_from_rho': ['rho', 'h'],
+    'rho_from_p': ['p', 'h', 'rho'],
+    'dp_drho': ['rho', 'h'],
+    'drho_dp': ['rho', 'h'],
+    'd2p_drho2': ['rho', 'h'],
+}
+
+_GP_ARGS_WALL_STRESS_XZ = {
+    'tau_xz': ['rho', 'jx', 'h'],
+    'dtau_xz_drho': ['rho', 'jx', 'h'],
+    'dtau_xz_djx': ['rho', 'jx', 'h'],
+    'dtau_xz_dtheta': ['rho', 'jx', 'h'],
+    'tau_xz_bot': ['rho', 'jx', 'h'],
+    'dtau_xz_bot_drho': ['rho', 'jx', 'h'],
+    'dtau_xz_bot_djx': ['rho', 'jx', 'h'],
+    'dtau_xz_bot_dtheta': ['rho', 'jx', 'h'],
+}
+
+_GP_ARGS_WALL_STRESS_YZ = {
+    'tau_yz': ['rho', 'jy', 'h'],
+    'dtau_yz_drho': ['rho', 'jy', 'h'],
+    'dtau_yz_djy': ['rho', 'jy', 'h'],
+    'dtau_yz_dtheta': ['rho', 'jy', 'h'],
+    'tau_yz_bot': ['rho', 'jy', 'h'],
+    'dtau_yz_bot_drho': ['rho', 'jy', 'h'],
+    'dtau_yz_bot_djy': ['rho', 'jy', 'h'],
+    'dtau_yz_bot_dtheta': ['rho', 'jy', 'h'],
+}
+
+
+def patch_registry_for_gp(pressure: bool = True,
+                          wall_stress_xz: bool = False,
+                          wall_stress_yz: bool = False) -> None:
+    for active, block in [
+        (pressure, _GP_ARGS_PRESSURE),
+        (wall_stress_xz, _GP_ARGS_WALL_STRESS_XZ),
+        (wall_stress_yz, _GP_ARGS_WALL_STRESS_YZ),
+    ]:
+        if active:
+            for name, args in block.items():
+                QUAD_FIELD_REGISTRY[name]['args'] = args

@@ -557,6 +557,7 @@ def sanitize_md(d):
 
 def sanitize_fem_solver(d):
 
+    d = d or {}
     out = {}
     out['max_iter'] = int(d.get('max_iter', 100))
     out['R_norm_tol'] = float(d.get('R_norm_tol', 1e-6))

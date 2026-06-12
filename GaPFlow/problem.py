@@ -30,10 +30,9 @@ from copy import deepcopy
 from collections import deque
 from datetime import datetime
 from itertools import islice
-from muGrid import FileIONetCDF, OpenMode
+from muGrid import FileIONetCDF
 from mpi4py import MPI
 from .parallel import DomainDecomposition
-from .bc import resolve_pressure_bcs
 
 from typing import Type
 import numpy.typing as npt
@@ -262,12 +261,6 @@ class Problem:
             # Energy and temperature fields
             if self.bEnergy:
                 self.file.register_field_collection(self.fc, field_names=['total_energy', 'temperature'])
-
-        # Boundary conditions
-        resolve_pressure_bcs(self.grid, self.prop)
-        self.solver.build_boundary_conditions()
-
-
 
     # ---------------------------
     # Constructors
@@ -727,7 +720,6 @@ class Problem:
         """
         Write scalars, fields and hyperparameters to disk as configured.
         """
-        
         self.solver.print_status(scalars)
 
         if fields:

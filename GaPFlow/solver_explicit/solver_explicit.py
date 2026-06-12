@@ -70,11 +70,12 @@ class ExplicitSolver:
     def pre_run(self) -> None:
         p = self.problem
 
+        self.build_boundary_conditions()
+
         if p.numerics["adaptive"]:
             p.dt = p.numerics["CFL"] * p.dt_crit
         else:
             p.dt = p.numerics['dt']
-
 
     def update(self) -> None:
         """

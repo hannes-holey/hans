@@ -26,8 +26,6 @@ import copy
 import os
 import warnings
 from typing import Tuple, Any
-from muGrid.Field import wrap_field
-
 import numpy as np
 import numpy.typing as npt
 from muGrid import Field

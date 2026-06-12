@@ -40,10 +40,10 @@ from .elements import TaylorHoodP2P1
 from .grid_index import GridIndexManager
 from .quad_fields import QuadFieldManager
 from .assembly import Assembly
-from .fieldspec import FieldSpec, VAR_GRID, RES_GRID
+from .fieldspec import FieldSpec, VAR_GRID, RES_GRID, patch_registry_for_gp
 from .scipy_system import ScipySystem
 
-from ..bc import GhostUpdater, BoundarySpec, sample_bc_spec, translate_bc_rho_to_p
+from ..bc import GhostUpdater, BoundarySpec, sample_bc_spec, translate_bc_rho_to_p, resolve_pressure_bcs
 from .solution_guards import solve_linear_system, line_search
 from .bayada_stabilization import bayada_linearization_guard
 from .terms import get_active_terms
@@ -124,8 +124,7 @@ class FEMSolver:
         """Build the list of BoundarySpec objects for BC application.
         Note: bc_spec needs to be sampled in the same order as variables."""
 
-        self._init_quad_fields()
-
+        resolve_pressure_bcs(self.problem.grid, self.problem.prop, problem=self.problem)
         specs = []
         no_fun = [None] * 4
 
@@ -499,8 +498,21 @@ class FEMSolver:
         """Initialize assembly, jit functions, and solver. Load initial state and
         update quadrature fields. Fetch solver parameters."""
 
+        p = self.problem
+
+        self._init_quad_fields()
         self._build_assembly()
         self._build_jit_functions()
+        if (p.pressure.is_gp_model
+                or p.wall_stress_xz.is_gp_model
+                or p.wall_stress_yz.is_gp_model):
+            patch_registry_for_gp(
+                pressure=p.pressure.is_gp_model,
+                wall_stress_xz=p.wall_stress_xz.is_gp_model,
+                wall_stress_yz=p.wall_stress_yz.is_gp_model,
+            )
+
+        self.build_boundary_conditions()
         self._build_terms()
         self.assembly.build_assembly_templates(self.terms)
         self._init_linear_solver()
@@ -514,7 +526,6 @@ class FEMSolver:
         self.time_inner = 0.0
         self.inner_iterations = 0
 
-        p = self.problem
         self.tol = p.fem_solver['R_norm_tol']
         self.alpha = p.fem_solver['newton_relax']
         self.max_iter = p.fem_solver['max_iter']

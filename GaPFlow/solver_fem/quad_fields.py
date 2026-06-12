@@ -33,7 +33,6 @@ from .elements import TaylorHoodP2P1
 from .fieldspec import NODAL_P1, NODAL_P2, QUAD_FIELD_REGISTRY, resolve_source, categorize_registry_fields
 from .terms import collect_required_fields
 
-from ..models.pressure import eos_pressure, eos_rho
 
 if TYPE_CHECKING:
     from ..problem import Problem
@@ -215,7 +214,10 @@ class QuadFieldManager:
 
         # P1 fields
         self.nf('rho')[:] = p.q[0]
-        self.nf('p')[:] = eos_pressure(p.q[0], p.prop)
+        # Populate nodal fields (e.g. h) needed as args for p_from_rho before calling it
+        for name in self.nodal_field_keys:
+            self.nf(name)[:] = resolve_source(p, QUAD_FIELD_REGISTRY[name]['source'])
+        self.nf('p')[:] = self._call_computed('p_from_rho', self.nf)
         self.problem.pressure.pressure[:] = self.nf('p')
 
         for i, name in enumerate(self.add_fields):
@@ -241,7 +243,7 @@ class QuadFieldManager:
         self.problem.pressure.pressure[:] = p_nodal
 
         # rho update
-        self.nf('rho')[:] = eos_rho(p_nodal, p.prop)
+        self.nf('rho')[:] = self._call_computed('rho_from_p', self.nf)
         self.sync_to_problem_q()
 
         # height update (needs updated p in pressure module)
@@ -258,6 +260,12 @@ class QuadFieldManager:
         # energy
         if self.energy:
             p.energy.update_temperature()
+
+    def _call_computed(self, name, field_getter):
+        entry = QUAD_FIELD_REGISTRY[name]
+        func = resolve_source(self.problem, entry['source'])
+        args = tuple(field_getter(a) for a in entry['args'])
+        return self._apply_2d_vmap(func, *args)
 
     def _apply_2d_vmap(self, func, *args):
         shape = args[0].shape
@@ -284,7 +292,9 @@ class QuadFieldManager:
         # Nodal fields - interpolate to quad
         for name in self.nodal_field_keys | set(self.variables):
             self.interpolate_nodal_to_quad(name)
-        q('rho')[:] = eos_rho(q('p'), p.prop)  # special case
+        # rho must be interpolated before rho_from_p so it can serve as initial guess
+        self.interpolate_nodal_to_quad('rho')
+        q('rho')[:] = self._call_computed('rho_from_p', q)
 
         # Scalar Broadcast
         for name in self.quad_field_keys:

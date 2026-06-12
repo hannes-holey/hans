@@ -27,9 +27,6 @@ import numpy as np
 import numpy.typing as npt
 from scipy.ndimage import zoom
 
-from .models.stress import eos_pressure
-from .models.pressure import eos_rho
-
 from typing import TYPE_CHECKING, Callable, List
 
 if TYPE_CHECKING:
@@ -41,6 +38,19 @@ NDArray = npt.NDArray[np.floating]
 
 BND_IDX = {'N': 0, 'E': 1, 'S': 2, 'W': 3}
 BND_TO_KEY = {'N': 'yN', 'E': 'xE', 'S': 'yS', 'W': 'xW'}
+
+
+def offset_to_slice(bnd: str, k: int):
+    """Return a 2D index tuple selecting the k-th layer from boundary `bnd`."""
+    s, sn = slice, slice(None)
+    if bnd == 'W':
+        return (s(k, k + 1), sn)
+    if bnd == 'E':
+        return (s(-(k + 1), -k or None), sn)
+    if bnd == 'S':
+        return (sn, s(k, k + 1))
+    if bnd == 'N':
+        return (sn, s(-(k + 1), -k or None))
 
 
 def sample_bc_spec(grid: dict, var_idx: int):
@@ -73,19 +83,34 @@ def sample_bc_spec(grid: dict, var_idx: int):
     return bc_type, bc_vals
 
 
-def resolve_pressure_bcs(grid: dict, prop: dict) -> None:
+def resolve_pressure_bcs(grid: dict, prop: dict, problem: "Problem" = None) -> None:
     """Convert pressure Dirichlet BCs (bc_*_P_val) to density (bc_*_D_val) in-place."""
     for side in ('xW', 'xE', 'yS', 'yN'):
         p_val = grid.get(f'bc_{side}_P_val')
         if p_val is not None:
-            grid[f'bc_{side}_D_val'] = float(eos_rho(float(p_val), prop))
+            if problem is not None and problem.pressure.is_gp_model:
+                import warnings
+                warnings.warn(
+                    f"bc_{side}_P_val with GP pressure: rho inversion not yet supported, skipping.")
+            else:
+                grid[f'bc_{side}_D_val'] = float(
+                    problem.pressure.rho_from_p(np.array([[float(p_val)]])).squeeze())
 
 
 def translate_bc_rho_to_p(bc_type: List[str], bc_vals: List[float | None],
                           problem: "Problem") -> List[float | None]:
     """Translate Dirichlet rho BC values to pressure using the EoS."""
-
-    return [eos_pressure(rho, problem.prop) if type == 'D' else 0.0
+    if problem.pressure.is_gp_model:
+        result = []
+        for (bnd, _), type, rho in zip(BND_IDX.items(), bc_type, bc_vals):
+            if type == 'D':
+                h_bnd = float(problem.topo.h[offset_to_slice(bnd, 1)].mean())
+                p = float(problem.pressure.p_from_rho(np.array([[rho]]), np.array([[h_bnd]])).squeeze())
+                result.append(p)
+            else:
+                result.append(0.0)
+        return result
+    return [float(problem.pressure.p_from_rho(np.array([[rho]])).squeeze()) if type == 'D' else 0.0
             for type, rho in zip(bc_type, bc_vals)]
 
 
@@ -265,20 +290,8 @@ class GhostUpdater:
             arr[:] = bc_spec.get_bc_val(bnd)
         return arr
 
-    def _offset_to_slice(self, bnd: str, k: int):
-        s = slice
-        sn = slice(None)
-        if bnd == 'W':
-            return (s(k, k + 1), sn)
-        if bnd == 'E':
-            return (s(-(k + 1), -k or None), sn)
-        if bnd == 'S':
-            return (sn, s(k, k + 1))
-        if bnd == 'N':
-            return (sn, s(-(k + 1), -k or None))
-
     def _get_ghost_slices(self, bnd: str, grid_type: str):
-        s_2, s_1, s_0 = [self._offset_to_slice(bnd, k) for k in [2, 1, 0]]
+        s_2, s_1, s_0 = [offset_to_slice(bnd, k) for k in [2, 1, 0]]
         if grid_type == 'P1':
             return s_1, s_1, s_0
         else:

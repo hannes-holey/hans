@@ -26,13 +26,12 @@
 import numpy as np
 import numpy.typing as npt
 import jax.numpy as jnp
-from jax import vmap, grad, jit
+from jax import vmap, grad, jit, lax
 from jax import Array
-from typing import Optional, Tuple, Any
+from typing import Optional, Any
 from muGrid import Field
 
 from .gp import GaussianProcessSurrogate
-from .gp import multi_in_single_out
 from .pressure import eos_pressure, eos_rho  # noqa: F401
 from .viscous import (stress_bottom, stress_top, stress_avg,  # noqa: F401
                       stress_top_xz, stress_bottom_xz,
@@ -394,17 +393,52 @@ class WallStress(GaussianProcessSurrogate):
     def build_grad(self) -> None:
         """Build JIT-compiled gradient functions for wall stress."""
 
+        dir = self.name[0]  # 'x' or 'y'
+
         if self.is_gp_model:
-            raise NotImplementedError("Gradient of GP-based wall stress not implemented.")
+            jmom_name = 'j' + dir
+            X_shift = self.database.X_shift[jnp.array(self.active_dims)]
+            X_scale = self.database.X_scale[jnp.array(self.active_dims)]
+
+            Ytrain_bot = self.Ytrain[:, 0]
+            Ytrain_top = self.Ytrain[:, 1]
+
+            def _f(Ytrain_col, rho, jmom, h):
+                x_norm = jnp.array([
+                    (rho - X_shift[0]) / X_scale[0],
+                    (jmom - X_shift[1]) / X_scale[1],
+                    (h - X_shift[2]) / X_scale[2],
+                ])
+                return self.gp.predict(Ytrain_col, x_norm[None, :]).squeeze() * self.Yscale + self.Yshift
+
+            f_bot = lambda rho, jmom, h: _f(Ytrain_bot, rho, jmom, h)
+            f_top = lambda rho, jmom, h: _f(Ytrain_top, rho, jmom, h)
+            f_gap = lambda rho, jmom, h: f_top(rho, jmom, h) - f_bot(rho, jmom, h)
+
+            f_gap_drho = grad(f_gap, argnums=0)
+            f_gap_djmom = grad(f_gap, argnums=1)
+            f_bot_drho = grad(f_bot, argnums=0)
+            f_bot_djmom = grad(f_bot, argnums=1)
+            zero = lambda rho, jmom, h: jnp.zeros(())
+
+            vmap2 = lambda f: jit(vmap(vmap(f, in_axes=(0, 0, 0)), in_axes=(0, 0, 0)))
+
+            self.tau = vmap2(f_gap)
+            self.tau_bot = vmap2(f_bot)
+            self.dtau_drho = vmap2(f_gap_drho)
+            self.dtau_dtheta = vmap2(zero)
+            self.dtau_bot_drho = vmap2(f_bot_drho)
+            self.dtau_bot_dtheta = vmap2(zero)
+            setattr(self, f'dtau_d{jmom_name}', vmap2(f_gap_djmom))
+            setattr(self, f'dtau_bot_d{jmom_name}', vmap2(f_bot_djmom))
 
         else:
-            dir = self.name[0]  # 'x' or 'y'
             stress_top_fn = globals()[f'stress_top_{dir}z']
             stress_bot_fn = globals()[f'stress_bottom_{dir}z']
             der_vars = ['rho', 'j' + dir, 'theta']
             der_arg_idx = [0, 1 if dir == 'x' else 2, 10]
 
-            # central functions: only argument difference for x/y is dh; tau_bot required for energy
+            # central functions: only argument difference for x/y is dh
             def _tau(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
                 p = eos_pressure(rho, self.prop)
                 eta = get_shear_viscosity(self, p, dp_dx, dp_dy, h)
@@ -414,6 +448,7 @@ class WallStress(GaussianProcessSurrogate):
                 tau_bot = stress_bot_fn(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
                 return (1.0 - theta) * (tau_top - tau_bot)
 
+            # required for energy
             def _tau_bot(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
                 p = eos_pressure(rho, self.prop)
                 eta = get_shear_viscosity(self, p, dp_dx, dp_dy, h)
@@ -711,19 +746,47 @@ class Pressure(GaussianProcessSurrogate):
             self.__field.pg[:] = eos_pressure(self.solution[0], self.prop)
 
     def build_grad(self) -> None:
+
         if self.is_gp_model:
-            raise NotImplementedError("Gradient of GP-based EOS not implemented.")
+            X_shift = self.database.X_shift[jnp.array(self.active_dims)]  # [rho_shift, h_shift]
+            X_scale = self.database.X_scale[jnp.array(self.active_dims)]  # [rho_scale, h_scale]
+
+            def f0(rho, h):
+                x_norm = jnp.array([(rho - X_shift[0]) / X_scale[0],
+                                    (h - X_shift[1]) / X_scale[1]])
+                return self.gp.predict(self.Ytrain, x_norm[None, :]).squeeze() * self.Yscale + self.Yshift
+
+            f1 = grad(f0, argnums=0)            # ∂p/∂rho at fixed h
+            f2 = grad(f1, argnums=0)            # ∂²p/∂rho²
+
+            def _newton_invert(p_target, h, rho_init, n_steps=10):
+                def step(rho, _):
+                    return rho - (f0(rho, h) - p_target) / f1(rho, h), None
+                rho, _ = lax.scan(step, rho_init, None, length=n_steps)
+                return rho
+
+            vmap2 = lambda f: jit(vmap(vmap(f, in_axes=(0, 0)), in_axes=(0, 0)))
+            vmap2_inv = lambda f: jit(vmap(vmap(f, in_axes=(0, 0, 0)), in_axes=(0, 0, 0)))
+
+            self.p_from_rho = vmap2(f0)
+            self.dp_drho = vmap2(f1)
+            self.d2p_drho2 = vmap2(f2)
+            self.drho_dp = vmap2(lambda rho, h: 1.0 / f1(rho, h))
+            self.rho_from_p = vmap2_inv(_newton_invert)
+
         else:
-            vmap2 = lambda f: jit(vmap(vmap(f, in_axes=0), in_axes=0))
 
             f0 = lambda rho: eos_pressure(rho, self.prop)
-            f1 = grad(f0)
-            f2 = grad(f1)
+            f1 = grad(f0, argnums=0)            # dp/drho
+            f2 = grad(f1, argnums=0)            # d²p/drho²
+
+            vmap2 = lambda f: jit(vmap(vmap(f, in_axes=0), in_axes=0))
 
             self.p_from_rho = vmap2(f0)
             self.dp_drho = vmap2(f1)
             self.d2p_drho2 = vmap2(f2)
             self.drho_dp = vmap2(lambda rho: 1.0 / f1(rho))
+            self.rho_from_p = vmap2(lambda p: eos_rho(p, self.prop))
 
 
 class Viscosity():
@@ -770,7 +833,6 @@ class Viscosity():
                                                           self.prop['thinning'])
         else:
             shear_viscosity = mu0
-
 
         self.__field.pg[:] = shear_viscosity
 

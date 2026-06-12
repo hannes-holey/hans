@@ -107,8 +107,8 @@ class DomainDecomposition:
         # Density grid (P1)
         self.init_decomposition()
 
-        # Mass flux grid (P2) for Taylor-Hood FEM solver in 2D
-        if numerics is not None and numerics['solver'] == 'fem' and grid['dim'] == 2:
+        # Mass flux grid (P2) for FEM solver
+        if numerics is not None and numerics['solver'] == 'fem':
             self.init_decomposition_P2()
 
     def split_domain(self) -> Tuple[int, int]:
