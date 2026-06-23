@@ -87,8 +87,17 @@ class Database:
 
         if _training_path is not None:
             self._temporary_training_path = False
-            self.set_training_path(_training_path)
-            readme_list = self.get_readme_list_local()
+
+            if isinstance(_training_path, list):
+                _training_paths = _training_path
+            else:
+                _training_paths = [_training_path]
+
+            readme_list = []
+            for path in _training_paths:
+                readme_list.extend(self.get_readme_list_local(path))
+
+            self.set_training_path(_training_paths[0])
         else:
             self._temporary_training_path = True
             self.set_training_path('/tmp/')
@@ -212,7 +221,7 @@ class Database:
     # Utilities
     # ------------------------------------------------------------------
 
-    def get_readme_list_local(self):
+    def get_readme_list_local(self, training_path):
         """Get list of dtool README files for existing MD runs
         from a local directory.
 
@@ -223,10 +232,10 @@ class Database:
         """
 
         readme_list = [yaml.load(ds.get_readme_content())
-                       for ds in dtoolcore.iter_datasets_in_base_uri(self.training_path)]
+                       for ds in dtoolcore.iter_datasets_in_base_uri(training_path)]
 
-        logger.info("Loading %d local datasets in '%s'.", len(readme_list), self.training_path)
-        for ds in dtoolcore.iter_datasets_in_base_uri(self.training_path):
+        logger.info("Loading %d local datasets in '%s'.", len(readme_list), training_path)
+        for ds in dtoolcore.iter_datasets_in_base_uri(training_path):
             logger.info('- %s (%s)', ds.uuid, ds.name)
 
         return readme_list
