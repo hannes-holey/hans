@@ -756,8 +756,8 @@ class Pressure(GaussianProcessSurrogate):
                                     (h - X_shift[1]) / X_scale[1]])
                 return self.gp.predict(self.Ytrain, x_norm[None, :]).squeeze() * self.Yscale + self.Yshift
 
-            f1 = grad(f0, argnums=0)            # ∂p/∂rho at fixed h
-            f2 = grad(f1, argnums=0)            # ∂²p/∂rho²
+            f1 = grad(f0, argnums=0)
+            f2 = grad(f1, argnums=0)
 
             def _newton_invert(p_target, h, rho_init, n_steps=10):
                 def step(rho, _):
@@ -777,8 +777,8 @@ class Pressure(GaussianProcessSurrogate):
         else:
 
             f0 = lambda rho: eos_pressure(rho, self.prop)
-            f1 = grad(f0, argnums=0)            # dp/drho
-            f2 = grad(f1, argnums=0)            # d²p/drho²
+            f1 = grad(f0, argnums=0)
+            f2 = grad(f1, argnums=0)
 
             vmap2 = lambda f: jit(vmap(vmap(f, in_axes=0), in_axes=0))
 

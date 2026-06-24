@@ -151,11 +151,15 @@ QUAD_FIELD_REGISTRY = {
     'dS_djy': {'type': 'computed', 'source': 'energy.q_wall_grad_jy', 'args': _ARGS_S},
     'dS_dE': {'type': 'computed', 'source': 'energy.q_wall_grad_E', 'args': _ARGS_S},
 
-    # OSS stabilization (computed inline in _update_oss_quad_fields, source TBD)
+    # OSS stabilization (computed inline in _update_oss_quad_fields)
     'a_vec_x': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx']},
     'a_vec_y': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jy']},
     'tau_a_x': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
     'tau_a_y': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
+
+    # Flux-capturing stabilization (computed inline in _update_fc_quad_fields)
+    'fc_tau': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy',
+               'h', 'dh_dx', 'dh_dy', 'd_dx_jx', 'd_dy_jy', 'd_dx_theta', 'd_dy_theta']},
 }
 
 _GP_ARGS_PRESSURE = {

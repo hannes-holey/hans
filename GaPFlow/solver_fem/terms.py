@@ -93,8 +93,6 @@ class Term():
         return (self.depvar_deriv, self.test_deriv)
 
 
-from .terms_theta import THETA_TERMS_MASS, R_fb, THETA_TERMS_WALL_STRESS
-from .terms_oss import OSS_TERMS
 
 # -----------------------------------------------------------------------------
 # Mass equation terms (R1*)
@@ -571,6 +569,9 @@ def get_active_terms(fem_solver: dict) -> List[Term]:
     - wall_heat_balance:  Wall heat flux BC (R36)
     - wall_shear_work:    Wall stress work / shear heating (R34)
     """
+    from .terms_theta import THETA_TERMS_MASS, THETA_TERMS_AD, R_fb, THETA_TERMS_WALL_STRESS
+    from .terms_oss import OSS_TERMS, FC_TERMS
+
     physics = fem_solver['physics']
     stab = fem_solver['stabilization']
     cavitation = fem_solver['equations']['cavitation']
@@ -581,8 +582,14 @@ def get_active_terms(fem_solver: dict) -> List[Term]:
         terms = [R11x, R11y, R11Sx, R11Sy, R11x_corr, R11y_corr,
                  R1T, R21x, R21y, R2Tx, R2Ty]
 
+    if cavitation and stab['ad']:
+        terms += THETA_TERMS_AD
+
     if cavitation and stab['oss']:
         terms += OSS_TERMS
+
+    if cavitation and stab['fc']:
+        terms += FC_TERMS
 
     if physics['gap_shear']:
         terms += THETA_TERMS_WALL_STRESS if cavitation else [R24x, R24y]

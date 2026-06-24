@@ -476,6 +476,11 @@ def sanitize_numerics(d):
     out['tol'] = float(d.get('tol', 1e-6))
     out['max_it'] = int(d.get('max_it', 1000))
     out['dt'] = float(d.get('dt', 3e-10))
+    # solver-specific overrides for dt and max_it
+    if 'dt_' + out['solver'] in d:
+        out['dt'] = float(d['dt_' + out['solver']])
+    if 'max_it_' + out['solver'] in d:
+        out['max_it'] = int(d['max_it_' + out['solver']])
     out['adaptive'] = bool(d.get('adaptive', False))
     out['CFL'] = float(d.get('CFL', 0.5))
     out['MC_order'] = int(d.get('MC_order', 1))
@@ -592,9 +597,11 @@ def sanitize_fem_solver(d):
     stab = d.get('stabilization', {})
     out['stabilization'] = {
         'ad': bool(stab.get('ad', False)),
-        'oss': bool(stab.get('oss', False)),
         'ad_alpha': float(stab.get('ad_alpha', 0.0)),
+        'oss': bool(stab.get('oss', False)),
         'oss_alpha': float(stab.get('oss_alpha', 1.0)),
+        'fc': bool(stab.get('fc', False)),
+        'fc_beta': float(stab.get('fc_beta', 0.7)),
     }
 
     if 'p_init' in d:

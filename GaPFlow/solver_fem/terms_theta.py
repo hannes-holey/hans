@@ -218,8 +218,9 @@ R24y_fb = Term(
 THETA_TERMS_MASS = [
     R11x_fb, R11y_fb, R11Sx_fb, R11Sy_fb,
     R11x_fb_corr, R11y_fb_corr, R11Sx_fb_corr, R11Sy_fb_corr,
-    R1STx, R1STy,
 ]
+
+THETA_TERMS_AD = [R1STx, R1STy]
 
 R_fb = [R_fb]
 

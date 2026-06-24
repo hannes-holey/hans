@@ -320,6 +320,9 @@ class QuadFieldManager:
         if 'xi' in self.variables:
             self._update_oss_quad_fields(q)
 
+        if self.problem.fem_solver['stabilization']['fc']:
+            self._update_fc_quad_fields(q)
+
     def _update_oss_quad_fields(self, q) -> None:
         """Compute OSS stabilisation fields (a_vec, tau, one_minus_theta) at quad points."""
 
@@ -338,6 +341,29 @@ class QuadFieldManager:
         alpha = self.problem.fem_solver['stabilization']['oss_alpha']
         q('tau_a_x')[:] = alpha * tau * a_vec_x
         q('tau_a_y')[:] = alpha * tau * a_vec_y
+
+    def _update_fc_quad_fields(self, q) -> None:
+        """Compute flux-capturing diffusion coefficient fc_tau at quad points.
+
+        fc_tau = (h_elem² / 2) * fc_beta * |R_mass_strong|
+        R_mass_strong has units [Pa/s]; h_elem² gives [Pa·m²/s] which is
+        the correct unit for the diffusivity in the weak-form mass integral.
+        fc_beta is a dimensionless O(1) coefficient.
+        """
+        h_elem = min(self.dx, self.dy)
+        beta = self.problem.fem_solver['stabilization']['fc_beta']
+
+        R_mass = (
+            -q('dp_drho') * (
+                (1 - q('theta')) * (q('d_dx_jx') + q('d_dy_jy'))
+                - q('jx') * q('d_dx_theta')
+                - q('jy') * q('d_dy_theta')
+                + (1 - q('theta')) / q('h') * (q('dh_dx') * q('jx') + q('dh_dy') * q('jy'))
+            )
+            - (q('p') - q('p_prev')) / self.problem.numerics['dt']
+        )
+
+        q('fc_tau')[:] = (h_elem**2 / 2.0) * beta * np.abs(R_mass)
 
     def collect_quad_fields(self) -> dict:
         return {name: self.get_quad_sq(name) for name in self.quad_fields}

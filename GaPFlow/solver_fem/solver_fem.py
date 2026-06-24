@@ -202,6 +202,7 @@ class FEMSolver:
             element=self.elements,
             var_specs=self.var_specs,
             res_specs=self.res_specs,
+            terms=self.terms,
         )
 
     def _build_jit_functions(self) -> None:
@@ -227,6 +228,7 @@ class FEMSolver:
             # scalars
             ctx['dt'] = lambda: p.numerics['dt']
             ctx['ad_alpha'] = lambda: p.fem_solver['stabilization']['ad_alpha']
+            ctx['fc_beta'] = lambda: p.fem_solver['stabilization']['fc_beta']
             ctx['p_cav'] = lambda: p.prop['p_cav']
             ctx['fb_p_ref'] = lambda: p.prop['P0']
             ctx['dx'] = lambda: p.grid['dx']
@@ -330,7 +332,7 @@ class FEMSolver:
         """Assemble Jacobian COO values."""
         if qf is None:
             qf = self.quad_mgr.collect_quad_fields()
-        return self.assembly.assemble_matrix(qf, self.terms)
+        return self.assembly.assemble_matrix(qf)
 
     def get_M_dense(self) -> NDArray:
         """Assemble Jacobian as a dense (res_size, res_size) matrix in block ordering."""
@@ -355,7 +357,7 @@ class FEMSolver:
         """Assemble residual vector."""
         if qf is None:
             qf = self.quad_mgr.collect_quad_fields()
-        return self.assembly.assemble_rhs(qf, self.terms)
+        return self.assembly.assemble_rhs(qf)
 
     # =========================================================================
     # Solver step
@@ -370,7 +372,7 @@ class FEMSolver:
         R = self.get_R_(qf).copy()
 
         if self._debug_active:
-            self._last_R_per_term = self.assembly.assemble_rhs_per_term(qf, self.terms)
+            self._last_R_per_term = self.assembly.assemble_rhs_per_term(qf)
         return M, R
 
     def get_R(self, q_guess: NDArray) -> float:
@@ -514,7 +516,7 @@ class FEMSolver:
 
         self.build_boundary_conditions()
         self._build_terms()
-        self.assembly.build_assembly_templates(self.terms)
+        self.assembly.build_assembly_templates()
         self._init_linear_solver()
 
         self.quad_mgr.sync_from_problem_q()

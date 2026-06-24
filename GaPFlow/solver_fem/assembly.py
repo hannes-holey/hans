@@ -71,6 +71,8 @@ class Assembly:
         Active variables in block order.
     res_specs : list of FieldSpec
         Active residuals in block order.
+    terms : list of Term
+        All terms (including diagnostic).
     """
 
     def __init__(self,
@@ -78,12 +80,14 @@ class Assembly:
                  element: TaylorHoodP2P1,
                  var_specs: List[FieldSpec],
                  res_specs: List[FieldSpec],
+                 terms: list,
                  ) -> None:
 
         self.grid_idx = grid_idx
         self.element = element
         self.var_specs = var_specs
         self.res_specs = res_specs
+        self.assembly_terms = [t for t in terms if t.res != 'diagnostic']
 
         # Convenience views derived from specs — single source of truth
         self.variables = [s.name for s in var_specs]
@@ -389,7 +393,7 @@ class Assembly:
     # Assembly templates
     # ======================================================================
 
-    def build_assembly_templates(self, terms) -> None:
+    def build_assembly_templates(self) -> None:
         """Precompute injection templates for all (res, var, deriv_key) combinations.
         deriv_key = (depvar_deriv, test_deriv) from term.depvar_deriv_for(var).
         Shape weighting depends on deriv_key; nnz_index depends only on (res, var).
@@ -398,7 +402,7 @@ class Assembly:
 
         # Collect all (res, var, dd, td) quadruples actually needed
         needed = set()
-        for term in terms:
+        for term in self.assembly_terms:
             td = term.test_deriv
             for var in term.dep_vars:
                 dd = term.depvar_deriv_for(var)
@@ -413,7 +417,7 @@ class Assembly:
             )
 
         # Residual-only keys for assemble_rhs (one key per term: (res, dd, td))
-        for term in terms:
+        for term in self.assembly_terms:
             dd, td = term.deriv_key
             key = (term.res, dd, td)
             if key not in self.assembly_templates:
@@ -513,7 +517,6 @@ class Assembly:
 
     def assemble_matrix(self,
                         quad_fields: Dict[str, NDArray],
-                        terms: list,
                         ) -> NDArray:
         """Accumulate Jacobian term contributions and return a view on the result.
 
@@ -525,7 +528,7 @@ class Assembly:
         """
         self._nnz_buf[:] = 0.0
 
-        for term in terms:
+        for term in self.assembly_terms:
 
             td = term.test_deriv
             dep_vars = [quad_fields[v] for v in term.dep_vars]
@@ -620,7 +623,6 @@ class Assembly:
 
     def assemble_rhs(self,
                      quad_fields: Dict[str, NDArray],
-                     terms: List[Term],
                      ) -> NDArray:
         """Accumulate residual term contributions and return a view on the result.
 
@@ -632,7 +634,7 @@ class Assembly:
         """
         self._rhs_buf[:] = 0.0
 
-        for term in terms:
+        for term in self.assembly_terms:
 
             dd, td = term.deriv_key
             res = term.res
@@ -662,7 +664,6 @@ class Assembly:
 
     def assemble_rhs_per_term(self,
                               quad_fields: Dict[str, NDArray],
-                              terms: List[Term],
                               ) -> Dict[str, NDArray]:
         """Assemble residual contribution of each term individually.
 
@@ -673,7 +674,7 @@ class Assembly:
             contribution to the residual vector.
         """
         result = {}
-        for term in terms:
+        for term in self.assembly_terms:
             self._rhs_buf[:] = 0.0
 
             dd, td = term.deriv_key

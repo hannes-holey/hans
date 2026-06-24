@@ -137,3 +137,31 @@ OSS_TERMS = [
 ]
 
 OSS_TERM_NAMES = [t.name for t in OSS_TERMS]
+
+# ---------------------------------------------------------------------------
+# Flux-capturing terms
+# ---------------------------------------------------------------------------
+
+R_FC_x = Term(
+    name='R_FC_x',
+    description='flux-capturing theta diffusion x',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['fc_tau', 'd_dx_theta'],
+    fun=lambda ctx: lambda theta: -ctx['fc_tau']() * ctx['d_dx_theta'](),
+    der_funs=[lambda ctx: lambda theta: -ctx['fc_tau']()],
+    trial_deriv='x',
+    test_deriv='x')
+
+R_FC_y = Term(
+    name='R_FC_y',
+    description='flux-capturing theta diffusion y',
+    res='mass',
+    dep_vars=['theta'],
+    dep_vals=['fc_tau', 'd_dy_theta'],
+    fun=lambda ctx: lambda theta: -ctx['fc_tau']() * ctx['d_dy_theta'](),
+    der_funs=[lambda ctx: lambda theta: -ctx['fc_tau']()],
+    trial_deriv='y',
+    test_deriv='y')
+
+FC_TERMS = [R_FC_x, R_FC_y]
