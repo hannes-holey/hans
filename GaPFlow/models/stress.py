@@ -356,7 +356,7 @@ class WallStress(GaussianProcessSurrogate):
                               self.geo['V'],
                               shear_viscosity,
                               self.prop['bulk'],
-                              self.extra  # e.g. slip length
+                              Lst=self.extra  # here slip length (top)
                               )
 
         s_top = stress_top(self.solution,
@@ -365,7 +365,7 @@ class WallStress(GaussianProcessSurrogate):
                            self.geo['V'],
                            shear_viscosity,
                            self.prop['bulk'],
-                           self.extra  # e.g. slip length
+                           Lst=self.extra  # here slip length (top)
                            )
 
         self.__field.p[:3] = s_bot[:3] / 2.
@@ -483,7 +483,7 @@ class BulkStress(GaussianProcessSurrogate):
                                          self.geo['V'],
                                          shear_viscosity,
                                          self.prop['bulk'],
-                                         self.extra  # e.g. slip length
+                                         Lst=self.extra  # here slip length (top)
                                          )
 
 
