@@ -221,7 +221,7 @@ class Database:
     # Utilities
     # ------------------------------------------------------------------
 
-    def get_readme_list_local(self, training_path):
+    def get_readme_list_local(self, training_path=None):
         """Get list of dtool README files for existing MD runs
         from a local directory.
 
@@ -230,6 +230,9 @@ class Database:
         list
             List of dicts containing the readme content
         """
+
+        if training_path is None:
+            training_path = self.training_path
 
         readme_list = [yaml.load(ds.get_readme_content())
                        for ds in dtoolcore.iter_datasets_in_base_uri(training_path)]
