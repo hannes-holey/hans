@@ -463,7 +463,7 @@ class GaussianProcessSurrogate:
     # ------------------------------------------------------------------
     # Active Learning
     # ------------------------------------------------------------------
-    def _get_tolerance(self, m, residual):
+    def _get_tolerance(self, m, residuals):
         """Compute the variance tolerance based on the current prediction.
 
         Parameters
@@ -479,6 +479,9 @@ class GaussianProcessSurrogate:
             Maximum allowed variance tolerance
         """
 
+        if residuals is not None:
+            residual_mean = jnp.mean(jnp.array(residuals))
+
         noise = self.Yerr * self.Yscale
         atol = self.atol * noise  # "lower bound", multiple of observation noise
 
@@ -490,13 +493,13 @@ class GaussianProcessSurrogate:
         elif self.tolerance_protocol == 'sigmoid':
             atol_init = atol
             atol_final = self.atol_reduction_factor * atol
-            x = self.tol_alpha * jnp.log(residual / self.tol_rmid)
+            x = self.tol_alpha * jnp.log(residual_mean / self.tol_rmid)
             std_tol = atol_final + (atol_init - atol_final) / (1. + jnp.exp(-x))
 
         elif self.tolerance_protocol == 'linear':
             atol_init = atol
             atol_final = self.atol_reduction_factor * atol
-            x = jnp.clip(self.tol_alpha * jnp.log(residual / self.tol_rmid), -1., 1.)
+            x = jnp.clip(self.tol_alpha * jnp.log(residual_mean / self.tol_rmid), -1., 1.)
             std_tol = atol_final + (atol_init - atol_final) * (x + 1.) / 2.
 
         else:
@@ -636,7 +639,7 @@ class GaussianProcessSurrogate:
     # ------------------------------------------------------------------
 
     def predict(self,
-                residuals: Deque,
+                residuals: Deque | None = None,
                 predictor: bool = True,
                 compute_var: bool = True) -> Tuple[JAXArray, JAXArray]:
         """
@@ -676,7 +679,11 @@ class GaussianProcessSurrogate:
         self._cumtime_infer += toc - tic
 
         after_failed_attempt = self._pause >= 0
-        cooldown = above_tolerance(residuals, tol=1e-3) and self.pause_on_high_residual
+
+        if residuals is None:
+            cooldown = False
+        else:
+            cooldown = above_tolerance(residuals, tol=1e-3) and self.pause_on_high_residual
         pause_acquisition = after_failed_attempt or cooldown
 
         if self.use_active_learning \
@@ -684,8 +691,7 @@ class GaussianProcessSurrogate:
                 and not pause_acquisition:
 
             # Compute variance tolerance
-            residual_mean = jnp.mean(jnp.array(residuals))
-            self.variance_tol = self._get_tolerance(m, residual_mean)
+            self.variance_tol = self._get_tolerance(m, residuals)
             before = deepcopy(self.maximum_variance / self.variance_tol)
 
             # Active learning loop
@@ -707,7 +713,7 @@ class GaussianProcessSurrogate:
                 self._cumtime_infer += tic - toc
 
                 # Re-compute variance tolerance
-                self.variance_tol = self._get_tolerance(m, residual_mean)
+                self.variance_tol = self._get_tolerance(m, residuals)
 
                 # AL step output summary
                 after = self.maximum_variance / self.variance_tol
