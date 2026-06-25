@@ -104,7 +104,7 @@ if __name__ == "__main__":
     extra[0, :, -1] = extra[0, :, 1]
 
     md_runner = Mock(prop, geo, gp)
-    database = Database(md_runner, db)
+    database = Database(md_runner, db, num_extra_features=1)
 
     problem = Problem(options,
                       grid,

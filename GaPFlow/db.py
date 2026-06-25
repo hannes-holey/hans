@@ -104,7 +104,7 @@ class Database:
         self,
         md: Any,
         db: dict,
-        num_extra_features: int = 1,
+        num_extra_features: int = 0,
         num_derived_features: int = 0,
         derived_expressions: list[str] = []
     ) -> None:
@@ -112,14 +112,6 @@ class Database:
         self._md = md
         self._db = db
         self._derived_expressions = derived_expressions
-
-        self._num_extra_features = num_extra_features
-        # 6 base features (rho, jx, jy, h, dhdx, dhdy)
-        # + 2 wall velocities (U, V)
-        # + extra features (e.g. slip length)
-        self._num_base_features = 8 + num_extra_features
-        # + derived features (computed combinations, never stored persistently)
-        self._num_features = self._num_base_features + num_derived_features
 
         self._output_path = None
         _training_path = db.get('dtool_path')
@@ -153,11 +145,23 @@ class Database:
             Ytrain = jnp.array(Ytrain)
             Yerr = jnp.array(Yerr)
 
+            # Infer num_extra_features from the loaded data so the database is
+            # self-describing regardless of the constructor default.
+            num_extra_features = Xtrain.shape[1] - 8
+
         else:
             # Empty arrays use base feature count; derived cols are computed on-the-fly.
-            Xtrain = jnp.empty((0, self._num_base_features))
+            Xtrain = jnp.empty((0, 8 + num_extra_features))
             Ytrain = jnp.empty((0, 13))
             Yerr = jnp.empty((0, 13))
+
+        self._num_extra_features = num_extra_features
+        # 6 base features (rho, jx, jy, h, dhdx, dhdy)
+        # + 2 wall velocities (U, V)
+        # + extra features (e.g. slip length)
+        self._num_base_features = 8 + num_extra_features
+        # + derived features (computed combinations, never stored persistently)
+        self._num_features = self._num_base_features + num_derived_features
 
         self._Xtrain = Xtrain
         self._Xtrain_target = Xtrain

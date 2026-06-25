@@ -428,9 +428,6 @@ def sanitize_gp(d):
             out[sk]['tol_rmid'] = float(ds.get('tol_rmid', 1e-6))
             out[sk]['tol_alpha'] = float(ds.get('tol_alpha', 2.))
 
-            # Propagate shared derived features into each sub-dict.
-            out[sk]['derived_features'] = out['derived_features']
-
             # For shear/2D: need to distinguish (x and y)
             if sk == 'press':
                 out[sk]['active_dims'] = list(ds.get('active_dims', [0, 3]))

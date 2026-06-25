@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     md_runner = Mock(prop, geo, gp)
 
-    database = Database(md_runner, db)
+    database = Database(md_runner, db, num_extra_features=1)
 
     problem = Problem(options,
                       grid,

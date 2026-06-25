@@ -132,8 +132,13 @@ class Problem:
         self.__field = self._fc.real_field('solution', (3,))
         self._initialize(rho0=prop['rho0'], U=geo['U'], V=geo['V'])
 
-        # Initialize extra field
-        num_extra_features = 1 if database is None else database.num_extra_features
+        # Initialize extra field (only allocate if extra data is actually present).
+        if database is not None:
+            num_extra_features = database.num_extra_features
+        elif extra_field is not None:
+            num_extra_features = extra_field.shape[0]
+        else:
+            num_extra_features = 0
         extra = self._fc.real_field('extra', (num_extra_features,))
         if extra_field is not None:
             extra.p[...] = extra_field
@@ -673,6 +678,8 @@ class Problem:
         Select active GP models
         """
         if gp is not None:
+            derived = gp.get('derived_features', [])
+
             if self.grid['dim'] == 1:
                 gpz = gp.get('press')
                 gpx = gp.get('shear')
@@ -682,6 +689,10 @@ class Problem:
                 gpx = gp.get('shear')
                 gpy = gp.get('shear')
 
+            # Inject top-level derived_features into each model sub-dict.
+            for sub in [gpx, gpy, gpz]:
+                if sub is not None:
+                    sub['derived_features'] = derived
         else:
             gpx, gpy, gpz = None, None, None
 
