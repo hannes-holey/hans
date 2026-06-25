@@ -54,8 +54,8 @@ gp:
      obs_stddev: 4.e-3
      max_steps: 5
      active_dims:     # optional, default is [0, 1, 3] (x) and [0, 2, 3] (y)
-        x: [0, 1, 6]  # density, flux_x, slip length
-        y: [0, 2, 6]  # density, flux_y, slip length
+        x: [0, 1, 8]  # density, flux_x, slip length
+        y: [0, 2, 8]  # density, flux_y, slip length
 db:
  init_size: 10
  init_method: lhc

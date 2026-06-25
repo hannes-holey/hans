@@ -403,6 +403,9 @@ def sanitize_gp(d):
     out['press_gp'] = bool(use_press_gp)
     out['shear_gp'] = bool(use_shear_gp)
 
+    # Derived features are shared across all GP models (same _Xtest layout).
+    out['derived_features'] = list(d.get('derived_features', []))
+
     for sk, active in zip(['press', 'shear'], [use_press_gp, use_shear_gp]):
         if active:
             out[sk] = {}
@@ -424,6 +427,9 @@ def sanitize_gp(d):
             out[sk]['atol_reduction_factor'] = float(ds.get('atol_reduction_factor', 0.5))
             out[sk]['tol_rmid'] = float(ds.get('tol_rmid', 1e-6))
             out[sk]['tol_alpha'] = float(ds.get('tol_alpha', 2.))
+
+            # Propagate shared derived features into each sub-dict.
+            out[sk]['derived_features'] = out['derived_features']
 
             # For shear/2D: need to distinguish (x and y)
             if sk == 'press':

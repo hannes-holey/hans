@@ -39,6 +39,7 @@ with warnings.catch_warnings():
 
 from tinygp import GaussianProcess, kernels, transforms
 
+from ..db import _eval_derived_expr
 from ..logging import get_logger
 from ..utils import above_tolerance
 
@@ -81,6 +82,7 @@ class GaussianProcessSurrogate:
     noise: Tuple[float, float]
     prop: dict
     geo: dict
+    derived_expressions: list[str]
 
     def __init__(self, fc, database):
         """Constructor.
@@ -105,6 +107,14 @@ class GaussianProcessSurrogate:
             self._pause = 0
             self._tol_ratio = 0.
             self._objective = jnp.inf
+
+            first_derived_idx = 8 + database.num_extra_features
+            if self.use_active_learning and any(d >= first_derived_idx for d in self.active_dims):
+                raise ValueError(
+                    f"Active learning cannot be used when derived features appear in "
+                    f"active_dims (derived feature indices start at {first_derived_idx}). "
+                    f"Set active_learning: false or remove derived feature indices from active_dims."
+                )
 
             # Initialize timers
             ref = datetime.now()
@@ -230,6 +240,21 @@ class GaussianProcessSurrogate:
         return self.__extra.p
 
     @property
+    def _derived(self) -> JAXArray:
+        """Compute derived features from base feature expressions defined in config."""
+        base = jnp.vstack([
+            self.solution,
+            self.height_and_slopes,
+            jnp.full((1, *self.height.shape), self.geo['U']),
+            jnp.full((1, *self.height.shape), self.geo['V']),
+            self.extra
+        ])
+        return jnp.vstack([
+            _eval_derived_expr(expr, base)[jnp.newaxis]
+            for expr in self.derived_expressions
+        ])
+
+    @property
     def trusted(self) -> bool:
         """Return True if model predictive variance is below tolerance."""
         return self.maximum_variance < self.variance_tol
@@ -251,14 +276,17 @@ class GaussianProcessSurrogate:
 
     @property
     def _Xtest(self) -> JAXArray:
-        """
-        Flattened test input array from physical fields.
-        """
-        return jnp.vstack([
+        """Flattened test input array from physical fields."""
+        parts = [
             self.solution,
             self.height_and_slopes,
-            self.extra
-        ]).reshape(self._database.num_features, -1).T
+            jnp.full((1, *self.height.shape), self.geo['U']),
+            jnp.full((1, *self.height.shape), self.geo['V']),
+            self.extra,
+        ]
+        if self.derived_expressions:
+            parts.append(self._derived)
+        return jnp.vstack(parts).reshape(self._database.num_features, -1).T
 
     @property
     def Xtrain(self) -> JAXArray:

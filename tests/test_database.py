@@ -46,12 +46,12 @@ def test_addition(tmp_path, method):
 
     db = Database(md, db_config, num_extra_features=1)
 
-    Xtest = np.random.uniform(size=(100, 7))
+    Xtest = np.random.uniform(size=(100, 9))
     db.initialize(Xtest)
 
     assert db.size == db_config['init_size']
 
-    Xnew = np.random.uniform(size=(10, 7))
+    Xnew = np.random.uniform(size=(10, 9))
     db.add_data(Xnew)
     assert db.size == 14
 

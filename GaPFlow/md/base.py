@@ -72,7 +72,7 @@ class MolecularDynamics:
     is_mock: bool
     _dtool_basepath: str = '/tmp/'
     _readme_template: str = ""
-    _input_names: list[str] = ['ρ', 'jx', 'jy', 'h', '∂h/∂x', '∂h/∂y'] + [f'extra_{i}' for i in range(10)]
+    _input_names: list[str] = ['ρ', 'jx', 'jy', 'h', '∂h/∂x', '∂h/∂y', 'U', 'V'] + [f'extra_{i}' for i in range(10)]
     _output_names: list[str] = ['p',
                                 'τ(xx|bot)', 'τ(yy|bot)', 'τ(zz|bot)', 'τ(yz|bot)', 'τ(xz|bot)', 'τ(xy|bot)',
                                 'τ(xx|top)', 'τ(yy|top)', 'τ(zz|top)', 'τ(yz|top)', 'τ(xz|top)', 'τ(xy|top)']

@@ -133,7 +133,7 @@ class Problem:
         self._initialize(rho0=prop['rho0'], U=geo['U'], V=geo['V'])
 
         # Initialize extra field
-        num_extra_features = 1 if database is None else database.num_features - 6
+        num_extra_features = 1 if database is None else database.num_extra_features
         extra = self._fc.real_field('extra', (num_extra_features,))
         if extra_field is not None:
             extra.p[...] = extra_field
@@ -251,7 +251,10 @@ class Problem:
                 elif md['system'] == 'mol':
                     MD = GoldAlkane(md)
 
-            database = Database(MD, db)
+            derived_exprs = gp.get('derived_features', []) if gp else []
+            database = Database(MD, db,
+                                num_derived_features=len(derived_exprs),
+                                derived_expressions=derived_exprs)
         else:
             database = None
 

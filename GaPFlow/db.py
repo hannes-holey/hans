@@ -23,6 +23,7 @@
 # SOFTWARE.
 #
 import os
+import re
 import dtoolcore
 from ruamel.yaml import YAML
 from dtool_lookup_api import query
@@ -44,6 +45,35 @@ ArrayY = Float[Array, "Ntrain 13"]  # Output features
 yaml = YAML()
 yaml.explicit_start = True
 yaml.indent(mapping=4, sequence=4, offset=2)
+
+# Maps human-readable names to base feature indices.
+# Index layout: 0-2 solution (rho, jx, jy), 3-5 topography (h, dhdx, dhdy),
+#               6-7 wall velocities (U, V), 8+ extra features.
+_FEATURE_NAMES = {
+    'rho': 0, 'jx': 1, 'jy': 2,
+    'h': 3, 'dhdx': 4, 'dhdy': 5,
+    'U': 6, 'V': 7,
+}
+
+
+def _eval_derived_expr(expr: str, features: Array) -> Array:
+    """Evaluate a derived feature expression against a feature array.
+
+    ``features`` must be indexed along its first axis (feature index), e.g.
+    shape ``(num_features, N)`` for a batch or ``(num_features, Nx, Ny)`` for
+    spatial fields.
+
+    Supports named tokens (rho, jx, jy, h, dhdx, dhdy, U, V) and index
+    notation ``f[i]`` for extra features (i >= 8). Any valid Python arithmetic
+    expression using ``jnp`` is allowed.
+
+    Examples: ``"U / h"``, ``"f[8] / h"``, ``"1. / rho"``,
+              ``"(jx**2 + jy**2)**0.5 / rho"``
+    """
+    code = re.sub(r'f\[(\d+)\]', r'features[\1]', expr)
+    for name, idx in _FEATURE_NAMES.items():
+        code = re.sub(rf'\b{name}\b', f'features[{idx}]', code)
+    return eval(code, {"__builtins__": {}}, {"features": features, "jnp": jnp})
 
 
 class Database:
@@ -74,13 +104,22 @@ class Database:
         self,
         md: Any,
         db: dict,
-        num_extra_features: int = 1
+        num_extra_features: int = 1,
+        num_derived_features: int = 0,
+        derived_expressions: list[str] = []
     ) -> None:
 
         self._md = md
         self._db = db
+        self._derived_expressions = derived_expressions
 
-        self._num_features = 6 + num_extra_features
+        self._num_extra_features = num_extra_features
+        # 6 base features (rho, jx, jy, h, dhdx, dhdy)
+        # + 2 wall velocities (U, V)
+        # + extra features (e.g. slip length)
+        self._num_base_features = 8 + num_extra_features
+        # + derived features (computed combinations, never stored persistently)
+        self._num_features = self._num_base_features + num_derived_features
 
         self._output_path = None
         _training_path = db.get('dtool_path')
@@ -115,7 +154,8 @@ class Database:
             Yerr = jnp.array(Yerr)
 
         else:
-            Xtrain = jnp.empty((0, self.num_features))
+            # Empty arrays use base feature count; derived cols are computed on-the-fly.
+            Xtrain = jnp.empty((0, self._num_base_features))
             Ytrain = jnp.empty((0, 13))
             Yerr = jnp.empty((0, 13))
 
@@ -131,7 +171,9 @@ class Database:
             input_norm = self._db['normalizer_X']
             output_norm = self._db['normalizer_Y']
 
-        self._X_shift, self._X_scale = self._normalizer(self._Xtrain, mode=input_norm)
+        # Normalizer covers all features (base + derived).
+        self._X_shift, self._X_scale = self._normalizer(
+            self._augment_with_derived(self._Xtrain), mode=input_norm)
         self._Y_shift, self._Y_scale = self._normalizer(self._Ytrain, mode=output_norm)
 
     # ------------------------------------------------------------------
@@ -147,15 +189,36 @@ class Database:
         """Configuration parameters of the attached MD runner object."""
         return self._md.params
 
+    def _augment_with_derived(self, X: ArrayX) -> ArrayX:
+        """Append derived feature columns to X (base features only).
+
+        Accepts either a 1-D array of shape ``(num_base_features,)`` for a
+        single sample, or a 2-D array of shape ``(N, num_base_features)``.
+        Returns an array with ``num_derived`` extra columns appended.
+        """
+        if not self._derived_expressions:
+            return X
+        is_1d = X.ndim == 1
+        if is_1d:
+            X = X[jnp.newaxis, :]
+        # features indexed along first axis so features[i] selects feature i.
+        features = X.T
+        derived_cols = jnp.vstack([
+            _eval_derived_expr(expr, features)
+            for expr in self._derived_expressions
+        ]).T
+        result = jnp.concatenate([X, derived_cols], axis=1)
+        return result.squeeze(0) if is_1d else result
+
     @property
     def Xtrain(self) -> ArrayX:
         """Normalized input features of shape (Ntrain, Nfeat)."""
-        return (self._Xtrain - self._X_shift) / self.X_scale
+        return (self._augment_with_derived(self._Xtrain) - self._X_shift) / self.X_scale
 
     @property
     def Xtrain_target(self) -> ArrayX:
-        """Normalized input features of shape (Ntrain, Nfeat)."""
-        return (self._Xtrain_target - self._X_shift) / self.X_scale
+        """Normalized target input features of shape (Ntrain, Nfeat)."""
+        return (self._augment_with_derived(self._Xtrain_target) - self._X_shift) / self.X_scale
 
     @property
     def Ytrain(self) -> ArrayY:
@@ -196,6 +259,11 @@ class Database:
     def num_features(self) -> int:
         """Number of possible features, actual ones are selected from GP's active_dims."""
         return self._num_features
+
+    @property
+    def num_extra_features(self) -> int:
+        """Number of extra (statically provided) features beyond the 8 base features."""
+        return self._num_extra_features
 
     @property
     def has_mock_md(self) -> bool:
@@ -403,15 +471,19 @@ class Database:
         for Xi in Xnew:
             size_before += 1
 
-            self._Xtrain_target = jnp.vstack([self._Xtrain_target, Xi])
+            # Strip any derived feature columns — MD only needs base features.
+            Xi_base = Xi[:self._num_base_features]
 
-            X, Y, Ye = self._md.run(Xi, size_before)
+            self._Xtrain_target = jnp.vstack([self._Xtrain_target, Xi_base])
+
+            X, Y, Ye = self._md.run(Xi_base, size_before)
 
             self._Xtrain = jnp.vstack([self._Xtrain, X])
             self._Ytrain = jnp.vstack([self._Ytrain, Y])
             self._Ytrain_err = jnp.vstack([self._Ytrain_err, Ye])
 
-            self._X_shift, self._X_scale = self._normalizer(self._Xtrain, mode=self._db['normalizer_X'])
+            self._X_shift, self._X_scale = self._normalizer(
+                self._augment_with_derived(self._Xtrain), mode=self._db['normalizer_X'])
             self._Y_shift, self._Y_scale = self._normalizer(self._Ytrain, mode=self._db['normalizer_Y'])
 
         self.write()
