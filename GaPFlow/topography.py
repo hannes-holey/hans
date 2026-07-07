@@ -261,32 +261,41 @@ class Topography:
 
         self.dx = grid['dx']
         self.dy = grid['dy']
+        self.h0 = 0.
 
-        self.init_elastic(prop, grid, decomp, fc)
-        self._init_force_balance(force_balance, grid, decomp)
+        self.elastic = prop['elastic']['enabled']
+        self.force_balance = force_balance is not None and force_balance['rigid_height_variation']['enabled']
 
         xx, yy = decomp.xx, decomp.yy
 
-        if geo['type'] == 'from_file':
+        idc = force_balance is not None and force_balance['init_dry_contact']
+        if idc and idc['enabled'] and idc['use_deformed_height']:
+            h, u = self.height_and_defo_from_file(geo)
+            self.h0 = idc['h_min_init'] - (h + u).min()
+            self.set_global_height(h)  # scatter, padding and gradients
+            self.set_global_deformation(u)
+
+        elif geo['type'] == 'from_file':
             h = self.height_from_file(geo)
             self.set_global_height(h)  # scatter, padding and gradients
+
         else:
             h, dh_dx, dh_dy = self.compute_topography(xx, grid, geo, yy)
             self.set_local_topography(h, dh_dx, dh_dy)
 
+        if self.elastic:
+            self.init_elastic(prop, grid, decomp, fc)
+
+        if self.force_balance:
+            self.init_force_balance(force_balance, grid, decomp)
+
         self.check_flip(geo)
 
-    def _init_force_balance(self, force_balance, grid, decomp):
+    def init_force_balance(self, force_balance, grid, decomp):
         """Initialise rigid-height-variation force balance controller."""
-        self.h0 = 0.
         self._fb_hold_next = False
-        rhv = (force_balance or {}).get('rigid_height_variation', {})
-        if rhv.get('enabled', False):
-            self._force_balance = True
-            self._fb_controller = ForceBalance(force_balance, grid, decomp)
-            self.rhv_history = []
-        else:
-            self._force_balance = False
+        self._fb_controller = ForceBalance(force_balance, grid, decomp)
+        self.rhv_history = []
 
     def set_local_topography(self, h, dh_dx, dh_dy):
         """Sets local topography field.
@@ -294,7 +303,6 @@ class Topography:
         self.__field.pg[0] = h
         self.dh_dx = dh_dx
         self.dh_dy = dh_dy
-        self.deformation = np.zeros_like(h)
         self.h_undeformed = h
 
     def check_flip(self, geo):
@@ -315,27 +323,22 @@ class Topography:
 
     def init_elastic(self, prop, grid, decomp, fc):
         """Initializes elastic deformation object and reference point.
-        Deformation field is initialized to 0.
         """
 
-        self.deformation = 0.
+        self.__pressure = Field(fc.get_real_field('pressure'))
 
-        if prop['elastic']['enabled']:
-            self.elastic = True
-            self.__pressure = Field(fc.get_real_field('pressure'))
-
-            self.ElasticDeformation = ElasticDeformation(
-                E=prop['elastic']['E'],
-                v=prop['elastic']['v'],
-                alpha_underrelax=prop['elastic']['alpha_underrelax'],
-                grid=grid,
-                n_images=prop['elastic']['n_images'],
-                decomp=decomp
-            )
-            self._ref_point = self._parse_reference_point(
-                prop['elastic']['reference_point'], grid)
-        else:
-            self.elastic = False
+        self.ElasticDeformation = ElasticDeformation(
+            E=prop['elastic']['E'],
+            v=prop['elastic']['v'],
+            alpha_underrelax=prop['elastic']['alpha_underrelax'],
+            grid=grid,
+            n_images=prop['elastic']['n_images'],
+            decomp=decomp,
+            thickness=prop['elastic']['thickness'],
+            u_init=self.deformation,
+        )
+        self._ref_point = self._parse_reference_point(
+            prop['elastic']['reference_point'], grid)
 
     @staticmethod
     def compute_topography(xx, grid, geo, yy=None):
@@ -385,9 +388,16 @@ class Topography:
     @staticmethod
     def height_from_file(geo):
         base_path = geo['basepath']
-        file_path = geo['filepath']
+        file_path = geo['height_filepath']
         h = np.load(os.path.join(base_path, file_path))
         return h
+
+    @staticmethod
+    def height_and_defo_from_file(geo):
+        base_path = geo['basepath']
+        h = np.load(os.path.join(base_path, geo['height_filepath']))
+        u = np.load(os.path.join(base_path, geo['deformation_filepath']))
+        return h, u
 
     def update(self) -> None:
         """Updates the topography field in case of enabled elastic deformation
@@ -409,7 +419,7 @@ class Topography:
             defo_disc = self._decomp._mpi_comm.allreduce(defo_disc, op=MPI.MAX)
             self.deformation = deformation
 
-        if self._force_balance:
+        if self.force_balance:
             pid_hold_tol = self._fb_controller._pid_hold_tol
             defo_hold = pid_hold_tol > 0. and defo_disc > pid_hold_tol
             guard_hold = self._fb_hold_next
@@ -424,7 +434,7 @@ class Topography:
                 self.h0 = self._fb_controller.update(self)
                 self.rhv_history.append(self.h0)
 
-        if self.elastic or self._force_balance:
+        if self.elastic or self.force_balance:
             self.h = self.h_undeformed + self.deformation + self.h0
 
     def _calc_deformation(self, p):
@@ -443,7 +453,7 @@ class Topography:
         h_arr : NDArray
             Height array with shape `local_shape` (includes ghost cells).
         """
-        if self.elastic or self._force_balance:
+        if self.elastic or self.force_balance:
             self.h_undeformed = h_arr.copy()
             self.h = self.h_undeformed + self.deformation + self.h0
         else:
@@ -469,6 +479,29 @@ class Topography:
         h_local[1:-1, 1:-1] = h_inner
 
         self.set_mapped_height(h_local)
+
+    def set_global_deformation(self, u_global: NDArray) -> None:
+        """Set deformation from global array (distributed to processes in parallel).
+
+        Seeds the deformation field (and recomputes h) from a precomputed
+        displacement field, e.g. a dry-contact warm start, without altering
+        h_undeformed. Does not seed the ElasticDeformation underrelaxation
+        history (u_prev); that must be seeded separately at construction.
+
+        Parameters
+        ----------
+        u_global : NDArray
+            Deformation array with shape `global_shape` (Nx, Ny), without ghost cells.
+            Only needs to be valid on rank 0; other ranks can pass None.
+        """
+        u_inner = self._decomp.scatter_global(u_global)
+
+        # Pad with ghost cells
+        u_local = np.zeros(self.local_shape)
+        u_local[1:-1, 1:-1] = u_inner
+
+        self.deformation = u_local
+        self.h = self.h_undeformed + self.deformation + self.h0
 
     def _parse_reference_point(self, ref_cfg, grid: dict) -> tuple:
         """Convert reference_point config to (owns, local_i, local_j).
@@ -797,7 +830,9 @@ class ElasticDeformation:
                  alpha_underrelax: float,
                  grid: dict,
                  n_images: int,
-                 decomp: DomainDecomposition
+                 decomp: DomainDecomposition,
+                 thickness: float = None,
+                 u_init: NDArray = None
                  ) -> None:
         """Constructor
 
@@ -815,6 +850,9 @@ class ElasticDeformation:
             Number of periodic images for semi-periodic grids.
         decomp : DomainDecomposition
             Domain decomposition instance (used in both serial and MPI-parallel modes).
+        thickness : float, optional
+            Elastic layer thickness [m]. If given, uses finite-thickness Green's function
+            for the periodic case, giving a finite q=0 stiffness under uniform pressure.
         """
 
         self.area_per_cell = grid['dx'] * grid['dy']
@@ -827,8 +865,7 @@ class ElasticDeformation:
         self._Ny = Ny
 
         # For underrelaxation, store previous displacement (with ghost cells)
-        local_shape = decomp.local_shape_padded  # (Nx+2, Ny_local+2)
-        self.u_prev = np.zeros(local_shape)
+        self.u_prev = u_init
 
         perX = grid['bc_xE'][0] == 'P'
         perY = grid['bc_yS'][0] == 'P'
@@ -857,13 +894,23 @@ class ElasticDeformation:
 
         if perX and perY:
             self.periodicity = 'full'
-            self.ElDef = PeriodicFFTElasticHalfSpace(
-                nb_grid_pts=(Nx, Ny),
-                young=young_effective,
-                physical_sizes=(grid['Lx'], grid['Ly']),
-                stiffness_q0=0.0,
-                fftengine=fftengine
-            )
+            if thickness is not None:
+                self.ElDef = PeriodicFFTElasticHalfSpace(
+                    nb_grid_pts=(Nx, Ny),
+                    young=young_effective,
+                    physical_sizes=(grid['Lx'], grid['Ly']),
+                    thickness=thickness,
+                    poisson=v,
+                    fftengine=fftengine
+                )
+            else:
+                self.ElDef = PeriodicFFTElasticHalfSpace(
+                    nb_grid_pts=(Nx, Ny),
+                    young=young_effective,
+                    physical_sizes=(grid['Lx'], grid['Ly']),
+                    stiffness_q0=0.0,
+                    fftengine=fftengine
+                )
         elif (perX != perY):
             self.periodicity = 'half'
             self.ElDef = SemiPeriodicFFTElasticHalfSpace(

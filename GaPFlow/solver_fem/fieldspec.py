@@ -115,7 +115,7 @@ QUAD_FIELD_REGISTRY = {
     'rho_from_p': {'type': 'computed', 'source': 'pressure.rho_from_p', 'args': ['p']},
     'drho_dp': {'type': 'computed', 'source': 'pressure.drho_dp', 'args': ['rho']},
     'dp_drho': {'type': 'computed', 'source': 'pressure.dp_drho', 'args': ['rho']},
-    'd2p_drho2': {'type': 'computed', 'source': 'pressure.d2p_drho2', 'args': ['rho']},
+    'd2p_drho2': {'type': 'computed', 'source': 'pressure.d2p_drho2', 'args': ['rho_avg']},
 
     # wall stress xz
     'tau_xz': {'type': 'computed', 'source': 'wall_stress_xz.tau', 'args': _ARGS_XZ},
@@ -151,6 +151,14 @@ QUAD_FIELD_REGISTRY = {
     'dS_djy': {'type': 'computed', 'source': 'energy.q_wall_grad_jy', 'args': _ARGS_S},
     'dS_dE': {'type': 'computed', 'source': 'energy.q_wall_grad_E', 'args': _ARGS_S},
 
+    # Squeeze (computed inline in _update_squeeze_quad_fields / store_prev_values)
+    'h_before': {'type': 'computed', 'source': None, 'args': []},
+    'rho_before': {'type': 'computed', 'source': None, 'args': []},
+    'dp_drho_before': {'type': 'computed', 'source': None, 'args': []},
+    'p_before': {'type': 'computed', 'source': None, 'args': []},
+    'rho_avg': {'type': 'computed', 'source': None, 'args': ['rho_before']},
+    'dh_dt': {'type': 'computed', 'source': None, 'args': ['h_before']},
+
     # OSS stabilization (computed inline in _update_oss_quad_fields)
     'a_vec_x': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx']},
     'a_vec_y': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jy']},
@@ -158,8 +166,9 @@ QUAD_FIELD_REGISTRY = {
     'tau_a_y': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy']},
 
     # Flux-capturing stabilization (computed inline in _update_fc_quad_fields)
-    'fc_tau': {'type': 'computed', 'source': None, 'args': ['dp_drho', 'jx', 'jy',
-               'h', 'dh_dx', 'dh_dy', 'd_dx_jx', 'd_dy_jy', 'd_dx_theta', 'd_dy_theta']},
+    'fc_tau': {'type': 'computed', 'source': None,
+               'args': ['dp_drho', 'jx', 'jy', 'h', 'dh_dx', 'dh_dy', 'd_dx_jx',
+                        'd_dy_jy', 'd_dx_theta', 'd_dy_theta', 'p_before']},
 }
 
 _GP_ARGS_PRESSURE = {

@@ -188,7 +188,7 @@ class Problem:
         self.viscosity = Viscosity(self.fc, prop)
         self.topo = Topography(self.fc, self.grid, geo, prop, decomp=self.decomp,
                                force_balance=force_balance)
-        if self.topo._force_balance:
+        if self.topo.force_balance:
             self.topo._fb_controller.set_problem(self)
 
         self.bEnergy = (self.numerics['solver'] == 'fem' and self.fem_solver['equations']['energy'])

@@ -56,7 +56,7 @@ from GaPFlow.problem import Problem
 from GaPFlow.solver_fem.solver_fem import FEMSolver
 from GaPFlow.solver_fem.terms import (
     R11x, R11y, R11x_corr, R11y_corr,
-    R1T, R21x, R21y, R2Tx, R2Ty,
+    R21x, R21y, R2Tx, R2Ty,
     R22xx, R22xxS, R22yx, R22yxS, R22xy, R22xyS, R22yy, R22yyS,
     R23xy, R23yx, R23xx, R23yy,
 
@@ -64,9 +64,9 @@ from GaPFlow.solver_fem.terms import (
 from GaPFlow.solver_fem.terms_theta import (
     R11x_fb, R11y_fb, R11Sx_fb, R11Sy_fb,
     R11x_fb_corr, R11y_fb_corr, R11Sx_fb_corr, R11Sy_fb_corr,
-    R_fb,
+    R_cav,
 )
-R_FB = R_fb[0]  # R_fb is [Term] list; unpack the single Term instance
+R_FB = R_cav  # R_cav is a single Term instance
 
 # =============================================================================
 # YAML config templates
@@ -155,7 +155,6 @@ NON_CAV_TERM_GROUPS = [
     ([R11y, R11y_corr], 1e-4),
     # R11Sx, R11Sy: need correction terms (R11Sx_corr, R11Sy_corr) — not yet implemented;
     # without them the Bayada dp_drho(p) chain causes a large FD mismatch
-    ([R1T], 1e-6),
     ([R21x], 1e-6),
     ([R21y], 1e-6),
     ([R2Tx], 1e-6),
@@ -187,7 +186,6 @@ CAV_TERM_GROUPS = [
     ([R11Sx_fb, R11Sx_fb_corr], 1e-4),
     ([R11Sy_fb, R11Sy_fb_corr], 1e-4),
     ([R_FB], 1e-4),
-    ([R1T], 1e-6),
     ([R21x], 1e-6),
     ([R21y], 1e-6),
     ([R2Tx], 1e-6),
@@ -349,9 +347,9 @@ def solver_cav():
 # =============================================================================
 
 def _check_group(solver: FEMSolver, group: list, tol: float) -> None:
-    all_terms = solver.terms
+    all_terms = solver.assembly.assembly_terms
     try:
-        solver.terms = group
+        solver.assembly.assembly_terms = group
         M = solver.get_M_dense()
         J = compute_fd_jacobian(solver)
         names = '+'.join(t.name for t in group)
@@ -359,7 +357,7 @@ def _check_group(solver: FEMSolver, group: list, tol: float) -> None:
         err = rel_err(M, J)
         assert err < tol, f"{names}: rel_err={err:.2e} >= {tol:.0e}"
     finally:
-        solver.terms = all_terms
+        solver.assembly.assembly_terms = all_terms
 
 
 def _ids(groups):
@@ -392,28 +390,28 @@ def test_jacobian_cav(solver_cav, group, tol):
 
 def check_all_terms(solver: FEMSolver, groups: list, eps: float = 1e-6) -> dict:
     """Check each term group, return dict of group_label -> rel_err."""
-    all_terms = solver.terms
+    all_terms = solver.assembly.assembly_terms
     results = {}
     for group in groups:
         label = '+'.join(t.name for t in group)
-        solver.terms = group
+        solver.assembly.assembly_terms = group
         M = solver.get_M_dense()
         J = compute_fd_jacobian(solver, eps=eps)
         results[label] = rel_err(M, J)
-    solver.terms = all_terms
+    solver.assembly.assembly_terms = all_terms
     return results
 
 
 def compare_matrices(solver: FEMSolver, group: list, block: str,
                      eps: float = 1e-6, fmt: str = '11.2e') -> None:
     """Print analytic and FD Jacobian side-by-side for one group, one dep-var block."""
-    all_terms = solver.terms
+    all_terms = solver.assembly.assembly_terms
     try:
-        solver.terms = group
+        solver.assembly.assembly_terms = group
         M = solver.get_M_dense()
         J = compute_fd_jacobian(solver, eps=eps)
     finally:
-        solver.terms = all_terms
+        solver.assembly.assembly_terms = all_terms
 
     col_sl = solver._sol_slices.get(block)
     if col_sl is None:

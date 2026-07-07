@@ -44,7 +44,7 @@ from .fieldspec import FieldSpec, VAR_GRID, RES_GRID, patch_registry_for_gp
 from .scipy_system import ScipySystem
 
 from ..bc import GhostUpdater, BoundarySpec, sample_bc_spec, translate_bc_rho_to_p, resolve_pressure_bcs
-from .solution_guards import solve_linear_system, line_search
+from .solution_guards import solve_linear_system, line_search, viscosity_growth_guard_scale
 from .bayada_stabilization import bayada_linearization_guard
 from .terms import get_active_terms
 from .scaling import build_scaling
@@ -389,14 +389,16 @@ class FEMSolver:
         R_norm_global = float(np.sqrt(R_norm_global_sq))
         return R_norm_global
 
+    THETA_MAX = 0.99
+
     def _clamp_cavitation(self, q: NDArray) -> NDArray:
-        """Clamp p >= p_cav and theta >= 0, with singularity guard at (a,theta)=(0,0)."""
+        """Clamp p >= p_cav and 0 <= theta <= THETA_MAX, with singularity guard at (a,theta)=(0,0)."""
         p_sl = self._sol_slices['p']
         theta_sl = self._sol_slices['theta']
         p_cav = float(self.problem.prop['p_cav'])
         theta_min = np.finfo(float).eps
         q[p_sl] = np.maximum(q[p_sl], p_cav)
-        th = np.maximum(q[theta_sl], 0.0)
+        th = np.clip(q[theta_sl], 0.0, self.THETA_MAX)
         a = q[p_sl] - p_cav
         q[theta_sl] = np.where(
             (np.abs(a) < theta_min) & (th < theta_min),
@@ -432,7 +434,8 @@ class FEMSolver:
         return False
 
     def post_solve(self, q: NDArray, dq: NDArray, R: NDArray, it: int, M_scaled: NDArray) -> None:
-        """Post-process obtained solution update: debug output, line search, and cavitation clamping."""
+        """Post-process obtained solution update: debug output, line search, viscosity
+        guard, and cavitation clamping."""
 
         if self._debug_active:
             self.debugger.step(
@@ -440,13 +443,20 @@ class FEMSolver:
                 R_per_term=self._last_R_per_term, M_scaled=M_scaled)
             self._debug_steps_done += 1
 
+        if self.problem.fem_solver['viscosity_guard']:
+            eta_prev = self.quad_mgr.nodal_fields['eta'].p[0].copy()
+            f_visc, _ = viscosity_growth_guard_scale(q, self.alpha * dq, self, eta_prev)
+            step = f_visc * self.alpha * dq
+        else:
+            step = self.alpha * dq
+
         if self.problem.fem_solver['line_search']:
-            q = line_search(q, self.alpha * dq, self.R_norm, self)
+            q = line_search(q, step, self.R_norm, self)
         else:
             if self.problem.prop.get('EOS') == 'Bayada':
-                q, _ = bayada_linearization_guard(q, self.alpha * dq, self)
+                q, _ = bayada_linearization_guard(q, step, self)
             else:
-                q = q + self.alpha * dq
+                q = q + step
 
         if self.cavitation:
             q = self._clamp_cavitation(q)

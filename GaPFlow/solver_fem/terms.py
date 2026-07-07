@@ -154,7 +154,7 @@ R11y_corr = Term(
     fun=lambda ctx: lambda p: np.zeros_like(p),
     der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * ctx['d_dy_jy']()])
 
-R1T = Term(
+R1T_old = Term(
     name='R1T',
     description='time derivative',
     res='mass',
@@ -162,6 +162,25 @@ R1T = Term(
     dep_vals=['p_prev'],
     fun=lambda ctx: lambda p: - (p - ctx['p_prev']()) / ctx['dt'](),
     der_funs=[lambda ctx: lambda p: - np.ones_like(p) / ctx['dt']()])
+
+R1T = Term(
+    name='R1T',
+    description='time derivative — density space, no h factor, pair with R1Th_working2',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['dp_drho', 'dp_drho_before', 'd2p_drho2', 'drho_dp', 'rho', 'rho_before'],
+    fun=lambda ctx: lambda p: -0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * (ctx['rho']() - ctx['rho_before']()) / ctx['dt'](),
+    der_funs=[lambda ctx: lambda p: -(0.5 * ctx['d2p_drho2']() * ctx['drho_dp']() * (ctx['rho']() - ctx['rho_before']()) + 0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['drho_dp']()) / ctx['dt']()])
+
+R1Th = Term(
+    name='R1Th_simplified',
+    description='squeeze source — dp_drho_avg * rho_new / h_before * dh_dt (exact, pairs with plain R1T)',
+    res='mass',
+    dep_vars=['p'],
+    dep_vals=['dp_drho', 'dp_drho_before', 'd2p_drho2', 'drho_dp', 'rho', 'h_before', 'dh_dt'],
+    fun=lambda ctx: lambda p: -0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['rho']() / ctx['h_before']() * ctx['dh_dt'](),
+    der_funs=[lambda ctx: lambda p: -(0.5 * ctx['d2p_drho2']() * ctx['drho_dp']() * ctx['rho']() +
+                                      0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['drho_dp']()) / ctx['h_before']() * ctx['dh_dt']()])
 
 # -----------------------------------------------------------------------------
 # Momentum equation terms (R2*)
@@ -403,6 +422,24 @@ R2Ty = Term(
     fun=lambda ctx: lambda jy: - (jy - ctx['jy_prev']()) / ctx['dt'](),
     der_funs=[lambda ctx: lambda jy: - np.full_like(jy, 1.0) / ctx['dt']()])
 
+R2Thx = Term(
+    name='R2Thx',
+    description='squeeze source momentum_x (height rate of change)',
+    res='momentum_x',
+    dep_vars=['jx'],
+    dep_vals=['h', 'dh_dt'],
+    fun=lambda ctx: lambda jx: - jx / ctx['h']() * ctx['dh_dt'](),
+    der_funs=[lambda ctx: lambda jx: - ctx['dh_dt']() / ctx['h']()])
+
+R2Thy = Term(
+    name='R2Thy',
+    description='squeeze source momentum_y (height rate of change)',
+    res='momentum_y',
+    dep_vars=['jy'],
+    dep_vals=['h', 'dh_dt'],
+    fun=lambda ctx: lambda jy: - jy / ctx['h']() * ctx['dh_dt'](),
+    der_funs=[lambda ctx: lambda jy: - ctx['dh_dt']() / ctx['h']()])
+
 # -----------------------------------------------------------------------------
 # Energy equation terms (R3*)
 # -----------------------------------------------------------------------------
@@ -562,6 +599,7 @@ def get_active_terms(fem_solver: dict) -> List[Term]:
     - plane_shear:        In-plane viscous diffusion (R23xy, R23yx)
     - inertia:            Momentum convection (R22*)
     - body_force:         Body force (R25x, R25y)
+    - squeeze:            Height rate-of-change source in mass and momentum (R1Th, R2Thx, R2Thy)
     - energy:             Energy equation master switch, subflags below default to True
     - energy_convection:  Energy advection (R31*)
     - pressure_work:      Pressure-volume work (R32*)
@@ -569,7 +607,7 @@ def get_active_terms(fem_solver: dict) -> List[Term]:
     - wall_heat_balance:  Wall heat flux BC (R36)
     - wall_shear_work:    Wall stress work / shear heating (R34)
     """
-    from .terms_theta import THETA_TERMS_MASS, THETA_TERMS_AD, R_fb, THETA_TERMS_WALL_STRESS
+    from .terms_theta import CAV_MASS_TERMS, THETA_TERMS_AD, R_cav, THETA_TERMS_WALL_STRESS, R1Th_cav
     from .terms_oss import OSS_TERMS, FC_TERMS
 
     physics = fem_solver['physics']
@@ -577,10 +615,10 @@ def get_active_terms(fem_solver: dict) -> List[Term]:
     cavitation = fem_solver['equations']['cavitation']
 
     if cavitation:
-        terms = [*THETA_TERMS_MASS, *R_fb, R1T, R21x, R21y, R2Tx, R2Ty]
+        terms = [*CAV_MASS_TERMS, R21x, R21y, R2Tx, R2Ty, R_cav]
     else:
-        terms = [R11x, R11y, R11Sx, R11Sy, R11x_corr, R11y_corr,
-                 R1T, R21x, R21y, R2Tx, R2Ty]
+        terms = [R11x, R11y, R11Sx, R11Sy, R11x_corr, R11y_corr, R1T, 
+                 R21x, R21y, R2Tx, R2Ty]
 
     if cavitation and stab['ad']:
         terms += THETA_TERMS_AD
@@ -602,6 +640,10 @@ def get_active_terms(fem_solver: dict) -> List[Term]:
 
     if physics['body_force']:
         terms += [R25x, R25y]
+
+    if physics['squeeze']:
+        terms += [R2Thx, R2Thy]
+        terms += [R1Th_cav] if cavitation else [R1Th]
 
     if physics['energy']:
         terms.append(R3T)

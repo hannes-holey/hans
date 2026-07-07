@@ -22,6 +22,8 @@
 # SOFTWARE.
 #
 
+# flake8: noqa: W503
+
 from typing import Dict, List, Set, TYPE_CHECKING
 
 import numpy as np
@@ -126,7 +128,7 @@ class QuadFieldManager:
             new = set()
             for name in frontier:
                 entry = QUAD_FIELD_REGISTRY.get(name)
-                if entry and entry['type'] == 'computed' and entry['source'] is not None:
+                if entry and entry['type'] == 'computed':
                     new |= {a for a in entry.get('args', []) if a not in result}
             result |= new
             frontier = new
@@ -308,6 +310,10 @@ class QuadFieldManager:
             elif name.startswith('d_dy_'):
                 q(name)[:] = self._deriv_pg(name[5:], 'y')
 
+        # rho_avg must be ready before the computed loop (d2p_drho2 depends on it)
+        if 'rho_avg' in self.quad_fields:
+            q('rho_avg')[:] = 0.5 * (q('rho') + q('rho_before'))
+
         # computed: call physics method with quad field arguments
         for name in self.quad_field_keys:
             if name in self._reg_computed:
@@ -316,12 +322,21 @@ class QuadFieldManager:
                 args = tuple(q(a) for a in entry['args'])
                 q(name)[:] = apply(func, *args)
 
+        # Squeeze hardcoded
+        if 'dh_dt' in self.quad_field_keys:
+            self._update_squeeze_quad_fields(q)
+
         # OSS still hardcoded right now
         if 'xi' in self.variables:
             self._update_oss_quad_fields(q)
 
         if self.problem.fem_solver['stabilization']['fc']:
             self._update_fc_quad_fields(q)
+
+    def _update_squeeze_quad_fields(self, q) -> None:
+        """Compute dh_dt at quad points from h and h_before."""
+        dt = self.problem.numerics['dt']
+        q('dh_dt')[:] = (q('h') - q('h_before')) / dt
 
     def _update_oss_quad_fields(self, q) -> None:
         """Compute OSS stabilisation fields (a_vec, tau, one_minus_theta) at quad points."""
@@ -360,10 +375,10 @@ class QuadFieldManager:
                 - q('jy') * q('d_dy_theta')
                 + (1 - q('theta')) / q('h') * (q('dh_dx') * q('jx') + q('dh_dy') * q('jy'))
             )
-            - (q('p') - q('p_prev')) / self.problem.numerics['dt']
+            - (q('p') - q('p_before')) / self.problem.numerics['dt']
         )
 
-        q('fc_tau')[:] = (h_elem**2 / 2.0) * beta * np.abs(R_mass)
+        q('fc_tau')[:] = (h_elem**2 / 2.0) * beta * np.abs(R_mass) * 1e05
 
     def collect_quad_fields(self) -> dict:
         return {name: self.get_quad_sq(name) for name in self.quad_fields}
@@ -374,3 +389,11 @@ class QuadFieldManager:
             prev_key = f'{var}_prev'
             if var in self.quad_fields and prev_key in self.quad_fields:
                 self.qf(prev_key)[:] = self.qf(var).copy()
+        if 'h_before' in self.quad_fields:
+            self.qf('h_before')[:] = self.qf('h').copy()
+        if 'rho_before' in self.quad_fields:
+            self.qf('rho_before')[:] = self.qf('rho').copy()
+        if 'dp_drho_before' in self.quad_fields:
+            self.qf('dp_drho_before')[:] = self.qf('dp_drho').copy()
+        if 'p_before' in self.quad_fields:
+            self.qf('p_before')[:] = self.qf('p').copy()

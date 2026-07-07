@@ -459,6 +459,8 @@ def sanitize_properties(d):
         out['elastic']['alpha_underrelax'] = float(d['elastic'].get('alpha_underrelax', 1e-03))
         out['elastic']['n_images'] = int(d['elastic'].get('n_images', 10))
         out['elastic']['reference_point'] = d['elastic'].get('reference_point', 'corner')
+        thickness = d['elastic'].get('thickness', None)
+        out['elastic']['thickness'] = float(thickness) if thickness is not None else None
     else:
         out['elastic'] = {}
         out['elastic']['enabled'] = False
@@ -585,6 +587,7 @@ def sanitize_fem_solver(d):
         'plane_shear': bool(physics.get('plane_shear', False)),
         'inertia': bool(physics.get('inertia', False)),
         'body_force': bool(physics.get('body_force', False)),
+        'squeeze': bool(physics.get('squeeze', False)),
         # Energy physics (sub-flags only relevant if energy=True)
         'energy': bool(physics.get('energy', False)),
         'energy_convection': bool(physics.get('energy_convection', True)),
@@ -620,6 +623,7 @@ def sanitize_fem_solver(d):
     out['scaling_ruiz_iter'] = int(d.get('scaling_ruiz_iter', 10))
     out['line_search'] = bool(d.get('line_search', False))
     out['line_search_alpha_min'] = float(d.get('line_search_alpha_min', 1e-12))
+    out['viscosity_guard'] = bool(d.get('viscosity_guard', False))
 
     print_dict(out)
 
@@ -651,6 +655,9 @@ def sanitize_force_balance(d):
             out['init_dry_contact']['domain_inlet'] = float(idc.get('domain_inlet', 4.5))
             out['init_dry_contact']['domain_outlet'] = float(idc.get('domain_outlet', 1.5))
             out['init_dry_contact']['domain_sides'] = float(idc.get('domain_sides', 3.0))
+            out['init_dry_contact']['use_deformed_height'] = bool(idc.get('use_deformed_height', False))
+            if out['init_dry_contact']['use_deformed_height']:
+                out['init_dry_contact']['h_min_init'] = float(idc['h_min_init'])
     else:
         out['init_dry_contact'] = {'enabled': False}
 

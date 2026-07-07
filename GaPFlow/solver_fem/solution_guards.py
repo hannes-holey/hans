@@ -31,6 +31,7 @@ from mpi4py import MPI
 from typing import TYPE_CHECKING
 
 from ..models.pressure import eos_drho_dp
+from ..models.viscosity import piezoviscosity
 from .scaling import build_scaling_from_blocks
 
 if TYPE_CHECKING:
@@ -48,6 +49,11 @@ ABS_FLOOR = 1e-10
 DPDRHO_MAX_REL_CHANGE = 0.5
 # Maximum bisection iterations
 DPDRHO_BISECT_MAX_ITER = 25
+
+# Viscosity growth guard: max allowed relative change in piezoviscosity per Newton step
+VISCOSITY_MAX_REL_CHANGE = 0.05
+# Maximum bisection iterations
+VISCOSITY_BISECT_MAX_ITER = 25
 
 
 def _eval_dpdrho(rho_flat: np.ndarray, Nx: int, Ny: int,
@@ -347,6 +353,116 @@ def linearization_guard_p(q: np.ndarray, dq: np.ndarray,
                 stacklevel=2)
 
     return q + f * dq, True
+
+
+def viscosity_growth_guard_scale(q: np.ndarray, dq: np.ndarray,
+                                 solver: "FEMSolver", eta_prev: np.ndarray,
+                                 max_rel_change: float = VISCOSITY_MAX_REL_CHANGE,
+                                 ) -> tuple:
+    """Find the largest safe scaling factor for a proposed Newton step so that
+    piezoviscosity does not grow/shrink too fast.
+
+    Piezoviscosity mu(p) (Barus/Roelands) is exponential in pressure, so an
+    overshooting Newton step in p can spike the viscosity field by orders of
+    magnitude, poisoning the next Jacobian assembly. This guard uses
+    bisection to find the largest scaling factor f in (0, 1] such that
+
+        max_nodes |mu(p + f*dp) - eta_prev| / |eta_prev| <= max_rel_change
+
+    where eta_prev is the piezoviscosity from the previous Newton iteration.
+    A no-op (f=1) if no piezoviscosity model is configured. The caller is
+    responsible for applying f to dq before the Newton step.
+
+    Parameters
+    ----------
+    q : ndarray
+        Current solution vector (inner DOFs), before this Newton step.
+    dq : ndarray
+        Proposed Newton update (already multiplied by alpha).
+    solver : FEMSolver
+        Solver instance (needs _sol_slices, problem.prop, problem.decomp).
+    eta_prev : ndarray
+        Piezoviscosity field from the previous Newton iteration, nodal
+        (Nx, Ny) layout.
+    max_rel_change : float
+        Maximum allowed relative change in piezoviscosity (default 0.2).
+
+    Returns
+    -------
+    f : float
+        Safe scaling factor in (0, 1] to apply to dq.
+    guard_fired : bool
+        True if the step had to be reduced (f < 1).
+    """
+    prop = solver.problem.prop
+    piezo_dict = prop.get('piezo')
+    if piezo_dict is None or piezo_dict.get('name') not in ('Barus', 'Roelands'):
+        return 1.0, False
+
+    comm = solver.problem.decomp._mpi_comm
+    p_sl = solver._sol_slices['p']
+    Nx, Ny = solver.problem.decomp.nb_subdomain_grid_pts
+
+    def _eta_at_p(p_flat):
+        p_2d = p_flat.reshape((Nx, Ny), order='F')
+        eta_2d = np.asarray(piezoviscosity(p_2d, prop['shear'], piezo_dict))
+        return eta_2d.ravel(order='F')
+
+    p_old = q[p_sl]
+    dp = dq[p_sl]
+    eta_prev_flat = eta_prev.ravel(order='F')
+
+    # --- Check full step (f = 1) first ---
+    eta_new = _eta_at_p(p_old + dp)
+    rel_full = np.abs(eta_new - eta_prev_flat) / np.maximum(np.abs(eta_prev_flat), ABS_FLOOR)
+    worst_glob = comm.allreduce(float(np.max(rel_full)), op=MPI.MAX)
+
+    if worst_glob <= max_rel_change:
+        return 1.0, False
+
+    # --- Bisect to find the largest safe scaling factor ---
+    f_lo, f_hi = 0.0, 1.0
+    bisect_rtol = 0.1
+
+    for _ in range(VISCOSITY_BISECT_MAX_ITER):
+        f_mid = 0.5 * (f_lo + f_hi)
+        eta_trial = _eta_at_p(p_old + f_mid * dp)
+        rel_trial = np.abs(eta_trial - eta_prev_flat) / np.maximum(
+            np.abs(eta_prev_flat), ABS_FLOOR)
+        trial_rel_glob = comm.allreduce(float(np.max(rel_trial)), op=MPI.MAX)
+
+        if trial_rel_glob <= max_rel_change:
+            f_lo = f_mid
+        else:
+            f_hi = f_mid
+
+        if f_lo > 0.0 and (f_hi - f_lo) < bisect_rtol * f_lo:
+            break
+
+    f = f_lo if f_lo > 0.0 else f_hi
+    satisfied = f_lo > 0.0
+
+    if comm.Get_rank() == 0:
+        eta_acc = _eta_at_p(p_old + f * dp)
+        rel_acc = np.abs(eta_acc - eta_prev_flat) / np.maximum(np.abs(eta_prev_flat), ABS_FLOOR)
+        rel_2d = rel_acc.reshape((Nx, Ny), order='F')
+        imax = np.unravel_index(np.argmax(rel_2d), rel_2d.shape)
+        eta_prev_2d = eta_prev_flat.reshape((Nx, Ny), order='F')
+        eta_acc_2d = eta_acc.reshape((Nx, Ny), order='F')
+        status = "OK" if satisfied else "best-effort"
+        ix, iy = int(imax[0]), int(imax[1])
+        #print(f"  [ViscGuard] f={f:.3f} ({status})  node ({ix},{iy}):"
+        #      f" eta {eta_prev_2d[ix, iy]:.4e} -> {eta_acc_2d[ix, iy]:.4e}"
+        #      f"  rel={rel_2d[ix, iy]:.3f}/{max_rel_change}")
+        if not satisfied:
+            warnings.warn(
+                f"ViscosityGrowthGuard: bisection did not converge "
+                f"({VISCOSITY_BISECT_MAX_ITER} iters). Best f={f:.3f}, "
+                f"rel change={float(np.max(rel_2d)):.3f} (target {max_rel_change}). "
+                f"Consider reducing newton_relax.",
+                stacklevel=2)
+
+    return f, True
 
 
 def solve_linear_system(M: np.ndarray, R: np.ndarray,

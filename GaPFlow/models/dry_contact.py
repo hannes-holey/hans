@@ -66,23 +66,30 @@ class DryContact:
         p, u = self.solve_contact(h)
         contact_bounds = self.get_bounding_box(p, xx, yy)
         domain_bounds = self.get_domain_bounds(contact_bounds)
-        dict_new, h_new = self.update_input_dict(h, domain_bounds)
+        dict_new, h_new = self.update_input_dict(h, u, domain_bounds, p)
 
-        debug_plot(p, u, contact_bounds, domain_bounds, self.grid, h, h_new)
+        # debug_plot(p, u, contact_bounds, domain_bounds, self.grid, h, h_new)
 
         return dict_new
 
-    def update_input_dict(self, h, domain_bounds):
+    def update_input_dict(self, h, u, domain_bounds, p):
         """Updates input dictionary (self.input_dict_new).
         Saves new height field to file and changes geometry type to 'from_file'.
         Updates grid size and spacing.
+        If `use_deformed_height` is enabled, also crops and saves the dry-contact
+        deformation field `u`, to be used as a warm start for the elastic
+        deformation in the lubrication run.
 
         Parameters
         ----------
         h : NDArray
-            Original height field.
+            Original (rigid, undeformed) height field.
+        u : NDArray
+            Dry-contact elastic deformation field, same shape as `h`.
         domain_bounds : tuple
             New domain bounds.
+        p : NDArray
+            Dry-contact pressure field, same shape as `h`.
 
         Returns
         -------
@@ -94,6 +101,11 @@ class DryContact:
         grid = dict_new['grid']
         geo = dict_new['geometry']
 
+        contact_mask = p > 0
+        geo['dry_contact_area'] = contact_mask.sum() * self.grid['dx'] * self.grid['dy']
+        geo['dry_contact_p_mean'] = float(p[contact_mask].mean())
+        geo['dry_contact_p_max'] = float(p.max())
+
         # Update grid size and spacing
         xmin, xmax, ymin, ymax = domain_bounds
         grid['Lx'] = xmax - xmin
@@ -101,8 +113,10 @@ class DryContact:
         grid['dx'] = grid['Lx'] / grid['Nx']
         grid['dy'] = grid['Ly'] / grid['Ny']
 
+        use_deformed_height = self.input_dict['force_balance']['init_dry_contact']['use_deformed_height']
+
         # Get new height field
-        if self.geo['type'] == 'from_file':
+        if self.geo['type'] == 'from_file' or use_deformed_height:
             dx, dy = self.grid['dx'], self.grid['dy']
             ix_min = max(0, int(np.floor(xmin / dx)))
             ix_max = min(h.shape[0], int(np.ceil(xmax / dx)))
@@ -130,7 +144,22 @@ class DryContact:
 
         geo['type'] = 'from_file'
         geo['basepath'] = self.dir
-        geo['filepath'] = os.path.join(folder, filename)
+        geo['height_filepath'] = os.path.join(folder, filename)
+
+        if use_deformed_height:
+            dx, dy = self.grid['dx'], self.grid['dy']
+            ix_min = max(0, int(np.floor(xmin / dx)))
+            ix_max = min(u.shape[0], int(np.ceil(xmax / dx)))
+            iy_min = max(0, int(np.floor(ymin / dy)))
+            iy_max = min(u.shape[1], int(np.ceil(ymax / dy)))
+            u_new = u[ix_min:ix_max, iy_min:iy_max]
+
+            assert u_new.shape == h_new.shape, \
+                "Cropped deformation field shape does not match cropped height field shape."
+
+            defo_filename = f"u_{timestamp_str}.npy"
+            np.save(os.path.join(self.dir, folder, defo_filename), u_new)
+            geo['deformation_filepath'] = os.path.join(folder, defo_filename)
 
         return dict_new, h_new
 
@@ -169,11 +198,11 @@ class DryContact:
         Nx, Ny = self.grid['Nx'], self.grid['Ny']
         Lx, Ly = self.grid['Lx'], self.grid['Ly']
 
+        young_effective = self.elastic['E'] / (1 - self.elastic['v']**2)
         substrate = FreeFFTElasticHalfSpace(
             (Nx, Ny),
-            young=self.elastic['E'],
+            young=young_effective,
             physical_sizes=(Lx, Ly),
-            # poisson=self.elastic['v']
         )
 
         # Invert height field for CM
@@ -184,7 +213,7 @@ class DryContact:
 
         print("Result success:", result.success)
 
-        f, u = result.jac, result.x
+        f, u = result.jac[:Nx, :Ny], result.x[:Nx, :Ny]
         p = f / (self.grid['dx'] * self.grid['dy'])
         print(f"Max contact pressure: {p.max():.5f}")
 

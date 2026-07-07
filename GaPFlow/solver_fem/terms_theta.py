@@ -36,7 +36,7 @@ def _fb_denom(a, b):
 
 
 # -----------------------------------------------------------------------------
-# Elrod-Adams flux divergence (replaces R11x/y/Sx/Sy when cavitation: true)
+# mass conservation: fluxes with cavity fraction (theta)
 # -----------------------------------------------------------------------------
 
 R11x_fb = Term(
@@ -129,14 +129,43 @@ R11Sy_fb_corr = Term(
     fun=lambda ctx: lambda p: np.zeros_like(p),
     der_funs=[lambda ctx: lambda p: -ctx['d2p_drho2']() * ctx['drho_dp']() * (1 - ctx['theta']()) / ctx['h']() * ctx['dh_dy']() * ctx['jy']()])
 
+# -----------------------------------------------------------------------------
+# mass conservation: time-dependent terms
+# -----------------------------------------------------------------------------
+
+R1T_cav = Term(
+    name='R1T_cav',
+    description='local pressure change',
+    res='mass',
+    dep_vars=['p', 'theta'],
+    dep_vals=['dp_drho', 'dp_drho_before', 'd2p_drho2', 'drho_dp', 'rho', 'rho_before', 'theta_prev'],
+    fun=lambda ctx: lambda p, theta: -0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * (
+        ctx['rho']() * (1 - theta) - ctx['rho_before']() * (1 - ctx['theta_prev']())) / ctx['dt'](),
+    der_funs=[
+        lambda ctx: lambda p, theta: -0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['drho_dp']() * (1 - theta) / ctx['dt']()
+            - 0.5 * ctx['d2p_drho2']() * ctx['drho_dp']() * (ctx['rho']() * (1 - theta) - ctx['rho_before']() * (1 - ctx['theta_prev']())) / ctx['dt'](),
+        lambda ctx: lambda p, theta: 0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['rho']() / ctx['dt'](),
+    ])
+
+R1Th_cav = Term(
+    name='R1Th_cav',
+    description='squeeze source term',
+    res='mass',
+    dep_vars=['p', 'theta'],
+    dep_vals=['dp_drho', 'dp_drho_before', 'd2p_drho2', 'drho_dp', 'rho', 'h_before', 'dh_dt'],
+    fun=lambda ctx: lambda p, theta: -0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['rho']() * (1 - theta) / ctx['h_before']() * ctx['dh_dt'](),
+    der_funs=[
+        lambda ctx: lambda p, theta: -(0.5 * ctx['d2p_drho2']() * ctx['drho_dp']() * ctx['rho']() + 0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['drho_dp']()) * (1 - theta) / ctx['h_before']() * ctx['dh_dt'](),
+        lambda ctx: lambda p, theta: 0.5 * (ctx['dp_drho']() + ctx['dp_drho_before']()) * ctx['rho']() / ctx['h_before']() * ctx['dh_dt'](),
+    ])
 
 # -----------------------------------------------------------------------------
 # Fischer-Burmeister complementarity condition
 # -----------------------------------------------------------------------------
 
-R_fb = Term(
-    name='R_FB',
-    description='Fischer-Burmeister complementarity condition (p normalized by P0)',
+R_cav = Term(
+    name='R_cav',
+    description='Fischer-Burmeister complementarity condition',
     res='fb',
     dep_vars=['p', 'theta'],
     dep_vals=[],
@@ -215,13 +244,13 @@ R24y_fb = Term(
     ])
 
 
-THETA_TERMS_MASS = [
+
+CAV_MASS_TERMS = [
     R11x_fb, R11y_fb, R11Sx_fb, R11Sy_fb,
     R11x_fb_corr, R11y_fb_corr, R11Sx_fb_corr, R11Sy_fb_corr,
+    R1T_cav
 ]
 
 THETA_TERMS_AD = [R1STx, R1STy]
-
-R_fb = [R_fb]
 
 THETA_TERMS_WALL_STRESS = [R24x_fb, R24y_fb]
