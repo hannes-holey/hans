@@ -23,6 +23,7 @@
 # SOFTWARE.
 #
 from .runner import run_parallel, run_serial
+from ..db import README_SCHEMA_VERSION
 from ..utils import make_dumpable
 from ..logging import get_logger
 
@@ -201,6 +202,7 @@ class MolecularDynamics:
         metadata["owners"] = [{'username': getuser()}]
         metadata["creation_date"] = date.today()
         metadata["expiration_date"] = metadata["creation_date"] + relativedelta(years=10)
+        metadata["schema_version"] = README_SCHEMA_VERSION
 
         out_fname = os.path.join(dataset_path, 'README.yml')
 

@@ -46,6 +46,11 @@ yaml = YAML()
 yaml.explicit_start = True
 yaml.indent(mapping=4, sequence=4, offset=2)
 
+# Schema version of the dtool README layout (bump when the meaning/shape of
+# the stored 'X' columns changes, and add a migration step to
+# GaPFlow/cli/migrate_readme.py).
+README_SCHEMA_VERSION = 1
+
 # Maps human-readable names to base feature indices.
 # Index layout: 0-2 solution (rho, jx, jy), 3-5 topography (h, dhdx, dhdy),
 #               6-7 wall velocities (U, V), 8+ extra features.
@@ -74,6 +79,24 @@ def _eval_derived_expr(expr: str, features: Array) -> Array:
     for name, idx in _FEATURE_NAMES.items():
         code = re.sub(rf'\b{name}\b', f'features[{idx}]', code)
     return eval(code, {"__builtins__": {}}, {"features": features, "jnp": jnp})
+
+
+def _check_readme_version(rm: dict, source: str = "dataset") -> None:
+    """Fail loudly if a loaded README is not in the schema this code expects.
+
+    READMEs are versioned via a top-level 'schema_version' tag (missing means
+    version 0, i.e. predating the tag). This code does not attempt to migrate
+    them on the fly; run the 'gpf_migrate_readme' CLI script on the dataset's
+    dtool base URI first.
+    """
+    version = rm.get('schema_version', 0)
+
+    if version != README_SCHEMA_VERSION:
+        raise ValueError(
+            f"README for '{source}' has schema_version {version}, but this "
+            f"installation expects {README_SCHEMA_VERSION}. Run "
+            "'gpf_migrate_readme' on the dataset's dtool base URI before loading it."
+        )
 
 
 class Database:
@@ -306,12 +329,14 @@ class Database:
         if training_path is None:
             training_path = self.training_path
 
-        readme_list = [yaml.load(ds.get_readme_content())
-                       for ds in dtoolcore.iter_datasets_in_base_uri(training_path)]
+        readme_list = []
+        for ds in dtoolcore.iter_datasets_in_base_uri(training_path):
+            rm = yaml.load(ds.get_readme_content())
+            _check_readme_version(rm, source=ds.name)
+            readme_list.append(rm)
+            logger.info('- %s (%s)', ds.uuid, ds.name)
 
         logger.info("Loading %d local datasets in '%s'.", len(readme_list), training_path)
-        for ds in dtoolcore.iter_datasets_in_base_uri(training_path):
-            logger.info('- %s (%s)', ds.uuid, ds.name)
 
         return readme_list
 
@@ -336,7 +361,11 @@ class Database:
                      for ds in progressbar(remote_ds_list,
                                            prefix="Loading remote datasets based on dtool query: ")]
 
-        readme_list = [yaml.load(ds.get_readme_content()) for ds in remote_ds]
+        readme_list = []
+        for ds in remote_ds:
+            rm = yaml.load(ds.get_readme_content())
+            _check_readme_version(rm, source=ds.name)
+            readme_list.append(rm)
 
         return readme_list
 
