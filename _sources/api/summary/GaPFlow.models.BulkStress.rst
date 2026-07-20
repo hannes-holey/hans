@@ -58,18 +58,21 @@
       ~BulkStress.active_dims
       ~BulkStress.use_active_learning
       ~BulkStress.fix_noise
+      ~BulkStress.tolerance_protocol
       ~BulkStress.rtol
       ~BulkStress.atol
-      ~BulkStress.tol
+      ~BulkStress.atol_reduction_factor
+      ~BulkStress.tol_rmid
+      ~BulkStress.tol_alpha
       ~BulkStress.max_steps
       ~BulkStress.pause_steps
       ~BulkStress.similarity_check
       ~BulkStress.allowed_skips
-      ~BulkStress.perturb_target
       ~BulkStress.pause_on_high_residual
       ~BulkStress.params_init
       ~BulkStress.noise
       ~BulkStress.prop
       ~BulkStress.geo
+      ~BulkStress.derived_expressions
    
    

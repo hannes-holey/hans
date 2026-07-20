@@ -40,6 +40,7 @@
       ~Database.config
       ~Database.has_mock_md
       ~Database.md_config
+      ~Database.num_extra_features
       ~Database.num_features
       ~Database.output_path
       ~Database.size

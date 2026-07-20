@@ -58,18 +58,21 @@
       ~Pressure.active_dims
       ~Pressure.use_active_learning
       ~Pressure.fix_noise
+      ~Pressure.tolerance_protocol
       ~Pressure.rtol
       ~Pressure.atol
-      ~Pressure.tol
+      ~Pressure.atol_reduction_factor
+      ~Pressure.tol_rmid
+      ~Pressure.tol_alpha
       ~Pressure.max_steps
       ~Pressure.pause_steps
       ~Pressure.similarity_check
       ~Pressure.allowed_skips
-      ~Pressure.perturb_target
       ~Pressure.pause_on_high_residual
       ~Pressure.params_init
       ~Pressure.noise
       ~Pressure.prop
       ~Pressure.geo
+      ~Pressure.derived_expressions
    
    

@@ -27,18 +27,18 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=4418a689" />
     <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
   
   <!-- So that users can add custom icons -->
-  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
     <script src="../_static/documentation_options.js?v=9eb32ce0"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
@@ -47,27 +47,34 @@
     <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/04_confined_fluids';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="5. Lubrication (1D)" href="05_lubrication_1d.html" />
     <link rel="prev" title="3. Constitutive laws" href="03_constitutive_laws.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.1.1.dev4" />
+  <meta name="docsearch:version" content="1.1.1.dev31" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
-
+  <body data-default-mode="">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -93,7 +100,47 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
     </header>
   
 
@@ -293,11 +340,18 @@
 
 
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
 
 
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
@@ -464,7 +518,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/aa6959ff2e3b0dc5e7a63c54e56f50fe88fe941d5d8b8450d53cd87181f3efcc.png" src="../_images/aa6959ff2e3b0dc5e7a63c54e56f50fe88fe941d5d8b8450d53cd87181f3efcc.png" />
+<img alt="../_images/35c8f6d108c8288af96d16b7612a077affe1701cb49d15f72a658eedb5f1f3a2.png" src="../_images/35c8f6d108c8288af96d16b7612a077affe1701cb49d15f72a658eedb5f1f3a2.png" />
 </div>
 </div>
 <p>Here, the line color illustrates the distance from the critical wave number, going from overdamped (in blue) to underdamped (in red) behavior. The shear relaxation is independent of the wave number under these conditions. Note that density and longitudinal momentum behave similar in the underdamped case (with slightly different damping), their behavior diverges at the transition to overdamped dynamics.</p>
@@ -524,10 +578,10 @@ One can derive an analytic solution for the linearized equations, that describe 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/33cdf2d11b40b2f751ca67b13fa73550549922dbad5c145da0db416370b8bb4f.png" src="../_images/33cdf2d11b40b2f751ca67b13fa73550549922dbad5c145da0db416370b8bb4f.png" />
-<img alt="../_images/cfcabc895e931c917fb191205b66ad4db9bbf8eb8a983f587fe06ae73d568d01.png" src="../_images/cfcabc895e931c917fb191205b66ad4db9bbf8eb8a983f587fe06ae73d568d01.png" />
-<img alt="../_images/688bcbdde2961d9f7eb7bcc4c15056368fee6c23e89858883220212703dc7593.png" src="../_images/688bcbdde2961d9f7eb7bcc4c15056368fee6c23e89858883220212703dc7593.png" />
-<img alt="../_images/f6cde04a763e0899c262f7c633f9581f3d6256c469d804ad3020f0036eb04e20.png" src="../_images/f6cde04a763e0899c262f7c633f9581f3d6256c469d804ad3020f0036eb04e20.png" />
+<img alt="../_images/bddcab94c506706f31adcc1495ed4cb4a8ea93cbae6eb39bc682ce070a4b1a73.png" src="../_images/bddcab94c506706f31adcc1495ed4cb4a8ea93cbae6eb39bc682ce070a4b1a73.png" />
+<img alt="../_images/0b5d497158af7d046665fb090d838eb4793e1d0f79890e7344c3b79417828bf2.png" src="../_images/0b5d497158af7d046665fb090d838eb4793e1d0f79890e7344c3b79417828bf2.png" />
+<img alt="../_images/d52f33376263a16cc85869c3c2d510a550db79470b06bf86d13ddf8567d2167e.png" src="../_images/d52f33376263a16cc85869c3c2d510a550db79470b06bf86d13ddf8567d2167e.png" />
+<img alt="../_images/6a86ba03b8ea4e77d3a6e71a99d42102b227aa02511e3c1788ae7d8c4f577ad8.png" src="../_images/6a86ba03b8ea4e77d3a6e71a99d42102b227aa02511e3c1788ae7d8c4f577ad8.png" />
 </div>
 </div>
 <p>For the smallest gap (<span class="math notranslate nohighlight">\(h=3\,\mathrm{nm}\)</span>) the modes with the ten largest wavelengths are all overdamped, while only two modes remain overdamped when doubling the gap height. The plot below shows the overdamped region can be reached in high aspect ratio channels, with critical gap heights reaching up to 200 nm for <span class="math notranslate nohighlight">\(L/h=1000\)</span>.</p>
@@ -563,7 +617,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/ede7dc6365bb4d7472f3a9c0697559485f16320bbd7dfb037696d7f4fb18894f.png" src="../_images/ede7dc6365bb4d7472f3a9c0697559485f16320bbd7dfb037696d7f4fb18894f.png" />
+<img alt="../_images/4dd65a4816ddf1e2c9662ccb94aa91a0037bce09d4993417419f263ce26b4acb.png" src="../_images/4dd65a4816ddf1e2c9662ccb94aa91a0037bce09d4993417419f263ce26b4acb.png" />
 </div>
 </div>
 <p>We can use the analytical solution to validate our simulations. Thus let’s create a <code class="docutils literal notranslate"><span class="pre">GaPFlow.problem</span></code> instance with the following properties:</p>
@@ -718,7 +772,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 *************************************************************
 </pre></div>
 </div>
-<img alt="../_images/fb961ffc04414d9ea4036b55645ee00b7bdc2dadfffffb4e8018859a7e0a0190.png" src="../_images/fb961ffc04414d9ea4036b55645ee00b7bdc2dadfffffb4e8018859a7e0a0190.png" />
+<img alt="../_images/bcc779e479655a1f02d0d7db9a976f5bd9d9c8488f42c507722e876568d805b0.png" src="../_images/bcc779e479655a1f02d0d7db9a976f5bd9d9c8488f42c507722e876568d805b0.png" />
 </div>
 </div>
 <p>This looks good. Let’s also check for longitudinal momentum:</p>
@@ -826,7 +880,7 @@ One can derive an analytic solution for the linearized equations, that describe 
 *************************************************************
 </pre></div>
 </div>
-<img alt="../_images/8b25d985b31fb68c9ae78d49b56de687d764bfc1d9d38a94db22ced1b86bd261.png" src="../_images/8b25d985b31fb68c9ae78d49b56de687d764bfc1d9d38a94db22ced1b86bd261.png" />
+<img alt="../_images/959260a2e288691454cbbb992edda14a87df9416c1ab3f9d383caac5de6d1dd6.png" src="../_images/959260a2e288691454cbbb992edda14a87df9416c1ab3f9d383caac5de6d1dd6.png" />
 </div>
 </div>
 </section>
@@ -910,8 +964,8 @@ By Hannes Holey
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
   <footer class="bd-footer">
   </footer>

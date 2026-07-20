@@ -53,18 +53,21 @@
       ~GaussianProcessSurrogate.active_dims
       ~GaussianProcessSurrogate.use_active_learning
       ~GaussianProcessSurrogate.fix_noise
+      ~GaussianProcessSurrogate.tolerance_protocol
       ~GaussianProcessSurrogate.rtol
       ~GaussianProcessSurrogate.atol
-      ~GaussianProcessSurrogate.tol
+      ~GaussianProcessSurrogate.atol_reduction_factor
+      ~GaussianProcessSurrogate.tol_rmid
+      ~GaussianProcessSurrogate.tol_alpha
       ~GaussianProcessSurrogate.max_steps
       ~GaussianProcessSurrogate.pause_steps
       ~GaussianProcessSurrogate.similarity_check
       ~GaussianProcessSurrogate.allowed_skips
-      ~GaussianProcessSurrogate.perturb_target
       ~GaussianProcessSurrogate.pause_on_high_residual
       ~GaussianProcessSurrogate.params_init
       ~GaussianProcessSurrogate.noise
       ~GaussianProcessSurrogate.prop
       ~GaussianProcessSurrogate.geo
+      ~GaussianProcessSurrogate.derived_expressions
    
    

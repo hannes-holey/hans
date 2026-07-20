@@ -62,18 +62,21 @@
       ~WallStress.active_dims
       ~WallStress.use_active_learning
       ~WallStress.fix_noise
+      ~WallStress.tolerance_protocol
       ~WallStress.rtol
       ~WallStress.atol
-      ~WallStress.tol
+      ~WallStress.atol_reduction_factor
+      ~WallStress.tol_rmid
+      ~WallStress.tol_alpha
       ~WallStress.max_steps
       ~WallStress.pause_steps
       ~WallStress.similarity_check
       ~WallStress.allowed_skips
-      ~WallStress.perturb_target
       ~WallStress.pause_on_high_residual
       ~WallStress.params_init
       ~WallStress.noise
       ~WallStress.prop
       ~WallStress.geo
+      ~WallStress.derived_expressions
    
    
