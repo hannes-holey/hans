@@ -237,10 +237,10 @@ def sanitize_geometry(d):
         raise IOError("Specify a valid geometry type")
 
     if out['type'] == 'journal':
-        if "CR" and 'eps' in d.keys():
+        if "CR" in d.keys() and 'eps' in d.keys():
             out["CR"] = float(d.get("CR"))
             out["eps"] = float(d.get("eps"))
-        elif "hmin" and 'hmax' in d.keys():
+        elif "hmin" in d.keys() and 'hmax' in d.keys():
             out["hmin"] = float(d.get("hmin"))
             out["hmax"] = float(d.get("hmax"))
         else:
@@ -403,24 +403,29 @@ def sanitize_gp(d):
     out['press_gp'] = bool(use_press_gp)
     out['shear_gp'] = bool(use_shear_gp)
 
+    # Derived features are shared across all GP models (same _Xtest layout).
+    out['derived_features'] = list(d.get('derived_features', []))
+
     for sk, active in zip(['press', 'shear'], [use_press_gp, use_shear_gp]):
         if active:
             out[sk] = {}
             ds = d[sk]
-            out[sk]['tol'] = ds.get('tol', 'delta')
-            out[sk]['atol'] = float(ds.get('atol', 1.))
-            out[sk]['rtol'] = float(ds.get('rtol', 0.))
             out[sk]['obs_stddev'] = float(ds.get('obs_stddev', 0.))
             out[sk]['fix_noise'] = bool(ds.get('fix_noise', True))
             out[sk]['max_steps'] = int(ds.get('max_steps', 5))
-            out[sk]['pause_steps'] = int(ds.get('pause_steps', 100))
+            out[sk]['pause_steps'] = int(ds.get('pause_steps', 1000))
             out[sk]['active_learning'] = bool(ds.get('active_learning', True))
-            out[sk]['similarity_check'] = bool(ds.get('similarity_check', True))
+            out[sk]['similarity_check'] = bool(ds.get('similarity_check', False))
             out[sk]['allowed_skips'] = int(ds.get('allowed_skips', 0))
-            out[sk]['perturb_target'] = bool(ds.get('perturb_target', False))
             out[sk]['pause_on_high_residual'] = bool(ds.get('pause_on_high_residual', False))
 
-            assert out[sk]['tol'] in ['absmax', 'delta', 'snr']
+            out[sk]['tolerance_protocol'] = ds.get('tolerance_protocol', 'rtol_delta')
+            assert out[sk]['tolerance_protocol'] in ['rtol_delta', 'sigmoid', 'linear']
+            out[sk]['atol'] = float(ds.get('atol', 1.))
+            out[sk]['rtol'] = float(ds.get('rtol', 0.))
+            out[sk]['atol_reduction_factor'] = float(ds.get('atol_reduction_factor', 0.5))
+            out[sk]['tol_rmid'] = float(ds.get('tol_rmid', 1e-6))
+            out[sk]['tol_alpha'] = float(ds.get('tol_alpha', 2.))
 
             # For shear/2D: need to distinguish (x and y)
             if sk == 'press':
@@ -442,12 +447,13 @@ def sanitize_db(d):
     out['dtool_path'] = d.get('dtool_path', None)
     out['init_size'] = int(d.get('init_size', 5))
     out['init_method'] = str(d.get('init_method', 'lhc'))
-    out['init_width'] = float(d.get('init_width', 1e-2))
-    out['init_seed'] = int(d.get('init_width', 123))
+    out['init_halfwidth'] = list(d.get('init_halfwidth', [1e-2, 0.5, 0.5]))
+    out['init_seed'] = int(d.get('init_seed', 123))
 
     out['normalizer_X'] = d.get('normalizer_X', 'minmax')
     out['normalizer_Y'] = d.get('normalizer_Y', 'standard')
 
+    assert len(out['init_halfwidth']) == 3
     assert out['init_method'] in ['rand', 'lhc', 'sobol']
     assert out['normalizer_X'] in ['max', 'minmax', 'standard', 'none']
     assert out['normalizer_Y'] in ['max', 'minmax', 'standard', 'none']
