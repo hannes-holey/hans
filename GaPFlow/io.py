@@ -417,7 +417,6 @@ def sanitize_gp(d):
             out[sk]['active_learning'] = bool(ds.get('active_learning', True))
             out[sk]['similarity_check'] = bool(ds.get('similarity_check', False))
             out[sk]['allowed_skips'] = int(ds.get('allowed_skips', 0))
-            out[sk]['perturb_target'] = bool(ds.get('perturb_target', False))
             out[sk]['pause_on_high_residual'] = bool(ds.get('pause_on_high_residual', False))
 
             out[sk]['tolerance_protocol'] = ds.get('tolerance_protocol', 'rtol_delta')

@@ -76,7 +76,6 @@ class GaussianProcessSurrogate:
     pause_steps: int
     similarity_check: bool
     allowed_skips: int
-    perturb_target: bool
     pause_on_high_residual: bool
     params_init: dict
     noise: Tuple[float, float]
@@ -120,9 +119,6 @@ class GaussianProcessSurrogate:
             ref = datetime.now()
             self._cumtime_train = datetime.now() - ref
             self._cumtime_infer = datetime.now() - ref
-
-            # Initialize PRNG key
-            self._key = jax.random.key(0)
 
             # History of hyperparameters
             self.history = {
@@ -557,9 +553,7 @@ class GaussianProcessSurrogate:
         Select new training point using maximum variance criterion.
         If `similarity_check=True`, we try to avoid points that are
         too similar to the existing database. If all candidate points
-        are too close, we select the one with largest variance and perturb
-        it slightly with random noise.
-
+        are too close, we fall back to the point with largest variance.
 
         Parameters
         ----------
@@ -589,7 +583,6 @@ class GaussianProcessSurrogate:
 
         # start with largest variance (currently only implemented strategy)
         selected = sorted_indices[0]
-        perturb = self.perturb_target  # default False
 
         if similarity_check:
             skipped = 0
@@ -613,54 +606,13 @@ class GaussianProcessSurrogate:
                     selected = i
                     break
 
-            # Apply perturbation only if similarity check fails
-            if skipped <= self.allowed_skips:
-                perturb = False
-            else:
-                logger.info('No suitable test point found. Apply random perturbation to max. variance point.')
-                perturb = True
+            if skipped > self.allowed_skips:
+                logger.info('No suitable test point found. Using max. variance point.')
 
         # Test point from index
         _Xnew = _Xtest[selected, :][None, :]
 
-        if perturb:
-            _Xnew = self._perturb_training_point(_Xnew)
-
         return _Xnew
-
-    def _perturb_training_point(self, X, scale=0.05):
-        """Apply random additive perturbation to a training point.
-
-        Parameters
-        ----------
-        X : jax.Array
-            Training point, not normalized, shape (1, Nfeat)
-        scale: float
-            Scaling parameter, controls the magnitude of the parturbation.
-            Default 0.05
-
-
-        Returns
-        -------
-        jax.Array
-            The perturbed training point.
-        """
-
-        # normalize
-        _X = (X - self._database.X_shift) / self._database.X_scale
-
-        # perturb
-        Xrange = (self._Xtest.max(axis=0) - self._Xtest.min(axis=0)) / self._database.X_scale
-        for d in self.active_dims:
-            if d not in [4, 5]:
-                new_key, subkey = jax.random.split(self._key)
-                _X = _X.at[d].add(scale * Xrange[d] * jax.random.normal(subkey))
-                self._key = new_key  # overwrite PRNG key
-
-        # scale back
-        X = _X * self._database.X_scale + self._database.X_shift
-
-        return X
 
     # ------------------------------------------------------------------
     # Main Predict/Active Loop
