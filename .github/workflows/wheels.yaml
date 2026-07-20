@@ -14,6 +14,7 @@ jobs:
     name: Build wheels for ${{ matrix.python }}-${{ matrix.buildplat[1] }}
     runs-on: ${{ matrix.buildplat[0] }}
     strategy:
+      fail-fast: false
       matrix:
         buildplat:
         - [ubuntu-latest, manylinux, x86_64]
