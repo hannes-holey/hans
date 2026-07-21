@@ -333,7 +333,7 @@ class Problem:
             Instantiated `Problem` object.
         """
         logger.info(f"Reading input file: {fname}")
-        with open(fname, "r") as ymlfile:
+        with open(fname, "r", encoding="utf-8") as ymlfile:
             yaml_dir = os.path.dirname(os.path.abspath(fname))
             input_dict = read_yaml_input(ymlfile)
 
