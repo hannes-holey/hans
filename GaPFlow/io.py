@@ -34,7 +34,7 @@ import warnings
 from datetime import datetime
 import yaml
 import polars as pl
-from mpi4py import MPI
+from .parallel import MPI
 
 
 def print_header(s, n=60, f0='*', f1=' '):

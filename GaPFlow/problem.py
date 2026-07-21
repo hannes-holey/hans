@@ -31,8 +31,7 @@ from collections import deque
 from datetime import datetime
 from itertools import islice
 from muGrid import FileIONetCDF
-from mpi4py import MPI
-from .parallel import DomainDecomposition
+from .parallel import DomainDecomposition, MPI
 
 from typing import Type
 import numpy.typing as npt
@@ -547,7 +546,6 @@ class Problem:
         """
         # Print metrics if requested
         if self.options.get('print_metrics', False):
-            from mpi4py import MPI
             metrics = compute_metrics(self)
             print_metrics(metrics, MPI.COMM_WORLD)
 

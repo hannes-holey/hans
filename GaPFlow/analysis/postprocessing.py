@@ -46,7 +46,7 @@ import resource
 from datetime import datetime
 
 import numpy as np
-from mpi4py import MPI
+from ..parallel import MPI
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

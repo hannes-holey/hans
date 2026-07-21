@@ -27,9 +27,9 @@ import warnings
 
 import numpy as np
 import jax.numpy as jnp
-from mpi4py import MPI
 from typing import TYPE_CHECKING
 
+from ..parallel import MPI
 from ..models.pressure import eos_drho_dp
 from ..models.viscosity import piezoviscosity
 from .scaling import build_scaling_from_blocks

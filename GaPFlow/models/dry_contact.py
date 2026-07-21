@@ -23,10 +23,11 @@
 #
 
 from datetime import datetime
-from mpi4py import MPI
 import numpy as np
 import copy
 import os
+
+from ..parallel import MPI
 
 from ContactMechanics.Systems import NonSmoothContactSystem
 from ContactMechanics import FreeFFTElasticHalfSpace

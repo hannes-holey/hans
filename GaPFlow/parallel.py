@@ -24,10 +24,102 @@
 
 # flake8: noqa: W503
 
-from mpi4py import MPI
+import os
 import numpy as np
 import numpy.typing as npt
 from scipy.ndimage import zoom
+
+try:
+    from mpi4py import MPI
+    HAS_MPI4PY = True
+except ImportError:
+    HAS_MPI4PY = False
+
+    # Environment variables set by common MPI launchers (mpirun/mpiexec/srun).
+    # If one of these indicates more than one rank, running without mpi4py
+    # would silently produce N independent, duplicated serial runs instead of
+    # erroring, so we fail loudly instead.
+    _MPI_LAUNCHER_SIZE_VARS = (
+        "OMPI_COMM_WORLD_SIZE",  # Open MPI
+        "PMI_SIZE",              # MPICH / Intel MPI
+        "SLURM_NTASKS",         # Slurm
+    )
+    for _var in _MPI_LAUNCHER_SIZE_VARS:
+        if int(os.environ.get(_var, "1")) > 1:
+            raise ImportError(
+                "Detected an MPI launcher (mpirun/mpiexec/srun) requesting more "
+                "than one rank, but mpi4py is not installed. Install GaPFlow "
+                "with the 'parallel' extra, e.g. `pip install GaPFlow[parallel]`, "
+                "to run MPI-parallel simulations."
+            )
+    del _var
+
+    class _SerialRequest:
+        """Stand-in for mpi4py.MPI.Request: our sends/receives complete
+        synchronously, so waiting on them is always a no-op."""
+
+        def Wait(self):
+            pass
+
+    class _SerialRequestClass:
+        @staticmethod
+        def Waitall(requests):
+            pass
+
+    class _SerialComm:
+        """Minimal stand-in for an mpi4py communicator, used when mpi4py is
+        not installed. Only valid for single-process (serial) execution."""
+
+        rank = 0
+        size = 1
+
+        def __init__(self):
+            self._pending = {}
+
+        def Get_rank(self):
+            return 0
+
+        def Get_size(self):
+            return 1
+
+        def barrier(self):
+            pass
+
+        Barrier = barrier
+
+        def allreduce(self, value, op=None):
+            return value
+
+        def gather(self, value, root=0):
+            return [value]
+
+        def allgather(self, value):
+            return [value]
+
+        def bcast(self, value, root=0):
+            return value
+
+        def Isend(self, data, dest=0, tag=0):
+            self._pending[tag] = np.array(data, copy=True)
+            return _SerialRequest()
+
+        def Irecv(self, buf, source=0, tag=0):
+            buf[...] = self._pending.pop(tag)
+            return _SerialRequest()
+
+    class _SerialMPI:
+        """Stand-in for the mpi4py.MPI module. Only implements what GaPFlow
+        needs to run single-process without MPI installed."""
+
+        SUM = 'SUM'
+        MAX = 'MAX'
+        MIN = 'MIN'
+        Comm = _SerialComm
+        Request = _SerialRequestClass
+        COMM_WORLD = _SerialComm()
+        COMM_SELF = _SerialComm()
+
+    MPI = _SerialMPI()
 
 from dataclasses import dataclass
 from functools import cached_property

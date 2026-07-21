@@ -29,7 +29,6 @@ from typing import Tuple, Any
 import numpy as np
 import numpy.typing as npt
 from muGrid import Field
-from mpi4py import MPI
 
 from ContactMechanics.FFTElasticHalfSpace import (
     PeriodicFFTElasticHalfSpace,
@@ -37,7 +36,7 @@ from ContactMechanics.FFTElasticHalfSpace import (
     SemiPeriodicFFTElasticHalfSpace,
 )
 
-from .parallel import DomainDecomposition, FFTDomainTranslation
+from .parallel import DomainDecomposition, FFTDomainTranslation, MPI
 
 _MPI_MIN = MPI.MIN
 
