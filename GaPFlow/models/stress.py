@@ -28,7 +28,7 @@ import numpy.typing as npt
 import jax.numpy as jnp
 from jax import vmap, grad, jit, lax
 from jax import Array
-from typing import Optional, Any
+from typing import Optional, Any, Deque
 from muGrid import Field
 
 from .gp import GaussianProcessSurrogate
@@ -97,24 +97,28 @@ class WallStress(GaussianProcessSurrogate):
             self.is_gp_model = True
             self.active_dims = {'x': gp.get('active_dims_x', [0, 1, 3]),
                                 'y': gp.get('active_dims_y', [0, 2, 3])}[direction]
+            self.derived_expressions = gp.get('derived_features', [])
 
             self.__field_variance = fc.real_field(f'wall_stress_{direction}z_var')
 
             # Active learning parameters
-            self.tol = gp['tol']
+            self.tolerance_protocol = gp['tolerance_protocol']
             self.atol = gp['atol']
             self.rtol = gp['rtol']
+            self.atol_reduction_factor = gp['atol_reduction_factor']
+            self.tol_rmid = gp['tol_rmid']
+            self.tol_alpha = gp['tol_alpha']
             self.max_steps = gp['max_steps']
             self.pause_steps = gp['pause_steps']
             self.use_active_learning = gp['active_learning']
             self.similarity_check = gp['similarity_check']
             self.allowed_skips = gp['allowed_skips']
-            self.perturb_target = gp['perturb_target']
             self.fix_noise = gp['fix_noise']
             self.pause_on_high_residual = gp['pause_on_high_residual']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
+            self.derived_expressions = []
 
         super().__init__(fc, data)
 
@@ -308,9 +312,10 @@ class WallStress(GaussianProcessSurrogate):
             self._infer()
 
     def update(self,
+               residuals: Deque,
                predictor: bool = False,
                compute_var: bool = False,
-               cooldown: bool = False) -> None:
+               ) -> None:
         """
         Update wall stress: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -318,13 +323,13 @@ class WallStress(GaussianProcessSurrogate):
 
         Parameters
         ----------
+        residuals : Deque
+            Residual buffer of the main simulation loop
         predictor : bool, optional
             Whether this update is part of the predictor stage.
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
-        cooldown : bool, optional
-            If true, active learning is blocked to let the system cool down (default is False).
         """
 
         # piezoviscosity
@@ -357,7 +362,8 @@ class WallStress(GaussianProcessSurrogate):
                               self.geo['V_top'],
                               shear_viscosity,
                               self.prop['bulk'],
-                              0.0, self.extra  # Ls_bot=0, Ls_top=extra
+                              Ls_bot=0.0,
+                              Ls_top=self.extra if self.extra.shape == 1 else 0.
                               )
 
         s_top = stress_top(self.solution,
@@ -368,7 +374,8 @@ class WallStress(GaussianProcessSurrogate):
                            self.geo['V_top'],
                            shear_viscosity,
                            self.prop['bulk'],
-                           0.0, self.extra  # Ls_bot=0, Ls_top=extra
+                           Ls_bot=0.0,
+                           Ls_top=self.extra if self.extra.shape == 1 else 0.
                            )
 
         self.__field.pg[:3] = s_bot[:3] / 2.
@@ -378,9 +385,11 @@ class WallStress(GaussianProcessSurrogate):
         self.__field.pg[11] = s_top[-1] / 2.
 
         if self.is_gp_model:
-            mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var,
-                                     cooldown=cooldown)
+            mean, var = self.predict(
+                residuals=residuals,
+                predictor=predictor,
+                compute_var=self.use_active_learning or compute_var,
+            )
 
             self.__field.pg[self._out_index] = mean[0, :, :]
             self.__field.pg[self._out_index + 6] = mean[1, :, :]
@@ -567,7 +576,9 @@ class BulkStress(GaussianProcessSurrogate):
                                         self.geo['V_top'],
                                         shear_viscosity,
                                         self.prop['bulk'],
-                                        0.0, self.extra)
+                                        Ls_bot=0.0,
+                                        Ls_top=self.extra if self.extra.shape == 1 else 0.
+                                        )
 
 
 class Pressure(GaussianProcessSurrogate):
@@ -608,23 +619,27 @@ class Pressure(GaussianProcessSurrogate):
         if gp is not None:
             self.is_gp_model = True
             self.active_dims = gp.get('active_dims', [0, 3])
+            self.derived_expressions = gp.get('derived_features', [])
             self.__field_variance = fc.real_field('pressure_var')
 
             # Active learning parameters
-            self.tol = gp['tol']
+            self.tolerance_protocol = gp['tolerance_protocol']
             self.atol = gp['atol']
             self.rtol = gp['rtol']
+            self.atol_reduction_factor = gp['atol_reduction_factor']
+            self.tol_rmid = gp['tol_rmid']
+            self.tol_alpha = gp['tol_alpha']
             self.max_steps = gp['max_steps']
             self.pause_steps = gp['pause_steps']
             self.use_active_learning = gp['active_learning']
             self.similarity_check = gp['similarity_check']
             self.allowed_skips = gp['allowed_skips']
-            self.perturb_target = gp['perturb_target']
             self.fix_noise = gp['fix_noise']
             self.pause_on_high_residual = gp['pause_on_high_residual']
         else:
             self.is_gp_model = False
             self.use_active_learning = False
+            self.derived_expressions = []
 
         super().__init__(fc, data)
 
@@ -718,9 +733,9 @@ class Pressure(GaussianProcessSurrogate):
             self._infer()
 
     def update(self,
+               residuals: Deque,
                predictor: bool = False,
-               compute_var: bool = False,
-               cooldown: bool = False) -> None:
+               compute_var: bool = False) -> None:
         """
         Update pressure: compute deterministic stresses and, if enabled,
         perform GP prediction and place predicted mean and variance into the
@@ -728,18 +743,19 @@ class Pressure(GaussianProcessSurrogate):
 
         Parameters
         ----------
+        residuals : Deque
+            Residual buffer of the main simulation loop
         predictor : bool, optional
             Whether this update is part of the predictor stage.
         compute_var : bool, optional
             Flag for re-computing the variance (the default is False which uses
             the stored variance from previous steps).
-        cooldown : bool, optional
-            If true, active learning is blocked to let the system cool down (default is False).
         """
         if self.is_gp_model:
-            mean, var = self.predict(predictor=predictor,
-                                     compute_var=self.use_active_learning or compute_var,
-                                     cooldown=cooldown)
+            mean, var = self.predict(residuals=residuals,
+                                     predictor=predictor,
+                                     compute_var=self.use_active_learning or compute_var)
+
             self.__field.pg[:] = mean
             self.__field_variance.pg[:] = var
         else:

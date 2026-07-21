@@ -208,8 +208,9 @@ def _make_problem(props: str, Nx: int, Ny: int, cavitation: bool = False,
         body_force=str(body_force).lower(),
     ) + props
     problem = Problem.from_string(config)
+    problem._pre_run()
     solver = problem.solver
-    solver.pre_run()
+
     return problem, solver
 
 

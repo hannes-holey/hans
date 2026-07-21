@@ -101,21 +101,22 @@ class ExplicitSolver:
 
         # Without active learning, compute variance only before writing
         one_step_before_output = (p.step + 1) % p.options['write_freq'] == 0
-        # Suppress active learning for rapidly changing fields
-        cooldown = p._residuals_above_tolerance(1e-3)
 
         for i, d in enumerate(directions):
 
             # update surrogates / constitutive models (predictor on first pass)
-            p.pressure.update(predictor=i == 0,
+            p.pressure.update(residuals=p.residual_buffer,
+                              predictor=i == 0,
                               compute_var=one_step_before_output,
-                              cooldown=cooldown)
-            p.wall_stress_xz.update(predictor=i == 0,
-                                    compute_var=one_step_before_output,
-                                    cooldown=cooldown)
-            p.wall_stress_yz.update(predictor=i == 0,
-                                    compute_var=one_step_before_output,
-                                    cooldown=cooldown)
+                              )
+            p.wall_stress_xz.update(residuals=p.residual_buffer,
+                                    predictor=i == 0,
+                                    compute_var=one_step_before_output
+                                    )
+            p.wall_stress_yz.update(residuals=p.residual_buffer,
+                                    predictor=i == 0,
+                                    compute_var=one_step_before_output
+                                    )
             p.bulk_stress.update()
 
             # fluxes and source terms

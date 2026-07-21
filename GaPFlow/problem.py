@@ -48,7 +48,7 @@ from .db import Database
 from .topography import Topography
 from .io import read_yaml_input, write_yaml, create_output_directory, history_to_csv
 from .analysis import compute_metrics, print_metrics, create_overview_plot
-from .utils import handle_signals, get_termination_signals
+from .utils import handle_signals, get_termination_signals, above_tolerance
 from .models import WallStress, BulkStress, Pressure, Energy, Viscosity
 from .md import Mock, LennardJones, GoldAlkane
 from .viz.plotting import _plot_height_1d_from_field, _plot_height_2d_from_field
@@ -163,8 +163,14 @@ class Problem:
                          U_bot=geo['U_bot'], V_bot=geo['V_bot'],
                          U_top=geo['U_top'], V_top=geo['V_top'])
 
-        # Initialize extra field
-        num_extra_features = 1 if database is None else database.num_features - 6
+        # Initialize extra field (only allocate if extra data is actually present).
+        if database is not None:
+            num_extra_features = database.num_extra_features
+        elif extra_field is not None:
+            num_extra_features = extra_field.shape[0]
+        else:
+            num_extra_features = 0
+
         extra = self.fc.real_field('extra', (num_extra_features,))
         if extra_field is not None:
             extra.pg[:] = extra_field
@@ -300,7 +306,10 @@ class Problem:
                 elif md['system'] == 'mol':
                     MD = GoldAlkane(md)
 
-            database = Database(MD, db)
+            derived_exprs = gp.get('derived_features', []) if gp else []
+            database = Database(MD, db,
+                                num_derived_features=len(derived_exprs),
+                                derived_expressions=derived_exprs)
         else:
             database = None
 
@@ -443,14 +452,7 @@ class Problem:
     @property
     def converged(self) -> bool:
         """Return True if residuals in the buffer are below tolerance."""
-        return not self._residuals_above_tolerance(self.tol, num=5)
-
-    def _residuals_above_tolerance(self, tol: float, num: int | None = None) -> bool:
-        """Return True if any of the last `num` residuals are above `tol` (all if `num` is None)."""
-        buf = self.residual_buffer
-        if num is None:
-            return any(v > tol for v in buf)
-        return any(v > tol for v in islice(reversed(buf), num))
+        return not above_tolerance(self.residual_buffer, self.tol, num=5)
 
     # ---------------------------
     # Simulation run utilities
@@ -704,9 +706,9 @@ class Problem:
             logger.warning('Negative density detected.')
 
         self.q = q0
-        self.pressure.update(predictor=False, compute_var=True)
-        self.wall_stress_xz.update(predictor=False, compute_var=True)
-        self.wall_stress_yz.update(predictor=False, compute_var=True)
+        self.pressure.update(self.residual_buffer, predictor=False, compute_var=True)
+        self.wall_stress_xz.update(self.residual_buffer, predictor=False, compute_var=True)
+        self.wall_stress_yz.update(self.residual_buffer, predictor=False, compute_var=True)
         self.bulk_stress.update()
 
         logger.info('Writing previous step and aborting simulation.')
@@ -755,6 +757,8 @@ class Problem:
         Select active GP models
         """
         if gp is not None:
+            derived = gp.get('derived_features', [])
+
             if self.grid['dim'] == 1:
                 gpz = gp.get('press')
                 gpx = gp.get('shear')
@@ -764,6 +768,10 @@ class Problem:
                 gpx = gp.get('shear')
                 gpy = gp.get('shear')
 
+            # Inject top-level derived_features into each model sub-dict.
+            for sub in [gpx, gpy, gpz]:
+                if sub is not None:
+                    sub['derived_features'] = derived
         else:
             gpx, gpy, gpz = None, None, None
 
