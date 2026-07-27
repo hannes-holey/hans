@@ -30,6 +30,7 @@ Mainly functions that sanitize the user input from YAML configuration files.
 
 
 import os
+import shutil
 import warnings
 from datetime import datetime
 import yaml
@@ -86,7 +87,16 @@ def create_output_directory(name, use_tstamp=True):
     if rank == 0:
         os.makedirs(outdir, exist_ok=True)
         if len(os.listdir(outdir)) > 0:
-            raise RuntimeError('Output path exists and is not empty.')
+            answer = input(f"Output path '{outdir}' exists and is not empty. "
+                           "Overwrite? [y/N] ")
+            if answer.strip().lower() not in ('y', 'yes'):
+                raise RuntimeError('Output path exists and is not empty.')
+            for entry in os.listdir(outdir):
+                path = os.path.join(outdir, entry)
+                if os.path.isdir(path) and not os.path.islink(path):
+                    shutil.rmtree(path)
+                else:
+                    os.remove(path)
 
     # Synchronize all ranks before proceeding
     comm.Barrier()
