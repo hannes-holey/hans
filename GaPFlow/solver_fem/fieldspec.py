@@ -171,6 +171,8 @@ QUAD_FIELD_REGISTRY = {
                         'd_dy_jy', 'd_dx_theta', 'd_dy_theta', 'p_before']},
 }
 
+
+# TODO: we need to allow arbitrary arg-combinations
 _GP_ARGS_PRESSURE = {
     'p_from_rho': ['rho', 'h'],
     'rho_from_p': ['p', 'h', 'rho'],

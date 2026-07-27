@@ -414,6 +414,7 @@ class FEMSolver:
 
         p = self.problem
         self.quad_mgr.sync_to_problem_q()
+        p.pressure.update(residuals=p.residual_buffer)
         p.wall_stress_xz.update(residuals=p.residual_buffer)
         p.wall_stress_yz.update(residuals=p.residual_buffer)
         if hasattr(p, 'bulk_stress'):

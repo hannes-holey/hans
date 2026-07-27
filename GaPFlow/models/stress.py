@@ -89,6 +89,7 @@ class WallStress(GaussianProcessSurrogate):
 
         self.geo = geo
         self.prop = prop
+        self.direction = direction
         self.name = f'{direction}z'
 
         self._out_index = {'x': 4, 'y': 3}[direction]
@@ -402,10 +403,8 @@ class WallStress(GaussianProcessSurrogate):
     def build_grad(self) -> None:
         """Build JIT-compiled gradient functions for wall stress."""
 
-        dir = self.name[0]  # 'x' or 'y'
-
         if self.is_gp_model:
-            jmom_name = 'j' + dir
+            jmom_name = 'j' + self.direction
             X_shift = self.database.X_shift[jnp.array(self.active_dims)]
             X_scale = self.database.X_scale[jnp.array(self.active_dims)]
 
@@ -442,10 +441,10 @@ class WallStress(GaussianProcessSurrogate):
             setattr(self, f'dtau_bot_d{jmom_name}', vmap2(f_bot_djmom))
 
         else:
-            stress_top_fn = globals()[f'stress_top_{dir}z']
-            stress_bot_fn = globals()[f'stress_bottom_{dir}z']
-            der_vars = ['rho', 'j' + dir, 'theta']
-            der_arg_idx = [0, 1 if dir == 'x' else 2, 10]
+            stress_top_fn = globals()[f'stress_top_{self.direction}z']
+            stress_bot_fn = globals()[f'stress_bottom_{self.direction}z']
+            der_vars = ['rho', 'j' + self.direction, 'theta']
+            der_arg_idx = [0, 1 if self.direction == 'x' else 2, 10]
 
             # central functions: only argument difference for x/y is dh
             def _tau(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
