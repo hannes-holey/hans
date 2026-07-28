@@ -55,8 +55,8 @@ from .viz.plotting import _plot_sol_from_field_1d, _plot_sol_from_field_2d
 from .viz.animations import animate_1d, animate_1d_gp, animate_2d
 from .logging import get_logger
 
-# Configure module logger writing to gapflow_problem.log via centralized helper
-logger = get_logger("gapflow.problem")
+# Configure module logger writing to log.run via centralized helper
+logger = get_logger("gapflow.run")
 
 
 class Problem:
@@ -212,7 +212,7 @@ class Problem:
 
             # Reconfigure module loggers to write into the simulation output directory
             # so all components write into the same outdir logfile(s).
-            get_logger("gapflow.problem", outdir=self.outdir, force=True)
+            get_logger("gapflow.run", outdir=self.outdir, force=True)
 
             if database is not None:
                 # Set training path inside output path

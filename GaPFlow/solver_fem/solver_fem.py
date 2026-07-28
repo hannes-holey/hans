@@ -48,6 +48,9 @@ from .solution_guards import solve_linear_system, line_search, viscosity_growth_
 from .bayada_stabilization import bayada_linearization_guard
 from .terms import get_active_terms
 from .scaling import build_scaling
+from ..logging import get_logger
+
+logger = get_logger("gapflow.run")
 
 if TYPE_CHECKING:
     from ..problem import Problem
@@ -550,10 +553,10 @@ class FEMSolver:
     def print_status_header(self) -> None:
         p = self.problem
         if p.options.get('print_progress') and p.decomp.rank == 0:
-            print(78 * '-')
-            print(f"{'Step':<6s} {'Timestep':<12s} {'Time':<12s} "
-                  f"{'Iter':<6s} {'Conv. Time':<12s} {'Residual':<12s} {'|R| Newton':<14s}")
-            print(78 * '-')
+            logger.info(78 * '-')
+            logger.info(f"{'Step':<6s} {'Timestep':<12s} {'Time':<12s} "
+                        f"{'Iter':<6s} {'Conv. Time':<12s} {'Residual':<12s} {'|R| Newton':<14s}")
+            logger.info(78 * '-')
         if p.options.get('save_output'):
             p.write(params=False)
 
@@ -562,6 +565,6 @@ class FEMSolver:
         if scalars and p.options.get('print_progress') and p.decomp.rank == 0:
             history = self.R_norm_history
             R_newton = history[-1][-1] if history and history[-1] else float('nan')
-            print(f"{p.step:<6d} {p.dt:<12.4e} {p.simtime:<12.4e} "
-                  f"{self.inner_iterations:<6d} "
-                  f"{self.time_inner:<12.4e} {p.residual:<12.4e} {R_newton:<14.4e}")
+            logger.info(f"{p.step:<6d} {p.dt:<12.4e} {p.simtime:<12.4e} "
+                        f"{self.inner_iterations:<6d} "
+                        f"{self.time_inner:<12.4e} {p.residual:<12.4e} {R_newton:<14.4e}")

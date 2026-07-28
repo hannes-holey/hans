@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 from ..bc import BoundarySpec, GhostUpdater, sample_bc_spec
 from ..logging import get_logger
 
-logger = get_logger("gapflow.problem")
+logger = get_logger("gapflow.run")
 if TYPE_CHECKING:
     from ..problem import Problem
 
@@ -168,7 +168,8 @@ class ExplicitSolver:
         p = self.problem
 
         if scalars:
-            print(f"{p.step:<6d} {p.dt:.4e} {p.simtime:.4e} {p.cfl:.4e} {p.residual:.4e}")
+            if p.options['print_progress']:
+                logger.info(f"{p.step:<6d} {p.dt:.4e} {p.simtime:.4e} {p.cfl:.4e} {p.residual:.4e}")
             p.history["step"].append(p.step)
             p.history["time"].append(p.simtime)
             p.history["ekin"].append(p.kinetic_energy)
