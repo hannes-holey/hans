@@ -474,13 +474,7 @@ class Problem:
 
         self._stop = False
 
-        self.history = {
-            "step": [],
-            "time": [],
-            "ekin": [],
-            "residual": [],
-            "vsound": []
-        }
+        self.history = {}
 
         self.solver.print_status_header()
 
@@ -494,10 +488,9 @@ class Problem:
             self.update()
 
             if self.step % self.options['write_freq'] == 0:
-                if self.options['print_progress']:
-                    self.solver.print_status(True)
+                self.solver.print_status()
                 if self.options['save_output']:
-                    self.write(scalars=False)
+                    self.write()
 
             handle_signals(self._receive_signal)
 
@@ -542,7 +535,7 @@ class Problem:
 
     def _post_run(self) -> None:
         """
-        Finalize run: write history, print timing and GP timing info.
+        Finalize run: print timing and GP timing info.
         """
         # Print metrics if requested
         if self.options.get('print_metrics', False):
@@ -563,7 +556,8 @@ class Problem:
         walltime = datetime.now() - self._tic
 
         if self.step % self.options['write_freq'] != 0 and self.options['save_output']:
-            self.write(scalars=False)
+            self.solver.print_status()
+            self.write()
 
         speed = self.step / walltime.total_seconds()
 
@@ -586,8 +580,6 @@ class Problem:
         logger.info(33 * '=')
 
         if self.options['save_output']:
-            history_to_csv(os.path.join(self.outdir, 'history.csv'), self.history)
-
             if self.pressure.is_gp_model:
                 with open(os.path.join(self.outdir, 'gp_zz.txt'), 'w') as f:
                     print(self.pressure.gp, file=f)
@@ -716,11 +708,13 @@ class Problem:
     # I/O and state writing
     # ---------------------------
 
-    def write(self, scalars: bool = True, fields: bool = True, params: bool = True) -> None:
+    def write(self, fields: bool = True) -> None:
         """
-        Write scalars, fields and hyperparameters to disk as configured.
+        Record history and write fields to disk as configured.
         """
-        self.solver.print_status(scalars)
+        for key, value in self.solver.status_record().items():
+            self.history.setdefault(key, []).append(value)
+        history_to_csv(os.path.join(self.outdir, 'history.csv'), self.history)
 
         if fields:
             self.file = FileIONetCDF(self.filename, open_mode='append')

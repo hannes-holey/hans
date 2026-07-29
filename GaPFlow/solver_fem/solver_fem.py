@@ -477,8 +477,6 @@ class FEMSolver:
         if self.debugger is not None and self._debug_steps_done >= 5:
             self.problem._stop = True
 
-        self.print_status()
-
     def update(self) -> None:
         """Perform one time step with Newton iteration."""
 
@@ -557,14 +555,35 @@ class FEMSolver:
             logger.info(f"{'Step':<6s} {'Timestep':<12s} {'Time':<12s} "
                         f"{'Iter':<6s} {'Conv. Time':<12s} {'Residual':<12s} {'|R| Newton':<14s}")
             logger.info(78 * '-')
+        self.print_status()
         if p.options.get('save_output'):
-            p.write(params=False)
+            p.write()
 
-    def print_status(self, scalars=None) -> None:
+    def print_status(self) -> None:
+        """
+        Log the current status line, if enabled.
+        """
         p = self.problem
-        if scalars and p.options.get('print_progress') and p.decomp.rank == 0:
+        if p.options.get('print_progress') and p.decomp.rank == 0:
             history = self.R_norm_history
             R_newton = history[-1][-1] if history and history[-1] else float('nan')
             logger.info(f"{p.step:<6d} {p.dt:<12.4e} {p.simtime:<12.4e} "
                         f"{self.inner_iterations:<6d} "
                         f"{self.time_inner:<12.4e} {p.residual:<12.4e} {R_newton:<14.4e}")
+
+    def status_record(self) -> dict:
+        """
+        Scalar values recorded to history.csv for the current step.
+        """
+        p = self.problem
+        history = self.R_norm_history
+        R_newton = history[-1][-1] if history and history[-1] else float('nan')
+        return {
+            "step": p.step,
+            "dt": p.dt,
+            "time": p.simtime,
+            "inner_iterations": self.inner_iterations,
+            "time_inner": self.time_inner,
+            "residual": p.residual,
+            "R_newton": R_newton,
+        }
