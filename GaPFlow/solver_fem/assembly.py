@@ -32,7 +32,6 @@ import numpy.typing as npt
 from .elements import TaylorHoodP2P1
 from .grid_index import GridIndexManager
 from .global_matrix import field_to_global
-from .terms import Term
 from .fieldspec import FieldSpec
 
 NDArray = npt.NDArray[np.floating]
@@ -125,6 +124,12 @@ class Assembly:
         # +1 as trash can for non-valid entries
         self._nnz_buf = np.zeros(len(self.nnz_global_rows) + 1, dtype=np.float64)
         self._rhs_buf = np.zeros(self.res_size + 1, dtype=np.float64)
+
+        # Weighting templates for the effective influence Newton method
+        self.elastic_templates: Dict[str, AssemblyTemplate] = {}
+        self.elastic_templates_dhdx: Dict[str, AssemblyTemplate] = {}
+        self.elastic_templates_dhdy: Dict[str, AssemblyTemplate] = {}
+        self._nnz_cache: Dict[Tuple[str, str], IntArray] = {}
 
     # ======================================================================
     # Block connectivity — stencil-based
@@ -413,7 +418,7 @@ class Assembly:
             self.assembly_templates[(res, var, dd, td)] = AssemblyTemplate(
                 w=w,
                 entries_per_quad=entries_per_quad,
-                nnz=self._build_nnz(res, var),
+                nnz=self._get_nnz(res, var),
             )
 
         # Residual-only keys for assemble_rhs (one key per term: (res, dd, td))
@@ -427,6 +432,122 @@ class Assembly:
                     entries_per_quad=entries_per_quad,
                     nnz=self._build_nnz_res(term.res),
                 )
+
+    def build_elastic_templates(self, elastic_deformation) -> None:
+        """Precompute injection templates for the Effective Influence Newton
+        Method's elastic-influence Jacobian contribution
+
+        Parameters
+        ----------
+        elastic_deformation : GaPFlow.topography.ElasticDeformation
+        """
+        G3 = self._build_greens_function(elastic_deformation)
+
+        for res in ('mass', 'momentum_x', 'momentum_y'):
+            w, entries_per_quad = self._build_weighting_elastic(res, G3)
+            self.elastic_templates[res] = AssemblyTemplate(
+                w=w,
+                entries_per_quad=entries_per_quad,
+                nnz=self._get_nnz(res, 'p'),
+            )
+
+        for deriv, templates in (('x', self.elastic_templates_dhdx),
+                                    ('y', self.elastic_templates_dhdy)):
+            w, entries_per_quad = self._build_weighting_elastic('mass', G3, deriv=deriv)
+            templates['mass'] = AssemblyTemplate(
+                w=w,
+                entries_per_quad=entries_per_quad,
+                nnz=self._get_nnz('mass', 'p'),
+            )
+
+    def _build_greens_function(self, elastic_deformation) -> NDArray:
+        """Return the 3x3 P1 elastic Green's function block; dx, dy in {-1, 0, 1}."""
+        decomp = self.grid_idx.decomp
+        Nx_padded = self.grid_idx.Nx_P1_padded
+        Ny_padded = self.grid_idx.Ny_P1_padded
+
+        p_impulse = np.zeros((Nx_padded, Ny_padded))
+        if decomp.rank == 0:
+            ix, iy = Nx_padded // 2, Ny_padded // 2
+            p_impulse[ix, iy] = 1.0
+
+        disp = elastic_deformation.get_deformation(p_impulse)
+
+        G3 = np.zeros((3, 3))
+        if decomp.rank == 0:
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    G3[dx + 1, dy + 1] = disp[ix + dx, iy + dy]
+
+        decomp._mpi_comm.Bcast(G3, root=0)
+        return G3
+
+    def _interpolate_G_quad(self, G_sub: NDArray, coords: NDArray, deriv: str = None) -> float:
+        """Bilinearly (Q1) interpolate a 2x2 block of G3 to a quad point."""
+        x, y = coords
+        if deriv is None:
+            return ((1 - x) * (1 - y) * G_sub[0, 0] + x * (1 - y) * G_sub[1, 0]
+                    + (1 - x) * y * G_sub[0, 1] + x * y * G_sub[1, 1])
+        elif deriv == 'x':
+            return (-(1 - y) * G_sub[0, 0] + (1 - y) * G_sub[1, 0]
+                    - y * G_sub[0, 1] + y * G_sub[1, 1]) / self.element.dx
+        elif deriv == 'y':
+            return (-(1 - x) * G_sub[0, 0] - x * G_sub[1, 0]
+                    + (1 - x) * G_sub[0, 1] + x * G_sub[1, 1]) / self.element.dy
+
+    def _build_weighting_elastic(self, res: str, G3: NDArray, deriv: str = None):
+        """Build the elastic-influence shape_weighting for a P1-grid."""
+        P1 = self.element.P1
+        n_var_tri = P1.nodes_per_tri
+        n_quad_tri = self.element.Quadrature.nb_points
+
+        # P1/P2 selection
+        if self.res_to_grid[res] == 'P1':
+            elem_res = self.element.P1
+            zero_pairs = np.array([[1, 2], [2, 1]])  # res, var
+        elif self.res_to_grid[res] == 'P2':
+            elem_res = self.element.P2
+            zero_pairs = np.array([[1, 2], [2, 1], [3, 1], [4, 2]])  # res, var
+
+        n_res_tri = elem_res.nodes_per_tri
+        n_entries_per_quad = n_res_tri * n_var_tri
+        res_N = np.tile(elem_res.N, (2, 1))  # shape (2*n_quad_tri, res_tri)
+
+        quad_coords = self.element.Quadrature.coordinates # shape (n_quad_tri, 2)
+        weights = self.element.Quadrature.weights  # shape (n_quad_tri,)
+
+        # Compute du/dp_i at quad points
+        dh_dp_quad_i = np.zeros((n_quad_tri, n_var_tri))
+
+        for quad_idx in range(n_quad_tri):
+            coords = quad_coords[quad_idx]
+
+            for node_idx in range(n_var_tri):
+                if node_idx == 0:
+                    G_sub = G3[1:3, 1:3] # epicentre at bl
+                elif node_idx == 1:
+                    G_sub = G3[0:2, 1:3] # epicentre at br
+                elif node_idx == 2:
+                    G_sub = G3[1:3, 0:2] # epicentre at tl
+
+                dh_dp_quad_cur = self._interpolate_G_quad(G_sub, coords, deriv=deriv)
+                dh_dp_quad_i[quad_idx, node_idx] = dh_dp_quad_cur
+
+        # Repeat for all residual nodes in the triangle, zero out cutoff entries
+        dh_dp_quad_ = dh_dp_quad_i.repeat(n_res_tri, axis=1).reshape(n_quad_tri, n_var_tri, n_res_tri)
+        for res_idx, var_idx in zero_pairs:
+            dh_dp_quad_[:, var_idx, res_idx] = 0
+
+        # Combine two triangles into one vector with derivative sign flip
+        tri1_sign = -1.0 if deriv in ('x', 'y') else 1.0
+        dh_dp_quad = np.concatenate((dh_dp_quad_.ravel(), tri1_sign * dh_dp_quad_.ravel()))
+
+        # Assemble weighting and residual shape function vectors
+        area = self.element.sq_area
+        weights_vec = np.tile(np.repeat(weights * area, n_entries_per_quad), 2)
+        res_N_vec = np.tile(res_N, (1, n_var_tri)).ravel()  # shape (2*n_quad_tri * res_tri * var_tri,)
+
+        return dh_dp_quad * res_N_vec * weights_vec, n_entries_per_quad
 
     def _build_weighting(self, res: str, var: str,
                          depvar_deriv: str, test_deriv):
@@ -475,6 +596,15 @@ class Assembly:
 
         return weights_vec * var_N_vec * res_N_vec, entries_per_quad
 
+    def _get_nnz(self, res: str, var: str) -> IntArray:
+        """Cached accessor for _build_nnz, keyed on (res, var) only since the
+        result is identical across all derivative combos sharing that block.
+        """
+        key = (res, var)
+        if key not in self._nnz_cache:
+            self._nnz_cache[key] = self._build_nnz(res, var)
+        return self._nnz_cache[key]
+
     def _build_nnz(self, res: str, var: str) -> IntArray:
         """Build nnz injection indices for one (res, var) block.
         Note: same for all derivative combos.
@@ -515,6 +645,33 @@ class Assembly:
 
         return nnz
 
+    def _scatter_quad_contribution(self, res_quad_field: NDArray, tmpl: AssemblyTemplate) -> None:
+        """Core of the assembly process; from quadrature values to matrix entries. Steps:
+        - repeat quad values by entries per quad
+        - tile shape weighting by number of squares
+        - multiply and reduce from per-quad to per-triangle contributions
+        - accumulate into the nnz buffer
+
+        Parameters
+        ----------
+        res_quad_field : NDArray
+            shape (n_sq, n_quad_sq)
+        tmpl : AssemblyTemplate
+            Template for the assembly process
+        """
+        nb_sq = self.grid_idx.nb_sq
+        quad_per_tri = self.element.Quadrature.nb_points
+        sw = tmpl.w
+        entries_per_quad = tmpl.entries_per_quad
+
+        quad_val_vec = np.repeat(res_quad_field.flatten(), entries_per_quad)
+        sw_vec = np.tile(sw, nb_sq)
+        q_vec = quad_val_vec * sw_vec
+
+        ele_vec = q_vec.reshape(-1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
+
+        np.add.at(self._nnz_buf, tmpl.nnz, ele_vec)
+
     def assemble_matrix(self,
                         quad_fields: Dict[str, NDArray],
                         ) -> NDArray:
@@ -529,32 +686,29 @@ class Assembly:
         self._nnz_buf[:] = 0.0
 
         for term in self.assembly_terms:
-
             td = term.test_deriv
             dep_vars = [quad_fields[v] for v in term.dep_vars]
             res = term.res
-            nb_sq = self.grid_idx.nb_sq
-            quad_per_tri = self.element.Quadrature.nb_points
 
             for var in term.dep_vars:
-
                 dd = term.depvar_deriv_for(var)
                 key = (res, var, dd, td)
                 tmpl = self.assembly_templates[key]
-                sw = tmpl.w
-                entries_per_quad = tmpl.entries_per_quad
 
-                res_quad_field = term.evaluate_deriv(var, *dep_vars)  # shape (n_sq, n_quad_sq)
+                res_quad_field = term.evaluate_deriv(var, *dep_vars)
+                self._scatter_quad_contribution(res_quad_field, tmpl)
 
-                # shape (n_sq * n_quad_sq * entries_per_quad,)
-                quad_val_vec = np.repeat(res_quad_field.flatten(), entries_per_quad)
-                sw_vec = np.tile(sw, nb_sq)
-                q_vec = quad_val_vec * sw_vec
+            if term.der_h is not None and res in self.elastic_templates:
+                dRdh = term.der_h(*dep_vars)
+                self._scatter_quad_contribution(dRdh, self.elastic_templates[res])
 
-                # size is boiled down by factor: quad_per_tri
-                ele_vec = q_vec.reshape(-1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
+            if term.der_h_dx is not None and res in self.elastic_templates_dhdx:
+                dRdhdx = term.der_h_dx(*dep_vars)
+                self._scatter_quad_contribution(dRdhdx, self.elastic_templates_dhdx[res])
 
-                np.add.at(self._nnz_buf, tmpl.nnz, ele_vec)
+            if term.der_h_dy is not None and res in self.elastic_templates_dhdy:
+                dRdhdy = term.der_h_dy(*dep_vars)
+                self._scatter_quad_contribution(dRdhdy, self.elastic_templates_dhdy[res])
 
         return self._nnz_buf[:-1]
 
@@ -621,9 +775,7 @@ class Assembly:
 
         return nnz
 
-    def assemble_rhs(self,
-                     quad_fields: Dict[str, NDArray],
-                     ) -> NDArray:
+    def assemble_rhs(self, quad_fields: Dict[str, NDArray]) -> NDArray:
         """Accumulate residual term contributions and return a view on the result.
 
         Returns
@@ -661,43 +813,3 @@ class Assembly:
             np.add.at(self._rhs_buf, nnz, ele_vec)
 
         return self._rhs_buf[:-1]
-
-    def assemble_rhs_per_term(self,
-                              quad_fields: Dict[str, NDArray],
-                              ) -> Dict[str, NDArray]:
-        """Assemble residual contribution of each term individually.
-
-        Returns
-        -------
-        dict
-            Mapping term.name -> NDArray of shape (res_size,) for that term's
-            contribution to the residual vector.
-        """
-        result = {}
-        for term in self.assembly_terms:
-            self._rhs_buf[:] = 0.0
-
-            dd, td = term.deriv_key
-            res = term.res
-            nb_sq = self.grid_idx.nb_sq
-            quad_per_tri = self.element.Quadrature.nb_points
-
-            key_res = (res, dd, td)
-            tmpl = self.assembly_templates[key_res]
-            nnz = tmpl.nnz
-            entries_per_quad = tmpl.entries_per_quad
-            sw = tmpl.w
-
-            dep_vars_rhs = [quad_fields[v] for v in term.dep_vars]
-            quad_vals = term.evaluate(*dep_vars_rhs)
-
-            quad_val_vec = np.repeat(quad_vals.flatten(), entries_per_quad)
-            sw_vec = np.tile(sw, nb_sq)
-            ele_vec = (quad_val_vec * sw_vec).reshape(
-                -1, quad_per_tri, entries_per_quad).sum(axis=1).reshape(-1)
-
-            term_buf = np.zeros_like(self._rhs_buf)
-            np.add.at(term_buf, nnz, ele_vec)
-            result[term.name] = term_buf[:-1].copy()
-
-        return result

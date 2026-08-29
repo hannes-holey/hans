@@ -116,6 +116,7 @@ class TaylorHoodP2P1:
         self.Quadrature = Quadrature7Points()
         self.P1 = self.P1(self.Quadrature)
         self.P2 = self.P2(self.Quadrature)
+        self.Q1 = self.Q1(self.Quadrature)
 
     class P1:
 
@@ -342,6 +343,110 @@ class TaylorHoodP2P1:
         @cached_property
         def dy_operator(self) -> "QuadOperator":
             return self._make_operator(self.dN_dy, apply_der_factor=True)
+
+    class Q1:
+
+        """Bilinear interpolation on the full square, symmetric under its
+        diagonal split into 2 triangles. Used for nodal fields that are not
+        Newton solution variables and which should not have a diagonal-
+        orientation bias (e.g. h, dh, eta). Specified in fieldspec.py.
+
+        square node index mapping:
+        2 ----- 3
+        |       |
+        |       |
+        0 ----- 1
+        """
+
+        square_node_offsets = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+
+        _tri_to_square = [
+            lambda x, y: (x, y),
+            lambda x, y: (1 - x, 1 - y),
+        ]
+
+        _N_funcs = [None] * 4
+        _N_funcs[0] = lambda x, y: (1 - x) * (1 - y)
+        _N_funcs[1] = lambda x, y: x * (1 - y)
+        _N_funcs[2] = lambda x, y: (1 - x) * y
+        _N_funcs[3] = lambda x, y: x * y
+
+        _N_x_funcs = [None] * 4
+        _N_x_funcs[0] = lambda x, y: -(1 - y)
+        _N_x_funcs[1] = lambda x, y: (1 - y)
+        _N_x_funcs[2] = lambda x, y: -y
+        _N_x_funcs[3] = lambda x, y: y
+
+        _N_y_funcs = [None] * 4
+        _N_y_funcs[0] = lambda x, y: -(1 - x)
+        _N_y_funcs[1] = lambda x, y: -x
+        _N_y_funcs[2] = lambda x, y: (1 - x)
+        _N_y_funcs[3] = lambda x, y: x
+
+        def __init__(self, quadrature):
+            self.quadrature = quadrature
+
+        def _eval_funcs(self, funcs) -> NDArray:
+            """Returns shape (nb_tri, nb_quad_tri, 4): each triangle's quad points
+            are mapped to square-local coordinates before evaluating N."""
+            return np.array([[[f(*to_square(x, y)) for f in funcs]
+                             for x, y in self.quadrature.coordinates]
+                             for to_square in self._tri_to_square])
+
+        @cached_property
+        def N(self) -> NDArray:
+            return self._eval_funcs(self._N_funcs)
+
+        @cached_property
+        def dN_dx(self) -> NDArray:
+            return self._eval_funcs(self._N_x_funcs)
+
+        @cached_property
+        def dN_dy(self) -> NDArray:
+            return self._eval_funcs(self._N_y_funcs)
+
+        def _make_operator(self, dN: NDArray) -> "QuadOperator":
+            """Build a QuadOperator for a given shape function matrix dN
+            (nb_tri, nb_quad_tri, 4).
+            Input shape:  (ny+1, nx+1)
+            Output shape: (nb_tri * nb_quad_tri, ny, nx)
+            """
+            offsets = self.square_node_offsets
+            nb_tri, nb_quad_tri, nb_nodes = dN.shape
+
+            def numpy_fn(input_field, output_field):
+                pg = input_field.pg
+                nodal = pg[0] if pg.ndim == 3 else pg
+                out_pg = output_field.pg
+                _, nx_pad, ny_pad = out_pg.shape
+                nx = nx_pad - 1
+                ny = ny_pad - 1
+
+                node_vals = np.empty((nb_nodes, nx, ny))
+                for k in range(nb_nodes):
+                    ox, oy = offsets[k]
+                    node_vals[k] = nodal[ox:nx + ox, oy:ny + oy]
+
+                result = np.einsum('tqk, krc -> tqrc', dN, node_vals)
+                out_pg[:, :nx, :ny] = result.reshape(nb_tri * nb_quad_tri, nx, ny)
+
+            return QuadOperator(None, numpy_fn=numpy_fn, backend='numpy')
+
+        @property
+        def weights(self) -> NDArray:
+            return self.quadrature.weights
+
+        @cached_property
+        def interpolation_operator(self) -> "QuadOperator":
+            return self._make_operator(self.N)
+
+        @cached_property
+        def dx_operator(self) -> "QuadOperator":
+            return self._make_operator(self.dN_dx)
+
+        @cached_property
+        def dy_operator(self) -> "QuadOperator":
+            return self._make_operator(self.dN_dy)
 
 
 class Quadrature3Points:

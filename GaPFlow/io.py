@@ -298,8 +298,8 @@ def sanitize_grid(d):
 
 def sanitize_geometry(d):
 
-    available = ['journal', 'inclined', 'parabolic', 'cdc', 'asperity', 'parabolic_2d',
-                 'circular_contact', 'from_file']
+    available = ['journal', 'inclined', 'parabolic', 'cdc', 'circular_1d', 'asperity',
+                 'parabolic_2d', 'circular_contact', 'from_file']
     out = {}
 
     # Bottom wall velocities (backward compat: 'U'/'V' → 'U_bot'/'V_bot')
@@ -314,6 +314,8 @@ def sanitize_geometry(d):
     out['V_top'] = float(d.get('V_top', 0.))
     out['type'] = str(d.get('type', 'none'))
     out['flip'] = bool(d.get('flip', False))
+    out['x_contact_center'] = None if d.get('x_contact_center') is None else float(d['x_contact_center'])
+    out['y_contact_center'] = None if d.get('y_contact_center') is None else float(d['y_contact_center'])
 
     if out['type'] not in available:
         raise IOError("Specify a valid geometry type")
@@ -337,6 +339,9 @@ def sanitize_geometry(d):
         out['hmin'] = float(d.get('hmin'))
         out['hmax'] = float(d.get('hmax'))
         out['b'] = float(d.get('b'))
+    elif out['type'] == 'circular_1d':
+        out['Rx'] = float(d.get('Rx'))
+        out['hmin'] = float(d.get('hmin'))
     elif out['type'] == 'asperity':
         out['hmin'] = float(d.get('hmin'))
         out['hmax'] = float(d.get('hmax'))
@@ -421,6 +426,18 @@ def sanitize_properties(d):
     # Cavitation threshold (penalty solver); falls back to P0 if not specified
     out['p_cav'] = float(d.get('p_cav', out.get('P0', 0.0)))
 
+    # Viscosity field underrelaxation / AD control (independent of piezo/thinning model)
+    out['viscosity'] = {}
+    viscosity_d = d.get('viscosity', {})
+    out['viscosity']['alpha_underrelax'] = float(viscosity_d.get('alpha_underrelax', 1.0))
+    out['viscosity']['freeze_gradient'] = bool(viscosity_d.get('freeze_gradient', False))
+    # Only meaningful when freeze_gradient=False (freeze_gradient short-circuits
+    # before this is checked): use the underrelaxed eta as the tangential-stress
+    # value, but still inject alpha_underrelax * analytic deta/dp (from the live
+    # pressure) into the Newton tangent matrix.
+    out['viscosity']['underrelax_gradient_value'] = bool(
+        viscosity_d.get('underrelax_gradient_value', False))
+
     # Non-Newtonian behavior
     # Piezoviscosity: Barus, Roelands
     available_piezo = ['Barus', 'Roelands', 'Dukler', 'McAdams']
@@ -440,7 +457,16 @@ def sanitize_properties(d):
 
         if out['piezo']['name'] in available_piezo:
             for k, de in zip(keys, defaults):
-                out['piezo'][k] = float(d['piezo'].get(k, de))
+                v = d['piezo'].get(k, de)
+                out['piezo'][k] = float(v) if v is not None else None
+
+        # Optional viscosity cap, applied generically to any piezo model's
+        # result (soft-saturating regularization -- see piezoviscosity()).
+        eta_max = d['piezo'].get('eta_max', None)
+        out['piezo']['eta_max'] = float(eta_max) if eta_max is not None else None
+
+        eta_blend_cut = d['piezo'].get('eta_blend_cut', None)
+        out['piezo']['eta_blend_cut'] = float(eta_blend_cut) if eta_blend_cut is not None else None
 
     # Shear-thinning:
     available_thinning = ['Carreau', 'Eyring']
@@ -469,6 +495,7 @@ def sanitize_properties(d):
         out['elastic']['alpha_underrelax'] = float(d['elastic'].get('alpha_underrelax', 1e-03))
         out['elastic']['n_images'] = int(d['elastic'].get('n_images', 10))
         out['elastic']['reference_point'] = d['elastic'].get('reference_point', 'corner')
+        out['elastic']['turn_off_reference'] = bool(d['elastic'].get('turn_off_reference', False))
         thickness = d['elastic'].get('thickness', None)
         out['elastic']['thickness'] = float(thickness) if thickness is not None else None
     else:
@@ -586,15 +613,9 @@ def sanitize_fem_solver(d):
     out['R_norm_tol'] = float(d.get('R_norm_tol', 1e-6))
     # newton_relax: support both new name and legacy 'alpha'
     out['newton_relax'] = float(d.get('newton_relax', d.get('alpha', 1.0)))
-    raw = d.get('newton_debug', False)
-    if raw is False:
-        out['newton_debug'] = None
-    elif raw is True:
-        out['newton_debug'] = 0
-    else:
-        out['newton_debug'] = int(raw)
     out['scaling'] = bool(d.get('scaling', True))
     out['linear_solver'] = str(d.get('linear_solver', 'direct'))
+    out['print_mumps_diagnostics'] = bool(d.get('print_mumps_diagnostics', False))
 
     physics = d.get('physics', {})
     out['physics'] = {
@@ -604,6 +625,7 @@ def sanitize_fem_solver(d):
         'inertia': bool(physics.get('inertia', False)),
         'body_force': bool(physics.get('body_force', False)),
         'squeeze': bool(physics.get('squeeze', False)),
+        'einm': bool(physics.get('einm', False)),
         # Energy physics (sub-flags only relevant if energy=True)
         'energy': bool(physics.get('energy', False)),
         'energy_convection': bool(physics.get('energy_convection', True)),
@@ -621,6 +643,9 @@ def sanitize_fem_solver(d):
         'oss_alpha': float(stab.get('oss_alpha', 1.0)),
         'fc': bool(stab.get('fc', False)),
         'fc_beta': float(stab.get('fc_beta', 0.7)),
+        'mass_supg': bool(stab.get('mass_supg', False)),
+        'mass_supg_factor': float(stab.get('mass_supg_factor', 1.0)),
+        'mass_supg_type': str(stab.get('mass_supg_type', 'Couette')),
     }
 
     if 'p_init' in d:
@@ -637,9 +662,6 @@ def sanitize_fem_solver(d):
 
     out['scaling_update_interval'] = int(d.get('scaling_update_interval', 100))
     out['scaling_ruiz_iter'] = int(d.get('scaling_ruiz_iter', 10))
-    out['line_search'] = bool(d.get('line_search', False))
-    out['line_search_alpha_min'] = float(d.get('line_search_alpha_min', 1e-12))
-    out['viscosity_guard'] = bool(d.get('viscosity_guard', False))
 
     print_dict(out)
 
@@ -665,7 +687,8 @@ def sanitize_force_balance(d):
         raise IOError("Need to specify either 'force' or 'pressure' in force_balance.")
 
     idc = d.get('init_dry_contact', None)
-    if idc is not None and idc is not False:
+    idc_enabled = bool(idc) if not isinstance(idc, dict) else idc.get('enabled', True)
+    if idc_enabled:
         out['init_dry_contact'] = {'enabled': True}
         if isinstance(idc, dict):
             out['init_dry_contact']['domain_inlet'] = float(idc.get('domain_inlet', 4.5))
@@ -674,6 +697,8 @@ def sanitize_force_balance(d):
             out['init_dry_contact']['use_deformed_height'] = bool(idc.get('use_deformed_height', False))
             if out['init_dry_contact']['use_deformed_height']:
                 out['init_dry_contact']['h_min_init'] = float(idc['h_min_init'])
+            if 'force' in idc:
+                out['init_dry_contact']['force'] = float(idc['force'])
     else:
         out['init_dry_contact'] = {'enabled': False}
 
@@ -683,13 +708,11 @@ def sanitize_force_balance(d):
     if rhv is not None and rhv.get('enabled', False):
         out['rigid_height_variation'] = {
             'enabled': True,
-            'method': str(rhv.get('method', 'PID')),
+            'method': str(rhv.get('method', 'bisection')),
             'ambient_pressure': float(rhv.get('ambient_pressure', 0.0)),
+            'force_tol': float(rhv.get('force_tol', 0.01)),
+            'h_min_step_divisor': float(rhv.get('h_min_step_divisor', 50.0)),
         }
-        if out['rigid_height_variation']['method'] == 'PID':
-            out['rigid_height_variation']['Kp'] = float(rhv['Kp'])
-            out['rigid_height_variation']['Ki'] = float(rhv['Ki'])
-            out['rigid_height_variation']['Kd'] = float(rhv['Kd'])
     else:
         out['rigid_height_variation'] = {'enabled': False}
 

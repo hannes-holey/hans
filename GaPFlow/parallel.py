@@ -124,7 +124,7 @@ except ImportError:
 from dataclasses import dataclass
 from functools import cached_property
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 if TYPE_CHECKING:
     from .problem import Problem
 
@@ -463,7 +463,7 @@ class DomainDecomposition:
     # Global field gathering
     # ---------------------------
 
-    def gather_global(self, local_field: NDArray) -> NDArray:
+    def gather_global(self, local_field: NDArray, P2: bool = False) -> NDArray:
         """Gather local field to global array on rank 0.
 
         Parameters
@@ -471,36 +471,51 @@ class DomainDecomposition:
         local_field : NDArray
             Local 2D field. If shape matches local_shape_padded, ghost cells
             are excluded. If shape matches nb_subdomain_grid_pts, used directly.
+        P2 : bool, optional
+            If True, use the P2 mass flux decomposition (e.g. for jx/jy) instead
+            of the standard P1 decomposition, by default False.
 
         Returns
         -------
         NDArray or None
             Global field with shape nb_domain_grid_pts on rank 0, None otherwise.
         """
+        if P2:
+            nb_domain_grid_pts = self.nb_domain_grid_pts_P2
+            subdomain_locations = self.subdomain_locations_P2
+            nb_subdomain_grid_pts = self.nb_subdomain_grid_pts_P2
+            local_shape_padded = self.local_shape_padded_P2
+        else:
+            nb_domain_grid_pts = self.nb_domain_grid_pts
+            subdomain_locations = self.subdomain_locations
+            nb_subdomain_grid_pts = self.nb_subdomain_grid_pts
+            local_shape_padded = self.local_shape_padded
+
         comm = self._mpi_comm
 
         # extract inner part if field includes ghosts
-        if local_field.shape == self.local_shape_padded:
-            local_inner = local_field[1:-1, 1:-1]
-        elif local_field.shape == self.nb_subdomain_grid_pts:
+        if local_field.shape == local_shape_padded:
+            n_ghost = (local_shape_padded[0] - nb_subdomain_grid_pts[0]) // 2
+            local_inner = local_field[n_ghost:-n_ghost, n_ghost:-n_ghost]
+        elif local_field.shape == nb_subdomain_grid_pts:
             local_inner = local_field
         else:
             raise ValueError(f"Field shape {local_field.shape} doesn't match "
-                             f"inner {self.nb_subdomain_grid_pts} or padded {self.local_shape_padded}")
+                             f"inner {nb_subdomain_grid_pts} or padded {local_shape_padded}")
 
         # gather local fields and their positions
         all_fields = comm.gather(local_inner, root=0)
-        all_locs = comm.gather(self.subdomain_locations, root=0)
-        all_sizes = comm.gather(self.nb_subdomain_grid_pts, root=0)
+        all_locs = comm.gather(subdomain_locations, root=0)
+        all_sizes = comm.gather(nb_subdomain_grid_pts, root=0)
 
         if self.rank == 0:
-            global_field = np.zeros(self.nb_domain_grid_pts, dtype=local_field.dtype)
+            global_field = np.zeros(nb_domain_grid_pts, dtype=local_field.dtype)
             for field, loc, sz in zip(all_fields, all_locs, all_sizes):
                 global_field[loc[0]:loc[0] + sz[0], loc[1]:loc[1] + sz[1]] = field
             return global_field
         return None
 
-    def scatter_global(self, global_field: NDArray) -> NDArray:
+    def scatter_global(self, global_field: NDArray, P2: bool = False) -> NDArray:
         """Scatter global field from rank 0 to local arrays.
 
         Parameters
@@ -508,20 +523,30 @@ class DomainDecomposition:
         global_field : NDArray
             Global field with shape nb_domain_grid_pts. Only needs to be
             valid on rank 0; other ranks can pass None or empty array.
+        P2 : bool, optional
+            If True, use the P2 mass flux decomposition (e.g. for jx/jy) instead
+            of the standard P1 decomposition, by default False.
 
         Returns
         -------
         NDArray
             Local field with shape nb_subdomain_grid_pts (without ghosts).
         """
+        if P2:
+            subdomain_locations = self.subdomain_locations_P2
+            nb_subdomain_grid_pts = self.nb_subdomain_grid_pts_P2
+        else:
+            subdomain_locations = self.subdomain_locations
+            nb_subdomain_grid_pts = self.nb_subdomain_grid_pts
+
         comm = self._mpi_comm
 
         # Gather all locations and sizes
-        all_locs = comm.allgather(self.subdomain_locations)
-        all_sizes = comm.allgather(self.nb_subdomain_grid_pts)
+        all_locs = comm.allgather(subdomain_locations)
+        all_sizes = comm.allgather(nb_subdomain_grid_pts)
 
         # Prepare receive buffer
-        local_inner = np.empty(self.nb_subdomain_grid_pts, dtype=np.float64)
+        local_inner = np.empty(nb_subdomain_grid_pts, dtype=np.float64)
 
         if self.rank == 0:
             # Send each rank's portion
@@ -536,6 +561,60 @@ class DomainDecomposition:
             comm.Recv(local_inner, source=0, tag=0)
 
         return local_inner
+
+    def gather_global_padded(self, local_field: NDArray, P2: bool = False):
+        """Gather local field to global array on rank 0, including ghost cells."""
+        if P2:
+            nb_domain_grid_pts = self.nb_domain_grid_pts_P2
+            subdomain_locations = self.subdomain_locations_P2
+            n_ghost = 2
+        else:
+            nb_domain_grid_pts = self.nb_domain_grid_pts
+            subdomain_locations = self.subdomain_locations
+            n_ghost = 1
+
+        comm = self._mpi_comm
+
+        all_fields = comm.gather(local_field, root=0)
+        all_locs = comm.gather(subdomain_locations, root=0)
+
+        if self.rank == 0:
+            global_shape = (nb_domain_grid_pts[0] + 2 * n_ghost,
+                            nb_domain_grid_pts[1] + 2 * n_ghost)
+            global_padded = np.zeros(global_shape, dtype=local_field.dtype)
+            for field, loc in zip(all_fields, all_locs):
+                px, py = field.shape
+                global_padded[loc[0]:loc[0] + px, loc[1]:loc[1] + py] = field
+            return global_padded
+        return None
+
+    def scatter_global_padded(self, global_padded: Optional[NDArray], P2: bool = False) -> NDArray:
+        """Scatter global padded field from rank 0 to local arrays."""
+        if P2:
+            subdomain_locations = self.subdomain_locations_P2
+            local_shape_padded = self.local_shape_padded_P2
+        else:
+            subdomain_locations = self.subdomain_locations
+            local_shape_padded = self.local_shape_padded
+
+        comm = self._mpi_comm
+        all_locs = comm.allgather(subdomain_locations)
+        all_shapes = comm.allgather(local_shape_padded)
+
+        local = np.empty(local_shape_padded, dtype=np.float64)
+
+        if self.rank == 0:
+            for dest, (loc, shape) in enumerate(zip(all_locs, all_shapes)):
+                chunk = np.ascontiguousarray(
+                    global_padded[loc[0]:loc[0] + shape[0], loc[1]:loc[1] + shape[1]])
+                if dest == 0:
+                    local[:] = chunk
+                else:
+                    comm.Send(chunk, dest=dest, tag=0)
+        else:
+            comm.Recv(local, source=0, tag=0)
+
+        return local
 
     # ---------------------------
     # Ghost cell handling
@@ -691,11 +770,14 @@ class FFTDomainTranslation:
 
         dst[:] = 0.0
 
+        # send_bufs keeps each Isend buffer alive until Waitall (required by MPI).
         send_reqs = []
+        send_bufs = []
         for dest_rank, info in self.send_map.items():
             data = np.ascontiguousarray(src[:, info['y_slice']])
             req = comm.Isend(data, dest=dest_rank, tag=100)
             send_reqs.append(req)
+            send_bufs.append(data)
 
         recv_reqs = []
         recv_buffers = []
@@ -727,11 +809,13 @@ class FFTDomainTranslation:
         # Reverse of embed: recv_map entries describe what to send back,
         # send_map entries describe what to receive back.
         send_reqs = []
+        send_bufs = []
         for dest_rank, info in self.recv_map.items():
             x0, xs = info['x_start'], info['x_size']
             data = np.ascontiguousarray(src[x0:x0 + xs, info['y_slice']])
             req = comm.Isend(data, dest=dest_rank, tag=200)
             send_reqs.append(req)
+            send_bufs.append(data)
 
         recv_reqs = []
         recv_buffers = []
@@ -744,3 +828,5 @@ class FFTDomainTranslation:
         MPI.Request.Waitall(recv_reqs)
         for buf, y_slice in recv_buffers:
             dst[:, y_slice] = buf
+
+        MPI.Request.Waitall(send_reqs)

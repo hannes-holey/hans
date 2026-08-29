@@ -425,8 +425,10 @@ class WallStress(GaussianProcessSurrogate):
 
             f_gap_drho = grad(f_gap, argnums=0)
             f_gap_djmom = grad(f_gap, argnums=1)
+            f_gap_dh = grad(f_gap, argnums=2)
             f_bot_drho = grad(f_bot, argnums=0)
             f_bot_djmom = grad(f_bot, argnums=1)
+            f_bot_dh = grad(f_bot, argnums=2)
             zero = lambda rho, jmom, h: jnp.zeros(())
 
             vmap2 = lambda f: jit(vmap(vmap(f, in_axes=(0, 0, 0)), in_axes=(0, 0, 0)))
@@ -435,21 +437,46 @@ class WallStress(GaussianProcessSurrogate):
             self.tau_bot = vmap2(f_bot)
             self.dtau_drho = vmap2(f_gap_drho)
             self.dtau_dtheta = vmap2(zero)
+            self.dtau_dh = vmap2(f_gap_dh)
             self.dtau_bot_drho = vmap2(f_bot_drho)
             self.dtau_bot_dtheta = vmap2(zero)
+            self.dtau_bot_dh = vmap2(f_bot_dh)
             setattr(self, f'dtau_d{jmom_name}', vmap2(f_gap_djmom))
             setattr(self, f'dtau_bot_d{jmom_name}', vmap2(f_bot_djmom))
 
         else:
             stress_top_fn = globals()[f'stress_top_{self.direction}z']
             stress_bot_fn = globals()[f'stress_bottom_{self.direction}z']
-            der_vars = ['rho', 'j' + self.direction, 'theta']
-            der_arg_idx = [0, 1 if self.direction == 'x' else 2, 10]
+            der_vars = ['rho', 'j' + self.direction, 'theta', 'h']
+            der_arg_idx = [0, 1 if self.direction == 'x' else 2, 10, 3]
+            freeze_gradient = self.prop['viscosity']['freeze_gradient']
+            underrelax_gradient_value = self.prop['viscosity']['underrelax_gradient_value']
+            alpha_underrelax = self.prop['viscosity']['alpha_underrelax']
+
+            def _eta(rho, dp_dx, dp_dy, h, eta_in):
+                # eta_in is the (possibly underrelaxed) viscosity field from Viscosity.eta.
+                if freeze_gradient:
+                    return eta_in
+                p = eos_pressure(rho, self.prop)
+                eta_live = get_shear_viscosity(self, p, dp_dx, dp_dy, h)
+                if underrelax_gradient_value:
+                    # Value = underrelaxed eta_in (matches the residual used elsewhere),
+                    # but gradient = alpha_underrelax * d(eta_live)/d(rho), i.e. the analytic
+                    # deta/dp from the live pressure, SCALED by the same alpha_underrelax
+                    # factor Viscosity.update() uses to blend eta_prev/eta_live into eta_in.
+                    # Without this scaling the Jacobian saw the full, unscaled live gradient
+                    # while the value it multiplies lagged ~1/alpha_underrelax behind it --
+                    # an inconsistent linearization that blew up Newton for small alpha
+                    # (e.g. alpha_underrelax=0.001 in relax_eta). eta_scaled -
+                    # stop_gradient(eta_scaled) is exactly zero in value, so this adds no
+                    # bias to eta_in; it only injects the scaled gradient into the tangent.
+                    eta_scaled = eta_live * alpha_underrelax
+                    return eta_in + (eta_scaled - lax.stop_gradient(eta_scaled))
+                return eta_live
 
             # central functions: only argument difference for x/y is dh
-            def _tau(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
-                p = eos_pressure(rho, self.prop)
-                eta = get_shear_viscosity(self, p, dp_dx, dp_dy, h)
+            def _tau(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy, eta_in):
+                eta = _eta(rho, dp_dx, dp_dy, h, eta_in)
                 q = jnp.array([rho, jx / (1.0 - theta), jy / (1.0 - theta)])
                 h_arr = jnp.array([h, dh])
                 tau_top = stress_top_fn(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
@@ -457,9 +484,8 @@ class WallStress(GaussianProcessSurrogate):
                 return (1.0 - theta) * (tau_top - tau_bot)
 
             # required for energy
-            def _tau_bot(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy):
-                p = eos_pressure(rho, self.prop)
-                eta = get_shear_viscosity(self, p, dp_dx, dp_dy, h)
+            def _tau_bot(rho, jx, jy, h, dh, U_bot, V_bot, U_top, V_top, Ls, theta, dp_dx, dp_dy, eta_in):
+                eta = _eta(rho, dp_dx, dp_dy, h, eta_in)
                 q = jnp.array([rho, jx / (1.0 - theta), jy / (1.0 - theta)])
                 h_arr = jnp.array([h, dh])
                 tau_bot = stress_bot_fn(q, h_arr, U_bot, V_bot, U_top, V_top, eta, self.prop['bulk'], 0.0, Ls)
@@ -811,6 +837,12 @@ class Viscosity():
                  prop: dict) -> None:
         self.__field = fc.real_field('shear_viscosity')
         self.prop = prop
+        self.eta_prev = None
+        # Fixed relaxation target (e.g. piezoviscosity at a frozen, converged
+        # pressure). None (default): relax towards the live piezoviscosity
+        # computed below, as before. Set externally to relax towards this
+        # instead, ignoring the freshly computed shear_viscosity.
+        self.eta_target = None
 
     @property
     def shear_viscosity(self) -> NDArray:
@@ -848,6 +880,18 @@ class Viscosity():
                                                           self.prop['thinning'])
         else:
             shear_viscosity = mu0
+
+        shear_viscosity = np.broadcast_to(shear_viscosity, pressure.shape)
+
+        if self.eta_target is not None:
+            shear_viscosity = self.eta_target
+
+        # underrelaxation
+        alpha = self.prop['viscosity']['alpha_underrelax']
+        if self.eta_prev is None:
+            self.eta_prev = shear_viscosity
+        shear_viscosity = (1 - alpha) * self.eta_prev + alpha * shear_viscosity
+        self.eta_prev = np.copy(shear_viscosity)
 
         self.__field.pg[:] = shear_viscosity
 

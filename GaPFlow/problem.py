@@ -29,7 +29,6 @@ import numpy as np
 from copy import deepcopy
 from collections import deque
 from datetime import datetime
-from itertools import islice
 from muGrid import FileIONetCDF
 from .parallel import DomainDecomposition, MPI
 
@@ -192,9 +191,7 @@ class Problem:
         self.wall_stress_yz = WallStress(self.fc, prop, geo, direction='y', data=database, gp=gpy)
         self.viscosity = Viscosity(self.fc, prop)
         self.topo = Topography(self.fc, self.grid, geo, prop, decomp=self.decomp,
-                               force_balance=force_balance)
-        if self.topo.force_balance:
-            self.topo._fb_controller.set_problem(self)
+                               force_balance=force_balance, problem=self)
 
         self.bEnergy = (self.numerics['solver'] == 'fem' and self.fem_solver['equations']['energy'])
         if self.bEnergy:
@@ -621,15 +618,15 @@ class Problem:
             Boundary: 'W', 'E', 'S', or 'N'
         callback : callable
             Function: callback(ctx: BCContext) -> np.ndarray
-            The BCContext contains: problem, required_shape, ghost_slice,
-            interior_slice, x_norm, y_norm.
+            The BCContext contains: problem, required_shape, slice_ghost,
+            slice_interior, x_norm, y_norm.
             Returns array with shape matching ctx.required_shape.
 
         Example
         -------
         def jx_lid(ctx):
             u_wall = 1.0
-            rho_ghost = ctx.problem.q[0][ctx.ghost_slice]
+            rho_ghost = ctx.problem.q[0][ctx.slice_ghost]
             return rho_ghost * u_wall
 
         problem.set_bc_function('jx', 'N', jx_lid)
@@ -739,6 +736,39 @@ class Problem:
             self.topofile.register_field_collection(self.fc, field_names=['topography'])
             self.topofile.append_frame().write()
             self.topofile.close()
+
+    def save_state(self, path: str) -> None:
+        """
+        Save a full simulation checkpoint for a later warm restart via :meth:`load_state`.
+
+        Independent of the regular trajectory output (:meth:`write`); captures everything
+        needed to continue the simulation seamlessly, including solver-internal state not
+        otherwise written to disk. Currently only supported for the FEM solver.
+
+        Parameters
+        ----------
+        path : str
+            Destination file path (``.npz``).
+        """
+        if self.numerics['solver'] != 'fem':
+            raise NotImplementedError("save_state is only implemented for the FEM solver.")
+        self.solver.save_state(path)
+
+    def load_state(self, path: str) -> None:
+        """
+        Restore a simulation checkpoint written by :meth:`save_state`.
+
+        Must be called on a freshly constructed `Problem` (same grid/geometry/config as the
+        checkpointed run), before :meth:`run`. Currently only supported for the FEM solver.
+
+        Parameters
+        ----------
+        path : str
+            Path to a checkpoint file written by :meth:`save_state`.
+        """
+        if self.numerics['solver'] != 'fem':
+            raise NotImplementedError("load_state is only implemented for the FEM solver.")
+        self.solver.load_state(path)
 
     # ---------------------------
     # Initialization and update helpers

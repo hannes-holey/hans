@@ -197,9 +197,9 @@ def compute_characteristic_scales(problem: "Problem",
     """
     rho_ref = problem.prop['rho0']
     U_ref = _get_characteristic_velocity(problem)
-    c_ref = problem.prop.get('c_l', np.sqrt(problem.prop.get('P0', 1.0) / rho_ref))
+    p_ref = 1e05  # problem.prop['P0']
+    c_ref = problem.prop.get('c_l', np.sqrt(p_ref / rho_ref))
     j_ref = rho_ref * U_ref * c_ref
-    p_ref = 1e05 #problem.prop['P0']
 
     scales = {'p': p_ref, 'jx': j_ref, 'jy': j_ref}
 
