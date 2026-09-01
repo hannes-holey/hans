@@ -284,30 +284,30 @@ class Assembly:
     # ======================================================================
 
     def _build_coo_lookups(self):
-        """Build one dict per (res, var) block.
-
-        Maps (res_local_idx, var_local_idx) -> absolute flat nnz index.
-        """
+        """Build one sorted-key lookup per (res, var) block."""
         lookups = {}
         for (res, var), block in self.block_order.items():
             rg, vg = block['res_grid'], block['var_grid']
             inner_pts, contrib_pts, nb_nnz = self.conn[(rg, vg)]
             start = block['nnz_idx_start']
-            d = {}
-            for k in range(nb_nnz):
-                pair = (int(inner_pts[k]), int(contrib_pts[k]))
-                d[pair] = start + k
-            lookups[(res, var)] = d
+            contrib_stride = int(contrib_pts.max()) + 1 if nb_nnz else 1
+            keys = inner_pts.astype(np.int64) * contrib_stride + contrib_pts.astype(np.int64)
+            values = start + np.arange(nb_nnz, dtype=np.int32)
+            order = np.argsort(keys)
+            lookups[(res, var)] = (keys[order], values[order], contrib_stride)
         return lookups
 
-    def lookup_nnz(self, res, res_local_idx, var, var_local_idx):
-        """Uses above built lookup and returns absolute flat nnz index for
-        (res, res_local_idx, var, var_local_idx).
-
-        Returns -1 if pair not in the sparsity pattern.
-        """
-        return self.coo_lookups[(res, var)].get(
-            (int(res_local_idx), int(var_local_idx)), -1)
+    def _lookup_nnz_vec(self, res: str, var: str, res_idx: IntArray, var_idx: IntArray) -> IntArray:
+        """Vectorized lookup of absolute flat nnz index."""
+        keys_sorted, values_sorted, contrib_stride = self.coo_lookups[(res, var)]
+        both_valid = (res_idx >= 0) & (var_idx >= 0)
+        res_safe = np.where(both_valid, res_idx, 0)
+        var_safe = np.where(both_valid, var_idx, 0)
+        query_keys = res_safe.astype(np.int64) * contrib_stride + var_safe.astype(np.int64)
+        pos = np.searchsorted(keys_sorted, query_keys)
+        pos_clipped = np.clip(pos, 0, len(keys_sorted) - 1)
+        found = both_valid & (pos < len(keys_sorted)) & (keys_sorted[pos_clipped] == query_keys)
+        return np.where(found, values_sorted[pos_clipped], -1).astype(np.int32)
 
     # ======================================================================
     # RHS pattern
@@ -610,30 +610,18 @@ class Assembly:
         TO_Q1 = self.grid_idx.sq_TO_inner_P1  # (n_sq, 4)
         FROM_Q2 = self.grid_idx.sq_FROM_padded_P2(var)  # (n_sq, 9)
         FROM_Q1 = self.grid_idx.sq_FROM_padded_P1(var)  # (n_sq, 4)
-        n_sq = self.grid_idx.nb_sq
 
-        res_sq_to_nodes = TO_Q1 if self.res_to_grid[res] == 'P1' else TO_Q2
-        var_sq_to_nodes = FROM_Q1 if self.var_to_grid[var] == 'P1' else FROM_Q2
+        res_sq_to_nodes = TO_Q1 if self.res_to_grid[res] == 'P1' else TO_Q2  # (n_sq, nodes_res)
+        var_sq_to_nodes = FROM_Q1 if self.var_to_grid[var] == 'P1' else FROM_Q2  # (n_sq, nodes_var)
 
-        res_element = self.element.Q1 if self.res_to_grid[res] == 'P1' else self.element.Q2
-        var_element = self.element.Q1 if self.var_to_grid[var] == 'P1' else self.element.Q2
+        n_sq, nodes_res = res_sq_to_nodes.shape
+        nodes_var = var_sq_to_nodes.shape[1]
 
-        nb_nnz = n_sq * res_element.nodes_per_element * var_element.nodes_per_element
-        nnz = np.empty((nb_nnz), dtype=np.int32)
-        nnz_idx = 0
+        res_idx = np.broadcast_to(res_sq_to_nodes[:, None, :], (n_sq, nodes_var, nodes_res))
+        var_idx = np.broadcast_to(var_sq_to_nodes[:, :, None], (n_sq, nodes_var, nodes_res))
+        nnz = self._lookup_nnz_vec(res, var, res_idx, var_idx)
 
-        for sq_idx in range(n_sq):
-            res_nodes_on_sq = res_sq_to_nodes[sq_idx]
-            var_nodes_on_sq = var_sq_to_nodes[sq_idx]
-
-            for var_node in var_nodes_on_sq:
-                for res_node in res_nodes_on_sq:
-                    # Find local nnz index for (res_node, var_node)
-                    local_idx = self.lookup_nnz(res, res_node, var, var_node)
-                    nnz[nnz_idx] = local_idx
-                    nnz_idx += 1
-
-        return nnz
+        return nnz.ravel().astype(np.int32)
 
     def _scatter_quad_contribution(self, res_quad_field: NDArray, tmpl: AssemblyTemplate) -> None:
         """Core of the assembly process; from quadrature values to matrix entries. Steps:
