@@ -1,14 +1,14 @@
 options:
     output: /tmp/twin_parabolic_slider_id_smooth_bayada
-    write_freq: 1
+    write_freq: 5
     save_output: False
     output_plots: False
 
 grid:
     Lx: 0.0762
     Ly: 0.004
-    Nx: 200
-    Ny: 4
+    Nx: 80
+    Ny: 1
     xW: ['D', 'N', 'N']
     xE: ['N', 'N', 'N']
     yS: ['P', 'P', 'P']
@@ -28,7 +28,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.
-    max_it: 250
+    max_it: 450
 
 properties:
     rho0: 850.
@@ -42,7 +42,7 @@ properties:
 
 fem_solver:
     linear_solver: direct
-    newton_relax: 0.01
+    newton_relax: 0.001
     physics:
         gap_shear: true
         plane_shear: false

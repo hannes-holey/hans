@@ -8,8 +8,8 @@ options:
 grid:
     Lx: 0.0762
     Ly: 0.004
-    Nx: 200
-    Ny: 4
+    Nx: 100
+    Ny: 1
     xW: ['D', 'N', 'N']
     xE: ['N', 'N', 'N']
     yS: ['P', 'P', 'P']
@@ -29,7 +29,7 @@ numerics:
     solver: fem
     dt: 0.1
     tol: 0.0
-    max_it: 300
+    max_it: 200
 
 properties:
     EOS: DH
@@ -43,14 +43,16 @@ properties:
 
 fem_solver:
     linear_solver: direct
-    newton_relax: 0.04
+    newton_relax: 0.2
     equations:
         cavitation: True
     physics:
         gap_shear: true
     stabilization:
-        oss: true
-        oss_alpha: 2.0
+        oss: false
+        oss_alpha: 0.0
+        mass_supg: true
+        mass_supg_factor: 1.0
     max_iter: 1
     R_norm_tol: 1e-9
     scaling: False
